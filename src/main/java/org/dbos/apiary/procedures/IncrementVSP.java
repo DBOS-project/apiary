@@ -12,8 +12,7 @@ public class IncrementVSP extends VoltProcedure {
     );
 
 
-    public long run(int pkey, VoltTable[] input) throws VoltAbortException {
-        long key = input[0].fetchRow(0).getLong(0);
+    public long run(int pkey, long key) throws VoltAbortException {
         voltQueueSQL(getValue, key);
         VoltTable results = voltExecuteSQL()[0];
 

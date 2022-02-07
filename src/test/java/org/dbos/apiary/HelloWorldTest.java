@@ -27,7 +27,7 @@ public class HelloWorldTest {
     public void testIncrement() throws IOException, ProcCallException {
         logger.info("Hello, world Increment!");
         ApiaryContext ctxt = new ApiaryContext("localhost", 21212);
-        VoltTable[] res = ctxt.client.callProcedure("IncrementVSP", 0, 1).getResults();
+        VoltTable[] res = ctxt.client.callProcedure("IncrementVSP", 0, 1L).getResults();
         assertEquals(1, res.length);
         long resVal = res[0].fetchRow(0).getLong(0);
         assertEquals(1, resVal);

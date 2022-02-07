@@ -4,4 +4,4 @@ DROP PROCEDURE IncrementVSP IF EXISTS;
 CREATE PROCEDURE PARTITION ON TABLE IncrementTable COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.IncrementVSP;
 
 DROP PROCEDURE TruncateTables IF EXISTS;
-CREATE PROCEDURE FROM CLASS dbos.procedures.TruncateTables;
+CREATE PROCEDURE FROM CLASS org.dbos.apiary.procedures.TruncateTables;

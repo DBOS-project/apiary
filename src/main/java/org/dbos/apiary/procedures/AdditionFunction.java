@@ -7,7 +7,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class AdditionFunction extends ApiaryProcedure {
 
-    public VoltTable run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
         return super.run(pkey, voltInput);
     }
 

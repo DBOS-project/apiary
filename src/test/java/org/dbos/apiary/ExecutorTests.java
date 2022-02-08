@@ -60,9 +60,13 @@ public class ExecutorTests {
     public void testAddition() throws IOException, ProcCallException {
         logger.info("testAddition");
         ApiaryContext ctxt = new ApiaryContext("localhost", 21212);
-        VoltTable input = new VoltTable(new VoltTable.ColumnInfo("one", VoltType.INTEGER), new VoltTable.ColumnInfo("two", VoltType.INTEGER));
-        input.addRow(1, 2);
+        VoltTable input = new VoltTable(
+                new VoltTable.ColumnInfo("one", VoltType.INTEGER),
+                new VoltTable.ColumnInfo("two", VoltType.INTEGER),
+                new VoltTable.ColumnInfo("strings", VoltType.VARBINARY)
+        );
+        input.addRow(1, 2, Utilities.stringArraytoByteArray(new String[]{"matei", "zaharia"}));
         VoltTable[] res = ctxt.client.callProcedure("AdditionFunction", 0, input).getResults();
-        assertEquals("3", res[0].fetchRow(0).getString(0));
+        assertEquals("3mateizaharia", res[0].fetchRow(0).getString(0));
     }
 }

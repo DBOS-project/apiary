@@ -1,5 +1,7 @@
 package org.dbos.apiary.interposition;
 
+import com.google_voltpatches.common.base.Utf8;
+import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltTableRow;
@@ -29,6 +31,8 @@ public abstract class ApiaryProcedure extends VoltProcedure {
                 input[i] = inputRow.getDouble(i);
             } else if (t.equals(VoltType.STRING)) {
                 input[i] = inputRow.getString(i);
+            } else if (t.equals(VoltType.VARBINARY)) {
+                input[i] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
             }
         }
         Method functionMethod = getFunctionMethod(this);

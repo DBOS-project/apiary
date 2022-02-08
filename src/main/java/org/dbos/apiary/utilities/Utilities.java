@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 public class Utilities {
 
@@ -38,4 +40,40 @@ public class Utilities {
         }
         return obj;
     }
+
+    public static byte[] stringArraytoByteArray(String[] strs) {
+        int totalLen = 0;
+        for (String s: strs) {
+            totalLen += s.getBytes().length + 4;
+        }
+        byte[] bytes = new byte[totalLen];
+        int i = 0;
+        for (String str: strs) {
+            int len = str.getBytes().length;
+            ByteBuffer bb = ByteBuffer.allocate(4);
+            bb.putInt(len);
+            byte[] lenArray = bb.array();
+            System.arraycopy(lenArray, 0, bytes, i, 4);
+            byte[] strArray = str.getBytes();
+            System.arraycopy(strArray, 0, bytes, i + 4, len);
+            i += len + 4;
+        }
+        return bytes;
+    }
+
+    public static String[] byteArrayToStringArray(byte[] bytes) {
+        ArrayList<String> strList = new ArrayList<>();
+        for (int i = 0; i < bytes.length;) {
+            byte[] lenArray = new byte[4];
+            System.arraycopy(bytes, i, lenArray, 0, 4);
+            ByteBuffer wrapped = ByteBuffer.wrap(lenArray);
+            int len = wrapped.getInt();
+            byte[] strArray = new byte[len];
+            System.arraycopy(bytes, i + 4, strArray, 0, len);
+            strList.add(new String(strArray));
+            i += len + 4;
+        }
+        return strList.toArray(new String[0]);
+    }
+
 }

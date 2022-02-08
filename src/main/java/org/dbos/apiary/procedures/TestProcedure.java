@@ -13,7 +13,7 @@ public class TestProcedure extends ApiaryProcedure {
     );
 
 
-    public String runFunction(String jsonInput) {
+    public String runFunction(String[] jsonInput) {
         return null;
     }
 }

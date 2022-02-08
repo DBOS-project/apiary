@@ -4,9 +4,13 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public abstract class ApiaryProcedure extends VoltProcedure {
 
-    public VoltTable[] run(String jsonInput) {
+    AtomicInteger calledFunctionID = new AtomicInteger(0);
+
+    public VoltTable[] run(int pkey, String... jsonInput) {
         Object output = runFunction(jsonInput);
         if (output instanceof String) {
             return new VoltTable[]{new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING))};
@@ -15,10 +19,11 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         }
     }
 
-    public abstract Object runFunction(String jsonInput);
+    public abstract Object runFunction(String... jsonInput);
 
-    public ApiaryFuture callFunction(String name, Object... args) {
-        return null;
+    public ApiaryFuture callFunction(String name, int pkey, String jsonInput, ApiaryFuture... futureInputs) {
+        int myID = calledFunctionID.getAndIncrement();
+        return new ApiaryFuture(myID);
     }
 
 }

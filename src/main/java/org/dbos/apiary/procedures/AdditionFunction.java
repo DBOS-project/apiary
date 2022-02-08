@@ -1,5 +1,6 @@
 package org.dbos.apiary.procedures;
 
+import org.dbos.apiary.interposition.ApiaryFuture;
 import org.dbos.apiary.interposition.ApiaryProcedure;
 import org.voltdb.VoltTable;
 
@@ -17,6 +18,7 @@ public class AdditionFunction extends ApiaryProcedure {
         for (String s: strings) {
             sb.append(s);
         }
+        ApiaryFuture f = callFunction("a", 0, 1, sb.toString());
         return sb.toString();
     }
 }

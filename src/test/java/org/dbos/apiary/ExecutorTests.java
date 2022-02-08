@@ -68,5 +68,6 @@ public class ExecutorTests {
         input.addRow(1, 2, Utilities.stringArraytoByteArray(new String[]{"matei", "zaharia"}));
         VoltTable[] res = ctxt.client.callProcedure("AdditionFunction", 0, input).getResults();
         assertEquals("3mateizaharia", res[0].fetchRow(0).getString(0));
+        assertEquals(5, res[1].fetchRow(0).getColumnCount());
     }
 }

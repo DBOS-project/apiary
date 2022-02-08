@@ -37,8 +37,8 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         }
         Method functionMethod = getFunctionMethod(this);
         assert functionMethod != null;
-        VoltTable[] voltOutputs = new VoltTable[calledFunctionInfo.size() + 1];
         Object output = functionMethod.invoke(this, input);
+        VoltTable[] voltOutputs = new VoltTable[calledFunctionInfo.size() + 1];
         if (output instanceof String) {
             VoltTable voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
             voltOutput.addRow(output);
@@ -63,8 +63,43 @@ public abstract class ApiaryProcedure extends VoltProcedure {
     }
 
     public ApiaryFuture callFunction(String name, int pkey, Object... inputs) {
-        int myID = calledFunctionID.getAndIncrement();
-        return new ApiaryFuture(myID);
+        int ID = calledFunctionID.getAndIncrement();
+        VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[inputs.length + 3];
+        columns[0] = new VoltTable.ColumnInfo("name", VoltType.STRING);
+        columns[1] = new VoltTable.ColumnInfo("id", VoltType.INTEGER);
+        columns[2] = new VoltTable.ColumnInfo("pkey", VoltType.INTEGER);
+        for (int i = 0; i < inputs.length; i++) {
+            Object input = inputs[i];
+            if (input instanceof Integer) {
+                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.INTEGER);
+            } else if (input instanceof Double) {
+                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.FLOAT);
+            } else if (input instanceof String) {
+                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.STRING);
+            } else if (input instanceof String[]) {
+                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.VARBINARY);
+            }
+        }
+        VoltTable v = new VoltTable(columns);
+        Object[] row = new Object[v.getColumnCount()];
+        row[0] = name;
+        row[1] = ID;
+        row[2] = pkey;
+        for (int i = 0; i < inputs.length; i++) {
+            Object input = inputs[i];
+            if (input instanceof Integer) {
+                row[i + 3] = input;
+            } else if (input instanceof Double) {
+                row[i + 3] = input;
+            } else if (input instanceof String) {
+                row[i + 3] = input;
+            } else if (input instanceof String[]) {
+                row[i + 3] = Utilities.stringArraytoByteArray((String[]) input);
+            }
+        }
+        v.addRow(row);
+        calledFunctionInfo.add(v);
+        return new ApiaryFuture(ID);
     }
 
 }

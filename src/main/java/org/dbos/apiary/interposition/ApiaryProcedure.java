@@ -25,7 +25,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         VoltTableRow inputRow = voltInput.fetchRow(0);
         for (int i = 0; i < voltInput.getColumnCount(); i++) {
             VoltType t = inputRow.getColumnType(i);
-            if (t.equals(VoltType.INTEGER)) {
+            if (t.equals(VoltType.BIGINT)) {
                 input[i] = inputRow.getLong(i);
             } else if (t.equals(VoltType.FLOAT)) {
                 input[i] = inputRow.getDouble(i);
@@ -66,18 +66,20 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         int ID = calledFunctionID.getAndIncrement();
         VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[inputs.length + 3];
         columns[0] = new VoltTable.ColumnInfo("name", VoltType.STRING);
-        columns[1] = new VoltTable.ColumnInfo("id", VoltType.INTEGER);
-        columns[2] = new VoltTable.ColumnInfo("pkey", VoltType.INTEGER);
+        columns[1] = new VoltTable.ColumnInfo("id", VoltType.BIGINT);
+        columns[2] = new VoltTable.ColumnInfo("pkey", VoltType.BIGINT);
         for (int i = 0; i < inputs.length; i++) {
             Object input = inputs[i];
             if (input instanceof Integer) {
-                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.INTEGER);
+                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.BIGINT);
             } else if (input instanceof Double) {
                 columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.FLOAT);
             } else if (input instanceof String) {
                 columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.STRING);
             } else if (input instanceof String[]) {
                 columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.VARBINARY);
+            } else if (input instanceof ApiaryFuture) {
+                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.SMALLINT);
             }
         }
         VoltTable v = new VoltTable(columns);
@@ -95,6 +97,8 @@ public abstract class ApiaryProcedure extends VoltProcedure {
                 row[i + 3] = input;
             } else if (input instanceof String[]) {
                 row[i + 3] = Utilities.stringArraytoByteArray((String[]) input);
+            } else if (input instanceof ApiaryFuture) {
+                row[i + 3] = ((ApiaryFuture) input).creatorID;
             }
         }
         v.addRow(row);

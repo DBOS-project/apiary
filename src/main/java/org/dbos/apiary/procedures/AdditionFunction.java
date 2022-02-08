@@ -19,6 +19,7 @@ public class AdditionFunction extends ApiaryProcedure {
             sb.append(s);
         }
         ApiaryFuture f = callFunction("a", 0, 1, sb.toString());
+        ApiaryFuture g = callFunction("b", 0, f);
         return sb.toString();
     }
 }

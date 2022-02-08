@@ -5,7 +5,7 @@ import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class AdditionProcedure extends ApiaryProcedure {
+public class AdditionFunction extends ApiaryProcedure {
 
     public VoltTable run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
         return super.run(pkey, voltInput);

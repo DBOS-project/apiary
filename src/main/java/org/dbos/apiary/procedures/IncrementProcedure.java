@@ -2,7 +2,7 @@ package org.dbos.apiary.procedures;
 
 import org.voltdb.*;
 
-public class IncrementVSP extends VoltProcedure {
+public class IncrementProcedure extends VoltProcedure {
     public final SQLStmt getValue = new SQLStmt (
             "SELECT IncrementValue FROM IncrementTable WHERE IncrementKey=?;"
     );

@@ -61,13 +61,16 @@ public class ExecutorTests {
         logger.info("testAddition");
         ApiaryContext ctxt = new ApiaryContext("localhost", 21212);
         VoltTable input = new VoltTable(
-                new VoltTable.ColumnInfo("one", VoltType.INTEGER),
-                new VoltTable.ColumnInfo("two", VoltType.INTEGER),
+                new VoltTable.ColumnInfo("one", VoltType.BIGINT),
+                new VoltTable.ColumnInfo("two", VoltType.BIGINT),
                 new VoltTable.ColumnInfo("strings", VoltType.VARBINARY)
         );
         input.addRow(1, 2, Utilities.stringArraytoByteArray(new String[]{"matei", "zaharia"}));
         VoltTable[] res = ctxt.client.callProcedure("AdditionFunction", 0, input).getResults();
         assertEquals("3mateizaharia", res[0].fetchRow(0).getString(0));
         assertEquals(5, res[1].fetchRow(0).getColumnCount());
+        assertEquals(4, res[2].fetchRow(0).getColumnCount());
+        assertEquals(VoltType.SMALLINT, res[2].fetchRow(0).getColumnType(3));
+        assertEquals(0, res[2].fetchRow(0).getLong(3));
     }
 }

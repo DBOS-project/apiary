@@ -68,7 +68,7 @@ public class Executor {
             Task currTask = taskStack.pop();
             if (!currTask.objIdxTofutureID.isEmpty()) {
                 // Resolve the future reference.
-                Boolean resolved = currTask.resolveInput(taskIDtoValue);
+                boolean resolved = currTask.resolveInput(taskIDtoValue);
                 if (!resolved) {
                     // TODO: if we are executing asynchronously, maybe wait a bit until the future to be resolved.
                     logger.error("Found unresolved future, failed to execute.");

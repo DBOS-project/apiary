@@ -10,11 +10,11 @@ import java.lang.reflect.InvocationTargetException;
 public class FibonacciFunction extends ApiaryProcedure {
     public final SQLStmt addResult = new SQLStmt(
             // PKEY, KEY, VALUE
-            "UPSERT INTO IncrementTable VALUES (?, ?, ?);"
+            "UPSERT INTO KVTable VALUES (?, ?, ?);"
     );
 
     public final SQLStmt getValue = new SQLStmt(
-            "SELECT IncrementValue FROM IncrementTable WHERE IncrementKey=?;"
+            "SELECT KVValue FROM KVTable WHERE KVKey=?;"
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
@@ -22,7 +22,7 @@ public class FibonacciFunction extends ApiaryProcedure {
     }
 
     public Object runFunction(String inputStr) {
-        int key = Integer.valueOf(inputStr);
+        int key = Integer.parseInt(inputStr);
         if (key < 0) {
             return "";
         }
@@ -48,7 +48,7 @@ public class FibonacciFunction extends ApiaryProcedure {
         // Otherwise, call functions.
         ApiaryFuture f1 = callFunction("FibonacciFunction", this.pkey, String.valueOf(key - 2));
         ApiaryFuture f2 = callFunction("FibonacciFunction", this.pkey, String.valueOf(key - 1));
-        ApiaryFuture fsum = callFunction("IntSumFunction", this.pkey, key, f1, f2);
+        ApiaryFuture fsum = callFunction("FibSumFunction", this.pkey, key, f1, f2);
         return fsum;
     }
 }

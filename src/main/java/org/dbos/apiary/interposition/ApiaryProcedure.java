@@ -20,7 +20,10 @@ public abstract class ApiaryProcedure extends VoltProcedure {
 
     List<VoltTable> calledFunctionInfo = new ArrayList<>();
 
+    public int pkey;
+
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+        this.pkey = pkey;
         Object[] input = new Object[voltInput.getColumnCount()];
         VoltTableRow inputRow = voltInput.fetchRow(0);
         for (int i = 0; i < voltInput.getColumnCount(); i++) {
@@ -38,16 +41,26 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         Method functionMethod = getFunctionMethod(this);
         assert functionMethod != null;
         Object output = functionMethod.invoke(this, input);
-        VoltTable[] voltOutputs = new VoltTable[calledFunctionInfo.size() + 1];
+        VoltTable[] voltOutputs;
+
+        int offset = 0;
         if (output instanceof String) {
+            // TODO: if it returns a String, maybe don't append called futures? Unless the future is a queue message.
+            voltOutputs = new VoltTable[calledFunctionInfo.size() + 1];
+            offset = 1;
             VoltTable voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
             voltOutput.addRow(output);
             voltOutputs[0] = voltOutput;
+        } else if (output instanceof ApiaryFuture){
+            // Only record the called futures.
+            voltOutputs = new VoltTable[calledFunctionInfo.size()];
         } else {
+            // TODO: better error handling?
             return null;
         }
+
         for (int i = 0; i < calledFunctionInfo.size(); i++) {
-            voltOutputs[i + 1] = calledFunctionInfo.get(i);
+            voltOutputs[i + offset] = calledFunctionInfo.get(i);
         }
         return voltOutputs;
     }

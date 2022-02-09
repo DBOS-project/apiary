@@ -83,6 +83,7 @@ public class Executor {
 
             // The output either contains futures, or contains a String value, but not both.
             // Because if it returns a string value, then the futures are not used.
+            // TODO: maybe change this if we are supporting message queue.
             if (res[0].getColumnCount() == 1) {
                 String taskOutput = res[0].fetchRow(0).getString(0);
                 taskIDtoValue.put(currTask.taskID, taskOutput);

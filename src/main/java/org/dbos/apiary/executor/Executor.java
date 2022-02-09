@@ -103,7 +103,13 @@ public class Executor {
                 logger.info("current baseID: {}", currBase);
                 logger.info("res length {}", res.length);
                 for (int i = res.length - 1; i >= 0; i--) {
-                    taskStack.push(new Task(currBase, res[i]));
+                    Task futureTask = new Task(currBase, res[i]);
+                    // If it is the last task, inherit the parent's ID. Otherwise, cannot find the output.
+                    // A bit hacky.
+                    if (i == res.length - 1) {
+                        futureTask.taskID = currTask.taskID;
+                    }
+                    taskStack.push(futureTask);
                 }
             }
         }

@@ -13,7 +13,7 @@ import java.util.Map;
 public class Task {
     private static final Logger logger = LoggerFactory.getLogger(Task.class);
 
-    public final int taskID;  // Unique ID within an execution.
+    public int taskID;  // Unique ID within an execution.
     public final String funcName;
     public final long pkey;  // Partition to run this task.
     public Object[] input;

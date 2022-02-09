@@ -16,7 +16,7 @@ public class Task {
     public final int taskID;  // Unique ID within an execution.
     public final String funcName;
     public final long pkey;  // Partition to run this task.
-    public final Object[] input;
+    public Object[] input;
     public final Map<Integer, Integer> objIdxTofutureID = new HashMap<>();  // Map from object index to future task ID.
 
     // Initialize from user input.
@@ -41,7 +41,7 @@ public class Task {
         for (int i = 3; i < voltInput.getColumnCount(); i++, objIndex++) {
             VoltType t = inputRow.getColumnType(i);
             if (t.equals(VoltType.BIGINT)) {
-                input[objIndex] = inputRow.getLong(i);
+                input[objIndex] = (int) inputRow.getLong(i);
             } else if (t.equals(VoltType.FLOAT)) {
                 input[objIndex] = inputRow.getDouble(i);
             } else if (t.equals(VoltType.STRING)) {
@@ -63,12 +63,14 @@ public class Task {
     public boolean resolveInput(Map<Integer, String> taskIDtoValue) {
         for (int objIdx : objIdxTofutureID.keySet()) {
             int futureID = objIdxTofutureID.get(objIdx);
+            logger.info("resolving object index {}, futureID {}", objIdx, futureID);
             if (taskIDtoValue.containsKey(futureID)) {
                 input[objIdx] = taskIDtoValue.get(futureID);
             } else {
                 logger.error("Cannot find value from futureID {}", futureID);
                 return false;
             }
+            logger.info("updated result: {}, expected: {}", input[objIdx], taskIDtoValue.get(futureID));
         }
         objIdxTofutureID.clear();
         return true;

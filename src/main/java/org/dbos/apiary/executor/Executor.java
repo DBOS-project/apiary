@@ -20,6 +20,7 @@ public class Executor {
         VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[rawInput.length];
         for (int i = 0; i < rawInput.length; i++) {
             Object input = rawInput[i];
+            logger.info("raw input: {}, class: {}", input, input.getClass().getName());
             columns[i] = Utilities.objectToColumnInfo(i, input);
         }
         VoltTable v = new VoltTable(columns);
@@ -76,6 +77,7 @@ public class Executor {
                     logger.error("Found unresolved future, failed to execute.");
                     return null;
                 }
+                logger.info("resolved, now task input: {}, size {}", currTask.input, currTask.input.length);
             }
             // Process input to VoltTable and invoke SP.
             VoltTable voltInput = objectInputToVoltTable(currTask.input);

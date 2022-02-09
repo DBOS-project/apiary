@@ -32,7 +32,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         for (int i = 0; i < voltInput.getColumnCount(); i++) {
             VoltType t = inputRow.getColumnType(i);
             if (t.equals(VoltType.BIGINT)) {
-                input[i] = inputRow.getLong(i);
+                input[i] = (int) inputRow.getLong(i);
             } else if (t.equals(VoltType.FLOAT)) {
                 input[i] = inputRow.getDouble(i);
             } else if (t.equals(VoltType.STRING)) {

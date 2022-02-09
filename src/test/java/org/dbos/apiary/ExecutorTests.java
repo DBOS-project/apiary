@@ -91,10 +91,10 @@ public class ExecutorTests {
         logger.info("testFibExec - executor invoke, Fibonacci calculation.");
         ApiaryContext ctxt = new ApiaryContext("localhost", ApiaryConfig.voltdbPort);
 
-        String res = Executor.executeFunction(ctxt, "FibnacciFunction", 1, "1");
+        String res = Executor.executeFunction(ctxt, "FibonacciFunction", 1, "1");
         assertEquals("1", res);
 
-        res = Executor.executeFunction(ctxt, "FibnacciFunction", 1, "3");
+        res = Executor.executeFunction(ctxt, "FibonacciFunction", 1, "3");
         assertEquals("2", res);
     }
 }

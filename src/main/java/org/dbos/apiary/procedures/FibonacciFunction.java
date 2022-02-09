@@ -21,8 +21,8 @@ public class FibonacciFunction extends ApiaryProcedure {
         return super.run(pkey, voltInput);
     }
 
-    public Object runFunction(String inputStr) {
-        int key = Integer.parseInt(inputStr);
+    public Object runFunction(String strKey) {
+        int key = Integer.parseInt(strKey);
         if (key < 0) {
             return "";
         }
@@ -48,7 +48,7 @@ public class FibonacciFunction extends ApiaryProcedure {
         // Otherwise, call functions.
         ApiaryFuture f1 = callFunction("FibonacciFunction", this.pkey, String.valueOf(key - 2));
         ApiaryFuture f2 = callFunction("FibonacciFunction", this.pkey, String.valueOf(key - 1));
-        ApiaryFuture fsum = callFunction("FibSumFunction", this.pkey, key, f1, f2);
+        ApiaryFuture fsum = callFunction("FibSumFunction", this.pkey, strKey, f1, f2);
         return fsum;
     }
 }

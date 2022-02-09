@@ -40,7 +40,7 @@ public class ExecutorTests {
     public void testAdditionExec() throws IOException, ProcCallException {
         logger.info("testAdditionExec");
         ApiaryContext ctxt = new ApiaryContext("localhost", ApiaryConfig.voltdbPort);
-        String res = Executor.executeFunction(ctxt, "AdditionFunction", 0, 1, 2, new String[]{"matei", "zaharia"});
+        String res = Executor.executeFunction(ctxt, "AdditionFunction", 0, "1", "2", new String[]{"matei", "zaharia"});
         assertEquals("3mateizaharia", res);
     }
 

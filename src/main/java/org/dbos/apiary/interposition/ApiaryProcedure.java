@@ -32,11 +32,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         VoltTableRow inputRow = voltInput.fetchRow(0);
         for (int i = 0; i < voltInput.getColumnCount(); i++) {
             VoltType t = inputRow.getColumnType(i);
-            if (t.equals(VoltType.BIGINT)) {
-                input[i] = (int) inputRow.getLong(i);
-            } else if (t.equals(VoltType.FLOAT)) {
-                input[i] = inputRow.getDouble(i);
-            } else if (t.equals(VoltType.STRING)) {
+            if (t.equals(VoltType.STRING)) {
                 input[i] = inputRow.getString(i);
             } else if (t.equals(VoltType.VARBINARY)) {
                 input[i] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
@@ -95,11 +91,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         row[2] = pkey;
         for (int i = 0; i < inputs.length; i++) {
             Object input = inputs[i];
-            if (input instanceof Integer) {
-                row[i + 3] = input;
-            } else if (input instanceof Double) {
-                row[i + 3] = input;
-            } else if (input instanceof String) {
+            if (input instanceof String) {
                 row[i + 3] = input;
             } else if (input instanceof String[]) {
                 row[i + 3] = Utilities.stringArraytoByteArray((String[]) input);

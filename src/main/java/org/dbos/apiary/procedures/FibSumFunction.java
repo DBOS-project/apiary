@@ -16,11 +16,11 @@ public class FibSumFunction extends ApiaryProcedure {
         return super.run(pkey, voltInput);
     }
 
-    public String runFunction(Integer key, String str1, String str2) {
+    public String runFunction(String key, String str1, String str2) {
         int num1 = Integer.parseInt(str1);
         int num2 = Integer.parseInt(str2);
         int sum = num1 + num2;
-        voltQueueSQL(addResult, this.pkey, key, sum);
+        voltQueueSQL(addResult, this.pkey, Integer.parseInt(key), sum);
         voltExecuteSQL();
         return String.valueOf(sum);
     }

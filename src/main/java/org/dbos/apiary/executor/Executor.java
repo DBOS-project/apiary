@@ -8,6 +8,10 @@ import org.voltdb.VoltTable;
 import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.Stack;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Executor {
     private static final Logger logger = LoggerFactory.getLogger(Executor.class);
@@ -43,14 +47,59 @@ public class Executor {
     // TODO: better way to handle partition key, and support multi-partition functions (no pkey).
     public static String executeFunction(ApiaryContext ctxt, String funcName, long pkey, Object... rawInput)
             throws  IOException, ProcCallException {
-        // Process input to VoltTable.
-        VoltTable voltInput = objectInputToVoltTable(rawInput);
+        VoltTable[] res = null;
 
-        // Invoke Stored procedure.
-        VoltTable[] res = ctxt.client.callProcedure(funcName, pkey, voltInput).getResults();
+        // Base ID for this current tasks.
+        AtomicInteger baseTaskID = new AtomicInteger(0);
 
-        // The first VoltTable should be the result.
-        String finalOutput = res[0].fetchRow(0).getString(0);
+        // This stack stores pending functions. The top one should always have all arguments resolved.
+        Stack<Task> taskStack = new Stack<>();
+
+        // This map stores the final return value (String) of each function.
+        Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
+
+        // Push the initial function to stack.
+        taskStack.push(new Task(baseTaskID.getAndIncrement(), funcName, pkey, rawInput));
+
+        String finalOutput = null;
+
+        // Run until the stack is empty.
+        while (!taskStack.isEmpty()) {
+            // Pop a task to process.
+            Task currTask = taskStack.pop();
+            if (!currTask.objIdxTofutureID.isEmpty()) {
+                // Resolve the future reference.
+                Boolean resolved = currTask.resolveInput(taskIDtoValue);
+                if (!resolved) {
+                    // TODO: if we are executing asynchronously, maybe wait a bit until the future to be resolved.
+                    logger.error("Found unresolved future, failed to execute.");
+                    return null;
+                }
+            }
+            // Process input to VoltTable and invoke SP.
+            VoltTable voltInput = objectInputToVoltTable(currTask.input);
+            res = ctxt.client.callProcedure(currTask.funcName, currTask.pkey, voltInput).getResults();
+            assert res.length >= 1;
+
+            // The output either contains futures, or contains a String value, but not both.
+            // Because if it returns a string value, then the futures are not used.
+            if (res[0].getColumnCount() == 1) {
+                String taskOutput = res[0].fetchRow(0).getString(0);
+                taskIDtoValue.put(currTask.taskID, taskOutput);
+
+                if (taskStack.isEmpty()) {
+                    // This is the last task, and its output is the final output.
+                    finalOutput = taskOutput;
+                    break;
+                }
+            } else {
+                // Push future tasks into the stack, from end to start because a later task depends on prior ones.
+                int currBase = baseTaskID.getAndAdd(res.length);
+                for (int i = res.length - 1; i >= 0; i--) {
+                    taskStack.push(new Task(currBase, res[i]));
+                }
+            }
+        }
         return finalOutput;
     }
 }

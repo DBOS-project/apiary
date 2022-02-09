@@ -17,7 +17,7 @@ public class Task {
     public final String funcName;
     public final long pkey;  // Partition to run this task.
     public Object[] input;
-    public final Map<Integer, Integer> objIdxTofutureID = new HashMap<>();  // Map from object index to future task ID.
+    public final Map<Integer, Integer> inputIdxToFutureID = new HashMap<>();  // Map from object index to future task ID.
 
     // Initialize from user input.
     public Task(int taskID, String funcName, long pkey, Object... input) {
@@ -51,7 +51,7 @@ public class Task {
             } else if (t.equals(VoltType.SMALLINT)) {
                 input[objIndex] = null;  // Will fill out the actual value later.
                 int futureID = baseID + (int) inputRow.getLong(i);
-                objIdxTofutureID.put(objIndex, futureID);
+                inputIdxToFutureID.put(objIndex, futureID);
             } else {
                 logger.error("Cannot support object type {}, index {}", t.getName(), objIndex);
                 throw new IllegalArgumentException();
@@ -60,17 +60,11 @@ public class Task {
     }
 
     // Fill out the actual value of the referred future ID.
-    public boolean resolveInput(Map<Integer, String> taskIDtoValue) {
-        for (int objIdx : objIdxTofutureID.keySet()) {
-            int futureID = objIdxTofutureID.get(objIdx);
-            if (taskIDtoValue.containsKey(futureID)) {
-                input[objIdx] = taskIDtoValue.get(futureID);
-            } else {
-                logger.error("Cannot find value from futureID {}", futureID);
-                return false;
-            }
+    public void dereferenceFutures(Map<Integer, String> taskIDtoValue) {
+        for (int inputIdx : inputIdxToFutureID.keySet()) {
+            int futureID = inputIdxToFutureID.get(inputIdx);
+            assert(taskIDtoValue.containsKey(futureID));
+            input[inputIdx] = taskIDtoValue.get(futureID);
         }
-        objIdxTofutureID.clear();
-        return true;
     }
 }

@@ -18,7 +18,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
 
     private AtomicInteger calledFunctionID;
 
-    private List<VoltTable> calledFunctionInfo = new ArrayList<>();
+    private final List<VoltTable> calledFunctionInfo = new ArrayList<>();
 
     public int pkey;
 
@@ -32,41 +32,34 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         VoltTableRow inputRow = voltInput.fetchRow(0);
         for (int i = 0; i < voltInput.getColumnCount(); i++) {
             VoltType t = inputRow.getColumnType(i);
-            if (t.equals(VoltType.BIGINT)) {
-                input[i] = (int) inputRow.getLong(i);
-            } else if (t.equals(VoltType.FLOAT)) {
-                input[i] = inputRow.getDouble(i);
-            } else if (t.equals(VoltType.STRING)) {
+            if (t.equals(VoltType.STRING)) {
                 input[i] = inputRow.getString(i);
             } else if (t.equals(VoltType.VARBINARY)) {
                 input[i] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
             } else {
-                System.out.println("Error: Unrecognized type: " + t.getName());
+                System.out.println("Error: Unrecognized input type: " + t.getName());
             }
         }
         Method functionMethod = getFunctionMethod(this);
         assert functionMethod != null;
         Object output = functionMethod.invoke(this, input);
-        VoltTable[] voltOutputs;
+        VoltTable[] voltOutputs = new VoltTable[calledFunctionInfo.size() + 1];
 
-        int offset = 0;
         if (output instanceof String) {
-            // TODO: if it returns a String, maybe don't append called futures? Unless the future is a queue message.
-            voltOutputs = new VoltTable[calledFunctionInfo.size() + 1];
-            offset = 1;
             VoltTable voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
             voltOutput.addRow(output);
             voltOutputs[0] = voltOutput;
-        } else if (output instanceof ApiaryFuture){
-            // Only record the called futures.
-            voltOutputs = new VoltTable[calledFunctionInfo.size()];
+        } else if (output instanceof ApiaryFuture) {
+            VoltTable voltOutput = new VoltTable(new VoltTable.ColumnInfo("future", VoltType.SMALLINT));
+            voltOutput.addRow(((ApiaryFuture) output).creatorID);
+            voltOutputs[0] = voltOutput;
         } else {
-            // TODO: better error handling?
+            System.out.println("Error: Unrecognized output type: " + output.getClass().getName());
             return null;
         }
 
         for (int i = 0; i < calledFunctionInfo.size(); i++) {
-            voltOutputs[i + offset] = calledFunctionInfo.get(i);
+            voltOutputs[i + 1] = calledFunctionInfo.get(i);
         }
         return voltOutputs;
     }
@@ -98,11 +91,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         row[2] = pkey;
         for (int i = 0; i < inputs.length; i++) {
             Object input = inputs[i];
-            if (input instanceof Integer) {
-                row[i + 3] = input;
-            } else if (input instanceof Double) {
-                row[i + 3] = input;
-            } else if (input instanceof String) {
+            if (input instanceof String) {
                 row[i + 3] = input;
             } else if (input instanceof String[]) {
                 row[i + 3] = Utilities.stringArraytoByteArray((String[]) input);

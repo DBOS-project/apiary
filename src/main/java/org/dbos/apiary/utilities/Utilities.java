@@ -91,11 +91,7 @@ public class Utilities {
     }
 
     public static VoltTable.ColumnInfo objectToColumnInfo(int index, Object input) {
-        if (input instanceof Integer) {
-            return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.BIGINT);
-        } else if (input instanceof Double) {
-            return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.FLOAT);
-        } else if (input instanceof String) {
+        if (input instanceof String) {
             return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.STRING);
         } else if (input instanceof String[]) {
             return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.VARBINARY);

@@ -1,8 +1,8 @@
-CREATE TABLE IncrementTable (
+CREATE TABLE KVTable (
                                 PKEY INTEGER NOT NULL,
-                                IncrementKey INTEGER NOT NULL,
-                                IncrementValue INTEGER NOT NULL,
-                                PRIMARY KEY (PKEY, IncrementKey)
+                                KVKey INTEGER NOT NULL,
+                                KVValue INTEGER NOT NULL,
+                                PRIMARY KEY (PKEY, KVKey)
 );
-PARTITION TABLE IncrementTable ON COLUMN PKEY;
-CREATE INDEX IncrementTableIndex ON IncrementTable (IncrementKey);
+PARTITION TABLE KVTable ON COLUMN PKEY;
+CREATE INDEX KVTableIndex ON KVTable (KVKey);

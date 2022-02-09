@@ -26,7 +26,12 @@ public class FibonacciFunction extends ApiaryProcedure {
         if (key < 0) {
             return "";
         }
-        if ((key == 0) || (key == 1)) {
+        if (key == 0) {
+            voltQueueSQL(addResult, this.pkey, key, 0);
+            voltExecuteSQL();
+            return "0";
+        }
+        if (key == 1) {
             voltQueueSQL(addResult, this.pkey, key, 1);
             voltExecuteSQL();
             return "1";

@@ -86,4 +86,15 @@ public class ExecutorTests {
         assertEquals("3mateizaharia", res);
     }
 
+    @Test
+    public void testFibExec() throws IOException, ProcCallException {
+        logger.info("testFibExec - executor invoke, Fibonacci calculation.");
+        ApiaryContext ctxt = new ApiaryContext("localhost", ApiaryConfig.voltdbPort);
+
+        String res = Executor.executeFunction(ctxt, "FibnacciFunction", 1, "1");
+        assertEquals("1", res);
+
+        res = Executor.executeFunction(ctxt, "FibnacciFunction", 1, "3");
+        assertEquals("2", res);
+    }
 }

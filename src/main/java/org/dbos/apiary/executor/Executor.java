@@ -33,6 +33,7 @@ public class Executor {
             } else if (input instanceof Double) {
                 row[i] = input;
             } else if (input instanceof String) {
+                logger.info("input string: {}", input);
                 row[i] = input;
             } else {
                 logger.error("Do not support input type: {}, in parameter index {}", input.getClass().getName(), i);
@@ -45,7 +46,7 @@ public class Executor {
 
     // Execute the root function and return a single JSON string as the result.
     // TODO: better way to handle partition key, and support multi-partition functions (no pkey).
-    public static String executeFunction(ApiaryContext ctxt, String funcName, long pkey, Object... rawInput)
+    public static String executeFunction(ApiaryContext ctxt, String funcName, int pkey, Object... rawInput)
             throws  IOException, ProcCallException {
         VoltTable[] res = null;
 

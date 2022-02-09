@@ -22,7 +22,7 @@ public class FibonacciFunction extends ApiaryProcedure {
     }
 
     public Object runFunction(String inputStr) {
-        int key = Integer.getInteger(inputStr);
+        int key = Integer.valueOf(inputStr);
         if (key < 0) {
             return "";
         }

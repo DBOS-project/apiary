@@ -17,8 +17,8 @@ public class IntSumFunction extends ApiaryProcedure {
     }
 
     public String runFunction(Integer key, String str1, String str2) {
-        int num1 = Integer.getInteger(str1);
-        int num2 = Integer.getInteger(str2);
+        int num1 = Integer.valueOf(str1);
+        int num2 = Integer.valueOf(str2);
         int sum = num1 + num2;
         voltQueueSQL(addResult, key, sum);
         voltExecuteSQL();

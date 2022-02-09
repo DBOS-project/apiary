@@ -36,6 +36,8 @@ public abstract class ApiaryProcedure extends VoltProcedure {
                 input[i] = inputRow.getString(i);
             } else if (t.equals(VoltType.VARBINARY)) {
                 input[i] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
+            } else {
+                System.out.println("Unrecognized type");
             }
         }
         Method functionMethod = getFunctionMethod(this);

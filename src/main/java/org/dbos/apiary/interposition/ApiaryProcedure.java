@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class ApiaryProcedure extends VoltProcedure {
 
-    private AtomicInteger calledFunctionID = new AtomicInteger(0);
+    private AtomicInteger calledFunctionID;
 
     private List<VoltTable> calledFunctionInfo = new ArrayList<>();
 
@@ -24,7 +24,8 @@ public abstract class ApiaryProcedure extends VoltProcedure {
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
         this.pkey = pkey;
-        // TODO: need to reset, because VoltDB maintains global state across SP runs.
+        // TODO: Why this happened? Need to reset, because it seems that VoltDB maintains global state across SP runs.
+        //  calledFunctionInfo will continuously grow.
         calledFunctionInfo.clear();
         calledFunctionID = new AtomicInteger(0);
         Object[] input = new Object[voltInput.getColumnCount()];
@@ -40,7 +41,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
             } else if (t.equals(VoltType.VARBINARY)) {
                 input[i] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
             } else {
-                System.out.println("Unrecognized type");
+                System.out.println("Error: Unrecognized type: " + t.getName());
             }
         }
         Method functionMethod = getFunctionMethod(this);
@@ -56,7 +57,6 @@ public abstract class ApiaryProcedure extends VoltProcedure {
             VoltTable voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
             voltOutput.addRow(output);
             voltOutputs[0] = voltOutput;
-            System.out.println("output json: " + output);
         } else if (output instanceof ApiaryFuture){
             // Only record the called futures.
             voltOutputs = new VoltTable[calledFunctionInfo.size()];
@@ -65,11 +65,9 @@ public abstract class ApiaryProcedure extends VoltProcedure {
             return null;
         }
 
-        System.out.println("call function info size: " + calledFunctionInfo.size());
         for (int i = 0; i < calledFunctionInfo.size(); i++) {
             voltOutputs[i + offset] = calledFunctionInfo.get(i);
         }
-        System.out.println("voltOutputs size: " + voltOutputs.length + "\n");
         return voltOutputs;
     }
 

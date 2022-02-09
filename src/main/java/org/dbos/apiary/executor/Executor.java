@@ -20,7 +20,6 @@ public class Executor {
         VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[rawInput.length];
         for (int i = 0; i < rawInput.length; i++) {
             Object input = rawInput[i];
-            logger.info("raw input: {}, class: {}", input, input.getClass().getName());
             columns[i] = Utilities.objectToColumnInfo(i, input);
         }
         VoltTable v = new VoltTable(columns);
@@ -34,7 +33,6 @@ public class Executor {
             } else if (input instanceof Double) {
                 row[i] = input;
             } else if (input instanceof String) {
-                logger.info("input string: {}", input);
                 row[i] = input;
             } else {
                 logger.error("Do not support input type: {}, in parameter index {}", input.getClass().getName(), i);
@@ -68,7 +66,6 @@ public class Executor {
         while (!taskStack.isEmpty()) {
             // Pop a task to process.
             Task currTask = taskStack.pop();
-            logger.info("Task name: {}, input: {}", currTask.funcName, currTask.input);
             if (!currTask.objIdxTofutureID.isEmpty()) {
                 // Resolve the future reference.
                 Boolean resolved = currTask.resolveInput(taskIDtoValue);
@@ -77,7 +74,6 @@ public class Executor {
                     logger.error("Found unresolved future, failed to execute.");
                     return null;
                 }
-                logger.info("resolved, now task input: {}, size {}", currTask.input, currTask.input.length);
             }
             // Process input to VoltTable and invoke SP.
             VoltTable voltInput = objectInputToVoltTable(currTask.input);
@@ -91,7 +87,6 @@ public class Executor {
             if (res[0].getColumnCount() == 1) {
                 String taskOutput = res[0].fetchRow(0).getString(0);
                 taskIDtoValue.put(currTask.taskID, taskOutput);
-                logger.info("TaskID {}, Task output: {}", currTask.taskID, taskOutput);
                 if (taskStack.isEmpty()) {
                     // This is the last task, and its output is the final output.
                     finalOutput = taskOutput;
@@ -100,8 +95,6 @@ public class Executor {
             } else {
                 // Push future tasks into the stack, from end to start because a later task depends on prior ones.
                 int currBase = baseTaskID.getAndAdd(res.length);
-                logger.info("current baseID: {}", currBase);
-                logger.info("res length {}", res.length);
                 for (int i = res.length - 1; i >= 0; i--) {
                     Task futureTask = new Task(currBase, res[i]);
                     // If it is the last task, inherit the parent's ID. Otherwise, cannot find the output.

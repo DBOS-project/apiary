@@ -63,14 +63,12 @@ public class Task {
     public boolean resolveInput(Map<Integer, String> taskIDtoValue) {
         for (int objIdx : objIdxTofutureID.keySet()) {
             int futureID = objIdxTofutureID.get(objIdx);
-            logger.info("resolving object index {}, futureID {}", objIdx, futureID);
             if (taskIDtoValue.containsKey(futureID)) {
                 input[objIdx] = taskIDtoValue.get(futureID);
             } else {
                 logger.error("Cannot find value from futureID {}", futureID);
                 return false;
             }
-            logger.info("updated result: {}, expected: {}", input[objIdx], taskIDtoValue.get(futureID));
         }
         objIdxTofutureID.clear();
         return true;

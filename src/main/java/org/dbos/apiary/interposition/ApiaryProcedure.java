@@ -70,17 +70,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         columns[2] = new VoltTable.ColumnInfo("pkey", VoltType.BIGINT);
         for (int i = 0; i < inputs.length; i++) {
             Object input = inputs[i];
-            if (input instanceof Integer) {
-                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.BIGINT);
-            } else if (input instanceof Double) {
-                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.FLOAT);
-            } else if (input instanceof String) {
-                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.STRING);
-            } else if (input instanceof String[]) {
-                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.VARBINARY);
-            } else if (input instanceof ApiaryFuture) {
-                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.SMALLINT);
-            }
+            columns[i + 3] = Utilities.objectToColumnInfo(i, input);
         }
         VoltTable v = new VoltTable(columns);
         Object[] row = new Object[v.getColumnCount()];

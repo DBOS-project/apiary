@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import com.google_voltpatches.common.base.Utf8;
 import org.dbos.apiary.context.ApiaryContext;
+import org.dbos.apiary.executor.Executor;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,7 +60,7 @@ public class ExecutorTests {
 
     @Test
     public void testAddition() throws IOException, ProcCallException {
-        logger.info("testAddition");
+        logger.info("testAddition - direct invoke");
         ApiaryContext ctxt = new ApiaryContext("localhost", ApiaryConfig.voltdbPort);
         VoltTable input = new VoltTable(
                 new VoltTable.ColumnInfo("one", VoltType.BIGINT),
@@ -74,4 +75,15 @@ public class ExecutorTests {
         assertEquals(VoltType.SMALLINT, res[2].fetchRow(0).getColumnType(3));
         assertEquals(0, res[2].fetchRow(0).getLong(3));
     }
+
+    @Test
+    public void testAdditionExec() throws IOException, ProcCallException {
+        logger.info("testAdditionExec - executor invoke");
+        ApiaryContext ctxt = new ApiaryContext("localhost", ApiaryConfig.voltdbPort);
+
+        String res = Executor.executeFunction(ctxt, "AdditionFunction", 0, 1, 2, new String[]{"matei", "zaharia"});
+
+        assertEquals("3mateizaharia", res);
+    }
+
 }

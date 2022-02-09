@@ -16,14 +16,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class ApiaryProcedure extends VoltProcedure {
 
-    AtomicInteger calledFunctionID = new AtomicInteger(0);
+    private AtomicInteger calledFunctionID = new AtomicInteger(0);
 
-    List<VoltTable> calledFunctionInfo = new ArrayList<>();
+    private List<VoltTable> calledFunctionInfo = new ArrayList<>();
 
     public int pkey;
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
         this.pkey = pkey;
+        // TODO: need to reset, because VoltDB maintains global state across SP runs.
+        calledFunctionInfo.clear();
+        calledFunctionID = new AtomicInteger(0);
         Object[] input = new Object[voltInput.getColumnCount()];
         VoltTableRow inputRow = voltInput.fetchRow(0);
         for (int i = 0; i < voltInput.getColumnCount(); i++) {
@@ -53,6 +56,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
             VoltTable voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
             voltOutput.addRow(output);
             voltOutputs[0] = voltOutput;
+            System.out.println("output json: " + output);
         } else if (output instanceof ApiaryFuture){
             // Only record the called futures.
             voltOutputs = new VoltTable[calledFunctionInfo.size()];
@@ -61,9 +65,11 @@ public abstract class ApiaryProcedure extends VoltProcedure {
             return null;
         }
 
+        System.out.println("call function info size: " + calledFunctionInfo.size());
         for (int i = 0; i < calledFunctionInfo.size(); i++) {
             voltOutputs[i + offset] = calledFunctionInfo.get(i);
         }
+        System.out.println("voltOutputs size: " + voltOutputs.length + "\n");
         return voltOutputs;
     }
 

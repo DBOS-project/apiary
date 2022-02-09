@@ -36,7 +36,6 @@ public class ExecutorTests {
         }
     }
 
-
     @Test
     public void testAdditionExec() throws IOException, ProcCallException {
         logger.info("testAdditionExec");

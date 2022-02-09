@@ -5,6 +5,7 @@ import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.voltdb.VoltTable;
+import org.voltdb.VoltType;
 import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
@@ -54,10 +55,10 @@ public class Executor {
         Stack<Task> taskStack = new Stack<>();
         // This map stores the final return value (String) of each function.
         Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
+        // If a task returns a future, map the future's ID to the task's ID for later resolution.
+        Map<Integer, Integer> futureIDtoTaskID = new ConcurrentHashMap<>();
         // Push the initial function to stack.
         taskStack.push(new Task(baseTaskID.getAndIncrement(), funcName, pkey, rawInput));
-        // What do we return?
-        String finalOutput = null;
 
         // Run until the stack is empty.
         while (!taskStack.isEmpty()) {
@@ -71,32 +72,32 @@ public class Executor {
             VoltTable voltInput = inputToVoltTable(currTask.input);
 
             VoltTable[] res  = ctxt.client.callProcedure(currTask.funcName, currTask.pkey, voltInput).getResults();
-            assert res.length >= 1;
+            assert (res.length >= 1);
 
-            // The output either contains futures, or contains a String value, but not both.
-            // Because if it returns a string value, then the futures are not used.
-            // TODO: This isn't necessarily true and we need to change it.
-            if (res[0].getColumnCount() == 1) {
-                String taskOutput = res[0].fetchRow(0).getString(0);
+            int currBase = baseTaskID.getAndAdd(res.length);
+            VoltTable retVal = res[0];
+            assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);
+            if (retVal.getColumnType(0).equals(VoltType.STRING)) {
+                String taskOutput = retVal.fetchRow(0).getString(0);
                 taskIDtoValue.put(currTask.taskID, taskOutput);
-                if (taskStack.isEmpty()) {
-                    // This is the last task, and its output is the final output.
-                    finalOutput = taskOutput;
+                int ID = currTask.taskID;
+                while (futureIDtoTaskID.containsKey(ID)) {
+                    int nextID = futureIDtoTaskID.get(ID);
+                    assert (!taskIDtoValue.containsKey(nextID));
+                    taskIDtoValue.put(nextID, taskOutput);
+                    ID = nextID;
                 }
             } else {
-                // Push future tasks into the stack, from end to start because a later task depends on prior ones.
-                int currBase = baseTaskID.getAndAdd(res.length);
-                for (int i = res.length - 1; i >= 0; i--) {
-                    Task futureTask = new Task(currBase, res[i]);
-                    // If it is the last task, inherit the parent's ID. Otherwise, cannot find the output.
-                    // A bit hacky.
-                    if (i == res.length - 1) {
-                        futureTask.taskID = currTask.taskID;
-                    }
-                    taskStack.push(futureTask);
-                }
+                assert (retVal.getColumnType(0).equals(VoltType.SMALLINT));
+                int futureID = currBase + (int) retVal.fetchRow(0).getLong(0);
+                futureIDtoTaskID.put(futureID, currTask.taskID);
+            }
+            // Push future tasks into the stack, from end to start because a later task depends on prior ones.
+            for (int i = res.length - 1; i > 0; i--) {
+                Task futureTask = new Task(currBase, res[i]);
+                taskStack.push(futureTask);
             }
         }
-        return finalOutput;
+        return taskIDtoValue.get(0);
     }
 }

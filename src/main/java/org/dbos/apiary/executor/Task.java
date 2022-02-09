@@ -66,6 +66,5 @@ public class Task {
             assert(taskIDtoValue.containsKey(futureID));
             input[inputIdx] = taskIDtoValue.get(futureID);
         }
-        inputIdxToFutureID.clear();
     }
 }

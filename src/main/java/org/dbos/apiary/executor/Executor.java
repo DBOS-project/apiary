@@ -64,22 +64,19 @@ public class Executor {
         while (!taskStack.isEmpty()) {
             // Pop a task to process.
             Task currTask = taskStack.pop();
-            if (!currTask.inputIdxToFutureID.isEmpty()) {
-                // Resolve the future reference.
-                currTask.dereferenceFutures(taskIDtoValue);
-            }
+            currTask.dereferenceFutures(taskIDtoValue);
             // Process input to VoltTable and invoke SP.
             VoltTable voltInput = inputToVoltTable(currTask.input);
-
             VoltTable[] res  = ctxt.client.callProcedure(currTask.funcName, currTask.pkey, voltInput).getResults();
-            assert (res.length >= 1);
 
+            assert (res.length >= 1);
             int currBase = baseTaskID.getAndAdd(res.length);
             VoltTable retVal = res[0];
             assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);
-            if (retVal.getColumnType(0).equals(VoltType.STRING)) {
+            if (retVal.getColumnType(0).equals(VoltType.STRING)) { // Handle a string output.
                 String taskOutput = retVal.fetchRow(0).getString(0);
                 taskIDtoValue.put(currTask.taskID, taskOutput);
+                // Recursively resolve any returned futures referencing this value.
                 int ID = currTask.taskID;
                 while (futureIDtoTaskID.containsKey(ID)) {
                     int nextID = futureIDtoTaskID.get(ID);
@@ -87,12 +84,12 @@ public class Executor {
                     taskIDtoValue.put(nextID, taskOutput);
                     ID = nextID;
                 }
-            } else {
+            } else { // Handle a future output.
                 assert (retVal.getColumnType(0).equals(VoltType.SMALLINT));
                 int futureID = currBase + (int) retVal.fetchRow(0).getLong(0);
                 futureIDtoTaskID.put(futureID, currTask.taskID);
             }
-            // Push future tasks into the stack, from end to start because a later task depends on prior ones.
+            // Push future tasks into the stack. Do this in reverse order because later tasks depend on earlier ones.
             for (int i = res.length - 1; i > 0; i--) {
                 Task futureTask = new Task(currBase, res[i]);
                 taskStack.push(futureTask);

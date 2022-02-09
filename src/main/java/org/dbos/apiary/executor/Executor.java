@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Executor {
     private static final Logger logger = LoggerFactory.getLogger(Executor.class);
 
-    private static VoltTable objectInputToVoltTable(Object... rawInput) {
+    private static VoltTable inputToVoltTable(Object... rawInput) {
         VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[rawInput.length];
         for (int i = 0; i < rawInput.length; i++) {
             Object input = rawInput[i];
@@ -50,47 +50,38 @@ public class Executor {
 
         // Base ID for this current tasks.
         AtomicInteger baseTaskID = new AtomicInteger(0);
-
         // This stack stores pending functions. The top one should always have all arguments resolved.
         Stack<Task> taskStack = new Stack<>();
-
         // This map stores the final return value (String) of each function.
         Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
-
         // Push the initial function to stack.
         taskStack.push(new Task(baseTaskID.getAndIncrement(), funcName, pkey, rawInput));
-
+        // What do we return?
         String finalOutput = null;
 
         // Run until the stack is empty.
         while (!taskStack.isEmpty()) {
             // Pop a task to process.
             Task currTask = taskStack.pop();
-            if (!currTask.objIdxTofutureID.isEmpty()) {
+            if (!currTask.inputIdxToFutureID.isEmpty()) {
                 // Resolve the future reference.
-                boolean resolved = currTask.resolveInput(taskIDtoValue);
-                if (!resolved) {
-                    // TODO: if we are executing asynchronously, maybe wait a bit until the future to be resolved.
-                    logger.error("Found unresolved future, failed to execute.");
-                    return null;
-                }
+                currTask.dereferenceFutures(taskIDtoValue);
             }
             // Process input to VoltTable and invoke SP.
-            VoltTable voltInput = objectInputToVoltTable(currTask.input);
+            VoltTable voltInput = inputToVoltTable(currTask.input);
 
             VoltTable[] res  = ctxt.client.callProcedure(currTask.funcName, currTask.pkey, voltInput).getResults();
             assert res.length >= 1;
 
             // The output either contains futures, or contains a String value, but not both.
             // Because if it returns a string value, then the futures are not used.
-            // TODO: maybe change this if we are supporting message queue.
+            // TODO: This isn't necessarily true and we need to change it.
             if (res[0].getColumnCount() == 1) {
                 String taskOutput = res[0].fetchRow(0).getString(0);
                 taskIDtoValue.put(currTask.taskID, taskOutput);
                 if (taskStack.isEmpty()) {
                     // This is the last task, and its output is the final output.
                     finalOutput = taskOutput;
-                    break;
                 }
             } else {
                 // Push future tasks into the stack, from end to start because a later task depends on prior ones.

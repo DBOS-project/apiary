@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import com.google_voltpatches.common.base.Utf8;
 import org.dbos.apiary.context.ApiaryContext;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,14 +22,14 @@ public class ExecutorTests {
     private static final Logger logger = LoggerFactory.getLogger(ExecutorTests.class);
     @BeforeEach
     public void truncateTables() throws IOException, ProcCallException {
-        ApiaryContext ctxt = new ApiaryContext("localhost", 21212);
+        ApiaryContext ctxt = new ApiaryContext("localhost", ApiaryConfig.voltdbPort);
         ctxt.client.callProcedure("TruncateTables");
     }
 
     @Test
     public void testIncrement() throws IOException, ProcCallException {
         logger.info("testIncrement");
-        ApiaryContext ctxt = new ApiaryContext("localhost", 21212);
+        ApiaryContext ctxt = new ApiaryContext("localhost", ApiaryConfig.voltdbPort);
         VoltTable[] res = ctxt.client.callProcedure("IncrementProcedure", 0, 1L).getResults();
         assertEquals(1, res.length);
         long resVal = res[0].fetchRow(0).getLong(0);
@@ -59,7 +60,7 @@ public class ExecutorTests {
     @Test
     public void testAddition() throws IOException, ProcCallException {
         logger.info("testAddition");
-        ApiaryContext ctxt = new ApiaryContext("localhost", 21212);
+        ApiaryContext ctxt = new ApiaryContext("localhost", ApiaryConfig.voltdbPort);
         VoltTable input = new VoltTable(
                 new VoltTable.ColumnInfo("one", VoltType.BIGINT),
                 new VoltTable.ColumnInfo("two", VoltType.BIGINT),

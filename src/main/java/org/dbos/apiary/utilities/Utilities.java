@@ -1,10 +1,12 @@
 package org.dbos.apiary.utilities;
 
+import org.dbos.apiary.interposition.ApiaryFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.voltdb.VoltTable;
+import org.voltdb.VoltType;
 
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 public class Utilities {
@@ -86,6 +88,21 @@ public class Utilities {
             i += len + 4;
         }
         return strList.toArray(new String[0]);
+    }
+
+    public static VoltTable.ColumnInfo objectToColumnInfo(int index, Object input) {
+        if (input instanceof Integer) {
+            return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.BIGINT);
+        } else if (input instanceof Double) {
+            return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.FLOAT);
+        } else if (input instanceof String) {
+            return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.STRING);
+        } else if (input instanceof String[]) {
+            return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.VARBINARY);
+        } else if (input instanceof ApiaryFuture) {
+            return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.SMALLINT);
+        }
+        return null;
     }
 
 }

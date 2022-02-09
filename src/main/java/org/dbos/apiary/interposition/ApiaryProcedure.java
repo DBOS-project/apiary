@@ -16,38 +16,57 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class ApiaryProcedure extends VoltProcedure {
 
-    AtomicInteger calledFunctionID = new AtomicInteger(0);
+    private AtomicInteger calledFunctionID;
 
-    List<VoltTable> calledFunctionInfo = new ArrayList<>();
+    private List<VoltTable> calledFunctionInfo = new ArrayList<>();
+
+    public int pkey;
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+        this.pkey = pkey;
+        // TODO: Why this happened? Need to reset, because it seems that VoltDB maintains global state across SP runs.
+        //  calledFunctionInfo will continuously grow.
+        calledFunctionInfo.clear();
+        calledFunctionID = new AtomicInteger(0);
         Object[] input = new Object[voltInput.getColumnCount()];
         VoltTableRow inputRow = voltInput.fetchRow(0);
         for (int i = 0; i < voltInput.getColumnCount(); i++) {
             VoltType t = inputRow.getColumnType(i);
             if (t.equals(VoltType.BIGINT)) {
-                input[i] = inputRow.getLong(i);
+                input[i] = (int) inputRow.getLong(i);
             } else if (t.equals(VoltType.FLOAT)) {
                 input[i] = inputRow.getDouble(i);
             } else if (t.equals(VoltType.STRING)) {
                 input[i] = inputRow.getString(i);
             } else if (t.equals(VoltType.VARBINARY)) {
                 input[i] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
+            } else {
+                System.out.println("Error: Unrecognized type: " + t.getName());
             }
         }
         Method functionMethod = getFunctionMethod(this);
         assert functionMethod != null;
         Object output = functionMethod.invoke(this, input);
-        VoltTable[] voltOutputs = new VoltTable[calledFunctionInfo.size() + 1];
+        VoltTable[] voltOutputs;
+
+        int offset = 0;
         if (output instanceof String) {
+            // TODO: if it returns a String, maybe don't append called futures? Unless the future is a queue message.
+            voltOutputs = new VoltTable[calledFunctionInfo.size() + 1];
+            offset = 1;
             VoltTable voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
             voltOutput.addRow(output);
             voltOutputs[0] = voltOutput;
+        } else if (output instanceof ApiaryFuture){
+            // Only record the called futures.
+            voltOutputs = new VoltTable[calledFunctionInfo.size()];
         } else {
+            // TODO: better error handling?
             return null;
         }
+
         for (int i = 0; i < calledFunctionInfo.size(); i++) {
-            voltOutputs[i + 1] = calledFunctionInfo.get(i);
+            voltOutputs[i + offset] = calledFunctionInfo.get(i);
         }
         return voltOutputs;
     }
@@ -70,17 +89,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
         columns[2] = new VoltTable.ColumnInfo("pkey", VoltType.BIGINT);
         for (int i = 0; i < inputs.length; i++) {
             Object input = inputs[i];
-            if (input instanceof Integer) {
-                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.BIGINT);
-            } else if (input instanceof Double) {
-                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.FLOAT);
-            } else if (input instanceof String) {
-                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.STRING);
-            } else if (input instanceof String[]) {
-                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.VARBINARY);
-            } else if (input instanceof ApiaryFuture) {
-                columns[i + 3] = new VoltTable.ColumnInfo(Integer.toString(i), VoltType.SMALLINT);
-            }
+            columns[i + 3] = Utilities.objectToColumnInfo(i, input);
         }
         VoltTable v = new VoltTable(columns);
         Object[] row = new Object[v.getColumnCount()];

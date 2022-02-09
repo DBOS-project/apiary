@@ -12,7 +12,7 @@ public class AdditionFunction extends ApiaryProcedure {
         return super.run(pkey, voltInput);
     }
 
-    public String runFunction(Long one, Long two, String[] strings) {
+    public String runFunction(Integer one, Integer two, String[] strings) {
         long sum = one + two;
         StringBuilder sb = new StringBuilder(Long.toString(sum));
         for (String s: strings) {

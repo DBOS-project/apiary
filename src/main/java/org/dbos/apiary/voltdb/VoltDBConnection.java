@@ -57,10 +57,10 @@ public class VoltDBConnection implements ApiaryConnection {
         return v;
     }
 
-    private static Task voltOutputToTask(VoltTable voltInput, int baseID) {
+    private static Task voltOutputToTask(VoltTable voltInput) {
         VoltTableRow inputRow = voltInput.fetchRow(0);
         String funcName = inputRow.getString(0);
-        int taskID = baseID + (int) inputRow.getLong(1);
+        int taskID = (int) inputRow.getLong(1);
         long pkey = inputRow.getLong(2);
         Object[] input = new Object[voltInput.getColumnCount() - 3];
 
@@ -76,7 +76,7 @@ public class VoltDBConnection implements ApiaryConnection {
             } else if (t.equals(VoltType.VARBINARY)) {
                 input[objIndex] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
             } else if (t.equals(VoltType.SMALLINT)) {
-                int futureID = baseID + (int) inputRow.getLong(i);
+                int futureID = (int) inputRow.getLong(i);
                 input[objIndex] = new ApiaryFuture(futureID);
             } else {
                 logger.error("Cannot support object type {}, index {}", t.getName(), objIndex);
@@ -87,8 +87,7 @@ public class VoltDBConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(int executionID, String funcName, long pkey, Object... inputs) throws IOException, ProcCallException {
-        int baseID = executionID * 1000;
+    public FunctionOutput callFunction(String funcName, long pkey, Object... inputs) throws IOException, ProcCallException {
         VoltTable voltInput = inputToVoltTable(inputs);
         VoltTable[] res  = client.callProcedure(funcName, pkey, voltInput).getResults();
         VoltTable retVal = res[0];
@@ -99,12 +98,12 @@ public class VoltDBConnection implements ApiaryConnection {
             stringOutput = retVal.fetchRow(0).getString(0);
         } else { // Handle a future output.
             assert (retVal.getColumnType(0).equals(VoltType.SMALLINT));
-            int futureID = baseID + (int) retVal.fetchRow(0).getLong(0);
+            int futureID = (int) retVal.fetchRow(0).getLong(0);
             futureOutput = new ApiaryFuture(futureID);
         }
         List<Task> calledFunctions = new ArrayList<>();
         for (int i = 1; i < res.length; i++) {
-            calledFunctions.add(voltOutputToTask(res[i], baseID));
+            calledFunctions.add(voltOutputToTask(res[i]));
         }
         return new FunctionOutput(stringOutput, futureOutput, calledFunctions);
     }

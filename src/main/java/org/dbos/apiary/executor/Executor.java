@@ -22,10 +22,10 @@ public class Executor {
         Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
         // If a task returns a future, map the future's ID to the task's ID for later resolution.
         Map<Integer, Integer> futureIDtoTaskID = new ConcurrentHashMap<>();
-        // Offset from which to generate new taskIDs.
-        AtomicInteger idOffset = new AtomicInteger(0);
+        // Offset to add to new taskIDs and futureIDs to guarantee their global uniqueness.
+        AtomicInteger offsets = new AtomicInteger(0);
         // Push the initial function to stack.
-        taskStack.push(new Task(idOffset.getAndIncrement(), funcName, pkey, input));
+        taskStack.push(new Task(offsets.getAndIncrement(), funcName, pkey, input));
 
         // Run until the stack is empty.
         while (!taskStack.isEmpty()) {
@@ -33,7 +33,9 @@ public class Executor {
             Task currTask = taskStack.pop();
             currTask.dereferenceFutures(taskIDtoValue);
             // Process input to VoltTable and invoke SP.
-            FunctionOutput o = conn.callFunction(idOffset.getAndIncrement(), currTask.funcName, currTask.pkey, currTask.input);
+            FunctionOutput o = conn.callFunction(currTask.funcName, currTask.pkey, currTask.input);
+            int offset = offsets.getAndAdd(1000);
+            o.offsetOutput(offset);
 
             if (o.stringOutput != null) { // Handle a string output.
                 taskIDtoValue.put(currTask.taskID, o.stringOutput);

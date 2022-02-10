@@ -2,9 +2,11 @@ package org.dbos.apiary;
 
 import com.google_voltpatches.common.base.Utf8;
 import org.dbos.apiary.context.ApiaryContext;
+import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.Executor;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
+import org.dbos.apiary.voltdb.VoltDBConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -37,17 +39,17 @@ public class ExecutorTests {
     }
 
     @Test
-    public void testAdditionExec() throws IOException, ProcCallException {
+    public void testAdditionExec() throws Exception {
         logger.info("testAdditionExec");
-        ApiaryContext ctxt = new ApiaryContext("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         String res = Executor.executeFunction(ctxt, "AdditionFunction", 0, "1", "2", new String[]{"matei", "zaharia"});
         assertEquals("3mateizaharia", res);
     }
 
     @Test
-    public void testFibExec() throws IOException, ProcCallException {
+    public void testFibExec() throws Exception {
         logger.info("testFibExec");
-        ApiaryContext ctxt = new ApiaryContext("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         String res = Executor.executeFunction(ctxt, "FibonacciFunction", 0, "1");
         assertEquals("1", res);
         res = Executor.executeFunction(ctxt, "FibonacciFunction", 0, "3");

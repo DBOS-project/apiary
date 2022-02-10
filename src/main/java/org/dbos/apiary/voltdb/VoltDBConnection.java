@@ -1,6 +1,5 @@
 package org.dbos.apiary.voltdb;
 
-import org.dbos.apiary.context.ApiaryContext;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
@@ -21,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class VoltDBConnection implements ApiaryConnection {
-    private static final Logger logger = LoggerFactory.getLogger(ApiaryContext.class);
+    private static final Logger logger = LoggerFactory.getLogger(VoltDBConnection.class);
     public final Client client;
 
     public VoltDBConnection(String hostname, Integer port) throws IOException {

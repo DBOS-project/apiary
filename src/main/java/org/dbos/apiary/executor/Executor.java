@@ -13,19 +13,19 @@ public class Executor {
 
     // Execute the root function and return a single JSON string as the result.
     // TODO: better way to handle partition key, and support multi-partition functions (no pkey).
-    public static String executeFunction(ApiaryConnection conn, String funcName, int pkey, Object... rawInput)
+    public static String executeFunction(ApiaryConnection conn, String funcName, int pkey, Object... input)
             throws Exception {
 
-        // Base ID for this current tasks.
-        AtomicInteger functionID = new AtomicInteger(0);
         // This stack stores pending functions. The top one should always have all arguments resolved.
         Stack<Task> taskStack = new Stack<>();
         // This map stores the final return value (String) of each function.
         Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
         // If a task returns a future, map the future's ID to the task's ID for later resolution.
         Map<Integer, Integer> futureIDtoTaskID = new ConcurrentHashMap<>();
+        // Offset from which to generate new taskIDs.
+        AtomicInteger idOffset = new AtomicInteger(0);
         // Push the initial function to stack.
-        taskStack.push(new Task(functionID.getAndIncrement(), funcName, pkey, rawInput));
+        taskStack.push(new Task(idOffset.getAndIncrement(), funcName, pkey, input));
 
         // Run until the stack is empty.
         while (!taskStack.isEmpty()) {
@@ -33,7 +33,7 @@ public class Executor {
             Task currTask = taskStack.pop();
             currTask.dereferenceFutures(taskIDtoValue);
             // Process input to VoltTable and invoke SP.
-            FunctionOutput o = conn.callFunction(functionID.getAndIncrement(), currTask.funcName, currTask.pkey, currTask.input);
+            FunctionOutput o = conn.callFunction(idOffset.getAndIncrement(), currTask.funcName, currTask.pkey, currTask.input);
 
             if (o.stringOutput != null) { // Handle a string output.
                 taskIDtoValue.put(currTask.taskID, o.stringOutput);
@@ -47,7 +47,7 @@ public class Executor {
                 }
             } else { // Handle a future output.
                 assert(o.futureOutput != null);
-                futureIDtoTaskID.put(o.futureOutput.creatorID, currTask.taskID);
+                futureIDtoTaskID.put(o.futureOutput.futureID, currTask.taskID);
             }
             // Push future tasks into the stack. Do this in reverse order because later tasks depend on earlier ones.
             for (int i = o.calledFunctions.size() - 1; i >= 0; i--) {

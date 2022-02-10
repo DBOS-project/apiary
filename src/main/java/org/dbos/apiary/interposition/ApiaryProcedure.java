@@ -1,6 +1,5 @@
 package org.dbos.apiary.interposition;
 
-import com.google_voltpatches.common.base.Utf8;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
@@ -51,7 +50,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
             voltOutputs[0] = voltOutput;
         } else if (output instanceof ApiaryFuture) {
             VoltTable voltOutput = new VoltTable(new VoltTable.ColumnInfo("future", VoltType.SMALLINT));
-            voltOutput.addRow(((ApiaryFuture) output).creatorID);
+            voltOutput.addRow(((ApiaryFuture) output).futureID);
             voltOutputs[0] = voltOutput;
         } else {
             System.out.println("Error: Unrecognized output type: " + output.getClass().getName());
@@ -96,7 +95,7 @@ public abstract class ApiaryProcedure extends VoltProcedure {
             } else if (input instanceof String[]) {
                 row[i + 3] = Utilities.stringArraytoByteArray((String[]) input);
             } else if (input instanceof ApiaryFuture) {
-                row[i + 3] = ((ApiaryFuture) input).creatorID;
+                row[i + 3] = ((ApiaryFuture) input).futureID;
             }
         }
         v.addRow(row);

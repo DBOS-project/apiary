@@ -1,9 +1,9 @@
 package org.dbos.apiary.interposition;
 
 public class ApiaryFuture {
-    public final Integer creatorID;
+    public final Integer futureID;
 
-    public ApiaryFuture(Integer creatorID) {
-        this.creatorID = creatorID;
+    public ApiaryFuture(Integer futureID) {
+        this.futureID = futureID;
     }
 }

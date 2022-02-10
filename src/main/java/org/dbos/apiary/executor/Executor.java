@@ -32,7 +32,6 @@ public class Executor {
             // Pop a task to process.
             Task currTask = taskStack.pop();
             currTask.dereferenceFutures(taskIDtoValue);
-            // Process input to VoltTable and invoke SP.
             FunctionOutput o = conn.callFunction(currTask.funcName, currTask.pkey, currTask.input);
             int offset = offsets.getAndAdd(o.calledFunctions.size());
             o.offsetOutput(offset);

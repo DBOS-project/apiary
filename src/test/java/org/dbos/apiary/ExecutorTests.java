@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.Executor;
+import org.dbos.apiary.procedures.FibonacciFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltDBConnection;
@@ -45,13 +46,13 @@ public class ExecutorTests {
     public void testFibExec() throws Exception {
         logger.info("testFibExec");
         ApiaryConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        String res = Executor.executeFunction(ctxt, "FibonacciFunction", 0, "1");
+        String res = Executor.executeFunction(ctxt, "FibonacciFunction", FibonacciFunction.FIBPKEY, "1");
         assertEquals("1", res);
-        res = Executor.executeFunction(ctxt, "FibonacciFunction", 0, "3");
+        res = Executor.executeFunction(ctxt, "FibonacciFunction", FibonacciFunction.FIBPKEY, "3");
         assertEquals("2", res);
-        res = Executor.executeFunction(ctxt, "FibonacciFunction", 0, "4");
+        res = Executor.executeFunction(ctxt, "FibonacciFunction", FibonacciFunction.FIBPKEY, "4");
         assertEquals("3", res);
-        res = Executor.executeFunction(ctxt, "FibonacciFunction", 0, "10");
+        res = Executor.executeFunction(ctxt, "FibonacciFunction", FibonacciFunction.FIBPKEY, "10");
         assertEquals("55", res);
     }
 }

@@ -1,13 +1,16 @@
 package org.dbos.apiary.procedures;
 
 import org.dbos.apiary.interposition.ApiaryFuture;
-import org.dbos.apiary.interposition.ApiaryProcedure;
+import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class FibonacciFunction extends ApiaryProcedure {
+public class FibonacciFunction extends VoltApiaryProcedure {
+
+    public static int FIBPKEY = 0;
+
     public final SQLStmt addResult = new SQLStmt(
             // PKEY, KEY, VALUE
             "UPSERT INTO KVTable VALUES (?, ?, ?);"
@@ -27,18 +30,18 @@ public class FibonacciFunction extends ApiaryProcedure {
             return "";
         }
         if (key == 0) {
-            voltQueueSQL(addResult, this.pkey, key, 0);
-            voltExecuteSQL();
+            funcApi.apiaryQueueUpdate(addResult, FIBPKEY, key, 0);
+            funcApi.apiaryExecuteSQL();
             return "0";
         }
         if (key == 1) {
-            voltQueueSQL(addResult, this.pkey, key, 1);
-            voltExecuteSQL();
+            funcApi.apiaryQueueUpdate(addResult, FIBPKEY, key, 1);
+            funcApi.apiaryExecuteSQL();
             return "1";
         }
         // Check if the number has been calculated before.
-        voltQueueSQL(getValue, key);
-        VoltTable res = voltExecuteSQL()[0];
+        funcApi.apiaryQueueQuery(getValue, key);
+        VoltTable res = ((VoltTable[]) funcApi.apiaryExecuteSQL())[0];
         int val = -1;
         if (res.getRowCount() > 0) {
             val = (int) res.fetchRow(0).getLong(0);
@@ -46,9 +49,9 @@ public class FibonacciFunction extends ApiaryProcedure {
         }
 
         // Otherwise, call functions.
-        ApiaryFuture f1 = callFunction("FibonacciFunction", this.pkey, String.valueOf(key - 2));
-        ApiaryFuture f2 = callFunction("FibonacciFunction", this.pkey, String.valueOf(key - 1));
-        ApiaryFuture fsum = callFunction("FibSumFunction", this.pkey, strKey, f1, f2);
+        ApiaryFuture f1 = funcApi.apiaryCallFunction("FibonacciFunction", FIBPKEY, String.valueOf(key - 2));
+        ApiaryFuture f2 = funcApi.apiaryCallFunction("FibonacciFunction", FIBPKEY, String.valueOf(key - 1));
+        ApiaryFuture fsum = funcApi.apiaryCallFunction("FibSumFunction", FIBPKEY, strKey, f1, f2);
         return fsum;
     }
 }

@@ -1,12 +1,11 @@
 package org.dbos.apiary.procedures;
 
-import org.dbos.apiary.interposition.ApiaryFuture;
-import org.dbos.apiary.interposition.ApiaryProcedure;
+import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class AdditionFunction extends ApiaryProcedure {
+public class AdditionFunction extends VoltApiaryProcedure {
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
         return super.run(pkey, voltInput);

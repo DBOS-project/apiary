@@ -1,5 +1,6 @@
 package org.dbos.apiary.voltdb;
 
+import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
 import org.dbos.apiary.interposition.ApiaryFuture;
 import org.dbos.apiary.utilities.Utilities;
@@ -9,7 +10,6 @@ import org.voltdb.VoltTableRow;
 import org.voltdb.VoltType;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.List;
 
 public class VoltApiaryProcedure extends VoltProcedure {
 
@@ -31,22 +31,20 @@ public class VoltApiaryProcedure extends VoltProcedure {
         return input;
     }
 
-    private static VoltTable[] serializeOutput(Object output, List<Task> calledFunctions) {
+    private static VoltTable[] serializeOutput(FunctionOutput output) {
         VoltTable voltOutput;
-        if (output instanceof String) {
+        if (output.stringOutput != null) {
             voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
-            voltOutput.addRow(output);
-        } else if (output instanceof ApiaryFuture) {
-            voltOutput = new VoltTable(new VoltTable.ColumnInfo("future", VoltType.SMALLINT));
-            voltOutput.addRow(((ApiaryFuture) output).futureID);
+            voltOutput.addRow(output.stringOutput);
         } else {
-            System.out.println("Error: Unrecognized output type: " + output.getClass().getName());
-            return null;
+            assert(output.futureOutput != null);
+            voltOutput = new VoltTable(new VoltTable.ColumnInfo("future", VoltType.SMALLINT));
+            voltOutput.addRow(output.futureOutput.futureID);
         }
-        VoltTable[] outputs = new VoltTable[calledFunctions.size() + 1];
+        VoltTable[] outputs = new VoltTable[output.calledFunctions.size() + 1];
         outputs[0] = voltOutput;
-        for (int i = 0; i < calledFunctions.size(); i++) {
-            outputs[i + 1] = serializeFuture(calledFunctions.get(i));
+        for (int i = 0; i < output.calledFunctions.size(); i++) {
+            outputs[i + 1] = serializeFuture(output.calledFunctions.get(i));
         }
         return outputs;
     }
@@ -81,8 +79,8 @@ public class VoltApiaryProcedure extends VoltProcedure {
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
         Object[] parsedInput = parseInput(voltInput);
-        Object output = funcApi.runFunction(parsedInput);
-        return serializeOutput(output, funcApi.getCalledFunctions());
+        FunctionOutput output = funcApi.runFunction(parsedInput);
+        return serializeOutput(output);
     }
 
 }

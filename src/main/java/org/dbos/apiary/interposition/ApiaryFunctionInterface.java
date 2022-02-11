@@ -1,5 +1,6 @@
 package org.dbos.apiary.interposition;
 
+import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
 
 import java.util.ArrayList;
@@ -38,19 +39,24 @@ public abstract class ApiaryFunctionInterface {
     protected abstract void internalQueueSQL(Object procedure, Object... input);
     protected abstract Object internalExecuteSQL();
 
-    public Object runFunction(Object... input) {
+    public FunctionOutput runFunction(Object... input) {
         this.calledFunctionID.set(0);
         this.calledFunctions.clear();
         // TODO: Log metadata.
         Object retVal = internalRunFunction(input);
         // TODO: Fault tolerance stuff.
-        return retVal;
+        String stringOutput = null;
+        ApiaryFuture futureOutput = null;
+        if (retVal instanceof String) {
+            stringOutput = (String) retVal;
+        } else {
+            assert (retVal instanceof ApiaryFuture);
+            futureOutput = (ApiaryFuture) retVal;
+        }
+        return new FunctionOutput(stringOutput, futureOutput, this.calledFunctions);
     }
 
     // Run user code in the target platform.
     protected abstract Object internalRunFunction(Object... input);
 
-    public List<Task> getCalledFunctions() {
-        return this.calledFunctions;
-    }
 }

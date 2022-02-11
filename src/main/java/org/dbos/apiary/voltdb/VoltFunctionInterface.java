@@ -1,13 +1,8 @@
 package org.dbos.apiary.voltdb;
 
-import org.dbos.apiary.executor.Task;
 import org.dbos.apiary.interposition.ApiaryFunctionInterface;
-import org.dbos.apiary.interposition.ApiaryFuture;
-import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
-import org.voltdb.VoltTableRow;
-import org.voltdb.VoltType;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;

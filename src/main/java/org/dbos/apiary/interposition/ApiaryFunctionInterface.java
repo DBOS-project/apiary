@@ -59,7 +59,7 @@ public abstract class ApiaryFunctionInterface {
     protected abstract Object internalRunFunction(Object... input);
 
     // Parse input from DB dependent format to objects. E.g., VoltTable to object list.
-    protected abstract Object[] internalParseInput(Object input);
+    protected abstract Object[] internalParseInput(Object... input);
 
     // Parse output from objects to DB dependent format.
     protected abstract Object internalFinalizeOutput(Object output);

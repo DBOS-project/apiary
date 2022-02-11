@@ -46,8 +46,8 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
     }
 
     @Override
-    protected Object[] internalParseInput(Object objInput) {
-        VoltTable voltInput = (VoltTable) objInput;
+    protected Object[] internalParseInput(Object... objInput) {
+        VoltTable voltInput = ((VoltTable[]) objInput)[0];
         Object[] input = new Object[voltInput.getColumnCount()];
         VoltTableRow inputRow = voltInput.fetchRow(0);
         for (int i = 0; i < voltInput.getColumnCount(); i++) {

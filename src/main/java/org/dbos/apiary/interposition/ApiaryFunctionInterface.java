@@ -20,24 +20,18 @@ public abstract class ApiaryFunctionInterface {
         return new ApiaryFuture(taskID);
     }
 
-    public void apiaryQueueUpdate(Object procedure, Object... input) {
+    public void apiaryExecuteUpdate(Object procedure, Object... input) {
         // TODO: Provenance capture.
-        internalQueueSQL(procedure, input);
+        internalExecuteUpdate(procedure, input);
     }
 
-
-    public void apiaryQueueQuery(Object procedure, Object... input) {
+    public Object apiaryExecuteQuery(Object procedure, Object... input) {
         // TODO: Provenance capture.
-        internalQueueSQL(procedure, input);
+        return internalExecuteQuery(procedure, input);
     }
 
-    public Object apiaryExecuteSQL() {
-        // TODO: Provenance capture.
-        return internalExecuteSQL();
-    }
-
-    protected abstract void internalQueueSQL(Object procedure, Object... input);
-    protected abstract Object internalExecuteSQL();
+    protected abstract void internalExecuteUpdate(Object procedure, Object... input);
+    protected abstract Object internalExecuteQuery(Object procedure, Object... input);
 
     public FunctionOutput runFunction(Object... input) {
         this.calledFunctionID.set(0);

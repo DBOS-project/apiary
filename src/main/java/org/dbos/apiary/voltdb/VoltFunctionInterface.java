@@ -16,12 +16,14 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
     }
 
     @Override
-    protected void internalQueueSQL(Object procedure, Object... input) {
+    protected void internalExecuteUpdate(Object procedure, Object... input) {
         p.voltQueueSQL((SQLStmt) procedure, input);
+        p.voltExecuteSQL();
     }
 
     @Override
-    protected VoltTable[] internalExecuteSQL() {
+    protected VoltTable[] internalExecuteQuery(Object procedure, Object... input) {
+        p.voltQueueSQL((SQLStmt) procedure, input);
         return p.voltExecuteSQL();
     }
 

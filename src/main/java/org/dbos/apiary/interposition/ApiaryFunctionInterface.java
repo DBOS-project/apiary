@@ -45,14 +45,7 @@ public abstract class ApiaryFunctionInterface {
         Object retVal = internalRunFunction(parsedInput);
         // TODO: Fault tolerance stuff.
 
-        // Construct output, object plus a list of futures.
-        Object finalRetVal = internalFinalizeOutput(retVal);
-        Object[] outputs = new Object[getCalledFunctions().size() + 1];
-        outputs[0] = finalRetVal;
-        for (int i = 0; i < getCalledFunctions().size(); i++) {
-            outputs[i + 1] = internalSerializeFuture(getCalledFunctions().get(i));
-        }
-        return outputs;
+        return internalConstructFinalOutput(retVal);
     }
 
     // Run user code in the target platform. For example, we use reflection for VoltDB.
@@ -61,11 +54,11 @@ public abstract class ApiaryFunctionInterface {
     // Parse input from DB dependent format to objects. E.g., VoltTable to object list.
     protected abstract Object[] internalParseInput(Object... input);
 
-    // Parse output from objects to DB dependent format.
-    protected abstract Object internalFinalizeOutput(Object output);
-
     // Serialize task into DB dependent format. E.g., VoltTable.
     protected abstract Object internalSerializeFuture(Task future);
+
+    // Construct final output, object plus a list of futures.
+    protected abstract Object internalConstructFinalOutput(Object output);
 
     public List<Task> getCalledFunctions() {
         return this.calledFunctions;

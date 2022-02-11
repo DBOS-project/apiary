@@ -64,19 +64,24 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
     }
 
     @Override
-    protected VoltTable internalFinalizeOutput(Object output) {
+    protected VoltTable[] internalConstructFinalOutput(Object output) {
+        VoltTable voltOutput;
         if (output instanceof String) {
-            VoltTable voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
+            voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
             voltOutput.addRow(output);
-            return voltOutput;
         } else if (output instanceof ApiaryFuture) {
-            VoltTable voltOutput = new VoltTable(new VoltTable.ColumnInfo("future", VoltType.SMALLINT));
+            voltOutput = new VoltTable(new VoltTable.ColumnInfo("future", VoltType.SMALLINT));
             voltOutput.addRow(((ApiaryFuture) output).futureID);
-            return voltOutput;
         } else {
             System.out.println("Error: Unrecognized output type: " + output.getClass().getName());
             return null;
         }
+        VoltTable[] outputs = new VoltTable[getCalledFunctions().size() + 1];
+        outputs[0] = voltOutput;
+        for (int i = 0; i < getCalledFunctions().size(); i++) {
+            outputs[i + 1] = internalSerializeFuture(getCalledFunctions().get(i));
+        }
+        return outputs;
     }
 
     @Override

@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class ApiaryFunctionInterface {
 
-    private AtomicInteger calledFunctionID = new AtomicInteger(0);
+    private final AtomicInteger calledFunctionID = new AtomicInteger(0);
     private final List<Task> calledFunctions = new ArrayList<>();
 
     // Asynchronously call another function inside an Apiary function.
@@ -32,43 +32,25 @@ public abstract class ApiaryFunctionInterface {
 
     public Object apiaryExecuteSQL() {
         // TODO: Provenance capture.
-        Object output = internalExecuteSQL();
-        return output;
+        return internalExecuteSQL();
     }
 
     protected abstract void internalQueueSQL(Object procedure, Object... input);
     protected abstract Object internalExecuteSQL();
 
     public Object runFunction(Object... input) {
+        this.calledFunctionID.set(0);
+        this.calledFunctions.clear();
         // TODO: Log metadata.
-        Object[] parsedInput = internalParseInput(input);
-        Object retVal = internalRunFunction(parsedInput);
+        Object retVal = internalRunFunction(input);
         // TODO: Fault tolerance stuff.
-
-        return internalConstructFinalOutput(retVal);
+        return retVal;
     }
 
-    // Run user code in the target platform. For example, we use reflection for VoltDB.
+    // Run user code in the target platform.
     protected abstract Object internalRunFunction(Object... input);
-
-    // Parse input from DB dependent format to objects. E.g., VoltTable to object list.
-    protected abstract Object[] internalParseInput(Object... input);
-
-    // Serialize task into DB dependent format. E.g., VoltTable.
-    protected abstract Object internalSerializeFuture(Task future);
-
-    // Construct final output, object plus a list of futures.
-    protected abstract Object internalConstructFinalOutput(Object output);
 
     public List<Task> getCalledFunctions() {
         return this.calledFunctions;
     }
-
-    // Reset internal state.
-    public void reset() {
-        this.calledFunctionID.set(0);
-        this.calledFunctions.clear();
-        return;
-    }
-
 }

@@ -26,7 +26,7 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
     }
 
     @Override
-    protected Object internalExecuteSQL() {
+    protected VoltTable[] internalExecuteSQL() {
         return p.voltExecuteSQL();
     }
 

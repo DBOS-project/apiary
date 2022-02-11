@@ -39,7 +39,7 @@ public abstract class ApiaryFunctionInterface {
     protected abstract void internalQueueSQL(Object procedure, Object... input);
     protected abstract Object internalExecuteSQL();
 
-    public Object[] runFunction(Object... input) {
+    public Object runFunction(Object... input) {
         // TODO: Log metadata.
         Object[] parsedInput = internalParseInput(input);
         Object retVal = internalRunFunction(parsedInput);

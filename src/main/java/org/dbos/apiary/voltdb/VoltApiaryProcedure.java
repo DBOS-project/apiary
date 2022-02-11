@@ -15,7 +15,7 @@ public class VoltApiaryProcedure extends VoltProcedure {
         // Reset funcApi state across runs.
         funcApi.reset();
         this.pkey = pkey;
-        Object[] outputs = funcApi.runFunction(voltInput);
+        Object outputs = funcApi.runFunction(voltInput);
         return (VoltTable[]) outputs;
     }
 }

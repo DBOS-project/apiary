@@ -47,7 +47,7 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
 
     @Override
     protected Object[] internalParseInput(Object... objInput) {
-        VoltTable voltInput = ((VoltTable[]) objInput)[0];
+        VoltTable voltInput = (VoltTable) (objInput[0]);
         Object[] input = new Object[voltInput.getColumnCount()];
         VoltTableRow inputRow = voltInput.fetchRow(0);
         for (int i = 0; i < voltInput.getColumnCount(); i++) {
@@ -64,7 +64,7 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
     }
 
     @Override
-    protected Object internalFinalizeOutput(Object output) {
+    protected VoltTable internalFinalizeOutput(Object output) {
         if (output instanceof String) {
             VoltTable voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
             voltOutput.addRow(output);
@@ -80,7 +80,7 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
     }
 
     @Override
-    protected Object internalSerializeFuture(Task future) {
+    protected VoltTable internalSerializeFuture(Task future) {
         VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[future.input.length + 3];
         columns[0] = new VoltTable.ColumnInfo("name", VoltType.STRING);
         columns[1] = new VoltTable.ColumnInfo("id", VoltType.BIGINT);

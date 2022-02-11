@@ -21,7 +21,7 @@ public class VoltApiaryProcedure extends VoltProcedure {
         funcApi.reset();
         this.pkey = pkey;
         Object[] input = parseVoltInput(voltInput);
-        Object output = funcApi.runFunction(voltInput);
+        Object output = funcApi.runFunction(input);
 
         // Serialize output and the list of futures to VoltTable.
         VoltTable[] voltOutputs = finalizeOutput(output);

@@ -1,12 +1,12 @@
 package org.dbos.apiary.procedures;
 
-import org.dbos.apiary.interposition.ApiaryProcedure;
+import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class FibSumFunction extends ApiaryProcedure {
+public class FibSumFunction extends VoltApiaryProcedure {
     public final SQLStmt addResult = new SQLStmt(
             // PKEY, KEY, VALUE
             "UPSERT INTO KVTable VALUES (?, ?, ?);"
@@ -20,8 +20,8 @@ public class FibSumFunction extends ApiaryProcedure {
         int num1 = Integer.parseInt(str1);
         int num2 = Integer.parseInt(str2);
         int sum = num1 + num2;
-        voltQueueSQL(addResult, this.pkey, Integer.parseInt(key), sum);
-        voltExecuteSQL();
+        funcApi.apiaryQueueUpdate(addResult, this.pkey, Integer.parseInt(key), sum);
+        funcApi.apiaryExecuteSQL();
         return String.valueOf(sum);
     }
 }

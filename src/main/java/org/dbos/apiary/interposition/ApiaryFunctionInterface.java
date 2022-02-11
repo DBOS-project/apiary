@@ -3,15 +3,22 @@ package org.dbos.apiary.interposition;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class ApiaryFunctionInterface {
 
+    private AtomicInteger calledFunctionID = new AtomicInteger(0);
     private final List<Task> calledFunctions = new ArrayList<>();
 
+    // Asynchronously call another function inside an Apiary function.
     public ApiaryFuture apiaryCallFunction(String name, int pkey, Object... inputs) {
-        return null;
+        int taskID = calledFunctionID.getAndIncrement();
+        Task futureTask = new Task(taskID, name, pkey, inputs);
+        calledFunctions.add(futureTask);
+        return new ApiaryFuture(taskID);
     }
 
     public void apiaryQueueUpdate(Object procedure, Object... input) {
@@ -25,13 +32,14 @@ public abstract class ApiaryFunctionInterface {
         internalQueueSQL(input);
     }
 
-    public void apiaryExecuteSQL() {
+    public Object apiaryExecuteSQL() {
         // TODO: Provenance capture.
-        internalExecuteSQL();
+        Object output = internalExecuteSQL();
+        return output;
     }
 
     protected abstract void internalQueueSQL(Object procedure, Object... input);
-    protected abstract void internalExecuteSQL();
+    protected abstract Object internalExecuteSQL();
 
     public Object runFunction(Object... input) {
         // TODO: Log metadata.
@@ -40,9 +48,18 @@ public abstract class ApiaryFunctionInterface {
         return retVal;
     }
 
+    // Run user code in the target platform. For example, we use reflection for VoltDB.
     protected abstract Object internalRunFunction(Object... input);
 
-    List<Task> getCalledFunctions() {
+    public List<Task> getCalledFunctions() {
         return this.calledFunctions;
     }
+
+    // Reset internal state.
+    public void reset() {
+        this.calledFunctionID.set(0);
+        this.calledFunctions.clear();
+        return;
+    }
+
 }

@@ -23,13 +23,13 @@ public abstract class ApiaryFunctionInterface {
 
     public void apiaryQueueUpdate(Object procedure, Object... input) {
         // TODO: Provenance capture.
-        internalQueueSQL(input);
+        internalQueueSQL(procedure, input);
     }
 
 
     public void apiaryQueueQuery(Object procedure, Object... input) {
         // TODO: Provenance capture.
-        internalQueueSQL(input);
+        internalQueueSQL(procedure, input);
     }
 
     public Object apiaryExecuteSQL() {

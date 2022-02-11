@@ -1,9 +1,7 @@
 package org.dbos.apiary.interposition;
 
-import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -41,15 +39,33 @@ public abstract class ApiaryFunctionInterface {
     protected abstract void internalQueueSQL(Object procedure, Object... input);
     protected abstract Object internalExecuteSQL();
 
-    public Object runFunction(Object... input) {
+    public Object[] runFunction(Object... input) {
         // TODO: Log metadata.
-        Object retVal = internalRunFunction(input);
+        Object[] parsedInput = internalParseInput(input);
+        Object retVal = internalRunFunction(parsedInput);
         // TODO: Fault tolerance stuff.
-        return retVal;
+
+        // Construct output, object plus a list of futures.
+        Object finalRetVal = internalFinalizeOutput(retVal);
+        Object[] outputs = new Object[getCalledFunctions().size() + 1];
+        outputs[0] = finalRetVal;
+        for (int i = 0; i < getCalledFunctions().size(); i++) {
+            outputs[i + 1] = internalSerializeFuture(getCalledFunctions().get(i));
+        }
+        return outputs;
     }
 
     // Run user code in the target platform. For example, we use reflection for VoltDB.
     protected abstract Object internalRunFunction(Object... input);
+
+    // Parse input from DB dependent format to objects. E.g., VoltTable to object list.
+    protected abstract Object[] internalParseInput(Object input);
+
+    // Parse output from objects to DB dependent format.
+    protected abstract Object internalFinalizeOutput(Object output);
+
+    // Serialize task into DB dependent format. E.g., VoltTable.
+    protected abstract Object internalSerializeFuture(Task future);
 
     public List<Task> getCalledFunctions() {
         return this.calledFunctions;

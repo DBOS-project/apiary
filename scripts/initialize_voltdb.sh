@@ -10,10 +10,6 @@ cd ${SCRIPT_DIR}/../
 
 VOLTDB_BIN="${VOLT_HOME}/bin"
 
-# Create obj directory
-rm -rf obj
-mkdir -p obj/sql
-
 voltdb init -f --dir=/var/tmp --config ${SCRIPT_DIR}/local_config.xml
 voltdb start -B --ignore=thp --dir=/var/tmp
 

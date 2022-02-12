@@ -14,6 +14,7 @@ import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
 
+import static org.dbos.apiary.procedures.FibonacciFunction.FIBPKEY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ExecutorTests {
@@ -54,5 +55,7 @@ public class ExecutorTests {
         assertEquals("3", res);
         res = Executor.executeFunction(ctxt, "FibonacciFunction", FibonacciFunction.FIBPKEY, "10");
         assertEquals("55", res);
+        res = Executor.executeFunction(ctxt, "FibonacciFunction", FIBPKEY, "30");
+        assertEquals("832040", res);
     }
 }

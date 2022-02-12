@@ -56,7 +56,7 @@ public class VoltApiaryProcedure extends VoltProcedure {
         columns[2] = new VoltTable.ColumnInfo("pkey", VoltType.BIGINT);
         for (int i = 0; i < future.input.length; i++) {
             Object input = future.input[i];
-            columns[i + 3] = Utilities.objectToColumnInfo(i, input);
+            columns[i + 3] = VoltUtilities.objectToColumnInfo(i, input);
         }
         VoltTable v = new VoltTable(columns);
         Object[] row = new Object[v.getColumnCount()];

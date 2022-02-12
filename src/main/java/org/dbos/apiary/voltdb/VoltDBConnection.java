@@ -33,7 +33,7 @@ public class VoltDBConnection implements ApiaryConnection {
         VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[inputs.length];
         for (int i = 0; i < inputs.length; i++) {
             Object input = inputs[i];
-            columns[i] = Utilities.objectToColumnInfo(i, input);
+            columns[i] = VoltUtilities.objectToColumnInfo(i, input);
         }
         VoltTable v = new VoltTable(columns);
         Object[] row = new Object[v.getColumnCount()];

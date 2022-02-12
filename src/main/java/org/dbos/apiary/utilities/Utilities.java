@@ -1,12 +1,11 @@
 package org.dbos.apiary.utilities;
 
-import org.dbos.apiary.interposition.ApiaryFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.voltdb.VoltTable;
-import org.voltdb.VoltType;
 
 import java.io.*;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 
 public class Utilities {
@@ -90,15 +89,13 @@ public class Utilities {
         return strList.toArray(new String[0]);
     }
 
-    public static VoltTable.ColumnInfo objectToColumnInfo(int index, Object input) {
-        if (input instanceof String) {
-            return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.STRING);
-        } else if (input instanceof String[]) {
-            return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.VARBINARY);
-        } else if (input instanceof ApiaryFuture) {
-            return new VoltTable.ColumnInfo(Integer.toString(index), VoltType.SMALLINT);
+    public static Method getFunctionMethod(Object o, String targetName) {
+        for (Method m: o.getClass().getDeclaredMethods()) {
+            String name = m.getName();
+            if (name.equals(targetName) && Modifier.isPublic(m.getModifiers())) {
+                return m;
+            }
         }
         return null;
     }
-
 }

@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 
-import static org.dbos.apiary.procedures.voltdb.FibonacciFunction.FIBPKEY;
+import static org.dbos.apiary.utilities.ApiaryConfig.defaultPkey;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SQLiteTests {
@@ -27,15 +27,15 @@ public class SQLiteTests {
         c.registerFunction("FibonacciFunction", new SQLiteFibonacciFunction(conn));
         c.registerFunction("FibSumFunction", new SQLiteFibSumFunction(conn));
 
-        String res = Executor.executeFunction(c, "FibonacciFunction", FIBPKEY, "1");
+        String res = Executor.executeFunction(c, "FibonacciFunction", defaultPkey, "1");
         assertEquals("1", res);
-        res = Executor.executeFunction(c, "FibonacciFunction", FIBPKEY, "3");
+        res = Executor.executeFunction(c, "FibonacciFunction", defaultPkey, "3");
         assertEquals("2", res);
-        res = Executor.executeFunction(c, "FibonacciFunction", FIBPKEY, "4");
+        res = Executor.executeFunction(c, "FibonacciFunction", defaultPkey, "4");
         assertEquals("3", res);
-        res = Executor.executeFunction(c, "FibonacciFunction", FIBPKEY, "10");
+        res = Executor.executeFunction(c, "FibonacciFunction", defaultPkey, "10");
         assertEquals("55", res);
-        res = Executor.executeFunction(c, "FibonacciFunction", FIBPKEY, "30");
+        res = Executor.executeFunction(c, "FibonacciFunction", defaultPkey, "30");
         assertEquals("832040", res);
 
         conn.close();

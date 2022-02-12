@@ -1,11 +1,12 @@
 package org.dbos.apiary.procedures.sqlite;
 
-import org.dbos.apiary.procedures.voltdb.FibonacciFunction;
 import org.dbos.apiary.sqlite.SQLiteFunctionInterface;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+
+import static org.dbos.apiary.utilities.ApiaryConfig.defaultPkey;
 
 public class SQLiteFibSumFunction extends SQLiteFunctionInterface {
 
@@ -19,7 +20,7 @@ public class SQLiteFibSumFunction extends SQLiteFunctionInterface {
         int num1 = Integer.parseInt(str1);
         int num2 = Integer.parseInt(str2);
         int sum = num1 + num2;
-        this.apiaryExecuteUpdate(addResult, FibonacciFunction.FIBPKEY, Integer.parseInt(key), sum);
+        this.apiaryExecuteUpdate(addResult, defaultPkey, Integer.parseInt(key), sum);
         return String.valueOf(sum);
     }
 }

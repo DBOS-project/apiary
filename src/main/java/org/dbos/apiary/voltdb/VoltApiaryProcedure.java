@@ -44,27 +44,27 @@ public class VoltApiaryProcedure extends VoltProcedure {
         VoltTable[] outputs = new VoltTable[output.calledFunctions.size() + 1];
         outputs[0] = voltOutput;
         for (int i = 0; i < output.calledFunctions.size(); i++) {
-            outputs[i + 1] = serializeFuture(output.calledFunctions.get(i));
+            outputs[i + 1] = serializeTask(output.calledFunctions.get(i));
         }
         return outputs;
     }
 
-    private static VoltTable serializeFuture(Task future) {
-        VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[future.input.length + 3];
+    private static VoltTable serializeTask(Task task) {
+        VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[task.input.length + 3];
         columns[0] = new VoltTable.ColumnInfo("name", VoltType.STRING);
         columns[1] = new VoltTable.ColumnInfo("id", VoltType.BIGINT);
         columns[2] = new VoltTable.ColumnInfo("pkey", VoltType.BIGINT);
-        for (int i = 0; i < future.input.length; i++) {
-            Object input = future.input[i];
-            columns[i + 3] = Utilities.objectToColumnInfo(i, input);
+        for (int i = 0; i < task.input.length; i++) {
+            Object input = task.input[i];
+            columns[i + 3] = VoltUtilities.objectToColumnInfo(i, input);
         }
         VoltTable v = new VoltTable(columns);
         Object[] row = new Object[v.getColumnCount()];
-        row[0] = future.funcName;
-        row[1] = future.taskID;
-        row[2] = future.pkey;
-        for (int i = 0; i < future.input.length; i++) {
-            Object input = future.input[i];
+        row[0] = task.funcName;
+        row[1] = task.taskID;
+        row[2] = task.pkey;
+        for (int i = 0; i < task.input.length; i++) {
+            Object input = task.input[i];
             if (input instanceof String) {
                 row[i + 3] = input;
             } else if (input instanceof String[]) {

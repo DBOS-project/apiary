@@ -1,10 +1,12 @@
-package org.dbos.apiary.procedures;
+package org.dbos.apiary.procedures.voltdb;
 
 import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
+
+import static org.dbos.apiary.utilities.ApiaryConfig.defaultPkey;
 
 public class FibSumFunction extends VoltApiaryProcedure {
     public final SQLStmt addResult = new SQLStmt(
@@ -20,8 +22,7 @@ public class FibSumFunction extends VoltApiaryProcedure {
         int num1 = Integer.parseInt(str1);
         int num2 = Integer.parseInt(str2);
         int sum = num1 + num2;
-        funcApi.apiaryQueueUpdate(addResult, FibonacciFunction.FIBPKEY, Integer.parseInt(key), sum);
-        funcApi.apiaryExecuteSQL();
+        funcApi.apiaryExecuteUpdate(addResult, defaultPkey, Integer.parseInt(key), sum);
         return String.valueOf(sum);
     }
 }

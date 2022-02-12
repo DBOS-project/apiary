@@ -1,11 +1,11 @@
 package org.dbos.apiary.voltdb;
 
 import org.dbos.apiary.interposition.ApiaryFunctionInterface;
+import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 
 public class VoltFunctionInterface extends ApiaryFunctionInterface {
 
@@ -16,19 +16,21 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
     }
 
     @Override
-    protected void internalQueueSQL(Object procedure, Object... input) {
+    protected void internalExecuteUpdate(Object procedure, Object... input) {
         p.voltQueueSQL((SQLStmt) procedure, input);
+        p.voltExecuteSQL();
     }
 
     @Override
-    protected VoltTable[] internalExecuteSQL() {
+    protected VoltTable[] internalExecuteQuery(Object procedure, Object... input) {
+        p.voltQueueSQL((SQLStmt) procedure, input);
         return p.voltExecuteSQL();
     }
 
     @Override
     protected Object internalRunFunction(Object... input) {
         // Use reflection to find internal runFunction.
-        Method functionMethod = getFunctionMethod(p);
+        Method functionMethod = Utilities.getFunctionMethod(p, "runFunction");
         assert functionMethod != null;
         Object output;
         try {
@@ -38,15 +40,5 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
             return null;
         }
         return output;
-    }
-
-    private static Method getFunctionMethod(Object o) {
-        for (Method m: o.getClass().getDeclaredMethods()) {
-            String name = m.getName();
-            if (name.equals("runFunction") && Modifier.isPublic(m.getModifiers())) {
-                return m;
-            }
-        }
-        return null;
     }
 }

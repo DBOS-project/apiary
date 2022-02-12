@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 
-import static org.dbos.apiary.procedures.FibonacciFunction.FIBPKEY;
+import static org.dbos.apiary.procedures.voltdb.FibonacciFunction.FIBPKEY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SQLiteTests {

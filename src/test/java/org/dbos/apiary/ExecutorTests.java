@@ -2,7 +2,7 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.Executor;
-import org.dbos.apiary.procedures.FibonacciFunction;
+import org.dbos.apiary.procedures.voltdb.FibonacciFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltDBConnection;
@@ -14,7 +14,7 @@ import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
 
-import static org.dbos.apiary.procedures.FibonacciFunction.FIBPKEY;
+import static org.dbos.apiary.procedures.voltdb.FibonacciFunction.FIBPKEY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ExecutorTests {

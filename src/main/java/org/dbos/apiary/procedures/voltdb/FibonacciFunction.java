@@ -1,4 +1,4 @@
-package org.dbos.apiary.procedures;
+package org.dbos.apiary.procedures.voltdb;
 
 import org.dbos.apiary.interposition.ApiaryFuture;
 import org.dbos.apiary.voltdb.VoltApiaryProcedure;

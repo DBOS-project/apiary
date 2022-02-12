@@ -2,14 +2,13 @@ package org.dbos.apiary.procedures.sqlite;
 
 import org.dbos.apiary.interposition.ApiaryFuture;
 import org.dbos.apiary.sqlite.SQLiteFunctionInterface;
-import org.voltdb.VoltTable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import static org.dbos.apiary.procedures.FibonacciFunction.FIBPKEY;
+import static org.dbos.apiary.procedures.voltdb.FibonacciFunction.FIBPKEY;
 
 public class SQLiteFibonacciFunction extends SQLiteFunctionInterface {
 

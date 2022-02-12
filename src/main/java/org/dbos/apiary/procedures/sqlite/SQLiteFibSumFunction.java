@@ -1,6 +1,6 @@
 package org.dbos.apiary.procedures.sqlite;
 
-import org.dbos.apiary.procedures.FibonacciFunction;
+import org.dbos.apiary.procedures.voltdb.FibonacciFunction;
 import org.dbos.apiary.sqlite.SQLiteFunctionInterface;
 
 import java.sql.Connection;

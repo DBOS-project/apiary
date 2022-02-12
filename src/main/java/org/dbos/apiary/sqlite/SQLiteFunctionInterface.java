@@ -4,7 +4,6 @@ import org.dbos.apiary.interposition.ApiaryFunctionInterface;
 import org.dbos.apiary.utilities.Utilities;
 
 import java.lang.reflect.Method;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 

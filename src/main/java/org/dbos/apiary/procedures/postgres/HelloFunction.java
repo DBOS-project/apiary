@@ -1,15 +1,21 @@
 package org.dbos.apiary.procedures.postgres;
 
+import org.dbos.apiary.postgres.PostgresFunctionInterface;
 import org.postgresql.pljava.annotation.Function;
 
 import java.sql.*;
 
 public class HelloFunction {
-    private static String m_url = "jdbc:default:connection";
 
     @Function
     public static String greet(String personName) throws SQLException {
-        Connection conn = DriverManager.getConnection( m_url );
+        PostgresFunctionInterface p = new PostgresFunctionInterface(HelloFunction.class);
+        return p.runFunction(personName).stringOutput;
+    }
+
+    public static String runSP(String personName) throws SQLException {
+        String m_url = "jdbc:default:connection";
+        Connection conn = DriverManager.getConnection(m_url);
         String query = "SELECT * FROM KVTable WHERE KVKey = ?";
         PreparedStatement stmt = conn.prepareStatement( query );
         stmt.setInt(1, 0);
@@ -18,7 +24,6 @@ public class HelloFunction {
         int val = rs.getInt("KVvalue");
         stmt.close();
         conn.close();
-
-        return "Hello World, " + personName + " " + val + " !";
+        return "Hello World, " + personName + " " + val + "!";
     }
 }

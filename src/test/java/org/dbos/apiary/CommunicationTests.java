@@ -3,6 +3,7 @@ package org.dbos.apiary;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zeromq.ZContext;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -50,6 +51,7 @@ public class CommunicationTests {
                 while (listening.get()) {
                     threadPool.submit(new ServerThread(serverSocket.accept()));
                 }
+                serverSocket.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -83,5 +85,13 @@ public class CommunicationTests {
         while (finished.get() > 0) { }
         listening.set(false);
         threadPool.shutdown();
+    }
+
+    @Test
+    public void testZMQ() {
+        logger.info("testZMQ");
+        ZContext context = new ZContext();
+        context.close();
+
     }
 }

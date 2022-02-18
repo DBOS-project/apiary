@@ -86,14 +86,9 @@ public class ExecutorTests {
             @Override
             public void run() {
                 try {
-                    PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                    String inputLine;
-                    while ((inputLine = in.readLine()) != null) {
-                        out.println(inputLine + "!!!");
-                        if (inputLine.equals("bye")) {
-                            break;
-                        }
+                    int inputByte;
+                    while ((inputByte = socket.getInputStream().read()) != 101) {
+                        socket.getOutputStream().write(inputByte);
                     }
                     socket.close();
                 } catch (IOException e) {
@@ -117,19 +112,18 @@ public class ExecutorTests {
         AtomicInteger finished = new AtomicInteger(numClients);
         Runnable clientRunnable = () -> {
             try {
-                int numTrials = 1000;
+                int numTrials = 10;
                 Socket client = new Socket("localhost", 8001);
-                PrintWriter out = new PrintWriter(client.getOutputStream(), true);
-                BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 for (int i = 0; i < numTrials; i++) {
-                    int number = count.getAndIncrement();
+                    int number = count.getAndIncrement() % 100;
                     long t0 = System.nanoTime();
-                    out.println(number);
-                    String fromServer = in.readLine();
+                    client.getOutputStream().write(number);
+                    int fromServer = client.getInputStream().read();
                     long elapsed = System.nanoTime() - t0;
-                    assertEquals(number + "!!!", fromServer);
+                    logger.info("{}", elapsed);
+                    assertEquals(number, fromServer);
                 }
-                out.println("bye");
+                client.getOutputStream().write(101);
                 client.close();
                 finished.decrementAndGet();
             } catch (IOException e) {

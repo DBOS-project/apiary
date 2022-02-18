@@ -88,8 +88,13 @@ public class ExecutorTests {
                 try {
                     PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                    String inputLine = in.readLine();
-                    out.println(inputLine + "!!!");
+                    String inputLine;
+                    while ((inputLine = in.readLine()) != null) {
+                        out.println(inputLine + "!!!");
+                        if (inputLine.equals("bye")) {
+                            break;
+                        }
+                    }
                     socket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -107,24 +112,34 @@ public class ExecutorTests {
             }
         };
         threadPool.submit(serverRunnable);
+        int numClients = 10;
         AtomicInteger count = new AtomicInteger(0);
+        AtomicInteger finished = new AtomicInteger(numClients);
         Runnable clientRunnable = () -> {
             try {
+                int numTrials = 1000;
                 Socket client = new Socket("localhost", 8001);
                 PrintWriter out = new PrintWriter(client.getOutputStream(), true);
                 BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-                int i = count.getAndIncrement();
-                out.println(i + "\n");
-                String fromServer = in.readLine();
-                assertEquals(i + "!!!", fromServer);
+                for (int i = 0; i < numTrials; i++) {
+                    int number = count.getAndIncrement();
+                    long t0 = System.nanoTime();
+                    out.println(number);
+                    String fromServer = in.readLine();
+                    long elapsed = System.nanoTime() - t0;
+                    assertEquals(number + "!!!", fromServer);
+                }
+                out.println("bye");
                 client.close();
+                finished.decrementAndGet();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         };
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < numClients; i++) {
             threadPool.submit(clientRunnable);
         }
+        while (finished.get() > 0) { }
         listening.set(false);
         threadPool.shutdown();
     }

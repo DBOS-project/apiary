@@ -9,9 +9,21 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.voltdb.catalog.ThreadPool;
 import org.voltdb.client.ProcCallException;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.dbos.apiary.utilities.ApiaryConfig.defaultPkey;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,5 +68,64 @@ public class ExecutorTests {
         assertEquals("55", res);
         res = Executor.executeFunction(ctxt, "FibonacciFunction", defaultPkey, "30");
         assertEquals("832040", res);
+    }
+
+    @Test
+    public void testSockets() throws IOException {
+        logger.info("testSockets");
+        ExecutorService threadPool = Executors.newFixedThreadPool(256);
+        AtomicBoolean listening = new AtomicBoolean(true);
+        class ServerThread implements Runnable {
+
+            final Socket socket;
+
+            ServerThread(Socket socket) {
+                this.socket = socket;
+            }
+
+            @Override
+            public void run() {
+                try {
+                    PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                    String inputLine = in.readLine();
+                    out.println(inputLine + "!!!");
+                    socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        Runnable serverRunnable = () -> {
+            try {
+                ServerSocket serverSocket = new ServerSocket(8001);
+                while (listening.get()) {
+                    threadPool.submit(new ServerThread(serverSocket.accept()));
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        };
+        threadPool.submit(serverRunnable);
+        AtomicInteger count = new AtomicInteger(0);
+        Runnable clientRunnable = () -> {
+            try {
+                Socket client = new Socket("localhost", 8001);
+                PrintWriter out = new PrintWriter(client.getOutputStream(), true);
+                BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                int i = count.getAndIncrement();
+                out.println(i + "\n");
+                String fromServer = in.readLine();
+                assertEquals(i + "!!!", fromServer);
+                client.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        };
+        for (int i = 0; i < 10000; i++) {
+            threadPool.submit(clientRunnable);
+        }
+        listening.set(false);
+        threadPool.shutdown();
     }
 }

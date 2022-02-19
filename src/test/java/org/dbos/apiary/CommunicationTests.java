@@ -3,11 +3,14 @@ package org.dbos.apiary;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zeromq.SocketType;
 import org.zeromq.ZContext;
+import org.zeromq.ZMQ;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -88,10 +91,55 @@ public class CommunicationTests {
     }
 
     @Test
-    public void testZMQ() {
+    public void testZMQ() throws InterruptedException {
         logger.info("testZMQ");
-        ZContext context = new ZContext();
-        context.close();
 
+        Runnable serverRunnable = () -> {
+            try (ZContext context = new ZContext()) {
+                ZMQ.Socket frontend = context.createSocket(SocketType.ROUTER);
+                frontend.bind("tcp://*:" + 8001);
+                ZMQ.Socket backend = context.createSocket(SocketType.DEALER);
+                backend.bind("inproc://backend");
+
+                Runnable serverThreadRunnable = () -> {
+                    ZMQ.Socket worker = context.createSocket(SocketType.REP);
+                    worker.connect("inproc://backend");
+                    while (!Thread.currentThread().isInterrupted()) {
+                        byte[] b = worker.recv(0);
+                        String input = new String(b, StandardCharsets.UTF_8);
+                        String output = input + "!!!";
+                        worker.send(output.getBytes(StandardCharsets.UTF_8));
+                    }
+                };
+                for (int i = 0; i < 10; i++) {
+                    new Thread(serverThreadRunnable).start();
+                }
+                ZMQ.proxy(frontend, backend, null);
+            }
+        };
+
+        Thread server = new Thread(serverRunnable);
+        server.start();
+
+        ExecutorService threadPool = Executors.newFixedThreadPool(256);
+        Runnable clientRunnable = () -> {
+            try (ZContext context = new ZContext()) {
+                ZMQ.Socket socket = context.createSocket(SocketType.REQ);
+                socket.connect("tcp://*:" + 8001);
+                for (int i = 0; i < 100; i++) {
+                    String input = String.valueOf(i);
+                    socket.send(input.getBytes(StandardCharsets.UTF_8));
+                    byte[] b = socket.recv(0);
+                    String output = new String(b, StandardCharsets.UTF_8);
+                    assertEquals(i + "!!!", output);
+                }
+            }
+        };
+        for (int i = 0; i < 10 ; i++) {
+            threadPool.submit(clientRunnable);
+        }
+        threadPool.shutdown();
+
+        server.join();
     }
 }

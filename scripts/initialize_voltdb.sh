@@ -2,7 +2,7 @@
 set -ex
 
 # Increase open files limit.
-ulimit -n 32768
+#ulimit -n 32768
 
 SCRIPT_DIR=$(dirname $(readlink -f $0))
 # Enter the root dir of the repo.

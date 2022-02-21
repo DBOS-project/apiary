@@ -26,10 +26,12 @@ public class ApiaryWorker {
     public ApiaryWorker(int serverPort, ApiaryConnection c) {
         this.serverPort = serverPort;
         this.c = c;
+        this.zContext = new ZContext();
     }
 
     private void workerThread() {
-        ZMQ.Socket worker = zContext.createSocket(SocketType.REP);
+        ZContext shadowContext = ZContext.shadow(zContext);
+        ZMQ.Socket worker = shadowContext.createSocket(SocketType.REP);
         worker.connect("inproc://backend");
         while (!Thread.currentThread().isInterrupted()) {
             try {
@@ -45,14 +47,15 @@ public class ApiaryWorker {
                 }
             }
         }
+        shadowContext.close();
     }
 
     private void serverThread() {
-        zContext = new ZContext();
-        ZMQ.Socket frontend = zContext.createSocket(SocketType.ROUTER);
+        ZContext shadowContext = ZContext.shadow(zContext);
+        ZMQ.Socket frontend = shadowContext.createSocket(SocketType.ROUTER);
         frontend.bind("tcp://*:" + serverPort);
 
-        ZMQ.Socket backend = zContext.createSocket(SocketType.DEALER);
+        ZMQ.Socket backend = shadowContext.createSocket(SocketType.DEALER);
         backend.bind("inproc://backend");
 
         for (int i = 0; i < numWorkerThreads; i++) {
@@ -62,6 +65,7 @@ public class ApiaryWorker {
         }
 
         ZMQ.proxy(frontend, backend, null);
+        shadowContext.close();
     }
 
     public void startServing() {
@@ -74,9 +78,7 @@ public class ApiaryWorker {
             t.interrupt();
             t.join();
         }
-        logger.info("bob");
         zContext.close();
-        logger.info("bob2");
         serverThread.join();
     }
 }

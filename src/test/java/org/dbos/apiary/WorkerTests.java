@@ -26,8 +26,8 @@ public class WorkerTests {
 
     @Test
     public void workerTest() throws IOException, InterruptedException {
+        logger.info("workerTest");
         for (int i = 0; i < 100; i++) {
-            logger.info("workerTest");
             ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
             ApiaryWorker worker = new ApiaryWorker(8000, c);
             worker.startServing();

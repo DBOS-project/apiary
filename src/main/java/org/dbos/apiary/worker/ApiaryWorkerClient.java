@@ -1,5 +1,7 @@
 package org.dbos.apiary.worker;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
@@ -12,6 +14,7 @@ import java.util.Map;
 
 // Note: ZMQ.Socket is not thread-safe, so this class is not thread-safe either.
 public class ApiaryWorkerClient {
+    private static final Logger logger = LoggerFactory.getLogger(ApiaryWorkerClient.class);
 
     private final ZContext zContext;
 
@@ -29,13 +32,6 @@ public class ApiaryWorkerClient {
             socket.connect("tcp://" + address);
             sockets.put(address, socket);
             return socket;
-        }
-    }
-
-    public void shutdown() {
-        for (ZMQ.Socket socket: sockets.values()) {
-            socket.setLinger(0);
-            socket.close();
         }
     }
 

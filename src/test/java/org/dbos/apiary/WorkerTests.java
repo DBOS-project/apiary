@@ -26,19 +26,19 @@ public class WorkerTests {
 
     @Test
     public void workerTest() throws IOException, InterruptedException {
-        logger.info("workerTest");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(8000, c);
-        worker.startServing();
+        for (int i = 0; i < 100; i++) {
+            logger.info("workerTest");
+            ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+            ApiaryWorker worker = new ApiaryWorker(8000, c);
+            worker.startServing();
 
-        ZContext clientContext = new ZContext();
-        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+            ZContext clientContext = new ZContext();
+            ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String rep = client.executeFunction("matei", null, "localhost:8000");
-        assertEquals("matei!!!", rep);
-
-        client.shutdown();
-        clientContext.close();
-        worker.shutdown();
+            String rep = client.executeFunction("matei", null, "localhost:8000");
+            assertEquals("matei!!!", rep);
+            clientContext.close();
+            worker.shutdown();
+        }
     }
 }

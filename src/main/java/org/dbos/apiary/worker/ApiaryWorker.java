@@ -1,6 +1,8 @@
 package org.dbos.apiary.worker;
 
 import org.dbos.apiary.executor.ApiaryConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
@@ -11,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ApiaryWorker {
+    private static final Logger logger = LoggerFactory.getLogger(ApiaryWorker.class);
 
     private static final int numWorkerThreads = 8;
 
@@ -42,8 +45,6 @@ public class ApiaryWorker {
                 }
             }
         }
-        worker.setLinger(0);
-        worker.close();
     }
 
     private void serverThread() {
@@ -61,11 +62,6 @@ public class ApiaryWorker {
         }
 
         ZMQ.proxy(frontend, backend, null);
-
-        frontend.setLinger(0);
-        frontend.close();
-        backend.setLinger(0);
-        backend.close();
     }
 
     public void startServing() {
@@ -78,7 +74,9 @@ public class ApiaryWorker {
             t.interrupt();
             t.join();
         }
+        logger.info("bob");
         zContext.close();
+        logger.info("bob2");
         serverThread.join();
     }
 }

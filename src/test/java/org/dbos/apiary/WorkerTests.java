@@ -35,8 +35,8 @@ public class WorkerTests {
             ZContext clientContext = new ZContext();
             ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-            String rep = client.executeFunction("matei", null, "localhost:8000");
-            assertEquals("matei!!!", rep);
+            String rep = client.executeFunction("localhost:8000", "FibonacciFunction", "1");
+            assertEquals("1", rep);
             clientContext.close();
             worker.shutdown();
         }

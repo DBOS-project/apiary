@@ -1,6 +1,8 @@
 package org.dbos.apiary.worker;
 
 import org.dbos.apiary.executor.ApiaryConnection;
+import org.dbos.apiary.executor.FunctionOutput;
+import org.dbos.apiary.executor.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.SocketType;
@@ -11,6 +13,8 @@ import org.zeromq.ZMQException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ApiaryWorker {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorker.class);
@@ -31,13 +35,15 @@ public class ApiaryWorker {
 
     private void workerThread() {
         ZContext shadowContext = ZContext.shadow(zContext);
+        ApiaryWorkerClient client = new ApiaryWorkerClient(shadowContext);
         ZMQ.Socket worker = shadowContext.createSocket(SocketType.REP);
         worker.connect("inproc://backend");
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                byte[] b = worker.recv(0);
-                String input = new String(b, StandardCharsets.UTF_8);
-                String output = input + "!!!";
+                byte[] reqBytes = worker.recv(0);
+                String name = new String(reqBytes, StandardCharsets.UTF_8);
+                String output = executeFunction(client, name, 0, new String[]{"1"});
+                assert output != null;
                 worker.send(output.getBytes(StandardCharsets.UTF_8));
             } catch (ZMQException e) {
                 if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
@@ -48,6 +54,30 @@ public class ApiaryWorker {
             }
         }
         shadowContext.close();
+    }
+
+    private String executeFunction(ApiaryWorkerClient client, String name, int pkey, String[] arguments) {
+        try {
+            FunctionOutput o = c.callFunction(name, pkey, (Object[]) arguments);
+            List<Task> tasks = o.calledFunctions;
+            // This map stores the final return value (String) of each function.
+            Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
+            for (int i = tasks.size() - 1; i >= 0; i--) {
+                Task task = tasks.get(i);
+                task.dereferenceFutures(taskIDtoValue);
+                String output = client.executeFunction("localhost:8000", task.funcName, (String[]) task.input);
+                taskIDtoValue.put(task.taskID, output);
+            }
+            if (o.stringOutput != null) {
+                return o.stringOutput;
+            } else {
+                assert o.futureOutput != null;
+                return taskIDtoValue.get(o.futureOutput.futureID);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private void serverThread() {

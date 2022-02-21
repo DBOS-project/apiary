@@ -35,7 +35,7 @@ public class ApiaryWorkerClient {
         }
     }
 
-    public String executeFunction(String name, List<String> arguments, String address) {
+    public String executeFunction(String address, String name, String... arguments) {
         ZMQ.Socket socket = getSocket(address);
         byte[] reqBytes = name.getBytes(StandardCharsets.UTF_8);
         socket.send(reqBytes, 0);

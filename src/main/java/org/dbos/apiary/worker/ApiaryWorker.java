@@ -13,8 +13,8 @@ import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQException;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ApiaryWorker {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorker.class);
 
-    private static final int numWorkerThreads = 8;
+    private static final int numWorkerThreads = 128;
 
     private final ApiaryConnection c;
     private final int serverPort;
@@ -45,7 +45,7 @@ public class ApiaryWorker {
             try {
                 byte[] reqBytes = worker.recv(0);
                 ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
-                String output = executeFunction(client, req.getName(), 0, new String[]{"1"});
+                String output = executeFunction(client, req.getName(), 0, req.getArgumentsList().toArray(new String[0]));
                 assert output != null;
                 ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output).build();
                 worker.send(rep.toByteArray());
@@ -65,13 +65,12 @@ public class ApiaryWorker {
     private String executeFunction(ApiaryWorkerClient client, String name, int pkey, String[] arguments) {
         try {
             FunctionOutput o = c.callFunction(name, pkey, (Object[]) arguments);
-            List<Task> tasks = o.calledFunctions;
-            // This map stores the final return value (String) of each function.
             Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
-            for (int i = tasks.size() - 1; i >= 0; i--) {
-                Task task = tasks.get(i);
+            for (Task task: o.calledFunctions) {
+                task.offsetIDs(0);
                 task.dereferenceFutures(taskIDtoValue);
-                String output = client.executeFunction("localhost:8000", task.funcName, (String[]) task.input);
+                String[] input = Arrays.copyOf(task.input, task.input.length, String[].class);
+                String output = client.executeFunction("localhost:8000", task.funcName, input);
                 taskIDtoValue.put(task.taskID, output);
             }
             if (o.stringOutput != null) {

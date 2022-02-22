@@ -12,6 +12,7 @@ service Worker {
 
 message ExecuteFunctionRequest {
   string name = 1;
+  repeated string arguments = 2;
 }
 
 message ExecuteFunctionReply {

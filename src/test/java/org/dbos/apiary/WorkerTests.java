@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltDBConnection;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
@@ -26,8 +27,18 @@ public class WorkerTests {
     }
 
     @Test
-    public void workerTest() throws IOException, InterruptedException {
-        logger.info("workerTest");
+    public void testSerialization() {
+        logger.info("testSerialization");
+        String[] s = new String[]{"asdf", "jkl;"};
+        String[] s2 = Utilities.byteArrayToStringArray(Utilities.stringArraytoByteArray(s));
+        for (int i = 0; i < s2.length; i++) {
+            assertEquals(s[i], s2[i]);
+        }
+    }
+
+    @Test
+    public void testFib() throws IOException, InterruptedException {
+        logger.info("testFib");
         for (int i = 0; i < 100; i++) {
             ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
             ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
@@ -36,8 +47,15 @@ public class WorkerTests {
             ZContext clientContext = new ZContext();
             ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-            String rep = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
+            String rep;
+            rep = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "1");
+            assertEquals("1", rep);
+
+            rep = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
             assertEquals("55", rep);
+
+            rep = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "30");
+            assertEquals("832040", rep);
             clientContext.close();
             worker.shutdown();
         }

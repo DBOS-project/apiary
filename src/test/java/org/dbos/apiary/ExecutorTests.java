@@ -25,16 +25,6 @@ public class ExecutorTests {
     }
 
     @Test
-    public void testSerialization() {
-        logger.info("testSerialization");
-        String[] s = new String[]{"asdf", "jkl;"};
-        String[] s2 = Utilities.byteArrayToStringArray(Utilities.stringArraytoByteArray(s));
-        for (int i = 0; i < s2.length; i++) {
-            assertEquals(s[i], s2[i]);
-        }
-    }
-
-    @Test
     public void testAdditionExec() throws Exception {
         logger.info("testAdditionExec");
         ApiaryConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);

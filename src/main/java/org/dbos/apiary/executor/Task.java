@@ -22,14 +22,10 @@ public class Task {
         this.funcName = funcName;
         this.pkey = pkey;
         this.input = input;
-    }
-
-    public void offsetIDs(int offset) {
-        taskID = taskID + offset;
         for (int i = 0; i < input.length; i++) {
             Object o = input[i];
             if (o instanceof ApiaryFuture) {
-                int futureID = offset + ((ApiaryFuture) o).futureID;
+                int futureID = ((ApiaryFuture) o).futureID;
                 inputIdxToFutureID.put(i, futureID);
             }
         }

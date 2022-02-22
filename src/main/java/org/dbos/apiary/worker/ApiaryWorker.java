@@ -1,5 +1,8 @@
 package org.dbos.apiary.worker;
 
+import com.google.protobuf.InvalidProtocolBufferException;
+import org.dbos.apiary.ExecuteFunctionReply;
+import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
@@ -41,16 +44,19 @@ public class ApiaryWorker {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 byte[] reqBytes = worker.recv(0);
-                String name = new String(reqBytes, StandardCharsets.UTF_8);
-                String output = executeFunction(client, name, 0, new String[]{"1"});
+                ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
+                String output = executeFunction(client, req.getName(), 0, new String[]{"1"});
                 assert output != null;
-                worker.send(output.getBytes(StandardCharsets.UTF_8));
+                ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output).build();
+                worker.send(rep.toByteArray());
             } catch (ZMQException e) {
                 if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                     break;
                 } else {
                     e.printStackTrace();
                 }
+            } catch (InvalidProtocolBufferException e) {
+                e.printStackTrace();
             }
         }
         shadowContext.close();

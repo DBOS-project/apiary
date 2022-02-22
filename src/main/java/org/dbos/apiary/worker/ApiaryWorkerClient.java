@@ -1,14 +1,15 @@
 package org.dbos.apiary.worker;
 
+import com.google.protobuf.InvalidProtocolBufferException;
+import org.dbos.apiary.ExecuteFunctionReply;
+import org.dbos.apiary.ExecuteFunctionRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 
@@ -35,11 +36,12 @@ public class ApiaryWorkerClient {
         }
     }
 
-    public String executeFunction(String address, String name, String... arguments) {
+    public String executeFunction(String address, String name, String... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
-        byte[] reqBytes = name.getBytes(StandardCharsets.UTF_8);
-        socket.send(reqBytes, 0);
+        ExecuteFunctionRequest req = ExecuteFunctionRequest.newBuilder().setName(name).build();
+        socket.send(req.toByteArray(), 0);
         byte[] replyBytes = socket.recv(0);
-        return new String(replyBytes);
+        ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
+        return rep.getReply();
     }
 }

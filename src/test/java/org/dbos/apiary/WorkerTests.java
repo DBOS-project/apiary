@@ -13,6 +13,7 @@ import org.voltdb.client.ProcCallException;
 import org.zeromq.ZContext;
 
 import java.io.IOException;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -29,13 +30,13 @@ public class WorkerTests {
         logger.info("workerTest");
         for (int i = 0; i < 100; i++) {
             ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-            ApiaryWorker worker = new ApiaryWorker(8000, c);
+            ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
             worker.startServing();
 
             ZContext clientContext = new ZContext();
             ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-            String rep = client.executeFunction("localhost:8000", "FibonacciFunction", "10");
+            String rep = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
             assertEquals("55", rep);
             clientContext.close();
             worker.shutdown();

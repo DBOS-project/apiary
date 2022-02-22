@@ -29,10 +29,14 @@ public class ApiaryWorker {
     private ZContext zContext;
     private Thread serverThread;
     private final List<Thread> workerThreads = new ArrayList<>();
+    private final Map<Long, String> partitionToAddressMap;
+    private final int numPartitions;
 
-    public ApiaryWorker(int serverPort, ApiaryConnection c) {
+    public ApiaryWorker(int serverPort, ApiaryConnection c, Map<Long, String> partitionToAddressMap, int numPartitions) {
         this.serverPort = serverPort;
         this.c = c;
+        this.partitionToAddressMap = partitionToAddressMap;
+        this.numPartitions = numPartitions;
         this.zContext = new ZContext();
     }
 
@@ -45,7 +49,7 @@ public class ApiaryWorker {
             try {
                 byte[] reqBytes = worker.recv(0);
                 ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
-                String output = executeFunction(client, req.getName(), 0, req.getArgumentsList().toArray(new String[0]));
+                String output = executeFunction(client, req.getName(), req.getPkey(), req.getArgumentsList().toArray(new String[0]));
                 assert output != null;
                 ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output).build();
                 worker.send(rep.toByteArray());
@@ -62,7 +66,7 @@ public class ApiaryWorker {
         shadowContext.close();
     }
 
-    private String executeFunction(ApiaryWorkerClient client, String name, int pkey, String[] arguments) {
+    private String executeFunction(ApiaryWorkerClient client, String name, long pkey, String[] arguments) {
         try {
             FunctionOutput o = c.callFunction(name, pkey, (Object[]) arguments);
             Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
@@ -70,7 +74,8 @@ public class ApiaryWorker {
                 task.offsetIDs(0);
                 task.dereferenceFutures(taskIDtoValue);
                 String[] input = Arrays.copyOf(task.input, task.input.length, String[].class);
-                String output = client.executeFunction("localhost:8000", task.funcName, input);
+                String address = partitionToAddressMap.get(task.pkey % numPartitions);
+                String output = client.executeFunction(address, task.funcName, task.pkey, input);
                 taskIDtoValue.put(task.taskID, output);
             }
             if (o.stringOutput != null) {

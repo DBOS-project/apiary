@@ -37,9 +37,13 @@ public class ApiaryWorkerClient {
         }
     }
 
-    public String executeFunction(String address, String name, String... arguments) throws InvalidProtocolBufferException {
+    public String executeFunction(String address, String name, long pkey, String... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
-        ExecuteFunctionRequest req = ExecuteFunctionRequest.newBuilder().setName(name).addAllArguments(List.of(arguments)).build();
+        ExecuteFunctionRequest req = ExecuteFunctionRequest.newBuilder()
+                .setName(name)
+                .setPkey(pkey)
+                .addAllArguments(List.of(arguments))
+                .build();
         socket.send(req.toByteArray(), 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);

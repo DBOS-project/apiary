@@ -1,11 +1,13 @@
 package org.dbos.apiary.worker;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
+import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.SocketType;
@@ -21,6 +23,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ApiaryWorker {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorker.class);
+
+    public static int stringType = 0;
+    public static int stringArrayType = 1;
 
     private static final int numWorkerThreads = 128;
 
@@ -49,7 +54,18 @@ public class ApiaryWorker {
             try {
                 byte[] reqBytes = worker.recv(0);
                 ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
-                String output = executeFunction(client, req.getName(), req.getPkey(), req.getArgumentsList().toArray(new String[0]));
+                List<ByteString> byteArguments = req.getArgumentsList();
+                List<Integer> argumentTypes = req.getArgumentTypesList();
+                Object[] arguments = new Object[byteArguments.size()];
+                for (int i = 0; i < arguments.length; i++) {
+                    if (argumentTypes.get(i) == stringType) {
+                        arguments[i] = new String(byteArguments.get(i).toByteArray());
+                    } else {
+                        assert (argumentTypes.get(i) == stringArrayType);
+                        arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
+                    }
+                }
+                String output = executeFunction(client, req.getName(), req.getPkey(), arguments);
                 assert output != null;
                 ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output).build();
                 worker.send(rep.toByteArray());
@@ -66,16 +82,15 @@ public class ApiaryWorker {
         shadowContext.close();
     }
 
-    private String executeFunction(ApiaryWorkerClient client, String name, long pkey, String[] arguments) {
+    private String executeFunction(ApiaryWorkerClient client, String name, long pkey, Object[] arguments) {
         try {
-            FunctionOutput o = c.callFunction(name, pkey, (Object[]) arguments);
+            FunctionOutput o = c.callFunction(name, pkey, arguments);
             Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
             for (Task task: o.calledFunctions) {
                 task.offsetIDs(0);
                 task.dereferenceFutures(taskIDtoValue);
-                String[] input = Arrays.copyOf(task.input, task.input.length, String[].class);
                 String address = partitionToAddressMap.get(task.pkey % numPartitions);
-                String output = client.executeFunction(address, task.funcName, task.pkey, input);
+                String output = client.executeFunction(address, task.funcName, task.pkey, task.input);
                 taskIDtoValue.put(task.taskID, output);
             }
             if (o.stringOutput != null) {

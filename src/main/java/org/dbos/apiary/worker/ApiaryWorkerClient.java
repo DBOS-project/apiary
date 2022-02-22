@@ -1,14 +1,18 @@
 package org.dbos.apiary.worker;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
+import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,12 +41,27 @@ public class ApiaryWorkerClient {
         }
     }
 
-    public String executeFunction(String address, String name, long pkey, String... arguments) throws InvalidProtocolBufferException {
+    public String executeFunction(String address, String name, long pkey, Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
+        List<ByteString> byteArguments = new ArrayList<>();
+        List<Integer> argumentTypes = new ArrayList<>();
+        for (Object o: arguments) {
+            if (o instanceof String) {
+                String s = (String) o;
+                byteArguments.add(ByteString.copyFrom(s.getBytes(StandardCharsets.UTF_8)));
+                argumentTypes.add(ApiaryWorker.stringType);
+            } else {
+                assert(o instanceof String[]);
+                String[] s = (String[]) o;
+                byteArguments.add(ByteString.copyFrom(Utilities.stringArraytoByteArray(s)));
+                argumentTypes.add(ApiaryWorker.stringArrayType);
+            }
+        }
         ExecuteFunctionRequest req = ExecuteFunctionRequest.newBuilder()
                 .setName(name)
                 .setPkey(pkey)
-                .addAllArguments(List.of(arguments))
+                .addAllArguments(byteArguments)
+                .addAllArgumentTypes(argumentTypes)
                 .build();
         socket.send(req.toByteArray(), 0);
         byte[] replyBytes = socket.recv(0);

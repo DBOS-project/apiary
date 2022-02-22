@@ -47,17 +47,34 @@ public class WorkerTests {
             ZContext clientContext = new ZContext();
             ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-            String rep;
-            rep = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "1");
-            assertEquals("1", rep);
+            String res;
+            res = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "1");
+            assertEquals("1", res);
 
-            rep = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
-            assertEquals("55", rep);
+            res = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
+            assertEquals("55", res);
 
-            rep = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "30");
-            assertEquals("832040", rep);
+            res = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "30");
+            assertEquals("832040", res);
             clientContext.close();
             worker.shutdown();
         }
+    }
+
+    @Test
+    public void testAddition() throws IOException, InterruptedException {
+        logger.info("testAddition");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        worker.startServing();
+
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+
+        String res = client.executeFunction("localhost:8000", "AdditionFunction", 0, "1", "2", new String[]{"matei", "zaharia"});
+        assertEquals("3mateizaharia", res);
+
+        clientContext.close();
+        worker.shutdown();
     }
 }

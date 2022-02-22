@@ -14,11 +14,4 @@ public class FunctionOutput {
         this.futureOutput = futureOutput;
         this.calledFunctions = calledFunctions;
     }
-
-    public void offsetOutput(int offset) {
-        if (futureOutput != null) {
-            this.futureOutput = new ApiaryFuture(futureOutput.futureID + offset);
-        }
-        calledFunctions.forEach(i -> i.offsetIDs(offset));
-    }
 }

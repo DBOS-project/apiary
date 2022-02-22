@@ -1,4 +1,4 @@
-load classes target/dynamic-apiary-0.1-SNAPSHOT.jar;
+load classes target/DBOSProcedures.jar;
 
 DROP PROCEDURE TruncateTables IF EXISTS;
 CREATE PROCEDURE FROM CLASS org.dbos.apiary.procedures.voltdb.TruncateTables;

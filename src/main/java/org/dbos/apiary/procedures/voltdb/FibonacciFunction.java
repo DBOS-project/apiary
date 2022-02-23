@@ -44,9 +44,9 @@ public class FibonacciFunction extends VoltApiaryProcedure {
         }
 
         // Otherwise, call functions.
-        ApiaryFuture f1 = funcApi.apiaryCallFunction("FibonacciFunction", defaultPkey, String.valueOf(key - 2));
-        ApiaryFuture f2 = funcApi.apiaryCallFunction("FibonacciFunction", defaultPkey, String.valueOf(key - 1));
-        ApiaryFuture fsum = funcApi.apiaryCallFunction("FibSumFunction", defaultPkey, strKey, f1, f2);
+        ApiaryFuture f1 = funcApi.apiaryQueueFunction("FibonacciFunction", defaultPkey, String.valueOf(key - 2));
+        ApiaryFuture f2 = funcApi.apiaryQueueFunction("FibonacciFunction", defaultPkey, String.valueOf(key - 1));
+        ApiaryFuture fsum = funcApi.apiaryQueueFunction("FibSumFunction", defaultPkey, strKey, f1, f2);
         return fsum;
     }
 }

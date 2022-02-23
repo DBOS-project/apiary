@@ -2,6 +2,7 @@ package org.dbos.apiary.voltdb;
 
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
+import org.dbos.apiary.interposition.ApiaryFunctionInterface;
 import org.dbos.apiary.interposition.ApiaryFuture;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.VoltProcedure;
@@ -13,7 +14,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class VoltApiaryProcedure extends VoltProcedure {
 
-    protected final VoltFunctionInterface funcApi = new VoltFunctionInterface(this);
+    protected final ApiaryFunctionInterface funcApi = new VoltFunctionInterface(this);
 
     private static Object[] parseInput(VoltTable voltInput) {
         Object[] input = new Object[voltInput.getColumnCount()];

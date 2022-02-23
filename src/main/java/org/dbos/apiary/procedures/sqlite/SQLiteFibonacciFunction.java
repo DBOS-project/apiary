@@ -40,9 +40,9 @@ public class SQLiteFibonacciFunction extends SQLiteFunctionInterface {
         }
 
         // Otherwise, call functions.
-        ApiaryFuture f1 = this.apiaryCallFunction("FibonacciFunction", defaultPkey, String.valueOf(key - 2));
-        ApiaryFuture f2 = this.apiaryCallFunction("FibonacciFunction", defaultPkey, String.valueOf(key - 1));
-        ApiaryFuture fsum = this.apiaryCallFunction("FibSumFunction", defaultPkey, strKey, f1, f2);
+        ApiaryFuture f1 = this.apiaryQueueFunction("FibonacciFunction", defaultPkey, String.valueOf(key - 2));
+        ApiaryFuture f2 = this.apiaryQueueFunction("FibonacciFunction", defaultPkey, String.valueOf(key - 1));
+        ApiaryFuture fsum = this.apiaryQueueFunction("FibSumFunction", defaultPkey, strKey, f1, f2);
         return fsum;
     }
 }

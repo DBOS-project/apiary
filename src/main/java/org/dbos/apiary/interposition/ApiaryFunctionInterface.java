@@ -12,8 +12,8 @@ public abstract class ApiaryFunctionInterface {
     private final AtomicInteger calledFunctionID = new AtomicInteger(0);
     private final List<Task> calledFunctions = new ArrayList<>();
 
-    // Asynchronously call another function inside an Apiary function.
-    public ApiaryFuture apiaryCallFunction(String name, int pkey, Object... inputs) {
+    // Asynchronously queue another function for asynchronous execution.
+    public ApiaryFuture apiaryQueueFunction(String name, int pkey, Object... inputs) {
         int taskID = calledFunctionID.getAndIncrement();
         Task futureTask = new Task(taskID, name, pkey, inputs);
         calledFunctions.add(futureTask);

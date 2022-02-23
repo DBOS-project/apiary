@@ -12,6 +12,8 @@ public abstract class ApiaryFunctionInterface {
     private final AtomicInteger calledFunctionID = new AtomicInteger(0);
     private final List<Task> calledFunctions = new ArrayList<>();
 
+    /** Public Interface **/
+
     // Asynchronously queue another function for asynchronous execution.
     public ApiaryFuture apiaryQueueFunction(String name, int pkey, Object... inputs) {
         int taskID = calledFunctionID.getAndIncrement();
@@ -20,15 +22,19 @@ public abstract class ApiaryFunctionInterface {
         return new ApiaryFuture(taskID);
     }
 
+    // Execute an update in the database.
     public void apiaryExecuteUpdate(Object procedure, Object... input) {
         // TODO: Provenance capture.
         internalExecuteUpdate(procedure, input);
     }
 
+    // Execute a database query.
     public Object apiaryExecuteQuery(Object procedure, Object... input) {
         // TODO: Provenance capture.
         return internalExecuteQuery(procedure, input);
     }
+
+    /** Internal Interface **/
 
     protected abstract void internalExecuteUpdate(Object procedure, Object... input);
     protected abstract Object internalExecuteQuery(Object procedure, Object... input);
@@ -50,7 +56,6 @@ public abstract class ApiaryFunctionInterface {
         return new FunctionOutput(stringOutput, futureOutput, this.calledFunctions);
     }
 
-    // Run user code in the target platform.
     protected abstract Object internalRunFunction(Object... input);
 
 }

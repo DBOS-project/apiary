@@ -7,6 +7,7 @@ import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
+import org.dbos.apiary.stateless.StatelessFunction;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,10 +16,8 @@ import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQException;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ApiaryWorker {
@@ -36,6 +35,7 @@ public class ApiaryWorker {
     private final List<Thread> workerThreads = new ArrayList<>();
     private final Map<Long, String> partitionToAddressMap;
     private final int numPartitions;
+    private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
 
     public ApiaryWorker(int serverPort, ApiaryConnection c, Map<Long, String> partitionToAddressMap, int numPartitions) {
         this.serverPort = serverPort;
@@ -88,8 +88,14 @@ public class ApiaryWorker {
             Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
             for (Task task: o.calledFunctions) {
                 task.dereferenceFutures(taskIDtoValue);
-                String address = partitionToAddressMap.get(task.pkey % numPartitions);
-                String output = client.executeFunction(address, task.funcName, task.pkey, task.input);
+                String output;
+                if (statelessFunctions.containsKey(task.funcName)) {
+                    StatelessFunction f = statelessFunctions.get(task.funcName).call();
+                    output = f.internalRunFunction(task.input);
+                } else {
+                    String address = partitionToAddressMap.get(task.pkey % numPartitions);
+                    output = client.executeFunction(address, task.funcName, task.pkey, task.input);
+                }
                 taskIDtoValue.put(task.taskID, output);
             }
             if (o.stringOutput != null) {
@@ -120,6 +126,11 @@ public class ApiaryWorker {
 
         ZMQ.proxy(frontend, backend, null);
         shadowContext.close();
+    }
+
+    // TODO: Can registration be centralized instead of doing it on every worker separately?
+    public void registerStatelessFunction(String name, Callable<StatelessFunction> function) {
+        statelessFunctions.put(name, function);
     }
 
     public void startServing() {

@@ -1,6 +1,7 @@
 package org.dbos.apiary.voltdb;
 
 import org.dbos.apiary.interposition.ApiaryFunctionInterface;
+import org.dbos.apiary.stateless.StatelessFunction;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -18,24 +19,33 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
 
     @Override
     public Object internalCallFunction(String name, int pkey, Object... inputs) {
-        VoltApiaryProcedure v;
+        Object clazz;
         try {
-            v = (VoltApiaryProcedure) Class.forName(name).getDeclaredConstructor().newInstance();
+            clazz = Class.forName(name).getDeclaredConstructor().newInstance();
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             e.printStackTrace();
             return null;
         }
-        v.funcApi = this;
-        Method functionMethod = Utilities.getFunctionMethod(v, "runFunction");
-        assert functionMethod != null;
-        Object output;
-        try {
-            output = functionMethod.invoke(v, inputs);
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (clazz instanceof VoltApiaryProcedure) {
+            VoltApiaryProcedure v = (VoltApiaryProcedure) clazz;
+            v.funcApi = this;
+            Method functionMethod = Utilities.getFunctionMethod(v, "runFunction");
+            assert functionMethod != null;
+            Object output;
+            try {
+                output = functionMethod.invoke(v, inputs);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+            return output;
+        } else if (clazz instanceof StatelessFunction) {
+            StatelessFunction s = (StatelessFunction) clazz;
+            return s.internalRunFunction(inputs);
+        } else {
+            new Exception().printStackTrace();
             return null;
         }
-        return output;
     }
 
     @Override

@@ -1,7 +1,5 @@
 package org.dbos.apiary.procedures.voltdb;
 
-import org.dbos.apiary.voltdb.VoltApiaryProcedure;
-import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;

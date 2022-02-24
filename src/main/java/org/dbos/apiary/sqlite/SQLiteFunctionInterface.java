@@ -23,6 +23,11 @@ public class SQLiteFunctionInterface extends ApiaryFunctionInterface {
     }
 
     @Override
+    public Object internalCallFunction(String name, int pkey, Object... inputs) {
+        return null;
+    }
+
+    @Override
     protected void internalExecuteUpdate(Object procedure, Object... input) {
         try {
             PreparedStatement ps = (PreparedStatement) procedure;

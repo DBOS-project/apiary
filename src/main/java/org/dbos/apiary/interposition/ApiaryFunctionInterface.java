@@ -22,6 +22,11 @@ public abstract class ApiaryFunctionInterface {
         return new ApiaryFuture(taskID);
     }
 
+    public Object apiaryCallFunction(String name, int pkey, Object... inputs) {
+        // TODO: Logging?
+        return internalCallFunction(name, pkey, inputs);
+    }
+
     // Execute an update in the database.
     public void apiaryExecuteUpdate(Object procedure, Object... input) {
         // TODO: Provenance capture.
@@ -36,6 +41,7 @@ public abstract class ApiaryFunctionInterface {
 
     /** Internal Interface **/
 
+    protected abstract Object internalCallFunction(String name, int pkey, Object... inputs);
     protected abstract void internalExecuteUpdate(Object procedure, Object... input);
     protected abstract Object internalExecuteQuery(Object procedure, Object... input);
 

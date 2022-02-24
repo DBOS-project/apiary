@@ -14,7 +14,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class VoltApiaryProcedure extends VoltProcedure {
 
-    protected final ApiaryFunctionInterface funcApi = new VoltFunctionInterface(this);
+    public ApiaryFunctionInterface funcApi = new VoltFunctionInterface(this);
 
     private static Object[] parseInput(VoltTable voltInput) {
         Object[] input = new Object[voltInput.getColumnCount()];

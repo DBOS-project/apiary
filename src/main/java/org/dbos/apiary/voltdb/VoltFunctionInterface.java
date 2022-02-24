@@ -5,6 +5,7 @@ import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 public class VoltFunctionInterface extends ApiaryFunctionInterface {
@@ -13,6 +14,28 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
 
     public VoltFunctionInterface(VoltApiaryProcedure p) {
         this.p = p;
+    }
+
+    @Override
+    public Object internalCallFunction(String name, int pkey, Object... inputs) {
+        VoltApiaryProcedure v;
+        try {
+            v = (VoltApiaryProcedure) Class.forName(name).getDeclaredConstructor().newInstance();
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+            e.printStackTrace();
+            return null;
+        }
+        v.funcApi = this;
+        Method functionMethod = Utilities.getFunctionMethod(v, "runFunction");
+        assert functionMethod != null;
+        Object output;
+        try {
+            output = functionMethod.invoke(v, inputs);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return output;
     }
 
     @Override

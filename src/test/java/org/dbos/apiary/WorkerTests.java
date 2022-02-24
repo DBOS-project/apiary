@@ -103,4 +103,28 @@ public class WorkerTests {
         clientContext.close();
         worker.shutdown();
     }
+
+    @Test
+    public void testSynchronousCounter() throws IOException, InterruptedException {
+        logger.info("testSynchronousCounter");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        worker.startServing();
+
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+
+        String res;
+        res = client.executeFunction("localhost:8000", "SynchronousCounter", 0, "0");
+        assertEquals("1", res);
+
+        res = client.executeFunction("localhost:8000", "SynchronousCounter", 0, "0");
+        assertEquals("2", res);
+
+        res = client.executeFunction("localhost:8000", "SynchronousCounter", 1, "1");
+        assertEquals("1", res);
+
+        clientContext.close();
+        worker.shutdown();
+    }
 }

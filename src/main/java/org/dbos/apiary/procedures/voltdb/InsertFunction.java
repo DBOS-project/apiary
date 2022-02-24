@@ -6,12 +6,7 @@ import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class InsertFunction extends VoltApiaryProcedure {
-
-    public final SQLStmt addResult = new SQLStmt(
-            // PKEY, KEY, VALUE
-            "UPSERT INTO KVTable VALUES (?, ?, ?);"
-    );
+public class InsertFunction extends VoltProcedureContainer {
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
         return super.run(pkey, voltInput);

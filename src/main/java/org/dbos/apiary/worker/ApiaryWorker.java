@@ -82,7 +82,7 @@ public class ApiaryWorker {
         shadowContext.close();
     }
 
-    private String executeFunction(ApiaryWorkerClient client, String name, long pkey, Object[] arguments) {
+    private String executeFunction(ApiaryWorkerClient client, String name, int pkey, Object[] arguments) {
         try {
             FunctionOutput o = c.callFunction(name, pkey, arguments);
             Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();

@@ -41,7 +41,7 @@ public class ApiaryWorkerClient {
         }
     }
 
-    public String executeFunction(String address, String name, long pkey, Object... arguments) throws InvalidProtocolBufferException {
+    public String executeFunction(String address, String name, int pkey, Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();

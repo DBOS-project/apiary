@@ -60,7 +60,7 @@ public class VoltDBConnection implements ApiaryConnection {
         VoltTableRow inputRow = voltInput.fetchRow(0);
         String funcName = inputRow.getString(0);
         int taskID = (int) inputRow.getLong(1);
-        long pkey = inputRow.getLong(2);
+        int pkey = (int) inputRow.getLong(2);
         Object[] input = new Object[voltInput.getColumnCount() - 3];
 
         int objIndex = 0;
@@ -86,7 +86,7 @@ public class VoltDBConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String funcName, long pkey, Object... inputs) throws IOException, ProcCallException {
+    public FunctionOutput callFunction(String funcName, int pkey, Object... inputs) throws IOException, ProcCallException {
         VoltTable voltInput = inputToVoltTable(inputs);
         VoltTable[] res  = client.callProcedure(funcName, pkey, voltInput).getResults();
         VoltTable retVal = res[0];

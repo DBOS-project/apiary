@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,9 +37,10 @@ public class IntrospectTests {
         assertTrue(numPartitions > 0);
 
         Map<Integer, String> partitionHostMap = vpi.getPartitionHostMap();
+        String localhost = InetAddress.getLocalHost().getHostName();
         for (int p : partitionHostMap.keySet()) {
             String hn = partitionHostMap.get(p);
-            assertNotEquals("localhost", hn);
+            assertEquals(localhost, hn);
             logger.info("partition {} --> host {}", p, hn);
         }
         assertEquals(numPartitions, partitionHostMap.size());

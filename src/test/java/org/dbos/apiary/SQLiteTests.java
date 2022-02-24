@@ -30,7 +30,7 @@ public class SQLiteTests {
         c.registerFunction("FibonacciFunction", () -> new SQLiteFibonacciFunction(conn));
         c.registerFunction("FibSumFunction", () -> new SQLiteFibSumFunction(conn));
 
-        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0, "localhost:8000"), 1);
         worker.startServing();
 
         ZContext clientContext = new ZContext();

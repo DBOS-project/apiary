@@ -42,7 +42,7 @@ public class WorkerTests {
         logger.info("testFib");
         for (int i = 0; i < 100; i++) {
             ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-            ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+            ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0, "localhost:8000"), 1);
             worker.startServing();
 
             ZContext clientContext = new ZContext();
@@ -66,7 +66,7 @@ public class WorkerTests {
     public void testAddition() throws IOException, InterruptedException {
         logger.info("testAddition");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0, "localhost:8000"), 1);
         worker.startServing();
 
         ZContext clientContext = new ZContext();
@@ -83,7 +83,7 @@ public class WorkerTests {
     public void testStatelessCounter() throws IOException, InterruptedException {
         logger.info("testStatelessIncrement");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0, "localhost:8000"), 1);
         worker.registerStatelessFunction("increment", Increment::new);
         worker.startServing();
 
@@ -108,7 +108,7 @@ public class WorkerTests {
     public void testSynchronousCounter() throws IOException, InterruptedException {
         logger.info("testSynchronousCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0, "localhost:8000"), 1);
         worker.startServing();
 
         ZContext clientContext = new ZContext();

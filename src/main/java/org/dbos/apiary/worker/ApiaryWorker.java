@@ -33,11 +33,11 @@ public class ApiaryWorker {
     private ZContext zContext;
     private Thread serverThread;
     private final List<Thread> workerThreads = new ArrayList<>();
-    private final Map<Long, String> partitionToAddressMap;
+    private final Map<Integer, String> partitionToAddressMap;
     private final int numPartitions;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
 
-    public ApiaryWorker(int serverPort, ApiaryConnection c, Map<Long, String> partitionToAddressMap, int numPartitions) {
+    public ApiaryWorker(int serverPort, ApiaryConnection c, Map<Integer, String> partitionToAddressMap, int numPartitions) {
         this.serverPort = serverPort;
         this.c = c;
         this.partitionToAddressMap = partitionToAddressMap;

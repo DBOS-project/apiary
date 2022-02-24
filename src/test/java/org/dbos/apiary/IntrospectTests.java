@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class IntrospectTests {
@@ -37,7 +38,7 @@ public class IntrospectTests {
         Map<Integer, String> partitionHostMap = vpi.getPartitionHostMap();
         for (int p : partitionHostMap.keySet()) {
             String hn = partitionHostMap.get(p);
-            assertEquals("localhost", hn);
+            assertNotEquals("localhost", hn);
             logger.info("partition {} --> host {}", p, hn);
         }
         assertEquals(numPartitions, partitionHostMap.size());

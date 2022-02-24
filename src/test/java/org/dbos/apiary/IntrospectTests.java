@@ -28,7 +28,7 @@ public class IntrospectTests {
     }
 
     @Test
-    public void testVoltPartitionInfo() throws IOException, ProcCallException {
+    public void testVoltPartitionInfo() throws IOException {
         logger.info("testVoltPartitionInfo");
         ApiaryConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         VoltPartitionInfo vpi = new VoltPartitionInfo((VoltDBConnection) ctxt);

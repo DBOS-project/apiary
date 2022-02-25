@@ -101,6 +101,9 @@ public class WorkerTests {
         res = client.executeFunction("localhost", "CounterFunction", ApiaryConfig.defaultPkey, "0");
         assertEquals("2", res);
 
+        res = client.executeFunction("localhost", "CounterFunction", 1, "1");
+        assertEquals("1", res);
+
         clientContext.close();
         worker.shutdown();
     }
@@ -122,6 +125,9 @@ public class WorkerTests {
 
         res = client.executeFunction("localhost", "SynchronousCounter", ApiaryConfig.defaultPkey, "0");
         assertEquals("2", res);
+
+        res = client.executeFunction("localhost", "SynchronousCounter", 1, "1");
+        assertEquals("1", res);
 
         clientContext.close();
         worker.shutdown();

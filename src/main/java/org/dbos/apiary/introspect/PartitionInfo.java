@@ -1,7 +1,5 @@
 package org.dbos.apiary.introspect;
 
-import org.dbos.apiary.executor.ApiaryConnection;
-
 import java.util.Map;
 
 public interface PartitionInfo {

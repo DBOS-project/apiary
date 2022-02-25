@@ -26,9 +26,7 @@ public class VoltPartitionInfo implements PartitionInfo {
 
     public VoltPartitionInfo(VoltDBConnection ctxt) {
         this.ctxt = ctxt;
-        this.numPartitions = updatePartitionInfo();
-        // Initialize Volt hashinator.
-        TheHashinator.initialize(TheHashinator.getConfiguredHashinatorClass(), TheHashinator.getConfigureBytes(this.numPartitions));
+        updatePartitionInfo();
     }
 
     // Update partition info table: (partitionID, pkey, hostId, hostname, isLeader).
@@ -50,6 +48,9 @@ public class VoltPartitionInfo implements PartitionInfo {
         }
 
         if ((numSites % numLeaders) == 0) {
+            this.numPartitions = numLeaders;
+            // Initialize Volt hashinator.
+            TheHashinator.initialize(TheHashinator.getConfiguredHashinatorClass(), TheHashinator.getConfigureBytes(this.numPartitions));
             return numLeaders;
         }
         return -1;
@@ -59,7 +60,6 @@ public class VoltPartitionInfo implements PartitionInfo {
     public String getHostname(int pkey) {
         int partitionId = TheHashinator.getPartitionForParameter(
                 VoltType.INTEGER, pkey);
-        logger.debug("partitionID {} for pkey {}", partitionId, pkey);
         return this.partitionHostMap.get(partitionId);
     }
 

@@ -12,10 +12,7 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zeromq.SocketType;
-import org.zeromq.ZContext;
-import org.zeromq.ZMQ;
-import org.zeromq.ZMQException;
+import org.zeromq.*;
 
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -43,11 +40,17 @@ public class ApiaryWorker {
     private void workerThread() {
         ZContext shadowContext = ZContext.shadow(zContext);
         ApiaryWorkerClient client = new ApiaryWorkerClient(shadowContext);
-        ZMQ.Socket worker = shadowContext.createSocket(SocketType.REP);
+        ZMQ.Socket worker = shadowContext.createSocket(SocketType.DEALER);
         worker.connect("inproc://backend");
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                byte[] reqBytes = worker.recv(0);
+                ZMsg msg = ZMsg.recvMsg(worker);
+                ZFrame address = msg.pop();
+                ZFrame content = msg.pop();
+                assert (content != null);
+                msg.destroy();
+                byte[] reqBytes = content.getData();
+
                 ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
                 List<ByteString> byteArguments = req.getArgumentsList();
                 List<Integer> argumentTypes = req.getArgumentTypesList();
@@ -63,7 +66,9 @@ public class ApiaryWorker {
                 String output = executeFunction(client, req.getName(), arguments);
                 assert output != null;
                 ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output).build();
-                worker.send(rep.toByteArray());
+                address.send(worker, ZFrame.REUSE + ZFrame.MORE);
+                ZFrame replyContent = new ZFrame(rep.toByteArray());
+                replyContent.send(worker, 0);
             } catch (ZMQException e) {
                 if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                     break;

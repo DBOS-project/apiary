@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
+import org.zeromq.ZMsg;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -35,7 +36,7 @@ public class ApiaryWorkerClient {
         if (sockets.containsKey(address)) {
             return sockets.get(address);
         } else {
-            ZMQ.Socket socket = zContext.createSocket(SocketType.REQ);
+            ZMQ.Socket socket = zContext.createSocket(SocketType.DEALER);
             socket.connect("tcp://" + address + ":" + ApiaryConfig.workerPort);
             sockets.put(address, socket);
             return socket;
@@ -64,8 +65,25 @@ public class ApiaryWorkerClient {
                 .addAllArgumentTypes(argumentTypes)
                 .build();
         socket.send(req.toByteArray(), 0);
-        byte[] replyBytes = socket.recv(0);
+
+        byte[] replyBytes = pollRecv(socket);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
         return rep.getReply();
+    }
+
+    private byte[] pollRecv(ZMQ.Socket client) {
+        ZMQ.Poller poller = zContext.createPoller(1);
+        poller.register(client, ZMQ.Poller.POLLIN);
+        byte[] results;
+        while (true) {
+            poller.poll(10); // Timeout 10ms.
+            if (poller.pollin(0)) {
+                ZMsg msg = ZMsg.recvMsg(client);
+                results = msg.getLast().getData();
+                msg.destroy();
+                break;
+            }
+        }
+        return results;
     }
 }

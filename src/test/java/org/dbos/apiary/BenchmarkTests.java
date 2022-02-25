@@ -45,6 +45,8 @@ public class BenchmarkTests {
         assertEquals("1", res);
         res = client.executeFunction("localhost", "RetwisGetPosts", 0, "0");
         assertEquals("hello0,hello1", res);
+        res = client.executeFunction("localhost", "RetwisGetTimeline", 1, "1");
+        assertEquals("hello0,hello1", res);
         clientContext.close();
         worker.shutdown();
     }

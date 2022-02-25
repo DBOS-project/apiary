@@ -3,7 +3,6 @@ package org.dbos.apiary;
 import org.dbos.apiary.procedures.sqlite.SQLiteFibSumFunction;
 import org.dbos.apiary.procedures.sqlite.SQLiteFibonacciFunction;
 import org.dbos.apiary.sqlite.SQLiteConnection;
-import org.dbos.apiary.sqlite.SQLitePartitionInfo;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
@@ -14,7 +13,6 @@ import org.zeromq.ZContext;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -30,8 +28,7 @@ public class SQLiteTests {
         c.createTable("CREATE TABLE KVTable(pkey integer NOT NULL, KVKey integer NOT NULL, KVValue integer NOT NULL);");
         c.registerFunction("FibonacciFunction", () -> new SQLiteFibonacciFunction(conn));
         c.registerFunction("FibSumFunction", () -> new SQLiteFibSumFunction(conn));
-        SQLitePartitionInfo partitionInfo = new SQLitePartitionInfo();
-        ApiaryWorker worker = new ApiaryWorker(c, partitionInfo);
+        ApiaryWorker worker = new ApiaryWorker(c);
         worker.startServing();
 
         ZContext clientContext = new ZContext();

@@ -7,7 +7,6 @@ import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.introspect.PartitionInfo;
 import org.dbos.apiary.stateless.StatelessFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
@@ -34,12 +33,10 @@ public class ApiaryWorker {
     private ZContext zContext;
     private Thread serverThread;
     private final List<Thread> workerThreads = new ArrayList<>();
-    private final PartitionInfo partitionInfo;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
 
-    public ApiaryWorker(ApiaryConnection c, PartitionInfo partitionInfo) {
+    public ApiaryWorker(ApiaryConnection c) {
         this.c = c;
-        this.partitionInfo = partitionInfo;
         this.zContext = new ZContext();
     }
 
@@ -91,7 +88,7 @@ public class ApiaryWorker {
                     StatelessFunction f = statelessFunctions.get(task.funcName).call();
                     output = f.internalRunFunction(task.input);
                 } else {
-                    String address = partitionInfo.getHostname(task.pkey);
+                    String address = c.getHostname(task.pkey);
                     output = client.executeFunction(address, task.funcName, task.pkey, task.input);
                 }
                 taskIDtoValue.put(task.taskID, output);

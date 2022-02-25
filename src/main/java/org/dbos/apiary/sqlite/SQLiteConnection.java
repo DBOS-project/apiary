@@ -43,4 +43,23 @@ public class SQLiteConnection implements ApiaryConnection {
         }
         return f;
     }
+
+    @Override
+    public void updatePartitionInfo() { return; }
+
+    @Override
+    public int getNumPartitions() {
+        return 1;
+    }
+
+    @Override
+    public String getHostname(int pkey) {
+        return "localhost";
+    }
+
+    @Override
+    public Map<Integer, String> getPartitionHostMap() {
+        return null;
+    }
+
 }

@@ -5,7 +5,6 @@ import org.dbos.apiary.procedures.stateless.Increment;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltDBConnection;
-import org.dbos.apiary.voltdb.VoltPartitionInfo;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,7 +15,6 @@ import org.voltdb.client.ProcCallException;
 import org.zeromq.ZContext;
 
 import java.io.IOException;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -43,8 +41,7 @@ public class WorkerTests {
         logger.info("testFib");
         for (int i = 0; i < 100; i++) {
             ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-            VoltPartitionInfo vpi = new VoltPartitionInfo((VoltDBConnection) c);
-            ApiaryWorker worker = new ApiaryWorker(c, vpi);
+            ApiaryWorker worker = new ApiaryWorker(c);
             worker.startServing();
 
             ZContext clientContext = new ZContext();
@@ -68,8 +65,7 @@ public class WorkerTests {
     public void testAddition() throws IOException, InterruptedException {
         logger.info("testAddition");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        VoltPartitionInfo vpi = new VoltPartitionInfo((VoltDBConnection) c);
-        ApiaryWorker worker = new ApiaryWorker(c, vpi);
+        ApiaryWorker worker = new ApiaryWorker(c);
         worker.startServing();
 
         ZContext clientContext = new ZContext();
@@ -86,8 +82,7 @@ public class WorkerTests {
     public void testStatelessCounter() throws IOException, InterruptedException {
         logger.info("testStatelessIncrement");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        VoltPartitionInfo vpi = new VoltPartitionInfo((VoltDBConnection) c);
-        ApiaryWorker worker = new ApiaryWorker(c, vpi);
+        ApiaryWorker worker = new ApiaryWorker(c);
         worker.registerStatelessFunction("increment", Increment::new);
         worker.startServing();
 
@@ -112,8 +107,7 @@ public class WorkerTests {
     public void testSynchronousCounter() throws IOException, InterruptedException {
         logger.info("testSynchronousCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        VoltPartitionInfo vpi = new VoltPartitionInfo((VoltDBConnection) c);
-        ApiaryWorker worker = new ApiaryWorker(c, vpi);
+        ApiaryWorker worker = new ApiaryWorker(c);
         worker.startServing();
 
         ZContext clientContext = new ZContext();

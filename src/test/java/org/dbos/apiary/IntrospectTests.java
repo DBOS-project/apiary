@@ -3,7 +3,6 @@ package org.dbos.apiary;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
-import org.dbos.apiary.voltdb.VoltPartitionInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -31,12 +30,11 @@ public class IntrospectTests {
     public void testVoltPartitionInfo() throws IOException {
         logger.info("testVoltPartitionInfo");
         ApiaryConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        VoltPartitionInfo vpi = new VoltPartitionInfo((VoltDBConnection) ctxt);
-        int numPartitions = vpi.getNumPartitions();
+        int numPartitions = ctxt.getNumPartitions();
         logger.info("Detected {} partitions.", numPartitions);
         assertTrue(numPartitions > 0);
 
-        HashMap<Integer, String> partitionHostMap = (HashMap)((HashMap)vpi.getPartitionHostMap()).clone();
+        HashMap<Integer, String> partitionHostMap = (HashMap)((HashMap)ctxt.getPartitionHostMap()).clone();
         String localhost = InetAddress.getLocalHost().getHostName();
         for (int p : partitionHostMap.keySet()) {
             String hn = partitionHostMap.get(p);
@@ -46,9 +44,10 @@ public class IntrospectTests {
         assertEquals(numPartitions, partitionHostMap.size());
 
         // Update and test again.
-        int numPartitions2 = vpi.updatePartitionInfo();
+        ctxt.updatePartitionInfo();
+        int numPartitions2 = ctxt.getNumPartitions();
         assertEquals(numPartitions, numPartitions2);
-        Map<Integer, String> partitionHostMap2 = vpi.getPartitionHostMap();
+        Map<Integer, String> partitionHostMap2 = ctxt.getPartitionHostMap();
         assertTrue(partitionHostMap.equals(partitionHostMap2));
     }
 }

@@ -60,6 +60,8 @@ public class VoltPartitionInfo implements PartitionInfo {
     public String getHostname(int pkey) {
         int partitionId = TheHashinator.getPartitionForParameter(
                 VoltType.INTEGER, pkey);
+        assert partitionId < this.numPartitions;
+        assert partitionId >= 0;
         return this.partitionHostMap.get(partitionId);
     }
 

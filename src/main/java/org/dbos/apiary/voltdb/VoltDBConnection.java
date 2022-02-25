@@ -74,20 +74,23 @@ public class VoltDBConnection implements ApiaryConnection {
 
         int objIndex = 0;
         for (int i = 3; i < voltInput.getColumnCount(); i++, objIndex++) {
-            VoltType t = inputRow.getColumnType(i);
-            if (t.equals(VoltType.BIGINT)) {
-                input[objIndex] = (int) inputRow.getLong(i);
-            } else if (t.equals(VoltType.FLOAT)) {
-                input[objIndex] = inputRow.getDouble(i);
-            } else if (t.equals(VoltType.STRING)) {
+            String name = voltInput.getColumnName(i);
+            if (name.startsWith("StringT")) {
                 input[objIndex] = inputRow.getString(i);
-            } else if (t.equals(VoltType.VARBINARY)) {
+            } else if (name.startsWith("StringArrayT")) {
                 input[objIndex] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
-            } else if (t.equals(VoltType.SMALLINT)) {
+            } else if (name.startsWith("FutureT")) {
                 int futureID = (int) inputRow.getLong(i);
                 input[objIndex] = new ApiaryFuture(futureID);
+            } else if (name.startsWith("FutureArrayT")) {
+                int[] futureIDs = Utilities.byteArrayToIntArray(inputRow.getVarbinary(i));
+                ApiaryFuture[] futures = new ApiaryFuture[futureIDs.length];
+                for (int j = 0; j < futures.length; j++) {
+                    futures[j] = new ApiaryFuture(futureIDs[j]);
+                }
+                input[objIndex] = futures;
             } else {
-                logger.error("Cannot support object type {}, index {}", t.getName(), objIndex);
+                logger.error("Cannot support object type {}, index {}", name, objIndex);
                 throw new IllegalArgumentException();
             }
         }

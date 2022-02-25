@@ -4,7 +4,14 @@ import org.dbos.apiary.stateless.StatelessFunction;
 
 public class RetwisMerge extends StatelessFunction {
 
-    public String runFunction(String input) {
-        return input;
+    public String runFunction(String[] inputs) {
+        StringBuilder ret = new StringBuilder();
+        String sep = "";
+        for (String input: inputs) {
+            ret.append(sep);
+            ret.append(input);
+            sep = ",";
+        }
+        return ret.toString();
     }
 }

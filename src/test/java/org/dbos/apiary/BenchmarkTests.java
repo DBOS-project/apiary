@@ -18,6 +18,7 @@ import org.zeromq.ZContext;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BenchmarkTests {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkTests.class);
@@ -52,7 +53,10 @@ public class BenchmarkTests {
         res = client.executeFunction("localhost", "RetwisGetPosts", 0, "0");
         assertEquals("hello0,hello1", res);
         res = client.executeFunction("localhost", "RetwisGetTimeline", 1, "1");
-        assertEquals("hello0,hello1", res);
+        assertEquals(3, res.split(",").length);
+        assertTrue(res.contains("hello0"));
+        assertTrue(res.contains("hello1"));
+        assertTrue(res.contains("hello2"));
         clientContext.close();
         worker.shutdown();
     }

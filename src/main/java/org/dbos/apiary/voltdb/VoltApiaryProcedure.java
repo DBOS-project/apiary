@@ -72,6 +72,13 @@ public class VoltApiaryProcedure extends VoltProcedure {
                 row[i + 3] = Utilities.stringArraytoByteArray((String[]) input);
             } else if (input instanceof ApiaryFuture) {
                 row[i + 3] = ((ApiaryFuture) input).futureID;
+            } else if (input instanceof ApiaryFuture[]) {
+                ApiaryFuture[] futures = (ApiaryFuture[]) input;
+                int[] futureIDs = new int[futures.length];
+                for (int j = 0; j < futures.length; j++) {
+                    futureIDs[j] = futures[j].futureID;
+                }
+                row[i + 3] = Utilities.intArrayToByteArray(futureIDs);
             }
         }
         v.addRow(row);

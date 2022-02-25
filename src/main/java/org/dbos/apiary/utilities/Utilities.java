@@ -42,6 +42,32 @@ public class Utilities {
         return obj;
     }
 
+    public static byte[] intArrayToByteArray(int[] ints) {
+        byte[] bytes = new byte[ints.length * 4];
+        for (int i = 0; i < ints.length; i++) {
+            int value = ints[i];
+            int bi = i * 4;
+            bytes[bi] = (byte) (value >> 24);
+            bytes[bi + 1] = (byte) (value >> 16);
+            bytes[bi + 2] = (byte) (value >> 8);
+            bytes[bi + 3] = (byte) (value);
+        }
+        return bytes;
+    }
+
+    public static int[] byteArrayToIntArray(byte[] bytes) {
+        assert(bytes.length % 4 == 0);
+        int[] ints = new int[bytes.length / 4];
+        for (int i = 0; i < ints.length; i++) {
+            int bi = i * 4;
+            ints[i] = ((bytes[bi] & 0xFF) << 24) |
+                    ((bytes[bi + 1] & 0xFF) << 16) |
+                    ((bytes[bi + 2] & 0xFF) << 8 ) |
+                    ((bytes[bi + 3] & 0xFF));
+        }
+        return ints;
+    }
+
     public static byte[] toByteArray(int value) {
         return new byte[] {
                 (byte)(value >> 24),

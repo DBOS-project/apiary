@@ -1,6 +1,5 @@
 package org.dbos.apiary.voltdb;
 
-import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.introspect.PartitionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,35 +20,27 @@ public class VoltPartitionInfo implements PartitionInfo {
     public static String kPartitionInfoTableName = "PARTITIONINFO";
 
     private final VoltDBConnection ctxt;
-    private final Map<Integer, String> partitionHostMap = new HashMap<>();
-    private final Map<Integer, Integer> partitionPkeyMap = new HashMap<>();
+    public final Map<Integer, String> partitionHostMap = new HashMap<>();
     private final Map<Integer, String> hostIdNameMap = new HashMap<>();
     private int numPartitions;
 
     public VoltPartitionInfo(VoltDBConnection ctxt) {
         this.ctxt = ctxt;
         this.numPartitions = updatePartitionInfo();
+        // Initialize Volt hashinator.
+        TheHashinator.initialize(TheHashinator.getConfiguredHashinatorClass(), TheHashinator.getConfigureBytes(this.numPartitions));
     }
 
     // Update partition info table: (partitionID, pkey, hostId, hostname, isLeader).
     @Override
     public int updatePartitionInfo() {
-        for (int i = 0; i < 10; ++i) {
-            int partitionid = TheHashinator.getPartitionForParameter(
-                    VoltType.INTEGER, i);
-            logger.info("partitionID {} for partition {}", partitionid, i);
-        }
-        int numPkeys, numSites, numLeaders;
+        int numSites, numLeaders;
         partitionHostMap.clear();
-        partitionPkeyMap.clear();
         hostIdNameMap.clear();
         try {
             // Also update hostIdNameMap.
             numSites = updateHostMap();
             if (numSites < 0) { return -1; }
-            // Also update partitionPkeyMap
-            numPkeys = updatePartitionPkeyMap();
-            if (numPkeys < 0) { return -1; }
             // Also update partitionHostMap;
             numLeaders = updatePartitionLeader();
             if (numLeaders < 0) { return -1; }
@@ -58,20 +49,18 @@ public class VoltPartitionInfo implements PartitionInfo {
             return -1;
         }
 
-        if (((numSites % numPkeys) == 0) && (numLeaders == numPkeys)) {
-            return numPkeys;
+        if ((numSites % numLeaders) == 0) {
+            return numLeaders;
         }
         return -1;
     }
 
     @Override
-    public Map<Integer, String> getPartitionHostMap() {
-        return this.partitionHostMap;
-    }
-
-    @Override
-    public Map<Integer, Integer> getPartitionPkeyMap() {
-        return this.partitionPkeyMap;
+    public String getHostname(int pkey) {
+        int partitionId = TheHashinator.getPartitionForParameter(
+                VoltType.INTEGER, pkey);
+        logger.info("partitionID {} for pkey {}", partitionId, pkey);
+        return this.partitionHostMap.get(partitionId);
     }
 
     @Override
@@ -96,25 +85,6 @@ public class VoltPartitionInfo implements PartitionInfo {
             String hostName = hostMap.getString(2);
             hostIdNameMap.put(hostId, hostName);
             // TODO: actually update the partitionInfo table?
-            rowCnt++;
-        }
-        return rowCnt;
-    }
-
-    // Update partitionID -> pkey mapping to the PartitionInfo table.
-    // Also store the mapping in local variable.
-    // Return number of rows in map on success, return -1 on failure.
-    private int updatePartitionPkeyMap() throws IOException, ProcCallException {
-        // 1) Get the partitionID, pkey mapping.
-        VoltTable vPkeyMap = ctxt.client.callProcedure("@GetPartitionKeys",
-                "Integer").getResults()[0];
-
-        // 2) Update the partitionPkeyMap.
-        int rowCnt = 0;
-        while (vPkeyMap.advanceRow()) {
-            int partitionId = (int) vPkeyMap.getLong(0);
-            int pkey = (int) vPkeyMap.getLong(1);
-            this.partitionPkeyMap.put(partitionId, pkey);
             rowCnt++;
         }
         return rowCnt;

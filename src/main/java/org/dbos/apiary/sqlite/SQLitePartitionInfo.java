@@ -16,12 +16,8 @@ public class SQLitePartitionInfo implements PartitionInfo {
     }
 
     @Override
-    public Map<Integer, String> getPartitionHostMap() {
-        return Map.of(0, "localhost");
+    public String getHostname(int pkey) {
+        return "localhost";
     }
 
-    @Override
-    public Map<Integer, Integer> getPartitionPkeyMap() {
-        return Map.of(0, 0);
-    }
 }

@@ -34,16 +34,12 @@ public class ApiaryWorker {
     private ZContext zContext;
     private Thread serverThread;
     private final List<Thread> workerThreads = new ArrayList<>();
-    private final Map<Integer, String> partitionToAddressMap;
-    private final Map<Integer, Integer> partitionToPkeyMap;
-    private final int numPartitions;
+    private final PartitionInfo partitionInfo;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
 
     public ApiaryWorker(ApiaryConnection c, PartitionInfo partitionInfo) {
         this.c = c;
-        this.partitionToAddressMap = partitionInfo.getPartitionHostMap();
-        this.numPartitions = partitionInfo.getNumPartitions();
-        this.partitionToPkeyMap = partitionInfo.getPartitionPkeyMap();
+        this.partitionInfo = partitionInfo;
         this.zContext = new ZContext();
     }
 
@@ -86,8 +82,7 @@ public class ApiaryWorker {
 
     private String executeFunction(ApiaryWorkerClient client, String name, int pkey, Object[] arguments) {
         try {
-            int realPkey = partitionToPkeyMap.get(pkey % numPartitions);
-            FunctionOutput o = c.callFunction(name, realPkey, arguments);
+            FunctionOutput o = c.callFunction(name, pkey, arguments);
             Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
             for (Task task: o.calledFunctions) {
                 task.dereferenceFutures(taskIDtoValue);
@@ -96,7 +91,7 @@ public class ApiaryWorker {
                     StatelessFunction f = statelessFunctions.get(task.funcName).call();
                     output = f.internalRunFunction(task.input);
                 } else {
-                    String address = partitionToAddressMap.get(task.pkey % numPartitions);
+                    String address = partitionInfo.getHostname(task.pkey);
                     output = client.executeFunction(address, task.funcName, task.pkey, task.input);
                 }
                 taskIDtoValue.put(task.taskID, output);

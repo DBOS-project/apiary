@@ -12,10 +12,10 @@ import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class IntrospectTests {
@@ -36,7 +36,7 @@ public class IntrospectTests {
         logger.info("Detected {} partitions.", numPartitions);
         assertTrue(numPartitions > 0);
 
-        Map<Integer, String> partitionHostMap = vpi.getPartitionHostMap();
+        HashMap<Integer, String> partitionHostMap = (HashMap)((HashMap)vpi.partitionHostMap).clone();
         String localhost = InetAddress.getLocalHost().getHostName();
         for (int p : partitionHostMap.keySet()) {
             String hn = partitionHostMap.get(p);
@@ -45,20 +45,10 @@ public class IntrospectTests {
         }
         assertEquals(numPartitions, partitionHostMap.size());
 
-        Map<Integer, Integer> partitionPkeyMap = vpi.getPartitionPkeyMap();
-        for (int p : partitionPkeyMap.keySet()) {
-            int pkey = partitionPkeyMap.get(p);
-            assertTrue(p >= 0);
-            assertTrue( pkey >= 0);
-            logger.info("partition {} --> pkey {}", p, pkey);
-        }
-
         // Update and test again.
         int numPartitions2 = vpi.updatePartitionInfo();
         assertEquals(numPartitions, numPartitions2);
-        Map<Integer, String> partitionHostMap2 = vpi.getPartitionHostMap();
+        Map<Integer, String> partitionHostMap2 = vpi.partitionHostMap;
         assertTrue(partitionHostMap.equals(partitionHostMap2));
-        Map<Integer, Integer> partitionPkeyMap2 = vpi.getPartitionPkeyMap();
-        assertTrue(partitionPkeyMap.equals(partitionPkeyMap2));
     }
 }

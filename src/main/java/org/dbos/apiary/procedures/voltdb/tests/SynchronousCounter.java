@@ -1,4 +1,4 @@
-package org.dbos.apiary.procedures.voltdb;
+package org.dbos.apiary.procedures.voltdb.tests;
 
 import org.voltdb.VoltTable;
 
@@ -21,7 +21,7 @@ public class SynchronousCounter extends VoltProcedureContainer {
             value = 0;
         }
         String incremented = (String) funcApi.apiaryCallFunction("org.dbos.apiary.procedures.stateless.Increment", key, Integer.toString(value));
-        funcApi.apiaryCallFunction("org.dbos.apiary.procedures.voltdb.InsertFunction", key, keyString, incremented);
+        funcApi.apiaryCallFunction("org.dbos.apiary.procedures.voltdb.tests.InsertFunction", key, keyString, incremented);
         return incremented;
     }
 }

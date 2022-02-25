@@ -86,7 +86,7 @@ public class ApiaryWorker {
 
     private String executeFunction(ApiaryWorkerClient client, String name, int pkey, Object[] arguments) {
         try {
-            // Assume the pkey here is already the correct real pkey used by the DBMS.
+            int realPkey = partitionToPkeyMap.get(pkey % numPartitions);
             FunctionOutput o = c.callFunction(name, pkey, arguments);
             Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
             for (Task task: o.calledFunctions) {
@@ -97,9 +97,7 @@ public class ApiaryWorker {
                     output = f.internalRunFunction(task.input);
                 } else {
                     String address = partitionToAddressMap.get(task.pkey % numPartitions);
-                    // Translate to real pkey that the DBMS uses.
-                    int realPkey = partitionToPkeyMap.get(task.pkey % numPartitions);
-                    output = client.executeFunction(address, task.funcName, realPkey, task.input);
+                    output = client.executeFunction(address, task.funcName, task.pkey, task.input);
                 }
                 taskIDtoValue.put(task.taskID, output);
             }

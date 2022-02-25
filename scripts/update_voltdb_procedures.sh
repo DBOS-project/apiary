@@ -10,5 +10,5 @@ VOLTDB_BIN="${VOLT_HOME}/bin"
 mvn -DskipTests package
 
 javac -cp "$VOLT_HOME/voltdb/*:$PWD/target/*" -d obj/sql $(find src/main/java/org/dbos/apiary/procedures/voltdb -type f -name *.java)
-jar cvf target/DBOSProcedures.jar -C obj/sql . -C target/classes org/dbos/apiary/interposition -C target/classes org/dbos/apiary/voltdb -C target/classes org/dbos/apiary/executor -C target/classes org/dbos/apiary/utilities -C target/classes org/dbos/apiary/stateless -C target/classes org/dbos/apiary/procedures/stateless -C target/classes org/dbos/apiary/introspect
+jar cvf target/DBOSProcedures.jar -C obj/sql . -C target/classes org/dbos/apiary/interposition -C target/classes org/dbos/apiary/voltdb -C target/classes org/dbos/apiary/executor -C target/classes org/dbos/apiary/utilities -C target/classes org/dbos/apiary/stateless -C target/classes org/dbos/apiary/procedures/stateless
 ${VOLTDB_BIN}/sqlcmd < sql/load_procedures.sql

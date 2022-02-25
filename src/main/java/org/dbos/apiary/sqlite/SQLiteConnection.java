@@ -31,7 +31,7 @@ public class SQLiteConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String name, long pkey, Object... inputs) throws Exception {
+    public FunctionOutput callFunction(String name, int pkey, Object... inputs) throws Exception {
         SQLiteFunctionInterface function = functions.get(name).call();
         FunctionOutput f = null;
         try {
@@ -43,4 +43,23 @@ public class SQLiteConnection implements ApiaryConnection {
         }
         return f;
     }
+
+    @Override
+    public void updatePartitionInfo() { return; }
+
+    @Override
+    public int getNumPartitions() {
+        return 1;
+    }
+
+    @Override
+    public String getHostname(int pkey) {
+        return "localhost";
+    }
+
+    @Override
+    public Map<Integer, String> getPartitionHostMap() {
+        return null;
+    }
+
 }

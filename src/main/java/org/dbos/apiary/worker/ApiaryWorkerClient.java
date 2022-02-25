@@ -4,6 +4,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,13 +36,13 @@ public class ApiaryWorkerClient {
             return sockets.get(address);
         } else {
             ZMQ.Socket socket = zContext.createSocket(SocketType.REQ);
-            socket.connect("tcp://" + address);
+            socket.connect("tcp://" + address + ":" + ApiaryConfig.workerPort);
             sockets.put(address, socket);
             return socket;
         }
     }
 
-    public String executeFunction(String address, String name, long pkey, Object... arguments) throws InvalidProtocolBufferException {
+    public String executeFunction(String address, String name, int pkey, Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();

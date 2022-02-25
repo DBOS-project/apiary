@@ -12,7 +12,7 @@ service Worker {
 
 message ExecuteFunctionRequest {
   string name = 1;
-  int64 pkey = 2;
+  int32 pkey = 2;
   repeated bytes arguments = 3;
   repeated int32 argumentTypes = 4;
 }

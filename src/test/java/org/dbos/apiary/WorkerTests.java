@@ -15,7 +15,6 @@ import org.voltdb.client.ProcCallException;
 import org.zeromq.ZContext;
 
 import java.io.IOException;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -42,20 +41,20 @@ public class WorkerTests {
         logger.info("testFib");
         for (int i = 0; i < 100; i++) {
             ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-            ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+            ApiaryWorker worker = new ApiaryWorker(c);
             worker.startServing();
 
             ZContext clientContext = new ZContext();
             ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
             String res;
-            res = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "1");
+            res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "1");
             assertEquals("1", res);
 
-            res = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
+            res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
             assertEquals("55", res);
 
-            res = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "30");
+            res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "30");
             assertEquals("832040", res);
             clientContext.close();
             worker.shutdown();
@@ -66,13 +65,13 @@ public class WorkerTests {
     public void testAddition() throws IOException, InterruptedException {
         logger.info("testAddition");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        ApiaryWorker worker = new ApiaryWorker(c);
         worker.startServing();
 
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String res = client.executeFunction("localhost:8000", "AdditionFunction", 0, "1", "2", new String[]{"matei", "zaharia"});
+        String res = client.executeFunction("localhost", "AdditionFunction", ApiaryConfig.defaultPkey, "1", "2", new String[]{"matei", "zaharia"});
         assertEquals("3mateizaharia", res);
 
         clientContext.close();
@@ -83,7 +82,7 @@ public class WorkerTests {
     public void testStatelessCounter() throws IOException, InterruptedException {
         logger.info("testStatelessIncrement");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        ApiaryWorker worker = new ApiaryWorker(c);
         worker.registerStatelessFunction("increment", Increment::new);
         worker.startServing();
 
@@ -91,13 +90,13 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost:8000", "CounterFunction", 0, "0");
+        res = client.executeFunction("localhost", "CounterFunction", ApiaryConfig.defaultPkey, "0");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost:8000", "CounterFunction", 0, "0");
+        res = client.executeFunction("localhost", "CounterFunction", ApiaryConfig.defaultPkey, "0");
         assertEquals("2", res);
 
-        res = client.executeFunction("localhost:8000", "CounterFunction", 1, "1");
+        res = client.executeFunction("localhost", "CounterFunction", 1, "1");
         assertEquals("1", res);
 
         clientContext.close();
@@ -108,20 +107,20 @@ public class WorkerTests {
     public void testSynchronousCounter() throws IOException, InterruptedException {
         logger.info("testSynchronousCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        ApiaryWorker worker = new ApiaryWorker(c);
         worker.startServing();
 
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost:8000", "SynchronousCounter", 0, "0");
+        res = client.executeFunction("localhost", "SynchronousCounter", ApiaryConfig.defaultPkey, "0");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost:8000", "SynchronousCounter", 0, "0");
+        res = client.executeFunction("localhost", "SynchronousCounter", ApiaryConfig.defaultPkey, "0");
         assertEquals("2", res);
 
-        res = client.executeFunction("localhost:8000", "SynchronousCounter", 1, "1");
+        res = client.executeFunction("localhost", "SynchronousCounter", 1, "1");
         assertEquals("1", res);
 
         clientContext.close();

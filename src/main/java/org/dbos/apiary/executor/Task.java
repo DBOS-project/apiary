@@ -12,12 +12,12 @@ public class Task {
 
     public int taskID;  // Unique ID of this task.
     public final String funcName;
-    public final long pkey;  // Partition to run this task.
+    public final int pkey;  // Partition to run this task.
     public final Object[] input;
     public final Map<Integer, Integer> inputIdxToFutureID = new HashMap<>();  // Map from object index to future task ID.
 
     // Initialize from user input.
-    public Task(int taskID, String funcName, long pkey, Object[] input) {
+    public Task(int taskID, String funcName, int pkey, Object[] input) {
         this.taskID = taskID;
         this.funcName = funcName;
         this.pkey = pkey;

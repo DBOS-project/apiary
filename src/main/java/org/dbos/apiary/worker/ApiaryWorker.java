@@ -8,6 +8,7 @@ import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
 import org.dbos.apiary.stateless.StatelessFunction;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,19 +30,13 @@ public class ApiaryWorker {
     private static final int numWorkerThreads = 128;
 
     private final ApiaryConnection c;
-    private final int serverPort;
     private ZContext zContext;
     private Thread serverThread;
     private final List<Thread> workerThreads = new ArrayList<>();
-    private final Map<Long, String> partitionToAddressMap;
-    private final int numPartitions;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
 
-    public ApiaryWorker(int serverPort, ApiaryConnection c, Map<Long, String> partitionToAddressMap, int numPartitions) {
-        this.serverPort = serverPort;
+    public ApiaryWorker(ApiaryConnection c) {
         this.c = c;
-        this.partitionToAddressMap = partitionToAddressMap;
-        this.numPartitions = numPartitions;
         this.zContext = new ZContext();
     }
 
@@ -82,7 +77,7 @@ public class ApiaryWorker {
         shadowContext.close();
     }
 
-    private String executeFunction(ApiaryWorkerClient client, String name, long pkey, Object[] arguments) {
+    private String executeFunction(ApiaryWorkerClient client, String name, int pkey, Object[] arguments) {
         try {
             FunctionOutput o = c.callFunction(name, pkey, arguments);
             Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
@@ -93,7 +88,7 @@ public class ApiaryWorker {
                     StatelessFunction f = statelessFunctions.get(task.funcName).call();
                     output = f.internalRunFunction(task.input);
                 } else {
-                    String address = partitionToAddressMap.get(task.pkey % numPartitions);
+                    String address = c.getHostname(task.pkey);
                     output = client.executeFunction(address, task.funcName, task.pkey, task.input);
                 }
                 taskIDtoValue.put(task.taskID, output);
@@ -113,7 +108,7 @@ public class ApiaryWorker {
     private void serverThread() {
         ZContext shadowContext = ZContext.shadow(zContext);
         ZMQ.Socket frontend = shadowContext.createSocket(SocketType.ROUTER);
-        frontend.bind("tcp://*:" + serverPort);
+        frontend.bind("tcp://*:" + ApiaryConfig.workerPort);
 
         ZMQ.Socket backend = shadowContext.createSocket(SocketType.DEALER);
         backend.bind("inproc://backend");

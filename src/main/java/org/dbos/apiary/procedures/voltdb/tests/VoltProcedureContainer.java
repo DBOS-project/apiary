@@ -1,4 +1,4 @@
-package org.dbos.apiary.procedures.voltdb;
+package org.dbos.apiary.procedures.voltdb.tests;
 
 import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.SQLStmt;

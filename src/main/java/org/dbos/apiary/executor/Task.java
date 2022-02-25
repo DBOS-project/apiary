@@ -14,7 +14,6 @@ public class Task {
     public final String funcName;
     public final int pkey;  // Partition to run this task.
     public final Object[] input;
-    public final Map<Integer, Integer> inputIdxToFutureID = new HashMap<>();  // Map from object index to future task ID.
 
     // Initialize from user input.
     public Task(int taskID, String funcName, int pkey, Object[] input) {
@@ -22,21 +21,26 @@ public class Task {
         this.funcName = funcName;
         this.pkey = pkey;
         this.input = input;
-        for (int i = 0; i < input.length; i++) {
-            Object o = input[i];
-            if (o instanceof ApiaryFuture) {
-                int futureID = ((ApiaryFuture) o).futureID;
-                inputIdxToFutureID.put(i, futureID);
-            }
-        }
     }
 
     // Fill out the actual value of the referred future ID.
     public void dereferenceFutures(Map<Integer, String> taskIDtoValue) {
-        for (int inputIdx : inputIdxToFutureID.keySet()) {
-            int futureID = inputIdxToFutureID.get(inputIdx);
-            assert(taskIDtoValue.containsKey(futureID));
-            input[inputIdx] = taskIDtoValue.get(futureID);
+        for (int i = 0; i < input.length; i++) {
+            Object o = input[i];
+            if (o instanceof ApiaryFuture) {
+                int futureID = ((ApiaryFuture) o).futureID;
+                assert(taskIDtoValue.containsKey(futureID));
+                input[i] = taskIDtoValue.get(futureID);
+            } else if (o instanceof ApiaryFuture[]) {
+                ApiaryFuture[] futureArray = (ApiaryFuture[]) o;
+                String[] stringArray = new String[futureArray.length];
+                for (int j = 0; j < futureArray.length; j++) {
+                    int futureID = futureArray[j].futureID;
+                    assert(taskIDtoValue.containsKey(futureID));
+                    stringArray[j] = taskIDtoValue.get(futureID);
+                }
+                input[i] = stringArray;
+            }
         }
     }
 }

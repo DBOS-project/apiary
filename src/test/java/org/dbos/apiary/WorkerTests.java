@@ -51,13 +51,13 @@ public class WorkerTests {
             ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
             String res;
-            res = client.executeFunction("localhost", "FibonacciFunction", vpi.getPartitionPkeyMap().get(ApiaryConfig.defaultPkey), "1");
+            res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "1");
             assertEquals("1", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", vpi.getPartitionPkeyMap().get(ApiaryConfig.defaultPkey), "10");
+            res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
             assertEquals("55", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", vpi.getPartitionPkeyMap().get(ApiaryConfig.defaultPkey), "30");
+            res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "30");
             assertEquals("832040", res);
             clientContext.close();
             worker.shutdown();
@@ -75,7 +75,7 @@ public class WorkerTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String res = client.executeFunction("localhost", "AdditionFunction", vpi.getPartitionPkeyMap().get(ApiaryConfig.defaultPkey), "1", "2", new String[]{"matei", "zaharia"});
+        String res = client.executeFunction("localhost", "AdditionFunction", ApiaryConfig.defaultPkey, "1", "2", new String[]{"matei", "zaharia"});
         assertEquals("3mateizaharia", res);
 
         clientContext.close();
@@ -95,14 +95,11 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "CounterFunction", vpi.getPartitionPkeyMap().get(0), "0");
+        res = client.executeFunction("localhost", "CounterFunction", ApiaryConfig.defaultPkey, "0");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "CounterFunction", vpi.getPartitionPkeyMap().get(0), "0");
+        res = client.executeFunction("localhost", "CounterFunction", ApiaryConfig.defaultPkey, "0");
         assertEquals("2", res);
-
-        res = client.executeFunction("localhost", "CounterFunction", vpi.getPartitionPkeyMap().get(1), "1");
-        assertEquals("1", res);
 
         clientContext.close();
         worker.shutdown();
@@ -120,14 +117,11 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "SynchronousCounter", vpi.getPartitionPkeyMap().get(0), "0");
+        res = client.executeFunction("localhost", "SynchronousCounter", ApiaryConfig.defaultPkey, "0");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "SynchronousCounter", vpi.getPartitionPkeyMap().get(0), "0");
+        res = client.executeFunction("localhost", "SynchronousCounter", ApiaryConfig.defaultPkey, "0");
         assertEquals("2", res);
-
-        res = client.executeFunction("localhost", "SynchronousCounter", vpi.getPartitionPkeyMap().get(1), "1");
-        assertEquals("1", res);
 
         clientContext.close();
         worker.shutdown();

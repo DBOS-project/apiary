@@ -54,7 +54,7 @@ public class VoltApiaryProcedure extends VoltProcedure {
         VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[task.input.length + 3];
         columns[0] = new VoltTable.ColumnInfo("name", VoltType.STRING);
         columns[1] = new VoltTable.ColumnInfo("id", VoltType.BIGINT);
-        columns[2] = new VoltTable.ColumnInfo("pkey", VoltType.BIGINT);
+        columns[2] = new VoltTable.ColumnInfo("pkey", VoltType.INTEGER);
         for (int i = 0; i < task.input.length; i++) {
             Object input = task.input[i];
             columns[i + 3] = VoltUtilities.objectToColumnInfo(i, input);

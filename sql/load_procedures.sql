@@ -28,7 +28,7 @@ DROP PROCEDURE RetwisGetPosts IF EXISTS;
 CREATE PROCEDURE PARTITION ON TABLE RetwisPosts COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisGetPosts;
 
 DROP PROCEDURE RetwisFollow IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE RetwisFollowers COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisFollow;
+CREATE PROCEDURE PARTITION ON TABLE RetwisFollowees COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisFollow;
 
 DROP PROCEDURE RetwisGetTimeline IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE RetwisFollowers COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisGetTimeline;
+CREATE PROCEDURE PARTITION ON TABLE RetwisFollowees COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisGetTimeline;

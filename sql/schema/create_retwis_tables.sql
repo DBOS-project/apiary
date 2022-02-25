@@ -9,11 +9,11 @@ CREATE TABLE RetwisPosts (
 PARTITION TABLE RetwisPosts ON COLUMN PKEY;
 CREATE INDEX RetwisPostsIndex ON RetwisPosts (UserID);
 
-CREATE TABLE RetwisFollowers (
+CREATE TABLE RetwisFollowees (
      PKEY INTEGER NOT NULL,
      UserID INTEGER NOT NULL,
-     FollowerID INTEGER NOT NULL,
-     PRIMARY KEY(PKEY, UserID, FollowerID)
+     FolloweeID INTEGER NOT NULL,
+     PRIMARY KEY(PKEY, UserID, FolloweeID)
 );
-PARTITION TABLE RetwisFollowers ON COLUMN PKEY;
-CREATE INDEX RetwisFollowersIndex ON RetwisFollowers (UserID);
+PARTITION TABLE RetwisFollowees ON COLUMN PKEY;
+CREATE INDEX RetwisFolloweesIndex ON RetwisFollowees (UserID);

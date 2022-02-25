@@ -11,7 +11,7 @@ import java.util.List;
 
 public class RetwisGetTimeline extends VoltApiaryProcedure {
     public final SQLStmt getFollowees = new SQLStmt(
-            "SELECT FollowerID FROM RetwisFollowers WHERE UserID=?;"
+            "SELECT FolloweeID FROM RetwisFollowees WHERE UserID=?;"
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {

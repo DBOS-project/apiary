@@ -8,7 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class RetwisFollow extends VoltApiaryProcedure {
     public final SQLStmt addItem = new SQLStmt (
-            "INSERT INTO RetwisFollowers VALUES (?, ?, ?);"
+            "INSERT INTO RetwisFollowees VALUES (?, ?, ?);"
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {

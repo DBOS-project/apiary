@@ -12,14 +12,14 @@ public class TruncateTables extends VoltProcedure {
             "TRUNCATE TABLE RetwisPosts;"
     );
 
-    public final SQLStmt truncateRetwisFollowers = new SQLStmt(
-            "TRUNCATE TABLE RetwisFollowers;"
+    public final SQLStmt truncateRetwisFollowees = new SQLStmt(
+            "TRUNCATE TABLE RetwisFollowees;"
     );
 
     public long run() throws VoltAbortException {
         voltQueueSQL(truncateKVTable);
         voltQueueSQL(truncateRetwisPosts);
-        voltQueueSQL(truncateRetwisFollowers);
+        voltQueueSQL(truncateRetwisFollowees);
         voltExecuteSQL();
         return 0;
     }

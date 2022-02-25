@@ -7,7 +7,9 @@ import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
+import org.dbos.apiary.introspect.PartitionInfo;
 import org.dbos.apiary.stateless.StatelessFunction;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,19 +31,19 @@ public class ApiaryWorker {
     private static final int numWorkerThreads = 128;
 
     private final ApiaryConnection c;
-    private final int serverPort;
     private ZContext zContext;
     private Thread serverThread;
     private final List<Thread> workerThreads = new ArrayList<>();
     private final Map<Integer, String> partitionToAddressMap;
+    private final Map<Integer, Integer> partitionToPkeyMap;
     private final int numPartitions;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
 
-    public ApiaryWorker(int serverPort, ApiaryConnection c, Map<Integer, String> partitionToAddressMap, int numPartitions) {
-        this.serverPort = serverPort;
+    public ApiaryWorker(ApiaryConnection c, PartitionInfo partitionInfo) {
         this.c = c;
-        this.partitionToAddressMap = partitionToAddressMap;
-        this.numPartitions = numPartitions;
+        this.partitionToAddressMap = partitionInfo.getPartitionHostMap();
+        this.numPartitions = partitionInfo.getNumPartitions();
+        this.partitionToPkeyMap = partitionInfo.getPartitionPkeyMap();
         this.zContext = new ZContext();
     }
 
@@ -84,6 +86,7 @@ public class ApiaryWorker {
 
     private String executeFunction(ApiaryWorkerClient client, String name, int pkey, Object[] arguments) {
         try {
+            // Assume the pkey here is already the correct real pkey used by the DBMS.
             FunctionOutput o = c.callFunction(name, pkey, arguments);
             Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
             for (Task task: o.calledFunctions) {
@@ -94,7 +97,9 @@ public class ApiaryWorker {
                     output = f.internalRunFunction(task.input);
                 } else {
                     String address = partitionToAddressMap.get(task.pkey % numPartitions);
-                    output = client.executeFunction(address, task.funcName, task.pkey, task.input);
+                    // Translate to real pkey that the DBMS uses.
+                    int realPkey = partitionToPkeyMap.get(task.pkey % numPartitions);
+                    output = client.executeFunction(address, task.funcName, realPkey, task.input);
                 }
                 taskIDtoValue.put(task.taskID, output);
             }
@@ -113,7 +118,7 @@ public class ApiaryWorker {
     private void serverThread() {
         ZContext shadowContext = ZContext.shadow(zContext);
         ZMQ.Socket frontend = shadowContext.createSocket(SocketType.ROUTER);
-        frontend.bind("tcp://*:" + serverPort);
+        frontend.bind("tcp://*:" + ApiaryConfig.workerPort);
 
         ZMQ.Socket backend = shadowContext.createSocket(SocketType.DEALER);
         backend.bind("inproc://backend");

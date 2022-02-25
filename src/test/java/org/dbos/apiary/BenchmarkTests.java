@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.procedures.stateless.Increment;
+import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltDBConnection;
@@ -31,6 +32,7 @@ public class BenchmarkTests {
         logger.info("testRetwis");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c);
+        worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
         worker.startServing();
 
         ZContext clientContext = new ZContext();
@@ -41,7 +43,11 @@ public class BenchmarkTests {
         assertEquals("0", res);
         res = client.executeFunction("localhost", "RetwisPost", 0, "0", "1", "1", "hello1");
         assertEquals("0", res);
+        res = client.executeFunction("localhost", "RetwisPost", 1, "1", "2", "0", "hello2");
+        assertEquals("1", res);
         res = client.executeFunction("localhost", "RetwisFollow", 1, "1", "0");
+        assertEquals("1", res);
+        res = client.executeFunction("localhost", "RetwisFollow", 1, "1", "1");
         assertEquals("1", res);
         res = client.executeFunction("localhost", "RetwisGetPosts", 0, "0");
         assertEquals("hello0,hello1", res);

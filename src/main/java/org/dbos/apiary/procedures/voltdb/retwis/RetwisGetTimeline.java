@@ -29,6 +29,6 @@ public class RetwisGetTimeline extends VoltApiaryProcedure {
         for (int i = 0; i < followeesList.size(); i++) {
             futures[i] = funcApi.apiaryQueueFunction("RetwisGetPosts", followeesList.get(i), String.valueOf(followeesList.get(i)));
         }
-        return futures[0];
+        return funcApi.apiaryQueueFunction("RetwisMerge", 0, futures[0]);
     }
 }

@@ -36,7 +36,7 @@ public class IntrospectTests {
         logger.info("Detected {} partitions.", numPartitions);
         assertTrue(numPartitions > 0);
 
-        HashMap<Integer, String> partitionHostMap = (HashMap)((HashMap)vpi.partitionHostMap).clone();
+        HashMap<Integer, String> partitionHostMap = (HashMap)((HashMap)vpi.getPartitionHostMap()).clone();
         String localhost = InetAddress.getLocalHost().getHostName();
         for (int p : partitionHostMap.keySet()) {
             String hn = partitionHostMap.get(p);
@@ -48,7 +48,7 @@ public class IntrospectTests {
         // Update and test again.
         int numPartitions2 = vpi.updatePartitionInfo();
         assertEquals(numPartitions, numPartitions2);
-        Map<Integer, String> partitionHostMap2 = vpi.partitionHostMap;
+        Map<Integer, String> partitionHostMap2 = vpi.getPartitionHostMap();
         assertTrue(partitionHostMap.equals(partitionHostMap2));
     }
 }

@@ -7,5 +7,6 @@ import java.util.Map;
 public interface PartitionInfo {
     int updatePartitionInfo();  // Return number of partitions.
     int getNumPartitions();
-    public String getHostname(int pkey);  // Return the hostname of a given pkey.
+    String getHostname(int pkey);  // Return the hostname of a given pkey.
+    Map<Integer, String> getPartitionHostMap();
 }

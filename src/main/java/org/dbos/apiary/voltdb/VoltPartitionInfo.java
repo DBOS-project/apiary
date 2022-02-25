@@ -20,7 +20,7 @@ public class VoltPartitionInfo implements PartitionInfo {
     public static String kPartitionInfoTableName = "PARTITIONINFO";
 
     private final VoltDBConnection ctxt;
-    public final Map<Integer, String> partitionHostMap = new HashMap<>();
+    private final Map<Integer, String> partitionHostMap = new HashMap<>();
     private final Map<Integer, String> hostIdNameMap = new HashMap<>();
     private int numPartitions;
 
@@ -59,8 +59,13 @@ public class VoltPartitionInfo implements PartitionInfo {
     public String getHostname(int pkey) {
         int partitionId = TheHashinator.getPartitionForParameter(
                 VoltType.INTEGER, pkey);
-        logger.info("partitionID {} for pkey {}", partitionId, pkey);
+        logger.debug("partitionID {} for pkey {}", partitionId, pkey);
         return this.partitionHostMap.get(partitionId);
+    }
+
+    @Override
+    public Map<Integer, String> getPartitionHostMap() {
+        return this.partitionHostMap;
     }
 
     @Override

@@ -20,4 +20,9 @@ public class SQLitePartitionInfo implements PartitionInfo {
         return "localhost";
     }
 
+    @Override
+    public Map<Integer, String> getPartitionHostMap() {
+        return null;
+    }
+
 }

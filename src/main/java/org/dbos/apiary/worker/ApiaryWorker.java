@@ -87,7 +87,7 @@ public class ApiaryWorker {
     private String executeFunction(ApiaryWorkerClient client, String name, int pkey, Object[] arguments) {
         try {
             int realPkey = partitionToPkeyMap.get(pkey % numPartitions);
-            FunctionOutput o = c.callFunction(name, pkey, arguments);
+            FunctionOutput o = c.callFunction(name, realPkey, arguments);
             Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
             for (Task task: o.calledFunctions) {
                 task.dereferenceFutures(taskIDtoValue);

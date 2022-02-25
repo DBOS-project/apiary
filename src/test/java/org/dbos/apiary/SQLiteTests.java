@@ -38,13 +38,13 @@ public class SQLiteTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "1");
+        res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "1");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
+        res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
         assertEquals("55", res);
 
-        res = client.executeFunction("localhost:8000", "FibonacciFunction", ApiaryConfig.defaultPkey, "30");
+        res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "30");
         assertEquals("832040", res);
 
         clientContext.close();

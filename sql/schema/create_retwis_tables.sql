@@ -1,0 +1,19 @@
+CREATE TABLE RetwisPosts (
+    PKEY INTEGER NOT NULL,
+    PostID INTEGER NOT NULL,
+    Timestamp INTEGER NOT NULL,
+    UserID INTEGER NOT NULL,
+    Post VARCHAR(1000) NOT NULL,
+    PRIMARY KEY(PKEY, PostID)
+);
+PARTITION TABLE RetwisPosts ON COLUMN PKEY;
+CREATE INDEX RetwisPostsIndex ON RetwisPosts (UserID);
+
+CREATE TABLE RetwisFollowers (
+     PKEY INTEGER NOT NULL,
+     UserID INTEGER NOT NULL,
+     FollowerID INTEGER NOT NULL,
+     PRIMARY KEY(PKEY, UserID, FollowerID)
+);
+PARTITION TABLE RetwisFollowers ON COLUMN PKEY;
+CREATE INDEX RetwisFollowersIndex ON RetwisFollowers (UserID);

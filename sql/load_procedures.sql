@@ -20,3 +20,12 @@ CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS o
 
 DROP PROCEDURE SynchronousCounter IF EXISTS;
 CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.SynchronousCounter;
+
+DROP PROCEDURE RetwisPost IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE RetwisPosts COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisPost;
+
+DROP PROCEDURE RetwisGetPosts IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE RetwisPosts COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisGetPosts;
+
+DROP PROCEDURE RetwisFollow IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE RetwisFollowers COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisFollow;

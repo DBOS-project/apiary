@@ -4,7 +4,9 @@ import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.introspect.PartitionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.voltdb.TheHashinator;
 import org.voltdb.VoltTable;
+import org.voltdb.VoltType;
 import org.voltdb.client.ProcCallException;
 import org.voltdb.iv2.MpInitiator;
 
@@ -32,6 +34,11 @@ public class VoltPartitionInfo implements PartitionInfo {
     // Update partition info table: (partitionID, pkey, hostId, hostname, isLeader).
     @Override
     public int updatePartitionInfo() {
+        for (int i = 0; i < 10; ++i) {
+            int partitionid = TheHashinator.getPartitionForParameter(
+                    VoltType.INTEGER, i);
+            logger.info("partitionID {} for partition {}", partitionid, i);
+        }
         int numPkeys, numSites, numLeaders;
         partitionHostMap.clear();
         partitionPkeyMap.clear();

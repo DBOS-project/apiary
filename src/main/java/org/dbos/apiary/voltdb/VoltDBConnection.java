@@ -100,7 +100,7 @@ public class VoltDBConnection implements ApiaryConnection {
     @Override
     public FunctionOutput callFunction(String funcName, Object... inputs) throws IOException, ProcCallException {
         VoltTable voltInput = inputToVoltTable(inputs);
-        assert(inputs[0] instanceof String);
+        assert(inputs[0] instanceof String); // TODO: Support more types, especially int/float.
         VoltTable[] res  = client.callProcedure(funcName, Integer.parseInt((String) inputs[0]), voltInput).getResults();
         VoltTable retVal = res[0];
         assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);

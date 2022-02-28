@@ -17,5 +17,7 @@ while True:
         break
     print("Received data:", data)
     conn.send(b"hello client\n")
+    print("Sent back data")
+print("Closing")
 conn.close()
 

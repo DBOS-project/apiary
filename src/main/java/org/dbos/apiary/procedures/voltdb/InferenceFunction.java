@@ -21,8 +21,6 @@ public class InferenceFunction extends VoltApiaryProcedure {
     }
 
     public ApiaryFuture runFunction(String keyString) {
-        int key = Integer.parseInt(keyString);
-
         /*
         // Grab data and extract from VoltTable
         VoltTable res = ((VoltTable[]) funcApi.apiaryExecuteQuery(getValue, key))[0];
@@ -34,7 +32,7 @@ public class InferenceFunction extends VoltApiaryProcedure {
         }
         */
 
-        String message = String.valueOf(key);
+        String message = keyString;
 
         // Queue stateless external function
         ApiaryFuture incrementedValue = funcApi.apiaryQueueFunction("infer", defaultPkey, message);

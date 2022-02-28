@@ -42,8 +42,17 @@ public class ApiaryWorker {
         ApiaryWorkerClient client = new ApiaryWorkerClient(shadowContext);
         ZMQ.Socket worker = shadowContext.createSocket(SocketType.DEALER);
         worker.connect("inproc://backend");
+        ZMQ.Poller poller = zContext.createPoller(1);
+        poller.register(worker, ZMQ.Poller.POLLIN);
         while (!Thread.currentThread().isInterrupted()) {
             try {
+                int prs = poller.poll(10);
+                if (prs == -1) {
+                    break;
+                }
+                if (!poller.pollin(0)) {
+                    continue;
+                }
                 ZMsg msg = ZMsg.recvMsg(worker);
                 ZFrame address = msg.pop();
                 ZFrame content = msg.pop();

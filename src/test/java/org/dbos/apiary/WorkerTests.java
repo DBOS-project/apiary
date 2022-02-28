@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.procedures.stateless.Increment;
+import org.dbos.apiary.procedures.stateless.Infer;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltDBConnection;
@@ -99,6 +100,25 @@ public class WorkerTests {
 
         res = client.executeFunction("localhost:8000", "CounterFunction", 1, "1");
         assertEquals("1", res);
+
+        clientContext.close();
+        worker.shutdown();
+    }
+
+    @Test
+    public void testInfer() throws IOException, InterruptedException {
+        logger.info("testInfer");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        worker.registerStatelessFunction("infer", Infer::new);
+        worker.startServing();
+
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+
+        String res;
+        res = client.executeFunction("localhost:8000", "InferenceFunction", 0, "hello server");
+        assertEquals("hello client\n", res);
 
         clientContext.close();
         worker.shutdown();

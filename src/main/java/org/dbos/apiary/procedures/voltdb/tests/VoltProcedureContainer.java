@@ -6,7 +6,7 @@ import org.voltdb.SQLStmt;
 public class VoltProcedureContainer extends VoltApiaryProcedure {
 
     public static final SQLStmt addResult = new SQLStmt(
-            // PKEY, KEY, VALUE
+            // KEY, VALUE
             "UPSERT INTO KVTable VALUES (?, ?);"
     );
 

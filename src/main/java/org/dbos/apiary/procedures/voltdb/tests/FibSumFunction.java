@@ -8,7 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class FibSumFunction extends VoltApiaryProcedure {
     public final SQLStmt addResult = new SQLStmt(
-            // PKEY, KEY, VALUE
+            // KEY, VALUE
             "UPSERT INTO KVTable VALUES (?, ?);"
     );
 

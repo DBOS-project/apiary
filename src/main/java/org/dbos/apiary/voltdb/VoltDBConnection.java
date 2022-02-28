@@ -100,7 +100,7 @@ public class VoltDBConnection implements ApiaryConnection {
     @Override
     public FunctionOutput callFunction(String funcName, Object... inputs) throws IOException, ProcCallException {
         VoltTable voltInput = inputToVoltTable(inputs);
-        assert(inputs[0] instanceof String); // TODO: Support more types, especially int/float.
+        assert(inputs[0] instanceof String); // TODO: Support int type explicitly.
         VoltTable[] res  = client.callProcedure(funcName, Integer.parseInt((String) inputs[0]), voltInput).getResults();
         VoltTable retVal = res[0];
         assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);
@@ -149,9 +149,9 @@ public class VoltDBConnection implements ApiaryConnection {
 
     @Override
     public String getHostname(Object[] input) {
-        assert (input[0] instanceof String); // TODO: Support more types.
+        assert (input[0] instanceof String); // TODO: Support int type explicitly.
         int partitionId = TheHashinator.getPartitionForParameter(
-                VoltType.STRING, (String) input[0]);
+                VoltType.INTEGER, Integer.parseInt((String) input[0]));
         assert partitionId < this.numPartitions;
         assert partitionId >= 0;
         return this.partitionHostMap.get(partitionId);

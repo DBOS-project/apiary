@@ -69,11 +69,11 @@ public class VoltDBConnection implements ApiaryConnection {
         VoltTableRow inputRow = voltInput.fetchRow(0);
         String funcName = inputRow.getString(0);
         int taskID = (int) inputRow.getLong(1);
-        int pkey = (int) inputRow.getLong(2);
-        Object[] input = new Object[voltInput.getColumnCount() - 3];
+        int offset = 2;
+        Object[] input = new Object[voltInput.getColumnCount() - offset];
 
         int objIndex = 0;
-        for (int i = 3; i < voltInput.getColumnCount(); i++, objIndex++) {
+        for (int i = offset; i < voltInput.getColumnCount(); i++, objIndex++) {
             String name = voltInput.getColumnName(i);
             if (name.startsWith("StringT")) {
                 input[objIndex] = inputRow.getString(i);
@@ -94,13 +94,14 @@ public class VoltDBConnection implements ApiaryConnection {
                 throw new IllegalArgumentException();
             }
         }
-        return new Task(taskID, funcName, pkey, input);
+        return new Task(taskID, funcName, input);
     }
 
     @Override
-    public FunctionOutput callFunction(String funcName, int pkey, Object... inputs) throws IOException, ProcCallException {
+    public FunctionOutput callFunction(String funcName, Object... inputs) throws IOException, ProcCallException {
         VoltTable voltInput = inputToVoltTable(inputs);
-        VoltTable[] res  = client.callProcedure(funcName, pkey, voltInput).getResults();
+        assert(inputs[0] instanceof String);
+        VoltTable[] res  = client.callProcedure(funcName, Integer.parseInt((String) inputs[0]), voltInput).getResults();
         VoltTable retVal = res[0];
         assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);
         String stringOutput = null;
@@ -147,9 +148,10 @@ public class VoltDBConnection implements ApiaryConnection {
     }
 
     @Override
-    public String getHostname(int pkey) {
+    public String getHostname(Object[] input) {
+        assert (input[0] instanceof String); // TODO: Support more types.
         int partitionId = TheHashinator.getPartitionForParameter(
-                VoltType.INTEGER, pkey);
+                VoltType.STRING, (String) input[0]);
         assert partitionId < this.numPartitions;
         assert partitionId >= 0;
         return this.partitionHostMap.get(partitionId);

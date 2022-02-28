@@ -31,7 +31,7 @@ public class SQLiteConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String name, int pkey, Object... inputs) throws Exception {
+    public FunctionOutput callFunction(String name, Object... inputs) throws Exception {
         SQLiteFunctionInterface function = functions.get(name).call();
         FunctionOutput f = null;
         try {
@@ -53,7 +53,7 @@ public class SQLiteConnection implements ApiaryConnection {
     }
 
     @Override
-    public String getHostname(int pkey) {
+    public String getHostname(Object[] input) {
         return "localhost";
     }
 

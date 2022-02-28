@@ -51,41 +51,40 @@ public class VoltApiaryProcedure extends VoltProcedure {
     }
 
     private static VoltTable serializeTask(Task task) {
-        VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[task.input.length + 3];
+        int offset = 2;
+        VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[task.input.length + offset];
         columns[0] = new VoltTable.ColumnInfo("name", VoltType.STRING);
         columns[1] = new VoltTable.ColumnInfo("id", VoltType.BIGINT);
-        columns[2] = new VoltTable.ColumnInfo("pkey", VoltType.INTEGER);
         for (int i = 0; i < task.input.length; i++) {
             Object input = task.input[i];
-            columns[i + 3] = VoltUtilities.objectToColumnInfo(i, input);
+            columns[i + offset] = VoltUtilities.objectToColumnInfo(i, input);
         }
         VoltTable v = new VoltTable(columns);
         Object[] row = new Object[v.getColumnCount()];
         row[0] = task.funcName;
         row[1] = task.taskID;
-        row[2] = task.pkey;
         for (int i = 0; i < task.input.length; i++) {
             Object input = task.input[i];
             if (input instanceof String) {
-                row[i + 3] = input;
+                row[i + offset] = input;
             } else if (input instanceof String[]) {
-                row[i + 3] = Utilities.stringArraytoByteArray((String[]) input);
+                row[i + offset] = Utilities.stringArraytoByteArray((String[]) input);
             } else if (input instanceof ApiaryFuture) {
-                row[i + 3] = ((ApiaryFuture) input).futureID;
+                row[i + offset] = ((ApiaryFuture) input).futureID;
             } else if (input instanceof ApiaryFuture[]) {
                 ApiaryFuture[] futures = (ApiaryFuture[]) input;
                 int[] futureIDs = new int[futures.length];
                 for (int j = 0; j < futures.length; j++) {
                     futureIDs[j] = futures[j].futureID;
                 }
-                row[i + 3] = Utilities.intArrayToByteArray(futureIDs);
+                row[i + offset] = Utilities.intArrayToByteArray(futureIDs);
             }
         }
         v.addRow(row);
         return v;
     }
 
-    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
         Object[] parsedInput = parseInput(voltInput);
         FunctionOutput output = funcApi.runFunction(parsedInput);
         return serializeOutput(output);

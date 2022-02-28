@@ -8,15 +8,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import static org.dbos.apiary.utilities.ApiaryConfig.defaultPkey;
-
 public class SQLiteFibonacciFunction extends SQLiteFunctionInterface {
 
     private final PreparedStatement addResult;
     private final PreparedStatement getValue;
 
     public SQLiteFibonacciFunction(Connection c) throws SQLException {
-        this.addResult = c.prepareStatement("INSERT INTO KVTable(pkey, KVKey, KVValue) VALUES (?, ?, ?);");
+        this.addResult = c.prepareStatement("INSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?);");
         this.getValue = c.prepareStatement("SELECT KVValue FROM KVTable WHERE KVKey=?;");
     }
 
@@ -26,11 +24,11 @@ public class SQLiteFibonacciFunction extends SQLiteFunctionInterface {
             return "";
         }
         if (key == 0) {
-            this.apiaryExecuteUpdate(addResult, defaultPkey, key, 0);
+            this.apiaryExecuteUpdate(addResult, key, 0);
             return "0";
         }
         if (key == 1) {
-            this.apiaryExecuteUpdate(addResult, defaultPkey, key, 1);
+            this.apiaryExecuteUpdate(addResult, key, 1);
             return "1";
         }
         // Check if the number has been calculated before.
@@ -40,9 +38,9 @@ public class SQLiteFibonacciFunction extends SQLiteFunctionInterface {
         }
 
         // Otherwise, call functions.
-        ApiaryFuture f1 = this.apiaryQueueFunction("FibonacciFunction", defaultPkey, String.valueOf(key - 2));
-        ApiaryFuture f2 = this.apiaryQueueFunction("FibonacciFunction", defaultPkey, String.valueOf(key - 1));
-        ApiaryFuture fsum = this.apiaryQueueFunction("FibSumFunction", defaultPkey, strKey, f1, f2);
+        ApiaryFuture f1 = this.apiaryQueueFunction("FibonacciFunction", String.valueOf(key - 2));
+        ApiaryFuture f2 = this.apiaryQueueFunction("FibonacciFunction", String.valueOf(key - 1));
+        ApiaryFuture fsum = this.apiaryQueueFunction("FibSumFunction", strKey, f1, f2);
         return fsum;
     }
 }

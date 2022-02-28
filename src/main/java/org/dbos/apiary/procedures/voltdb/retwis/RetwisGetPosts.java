@@ -12,7 +12,7 @@ public class RetwisGetPosts extends VoltApiaryProcedure {
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
-        return super.run(pkey, voltInput);
+        return super.run(voltInput);
     }
 
     public String runFunction(String userID) {

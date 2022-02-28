@@ -18,7 +18,7 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
     }
 
     @Override
-    public Object internalCallFunction(String name, int pkey, Object... inputs) {
+    public Object internalCallFunction(String name, Object... inputs) {
         Object clazz;
         try {
             clazz = Class.forName(name).getDeclaredConstructor().newInstance();

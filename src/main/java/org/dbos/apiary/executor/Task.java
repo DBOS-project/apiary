@@ -12,14 +12,12 @@ public class Task {
 
     public int taskID;  // Unique ID of this task.
     public final String funcName;
-    public final int pkey;  // Partition to run this task.
     public final Object[] input;
 
     // Initialize from user input.
-    public Task(int taskID, String funcName, int pkey, Object[] input) {
+    public Task(int taskID, String funcName, Object[] input) {
         this.taskID = taskID;
         this.funcName = funcName;
-        this.pkey = pkey;
         this.input = input;
     }
 

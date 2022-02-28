@@ -118,7 +118,7 @@ public class WorkerTests {
 
         String res;
         res = client.executeFunction("localhost:8000", "InferenceFunction", 0, "hello server");
-        assertEquals("hello client\n", res);
+        assertEquals("hello client", res);
 
         clientContext.close();
         worker.shutdown();

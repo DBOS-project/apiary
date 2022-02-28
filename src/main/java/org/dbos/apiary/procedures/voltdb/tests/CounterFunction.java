@@ -14,7 +14,7 @@ public class CounterFunction extends VoltApiaryProcedure {
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
-        return super.run(pkey, voltInput);
+        return super.run(voltInput);
     }
 
     public ApiaryFuture runFunction(String keyString) {
@@ -27,8 +27,8 @@ public class CounterFunction extends VoltApiaryProcedure {
         } else {
             value = 0;
         }
-        ApiaryFuture incrementedValue = funcApi.apiaryQueueFunction("increment", key, String.valueOf(value));
-        funcApi.apiaryQueueFunction("InsertFunction", key, keyString, incrementedValue);
+        ApiaryFuture incrementedValue = funcApi.apiaryQueueFunction("increment", String.valueOf(value));
+        funcApi.apiaryQueueFunction("InsertFunction", keyString, incrementedValue);
         return incrementedValue;
     }
 }

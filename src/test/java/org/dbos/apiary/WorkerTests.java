@@ -55,13 +55,13 @@ public class WorkerTests {
             ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
             String res;
-            res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "1");
+            res = client.executeFunction("localhost", "FibonacciFunction", "1");
             assertEquals("1", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
+            res = client.executeFunction("localhost", "FibonacciFunction", "10");
             assertEquals("55", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "30");
+            res = client.executeFunction("localhost", "FibonacciFunction", "30");
             assertEquals("832040", res);
             clientContext.close();
             worker.shutdown();
@@ -78,7 +78,7 @@ public class WorkerTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String res = client.executeFunction("localhost", "AdditionFunction", ApiaryConfig.defaultPkey, "1", "2", new String[]{"matei", "zaharia"});
+        String res = client.executeFunction("localhost", "AdditionFunction", "1", "2", new String[]{"matei", "zaharia"});
         assertEquals("3mateizaharia", res);
 
         clientContext.close();
@@ -87,7 +87,7 @@ public class WorkerTests {
 
     @Test
     public void testStatelessCounter() throws IOException, InterruptedException {
-        logger.info("testStatelessIncrement");
+        logger.info("testStatelessCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c);
         worker.registerStatelessFunction("increment", Increment::new);
@@ -97,13 +97,13 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "CounterFunction", ApiaryConfig.defaultPkey, "0");
+        res = client.executeFunction("localhost", "CounterFunction",  "0");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "CounterFunction", ApiaryConfig.defaultPkey, "0");
+        res = client.executeFunction("localhost", "CounterFunction",  "0");
         assertEquals("2", res);
 
-        res = client.executeFunction("localhost", "CounterFunction", 1, "1");
+        res = client.executeFunction("localhost", "CounterFunction",  "1");
         assertEquals("1", res);
 
         clientContext.close();
@@ -121,13 +121,13 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "SynchronousCounter", ApiaryConfig.defaultPkey, "0");
+        res = client.executeFunction("localhost", "SynchronousCounter", "0");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "SynchronousCounter", ApiaryConfig.defaultPkey, "0");
+        res = client.executeFunction("localhost", "SynchronousCounter",  "0");
         assertEquals("2", res);
 
-        res = client.executeFunction("localhost", "SynchronousCounter", 1, "1");
+        res = client.executeFunction("localhost", "SynchronousCounter", "1");
         assertEquals("1", res);
 
         clientContext.close();

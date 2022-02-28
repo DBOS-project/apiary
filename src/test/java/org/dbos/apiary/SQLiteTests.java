@@ -25,7 +25,7 @@ public class SQLiteTests {
         Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:");
 
         SQLiteConnection c = new SQLiteConnection(conn);
-        c.createTable("CREATE TABLE KVTable(pkey integer NOT NULL, KVKey integer NOT NULL, KVValue integer NOT NULL);");
+        c.createTable("CREATE TABLE KVTable(KVKey integer NOT NULL, KVValue integer NOT NULL);");
         c.registerFunction("FibonacciFunction", () -> new SQLiteFibonacciFunction(conn));
         c.registerFunction("FibSumFunction", () -> new SQLiteFibSumFunction(conn));
         ApiaryWorker worker = new ApiaryWorker(c);
@@ -35,13 +35,13 @@ public class SQLiteTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "1");
+        res = client.executeFunction("localhost", "FibonacciFunction", "1");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "10");
+        res = client.executeFunction("localhost", "FibonacciFunction", "10");
         assertEquals("55", res);
 
-        res = client.executeFunction("localhost", "FibonacciFunction", ApiaryConfig.defaultPkey, "30");
+        res = client.executeFunction("localhost", "FibonacciFunction", "30");
         assertEquals("832040", res);
 
         clientContext.close();

@@ -60,7 +60,7 @@ public class ApiaryWorker {
                         arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
                     }
                 }
-                String output = executeFunction(client, req.getName(), req.getPkey(), arguments);
+                String output = executeFunction(client, req.getName(), arguments);
                 assert output != null;
                 ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output).build();
                 worker.send(rep.toByteArray());
@@ -77,9 +77,9 @@ public class ApiaryWorker {
         shadowContext.close();
     }
 
-    private String executeFunction(ApiaryWorkerClient client, String name, int pkey, Object[] arguments) {
+    private String executeFunction(ApiaryWorkerClient client, String name, Object[] arguments) {
         try {
-            FunctionOutput o = c.callFunction(name, pkey, arguments);
+            FunctionOutput o = c.callFunction(name, arguments);
             Map<Integer, String> taskIDtoValue = new ConcurrentHashMap<>();
             for (Task task: o.calledFunctions) {
                 task.dereferenceFutures(taskIDtoValue);
@@ -88,8 +88,8 @@ public class ApiaryWorker {
                     StatelessFunction f = statelessFunctions.get(task.funcName).call();
                     output = f.internalRunFunction(task.input);
                 } else {
-                    String address = c.getHostname(task.pkey);
-                    output = client.executeFunction(address, task.funcName, task.pkey, task.input);
+                    String address = c.getHostname(task.input);
+                    output = client.executeFunction(address, task.funcName, task.input);
                 }
                 taskIDtoValue.put(task.taskID, output);
             }

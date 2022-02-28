@@ -40,19 +40,19 @@ public class BenchmarkTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "RetwisPost", 0, "0", "0", "0", "hello0");
+        res = client.executeFunction("localhost", "RetwisPost", "0", "0", "0", "hello0");
         assertEquals("0", res);
-        res = client.executeFunction("localhost", "RetwisPost", 0, "0", "1", "1", "hello1");
+        res = client.executeFunction("localhost", "RetwisPost", "0", "1", "1", "hello1");
         assertEquals("0", res);
-        res = client.executeFunction("localhost", "RetwisPost", 1, "1", "2", "0", "hello2");
+        res = client.executeFunction("localhost", "RetwisPost", "1", "2", "0", "hello2");
         assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisFollow", 1, "1", "0");
+        res = client.executeFunction("localhost", "RetwisFollow", "1", "0");
         assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisFollow", 1, "1", "1");
+        res = client.executeFunction("localhost", "RetwisFollow", "1", "1");
         assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisGetPosts", 0, "0");
+        res = client.executeFunction("localhost", "RetwisGetPosts", "0");
         assertEquals("hello0,hello1", res);
-        res = client.executeFunction("localhost", "RetwisGetTimeline", 1, "1");
+        res = client.executeFunction("localhost", "RetwisGetTimeline",  "1");
         assertEquals(3, res.split(",").length);
         assertTrue(res.contains("hello0"));
         assertTrue(res.contains("hello1"));

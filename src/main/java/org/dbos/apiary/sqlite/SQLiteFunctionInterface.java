@@ -23,7 +23,7 @@ public class SQLiteFunctionInterface extends ApiaryFunctionInterface {
     }
 
     @Override
-    public Object internalCallFunction(String name, int pkey, Object... inputs) {
+    public Object internalCallFunction(String name, Object... inputs) {
         return null;
     }
 

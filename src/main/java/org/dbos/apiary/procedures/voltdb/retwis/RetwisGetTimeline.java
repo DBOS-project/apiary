@@ -15,7 +15,7 @@ public class RetwisGetTimeline extends VoltApiaryProcedure {
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
-        return super.run(pkey, voltInput);
+        return super.run(voltInput);
     }
 
     public ApiaryFuture runFunction(String userIDString) {
@@ -27,8 +27,8 @@ public class RetwisGetTimeline extends VoltApiaryProcedure {
         }
         ApiaryFuture[] futures = new ApiaryFuture[followeesList.size()];
         for (int i = 0; i < followeesList.size(); i++) {
-            futures[i] = funcApi.apiaryQueueFunction("RetwisGetPosts", followeesList.get(i), String.valueOf(followeesList.get(i)));
+            futures[i] = funcApi.apiaryQueueFunction("RetwisGetPosts", String.valueOf(followeesList.get(i)));
         }
-        return funcApi.apiaryQueueFunction("RetwisMerge", 0, (Object) futures);
+        return funcApi.apiaryQueueFunction("RetwisMerge", (Object) futures);
     }
 }

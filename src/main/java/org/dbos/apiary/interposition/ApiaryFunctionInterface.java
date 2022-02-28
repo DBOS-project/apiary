@@ -15,16 +15,16 @@ public abstract class ApiaryFunctionInterface {
     /** Public Interface **/
 
     // Asynchronously queue another function for asynchronous execution.
-    public ApiaryFuture apiaryQueueFunction(String name, int pkey, Object... inputs) {
+    public ApiaryFuture apiaryQueueFunction(String name, Object... inputs) {
         int taskID = calledFunctionID.getAndIncrement();
-        Task futureTask = new Task(taskID, name, pkey, inputs);
+        Task futureTask = new Task(taskID, name, inputs);
         calledFunctions.add(futureTask);
         return new ApiaryFuture(taskID);
     }
 
-    public Object apiaryCallFunction(String name, int pkey, Object... inputs) {
+    public Object apiaryCallFunction(String name, Object... inputs) {
         // TODO: Logging?
-        return internalCallFunction(name, pkey, inputs);
+        return internalCallFunction(name, inputs);
     }
 
     // Execute an update in the database.
@@ -41,7 +41,7 @@ public abstract class ApiaryFunctionInterface {
 
     /** Internal Interface **/
 
-    protected abstract Object internalCallFunction(String name, int pkey, Object... inputs);
+    protected abstract Object internalCallFunction(String name, Object... inputs);
     protected abstract void internalExecuteUpdate(Object procedure, Object... input);
     protected abstract Object internalExecuteQuery(Object procedure, Object... input);
 

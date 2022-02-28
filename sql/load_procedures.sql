@@ -4,31 +4,31 @@ DROP PROCEDURE TruncateTables IF EXISTS;
 CREATE PROCEDURE FROM CLASS org.dbos.apiary.procedures.voltdb.TruncateTables;
 
 DROP PROCEDURE AdditionFunction IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.AdditionFunction;
+CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN KVKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.AdditionFunction;
 
 DROP PROCEDURE FibonacciFunction IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.FibonacciFunction;
+CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN KVKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.FibonacciFunction;
 
 DROP PROCEDURE FibSumFunction IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.FibSumFunction;
+CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN KVKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.FibSumFunction;
 
 DROP PROCEDURE CounterFunction IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.CounterFunction;
+CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN KVKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.CounterFunction;
 
 DROP PROCEDURE InsertFunction IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.InsertFunction;
+CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN KVKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.InsertFunction;
 
 DROP PROCEDURE SynchronousCounter IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.SynchronousCounter;
+CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN KVKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.SynchronousCounter;
 
 DROP PROCEDURE RetwisPost IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE RetwisPosts COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisPost;
+CREATE PROCEDURE PARTITION ON TABLE RetwisPosts COLUMN UserID PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisPost;
 
 DROP PROCEDURE RetwisGetPosts IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE RetwisPosts COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisGetPosts;
+CREATE PROCEDURE PARTITION ON TABLE RetwisPosts COLUMN UserID PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisGetPosts;
 
 DROP PROCEDURE RetwisFollow IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE RetwisFollowees COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisFollow;
+CREATE PROCEDURE PARTITION ON TABLE RetwisFollowees COLUMN UserID PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisFollow;
 
 DROP PROCEDURE RetwisGetTimeline IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE RetwisFollowees COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisGetTimeline;
+CREATE PROCEDURE PARTITION ON TABLE RetwisFollowees COLUMN UserID PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisGetTimeline;

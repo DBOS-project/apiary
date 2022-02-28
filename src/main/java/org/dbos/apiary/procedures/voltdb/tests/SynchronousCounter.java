@@ -7,7 +7,7 @@ import java.lang.reflect.InvocationTargetException;
 public class SynchronousCounter extends VoltProcedureContainer {
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
-        return super.run(pkey, voltInput);
+        return super.run(voltInput);
     }
 
     public String runFunction(String keyString) {
@@ -20,8 +20,8 @@ public class SynchronousCounter extends VoltProcedureContainer {
         } else {
             value = 0;
         }
-        String incremented = (String) funcApi.apiaryCallFunction("org.dbos.apiary.procedures.stateless.Increment", key, Integer.toString(value));
-        funcApi.apiaryCallFunction("org.dbos.apiary.procedures.voltdb.tests.InsertFunction", key, keyString, incremented);
+        String incremented = (String) funcApi.apiaryCallFunction("org.dbos.apiary.procedures.stateless.Increment", Integer.toString(value));
+        funcApi.apiaryCallFunction("org.dbos.apiary.procedures.voltdb.tests.InsertFunction", keyString, incremented);
         return incremented;
     }
 }

@@ -85,7 +85,6 @@ public class ApiaryWorker {
                     int callerID = req.getCallerId();
                     int currTaskID = req.getTaskId();
                     Object[] arguments = new Object[byteArguments.size()];
-                    logger.info("Received reqeust from caller {}, taskID {}, #args: {}", callerID, currTaskID, arguments.length);
                     for (int i = 0; i < arguments.length; i++) {
                         if (argumentTypes.get(i) == stringType) {
                             arguments[i] = new String(byteArguments.get(i).toByteArray());
@@ -130,7 +129,6 @@ public class ApiaryWorker {
                         String output = reply.getReply();
                         int callerID = reply.getCallerId();
                         int taskID = reply.getTaskId();
-                        logger.info("Received reply from {}, for callerID {}, taskID {}", hostname, callerID, taskID);
                         msg.destroy();
 
                         // Resume execution.
@@ -179,7 +177,6 @@ public class ApiaryWorker {
                     currTask.queuedFunctions.poll();
                     String output;
                     if (statelessFunctions.containsKey(subtask.funcName)) {
-                        logger.info("Process stateless task: {}, input {}", subtask.funcName, subtask.input);
                         StatelessFunction f = statelessFunctions.get(subtask.funcName).call();
                         output = f.internalRunFunction(subtask.input);
                         currTask.taskIDtoValue.put(subtask.taskID, output);
@@ -219,7 +216,6 @@ public class ApiaryWorker {
         // Store tasks in the list and async invoke all sub-tasks that are ready.
         // Caller ID to be passed to it's subtasks;
         int currCallerID = ApiaryWorkerClient.callerIDs.incrementAndGet();
-        logger.info("Put callerStashMap for callerID {}", currCallerID);
         currTask.totalQueuedFunctions = o.calledFunctions.size();
         for (Task subtask : o.calledFunctions) {
             // Queue the task.
@@ -228,7 +224,7 @@ public class ApiaryWorker {
 
         processTaskQueue(client, currTask, currCallerID);
         if (currTask.totalQueuedFunctions != currTask.finishedTasks.get()) {
-            // Need to store the stash map.
+            // Need to store the stash map only if we have future tasks. Otherwise, we don't have to store.
             callerStashMap.put(currCallerID, currTask);
         }
         return currTask.getFinalOutput();

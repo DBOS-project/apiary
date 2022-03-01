@@ -17,8 +17,9 @@ public class ApiaryTaskStash {
     public final ZFrame replyAddr;
     public final Map<Integer, String> taskIDtoValue;
     public final Queue<Task> queuedFunctions;
-    public final AtomicInteger finishedTasks = new AtomicInteger(0);
-    public int totalQueuedFunctions;
+    public final AtomicInteger numFinishedTasks = new AtomicInteger(0);
+
+    public int totalQueuedTasks;
     public String stringOutput;
     public ApiaryFuture futureOutput;
 
@@ -28,13 +29,13 @@ public class ApiaryTaskStash {
         this.replyAddr = replyAddr;
         taskIDtoValue = new ConcurrentHashMap<>();
         queuedFunctions = new ConcurrentLinkedQueue<>();
-        totalQueuedFunctions = 0;
+        totalQueuedTasks = 0;
     }
 
     // If everything is resolved, then return the string value.
     // Otherwise, return null.
     String getFinalOutput() {
-        if (finishedTasks.get() == totalQueuedFunctions) {
+        if (numFinishedTasks.get() == totalQueuedTasks) {
             if (stringOutput != null) {
                 return stringOutput;
             } else {

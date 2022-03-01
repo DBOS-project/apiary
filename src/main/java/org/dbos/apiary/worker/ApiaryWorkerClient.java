@@ -8,17 +8,13 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zeromq.SocketType;
-import org.zeromq.ZContext;
-import org.zeromq.ZMQ;
-import org.zeromq.ZMsg;
+import org.zeromq.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 
 // Note: ZMQ.Socket is not thread-safe, so this class is not thread-safe either.
@@ -26,7 +22,6 @@ public class ApiaryWorkerClient {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorkerClient.class);
 
     private final ZContext zContext;
-    public static final AtomicInteger callerIDs = new AtomicInteger(0);
 
     public ApiaryWorkerClient(ZContext zContext) {
         this.zContext = zContext;
@@ -69,6 +64,16 @@ public class ApiaryWorkerClient {
                 .setTaskId(taskID)
                 .build();
         socket.send(req.toByteArray(), 0);
+    }
+
+    // Send the function execution response to a socket.
+    public static void sendExecuteReply(ZMQ.Socket socket, int callerID, int taskId, String output, ZFrame replyAddr) {
+        ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output)
+                .setCallerId(callerID)
+                .setTaskId(taskId).build();
+        replyAddr.send(socket, ZFrame.REUSE + ZFrame.MORE);
+        ZFrame replyContent = new ZFrame(rep.toByteArray());
+        replyContent.send(socket, 0);
     }
 
     // Synchronous blocking invocation, supposed to be used by client/loadgen.

@@ -177,7 +177,7 @@ public class ApiaryWorker {
                     currTask.queuedFunctions.poll();
                     String output;
                     if (statelessFunctions.containsKey(subtask.funcName)) {
-                        logger.info("Process stateless task: {}, input [}", subtask.funcName, subtask.input);
+                        logger.info("Process stateless task: {}, input {}", subtask.funcName, subtask.input);
                         StatelessFunction f = statelessFunctions.get(subtask.funcName).call();
                         output = f.internalRunFunction(subtask.input);
                         currTask.taskIDtoValue.put(subtask.taskID, output);

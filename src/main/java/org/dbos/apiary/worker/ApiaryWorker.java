@@ -27,7 +27,7 @@ public class ApiaryWorker {
     public static int stringArrayType = 1;
     public final AtomicInteger callerIDs = new AtomicInteger(0);
 
-    private static final int numWorkerThreads = 8;
+    public static int numWorkerThreads = 8;
 
     private final ApiaryConnection c;
     private ZContext zContext;

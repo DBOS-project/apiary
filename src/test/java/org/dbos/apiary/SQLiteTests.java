@@ -3,7 +3,6 @@ package org.dbos.apiary;
 import org.dbos.apiary.procedures.sqlite.SQLiteFibSumFunction;
 import org.dbos.apiary.procedures.sqlite.SQLiteFibonacciFunction;
 import org.dbos.apiary.sqlite.SQLiteConnection;
-import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.junit.jupiter.api.Test;
@@ -22,6 +21,10 @@ public class SQLiteTests {
     @Test
     public void testFibSQLite() throws Exception {
         logger.info("testFibSQLite");
+
+        // TODO: need to set numWorkerThreads to 1. Because SQLite doesn't support concurrent transactions from two threads right now. Maybe use a separate SQLite connection per worker thread?
+
+        ApiaryWorker.numWorkerThreads = 1;
         Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:");
 
         SQLiteConnection c = new SQLiteConnection(conn);

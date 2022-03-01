@@ -147,9 +147,9 @@ public class ApiaryWorker {
                                     .setCallerId(callerTask.callerId)
                                     .setTaskId(callerTask.currTaskId)
                                     .build();
-                            callerTask.replyAddr.send(socket, ZFrame.REUSE + ZFrame.MORE);
+                            callerTask.replyAddr.send(worker, ZFrame.REUSE + ZFrame.MORE);
                             ZFrame replyContent = new ZFrame(rep.toByteArray());
-                            replyContent.send(socket, 0);
+                            replyContent.send(worker, 0);
                         }
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {

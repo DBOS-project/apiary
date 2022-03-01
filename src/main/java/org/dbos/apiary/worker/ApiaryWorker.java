@@ -120,8 +120,7 @@ public class ApiaryWorker {
                         String hostname = distinctHosts.get(i-1);
                         ZMQ.Socket socket = client.getSocket(hostname);
                         ZMsg msg = ZMsg.recvMsg(socket);
-                        ZFrame address = msg.pop();
-                        ZFrame content = msg.pop();
+                        ZFrame content = msg.getLast();
                         assert (content != null);
                         msg.destroy();
                         byte[] replyBytes = content.getData();

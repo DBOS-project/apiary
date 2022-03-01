@@ -18,6 +18,8 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static zmq.ZMQ.ZMQ_ROUTER_MANDATORY;
+
 public class ApiaryWorker {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorker.class);
 
@@ -122,6 +124,7 @@ public class ApiaryWorker {
     private void serverThread() {
         ZContext shadowContext = ZContext.shadow(zContext);
         ZMQ.Socket frontend = shadowContext.createSocket(SocketType.ROUTER);
+        frontend.setRouterMandatory(true);
         frontend.bind("tcp://*:" + ApiaryConfig.workerPort);
 
         ZMQ.Socket backend = shadowContext.createSocket(SocketType.DEALER);

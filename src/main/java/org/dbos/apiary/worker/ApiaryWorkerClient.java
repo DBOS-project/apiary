@@ -43,8 +43,8 @@ public class ApiaryWorkerClient {
         }
     }
 
-    public String executeFunction(String address, String name, Object... arguments) throws InvalidProtocolBufferException {
-        ZMQ.Socket socket = getSocket(address);
+    // Send the function execution request to a socket. Do not wait for response.
+    public static void sendExecuteRequest(ZMQ.Socket socket, String name, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
         for (Object o: arguments) {
@@ -65,25 +65,30 @@ public class ApiaryWorkerClient {
                 .addAllArgumentTypes(argumentTypes)
                 .build();
         socket.send(req.toByteArray(), 0);
+    }
 
-        byte[] replyBytes = pollRecv(socket);
+    // Synchronous blocking invocation, supposed to be used by client/loadgen.
+    public String executeFunction(String address, String name, Object... arguments) throws InvalidProtocolBufferException {
+        ZMQ.Socket socket = getSocket(address);
+        sendExecuteRequest(socket, name, arguments);
+        byte[] replyBytes = recvExecuteReply(socket);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
         return rep.getReply();
     }
 
-    private byte[] pollRecv(ZMQ.Socket client) {
+    // Block receiving reply, for synchronous call.
+    private byte[] recvExecuteReply(ZMQ.Socket client) {
         ZMQ.Poller poller = zContext.createPoller(1);
         poller.register(client, ZMQ.Poller.POLLIN);
-        byte[] results;
-        while (true) {
-            poller.poll(10); // Timeout 10ms.
-            if (poller.pollin(0)) {
-                ZMsg msg = ZMsg.recvMsg(client);
-                results = msg.getLast().getData();
-                msg.destroy();
-                break;
-            }
+        byte[] results = null;
+        // TODO: add hard timeouts?
+        poller.poll(100000); // Timeout set to a large value, 100 sec.
+        if (poller.pollin(0)) {
+            ZMsg msg = ZMsg.recvMsg(client);
+            results = msg.getLast().getData();
+            msg.destroy();
         }
+        poller.close();
         return results;
     }
 }

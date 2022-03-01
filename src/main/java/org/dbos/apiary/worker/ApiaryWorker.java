@@ -150,6 +150,8 @@ public class ApiaryWorker {
                             callerTask.replyAddr.send(worker, ZFrame.REUSE + ZFrame.MORE);
                             ZFrame replyContent = new ZFrame(rep.toByteArray());
                             replyContent.send(worker, 0);
+                            // Clean up the stash map.
+                            callerStashMap.remove(callerID);
                         }
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
@@ -217,7 +219,6 @@ public class ApiaryWorker {
         // Store tasks in the list and async invoke all sub-tasks that are ready.
         // Caller ID to be passed to it's subtasks;
         int currCallerID = ApiaryWorkerClient.callerIDs.incrementAndGet();
-        callerStashMap.put(currCallerID, currTask);
         logger.info("Put callerStashMap for callerID {}", currCallerID);
         currTask.totalQueuedFunctions = o.calledFunctions.size();
         for (Task subtask : o.calledFunctions) {
@@ -226,7 +227,10 @@ public class ApiaryWorker {
         }
 
         processTaskQueue(client, currTask, currCallerID);
-        // If everything is resolved, then return the string value.
+        if (currTask.totalQueuedFunctions != currTask.finishedTasks.get()) {
+            // Need to store the stash map.
+            callerStashMap.put(currCallerID, currTask);
+        }
         return currTask.getFinalOutput();
     }
 

@@ -28,6 +28,7 @@ public class ApiaryTaskStash {
         this.replyAddr = replyAddr;
         taskIDtoValue = new ConcurrentHashMap<>();
         queuedFunctions = new ConcurrentLinkedQueue<>();
+        totalQueuedFunctions = 0;
     }
 
     // If everything is resolved, then return the string value.

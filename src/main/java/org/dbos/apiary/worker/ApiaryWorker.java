@@ -98,7 +98,9 @@ public class ApiaryWorker {
 
                     // If the output is not null, meaning everything is done. Directly return.
                     if (output != null) {
-                        ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output).build();
+                        ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output)
+                                .setCallerId(callerID)
+                                .setTaskId(currTaskID).build();
                         address.send(worker, ZFrame.REUSE + ZFrame.MORE);
                         ZFrame replyContent = new ZFrame(rep.toByteArray());
                         replyContent.send(worker, 0);
@@ -141,7 +143,10 @@ public class ApiaryWorker {
                         String finalOutput = callerTask.getFinalOutput();
                         if (finalOutput != null) {
                             // Send back the response.
-                            ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput).build();
+                            ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput)
+                                    .setCallerId(callerTask.callerId)
+                                    .setTaskId(callerTask.currTaskId)
+                                    .build();
                             callerTask.replyAddr.send(socket, ZFrame.REUSE + ZFrame.MORE);
                             ZFrame replyContent = new ZFrame(rep.toByteArray());
                             replyContent.send(socket, 0);

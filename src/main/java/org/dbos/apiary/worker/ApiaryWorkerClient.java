@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 // Note: ZMQ.Socket is not thread-safe, so this class is not thread-safe either.
@@ -25,6 +26,7 @@ public class ApiaryWorkerClient {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorkerClient.class);
 
     private final ZContext zContext;
+    public static final AtomicInteger callerIDs = new AtomicInteger(0);
 
     public ApiaryWorkerClient(ZContext zContext) {
         this.zContext = zContext;
@@ -32,7 +34,7 @@ public class ApiaryWorkerClient {
 
     private final Map<String, ZMQ.Socket> sockets = new HashMap<>();
 
-    private ZMQ.Socket getSocket(String address) {
+    public ZMQ.Socket getSocket(String address) {
         if (sockets.containsKey(address)) {
             return sockets.get(address);
         } else {
@@ -44,7 +46,7 @@ public class ApiaryWorkerClient {
     }
 
     // Send the function execution request to a socket. Do not wait for response.
-    public static void sendExecuteRequest(ZMQ.Socket socket, String name, Object... arguments) {
+    public static void sendExecuteRequest(ZMQ.Socket socket, String name, int callerID, int taskID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
         for (Object o: arguments) {
@@ -63,6 +65,8 @@ public class ApiaryWorkerClient {
                 .setName(name)
                 .addAllArguments(byteArguments)
                 .addAllArgumentTypes(argumentTypes)
+                .setCallerId(callerID)
+                .setTaskId(taskID)
                 .build();
         socket.send(req.toByteArray(), 0);
     }
@@ -70,7 +74,7 @@ public class ApiaryWorkerClient {
     // Synchronous blocking invocation, supposed to be used by client/loadgen.
     public String executeFunction(String address, String name, Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
-        sendExecuteRequest(socket, name, arguments);
+        sendExecuteRequest(socket, name, 0, 0, arguments);
         byte[] replyBytes = recvExecuteReply(socket);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
         return rep.getReply();

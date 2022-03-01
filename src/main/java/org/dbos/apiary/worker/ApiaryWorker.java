@@ -143,7 +143,7 @@ public class ApiaryWorker {
                             ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput).build();
                             callerTask.replyAddr.send(socket, ZFrame.REUSE + ZFrame.MORE);
                             ZFrame replyContent = new ZFrame(rep.toByteArray());
-                            replyContent.send(worker, 0);
+                            replyContent.send(socket, 0);
                         }
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {

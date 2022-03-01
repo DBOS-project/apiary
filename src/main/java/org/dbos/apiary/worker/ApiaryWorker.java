@@ -50,7 +50,6 @@ public class ApiaryWorker {
         List<String> distinctHosts = c.getPartitionHostMap().values().stream()
                                       .distinct()
                                       .collect(Collectors.toList());
-        logger.debug("Found {} hosts: {}", distinctHosts.size(), distinctHosts);
         ZMQ.Poller poller = zContext.createPoller(distinctHosts.size() + 1);
         // The backend worker is always the first poller socket.
         poller.register(worker, ZMQ.Poller.POLLIN);

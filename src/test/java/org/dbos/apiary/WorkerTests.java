@@ -59,25 +59,15 @@ public class WorkerTests {
             res = client.executeFunction("localhost", "FibonacciFunction", "1");
             assertEquals("1", res);
 
-            long loadElapsed = (System.nanoTime() - loadStart) / 1000;
-            // logger.debug("first checkpoint in {} us", loadElapsed);
-            loadStart = System.nanoTime();
-
             res = client.executeFunction("localhost", "FibonacciFunction", "10");
             assertEquals("55", res);
-            loadElapsed = (System.nanoTime() - loadStart) / 1000;
-            // logger.debug("second checkpoint in {} us", loadElapsed);
 
-            loadStart = System.nanoTime();
             res = client.executeFunction("localhost", "FibonacciFunction", "30");
             assertEquals("832040", res);
-            loadElapsed = (System.nanoTime() - loadStart) / 1000;
-            // logger.debug("third checkpoint in {} us", loadElapsed);
+
             loadStart = System.nanoTime();
             clientContext.close();
             worker.shutdown();
-            loadElapsed = (System.nanoTime() - loadStart) / 1000;
-            logger.debug("shutdown in {} us", loadElapsed);
         }
     }
 

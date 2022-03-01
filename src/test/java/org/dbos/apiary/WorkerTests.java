@@ -47,6 +47,7 @@ public class WorkerTests {
     public void testFib() throws IOException, InterruptedException {
         logger.info("testFib");
         for (int i = 0; i < 100; i++) {
+            long loadStart = System.nanoTime();
             ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
             ApiaryWorker worker = new ApiaryWorker(c);
             worker.startServing();
@@ -58,13 +59,25 @@ public class WorkerTests {
             res = client.executeFunction("localhost", "FibonacciFunction", "1");
             assertEquals("1", res);
 
+            long loadElapsed = (System.nanoTime() - loadStart) / 1000;
+            logger.info("first checkpoint in {} us", loadElapsed);
+            loadStart = System.nanoTime();
+
             res = client.executeFunction("localhost", "FibonacciFunction", "10");
             assertEquals("55", res);
+            loadElapsed = (System.nanoTime() - loadStart) / 1000;
+            logger.info("second checkpoint in {} us", loadElapsed);
 
+            loadStart = System.nanoTime();
             res = client.executeFunction("localhost", "FibonacciFunction", "30");
             assertEquals("832040", res);
+            loadElapsed = (System.nanoTime() - loadStart) / 1000;
+            logger.info("third checkpoint in {} us", loadElapsed);
+            loadStart = System.nanoTime();
             clientContext.close();
             worker.shutdown();
+            loadElapsed = (System.nanoTime() - loadStart) / 1000;
+            logger.info("shutdown in {} us", loadElapsed);
         }
     }
 

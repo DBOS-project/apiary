@@ -28,7 +28,7 @@ public class ApiaryWorker {
     public static int stringType = 0;
     public static int stringArrayType = 1;
 
-    private static final int numWorkerThreads = 8;
+    private static final int numWorkerThreads = 1;
 
     private final ApiaryConnection c;
     private ZContext zContext;
@@ -85,6 +85,7 @@ public class ApiaryWorker {
                     int callerID = req.getCallerId();
                     int currTaskID = req.getTaskId();
                     Object[] arguments = new Object[byteArguments.size()];
+                    logger.info("Received reqeust from caller {}, taskID {}, args: {}", callerID, currTaskID, arguments);
                     for (int i = 0; i < arguments.length; i++) {
                         if (argumentTypes.get(i) == stringType) {
                             arguments[i] = new String(byteArguments.get(i).toByteArray());

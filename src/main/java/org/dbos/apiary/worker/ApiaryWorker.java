@@ -85,7 +85,7 @@ public class ApiaryWorker {
                     int callerID = req.getCallerId();
                     int currTaskID = req.getTaskId();
                     Object[] arguments = new Object[byteArguments.size()];
-                    logger.info("Received reqeust from caller {}, taskID {}, args: {}", callerID, currTaskID, arguments);
+                    logger.info("Received reqeust from caller {}, taskID {}, #args: {}", callerID, currTaskID, arguments.length);
                     for (int i = 0; i < arguments.length; i++) {
                         if (argumentTypes.get(i) == stringType) {
                             arguments[i] = new String(byteArguments.get(i).toByteArray());
@@ -120,15 +120,16 @@ public class ApiaryWorker {
                     try {
                         String hostname = distinctHosts.get(i-1);
                         ZMQ.Socket socket = client.getSocket(hostname);
+                        logger.info("Received reply from {}", hostname);
                         ZMsg msg = ZMsg.recvMsg(socket);
                         ZFrame content = msg.getLast();
                         assert (content != null);
-                        msg.destroy();
                         byte[] replyBytes = content.getData();
                         ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
                         String output = reply.getReply();
                         int callerID = reply.getCallerId();
                         int taskID = reply.getTaskId();
+                        msg.destroy();
 
                         // Resume execution.
                         ApiaryTaskStash callerTask = callerStashMap.get(callerID);
@@ -209,7 +210,7 @@ public class ApiaryWorker {
 
         // Store tasks in the list and async invoke all sub-tasks that are ready.
         // Caller ID to be passed to it's subtasks;
-        int currCallerID = ApiaryWorkerClient.callerIDs.getAndIncrement();
+        int currCallerID = ApiaryWorkerClient.callerIDs.incrementAndGet();
         callerStashMap.put(currCallerID, currTask);
         currTask.totalQueuedFunctions = o.calledFunctions.size();
         for (Task subtask : o.calledFunctions) {

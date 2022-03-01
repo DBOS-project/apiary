@@ -120,7 +120,6 @@ public class ApiaryWorker {
                     try {
                         String hostname = distinctHosts.get(i-1);
                         ZMQ.Socket socket = client.getSocket(hostname);
-                        logger.info("Received reply from {}", hostname);
                         ZMsg msg = ZMsg.recvMsg(socket);
                         ZFrame content = msg.getLast();
                         assert (content != null);
@@ -129,6 +128,7 @@ public class ApiaryWorker {
                         String output = reply.getReply();
                         int callerID = reply.getCallerId();
                         int taskID = reply.getTaskId();
+                        logger.info("Received reply from {}, for callerID {}, taskID {}", hostname, callerID, taskID);
                         msg.destroy();
 
                         // Resume execution.
@@ -212,6 +212,7 @@ public class ApiaryWorker {
         // Caller ID to be passed to it's subtasks;
         int currCallerID = ApiaryWorkerClient.callerIDs.incrementAndGet();
         callerStashMap.put(currCallerID, currTask);
+        logger.info("Put callerStashMap for callerID {}", currCallerID);
         currTask.totalQueuedFunctions = o.calledFunctions.size();
         for (Task subtask : o.calledFunctions) {
             // Queue the task.

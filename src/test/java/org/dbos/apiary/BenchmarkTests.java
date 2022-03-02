@@ -1,10 +1,8 @@
 package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
-import org.dbos.apiary.procedures.stateless.Increment;
 import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltDBConnection;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;

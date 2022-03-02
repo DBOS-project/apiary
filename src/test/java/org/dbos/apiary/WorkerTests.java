@@ -1,7 +1,7 @@
 package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
-import org.dbos.apiary.procedures.stateless.Increment;
+import org.dbos.apiary.procedures.stateless.StatelessIncrement;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltDBConnection;
@@ -91,7 +91,7 @@ public class WorkerTests {
         logger.info("testStatelessCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c);
-        worker.registerStatelessFunction("increment", Increment::new);
+        worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
         worker.startServing();
 
         ZContext clientContext = new ZContext();

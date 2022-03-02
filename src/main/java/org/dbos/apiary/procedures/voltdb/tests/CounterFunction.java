@@ -27,7 +27,7 @@ public class CounterFunction extends VoltApiaryProcedure {
         } else {
             value = 0;
         }
-        ApiaryFuture incrementedValue = funcApi.apiaryQueueFunction("increment", String.valueOf(value));
+        ApiaryFuture incrementedValue = funcApi.apiaryQueueFunction("StatelessIncrement", String.valueOf(value));
         funcApi.apiaryQueueFunction("InsertFunction", keyString, incrementedValue);
         return incrementedValue;
     }

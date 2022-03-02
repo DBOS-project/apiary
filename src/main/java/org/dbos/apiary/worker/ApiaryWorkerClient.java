@@ -41,7 +41,7 @@ public class ApiaryWorkerClient {
     }
 
     // Send the function execution request to a socket. Do not wait for response.
-    public static void sendExecuteRequest(ZMQ.Socket socket, String name, int callerID, int taskID, Object... arguments) {
+    public static void sendExecuteRequest(ZMQ.Socket socket, String name, long callerID, int taskID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
         for (Object o: arguments) {
@@ -67,7 +67,7 @@ public class ApiaryWorkerClient {
     }
 
     // Send the function execution response to a socket.
-    public static void sendExecuteReply(ZMQ.Socket socket, int callerID, int taskId, String output, ZFrame replyAddr) {
+    public static void sendExecuteReply(ZMQ.Socket socket, long callerID, int taskId, String output, ZFrame replyAddr) {
         ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output)
                 .setCallerId(callerID)
                 .setTaskId(taskId).build();
@@ -79,7 +79,7 @@ public class ApiaryWorkerClient {
     // Synchronous blocking invocation, supposed to be used by client/loadgen.
     public String executeFunction(String address, String name, Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
-        sendExecuteRequest(socket, name, 0, 0, arguments);
+        sendExecuteRequest(socket, name, 0L, 0, arguments);
         byte[] replyBytes = recvExecuteReply(socket);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
         return rep.getReply();

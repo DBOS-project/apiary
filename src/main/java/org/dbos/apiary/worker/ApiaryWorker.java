@@ -17,7 +17,7 @@ import org.zeromq.*;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class ApiaryWorker {
@@ -25,7 +25,10 @@ public class ApiaryWorker {
 
     public static int stringType = 0;
     public static int stringArrayType = 1;
-    public final AtomicInteger callerIDs = new AtomicInteger(0);
+
+    private final ThreadLocal<AtomicLong> callerIDs = new ThreadLocal<>();
+    // local variable to store the call stack.
+    private final ThreadLocal<Map<Long, ApiaryTaskStash>> callerStashMap = new ThreadLocal<>();
 
     public static int numWorkerThreads = 8;
 
@@ -41,6 +44,8 @@ public class ApiaryWorker {
     }
 
     private void workerThread() {
+        callerIDs.set(new AtomicLong(0));
+        callerStashMap.set(new ConcurrentHashMap<>());
         ZContext shadowContext = ZContext.shadow(zContext);
         ApiaryWorkerClient client = new ApiaryWorkerClient(shadowContext);
         ZMQ.Socket worker = shadowContext.createSocket(SocketType.DEALER);
@@ -57,9 +62,6 @@ public class ApiaryWorker {
             ZMQ.Socket socket = client.getSocket(hostname);
             poller.register(socket, ZMQ.Poller.POLLIN);
         }
-
-        // local variable to store the call stack.
-        Map<Integer, ApiaryTaskStash> callerStashMap = new ConcurrentHashMap<>();
 
         while (!Thread.currentThread().isInterrupted()) {
             int prs = poller.poll(10);
@@ -81,7 +83,7 @@ public class ApiaryWorker {
                     ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
                     List<ByteString> byteArguments = req.getArgumentsList();
                     List<Integer> argumentTypes = req.getArgumentTypesList();
-                    int callerID = req.getCallerId();
+                    long callerID = req.getCallerId();
                     int currTaskID = req.getTaskId();
                     Object[] arguments = new Object[byteArguments.size()];
                     for (int i = 0; i < arguments.length; i++) {
@@ -92,13 +94,7 @@ public class ApiaryWorker {
                             arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
                         }
                     }
-                    String output = executeFunction(client, req.getName(), callerID, currTaskID, callerStashMap, address, arguments);
-
-                    // If the output is not null, meaning everything is done. Directly return.
-                    if (output != null) {
-                        ApiaryWorkerClient.sendExecuteReply(worker, callerID, currTaskID, output, address);
-                    }
-
+                    executeFunction(client, worker, req.getName(), callerID, currTaskID, address, arguments);
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;
@@ -123,24 +119,12 @@ public class ApiaryWorker {
                         byte[] replyBytes = content.getData();
                         ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
                         String output = reply.getReply();
-                        int callerID = reply.getCallerId();
+                        long callerID = reply.getCallerId();
                         int taskID = reply.getTaskId();
                         msg.destroy();
 
                         // Resume execution.
-                        ApiaryTaskStash callerTask = callerStashMap.get(callerID);
-                        assert (callerTask != null);
-                        callerTask.taskIDtoValue.put(taskID, output);
-                        callerTask.numFinishedTasks.incrementAndGet();
-                        processTaskQueue(client, callerTask, callerID);
-                        // If everything is resolved, then return the string value.
-                        String finalOutput = callerTask.getFinalOutput();
-                        if (finalOutput != null) {
-                            // Send back the response.
-                            ApiaryWorkerClient.sendExecuteReply(worker, callerTask.callerId, callerTask.currTaskId, finalOutput, callerTask.replyAddr);
-                            // Clean up the stash map.
-                            callerStashMap.remove(callerID);
-                        }
+                        resumeExecution(client, worker, callerID, taskID, output);
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                             break;
@@ -158,13 +142,13 @@ public class ApiaryWorker {
         shadowContext.close();
     }
 
-    private void processTaskQueue(ApiaryWorkerClient client, ApiaryTaskStash currTask, int currCallerID) {
-        while (!currTask.queuedFunctions.isEmpty()) {
-            Task subtask = currTask.queuedFunctions.peek();
+    private void processQueuedTasks(ApiaryWorkerClient client, ApiaryTaskStash currTask, long currCallerID) {
+        while (!currTask.queuedTasks.isEmpty()) {
+            Task subtask = currTask.queuedTasks.peek();
             // Run all tasks that have no dependencies.
             try {
                 if (subtask.dereferenceFutures(currTask.taskIDtoValue)) {
-                    currTask.queuedFunctions.poll();
+                    currTask.queuedTasks.poll();
                     String output;
                     if (statelessFunctions.containsKey(subtask.funcName)) {
                         StatelessFunction f = statelessFunctions.get(subtask.funcName).call();
@@ -187,13 +171,32 @@ public class ApiaryWorker {
         }
     }
 
-    private String executeFunction(ApiaryWorkerClient client, String name, int callerID, int currTaskID, Map<Integer, ApiaryTaskStash> callerStashMap, ZFrame replyAddr, Object[] arguments) {
+    // Resume the execution of the caller function, then send back a reply if everything is finished.
+    private void resumeExecution(ApiaryWorkerClient client, ZMQ.Socket worker, long callerID, int taskID, String output) {
+        ApiaryTaskStash callerTask = callerStashMap.get().get(callerID);
+        assert (callerTask != null);
+        callerTask.taskIDtoValue.put(taskID, output);
+        callerTask.numFinishedTasks.incrementAndGet();
+        processQueuedTasks(client, callerTask, callerID);
+
+        // If everything is resolved, then return the string value.
+        String finalOutput = callerTask.getFinalOutput();
+        if (finalOutput != null) {
+            // Send back the response.
+            ApiaryWorkerClient.sendExecuteReply(worker, callerTask.callerId, callerTask.currTaskId, finalOutput, callerTask.replyAddr);
+            // Clean up the stash map.
+            callerStashMap.get().remove(callerID);
+        }
+    }
+
+    // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
+    private void executeFunction(ApiaryWorkerClient client, ZMQ.Socket worker, String name, long callerID, int currTaskID, ZFrame replyAddr, Object[] arguments) {
         FunctionOutput o;
         try {
             o = c.callFunction(name, arguments);
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
+            return;
         }
         ApiaryTaskStash currTask = new ApiaryTaskStash(callerID, currTaskID, replyAddr);
         if (o.stringOutput != null) {
@@ -205,19 +208,23 @@ public class ApiaryWorker {
 
         // Store tasks in the list and async invoke all sub-tasks that are ready.
         // Caller ID to be passed to its subtasks;
-        int currCallerID = callerIDs.incrementAndGet();
-        currTask.totalQueuedTasks = o.calledFunctions.size();
-        for (Task subtask : o.calledFunctions) {
+        long currCallerID = callerIDs.get().incrementAndGet();
+        currTask.totalQueuedTasks = o.queuedTasks.size();
+        for (Task subtask : o.queuedTasks) {
             // Queue the task.
-            currTask.queuedFunctions.add(subtask);
+            currTask.queuedTasks.add(subtask);
         }
 
-        processTaskQueue(client, currTask, currCallerID);
+        processQueuedTasks(client, currTask, currCallerID);
         if (currTask.totalQueuedTasks != currTask.numFinishedTasks.get()) {
             // Need to store the stash map only if we have future tasks. Otherwise, we don't have to store.
-            callerStashMap.put(currCallerID, currTask);
+            callerStashMap.get().put(currCallerID, currTask);
         }
-        return currTask.getFinalOutput();
+        String output = currTask.getFinalOutput();
+        // If the output is not null, meaning everything is done. Directly return.
+        if (output != null) {
+            ApiaryWorkerClient.sendExecuteReply(worker, callerID, currTaskID, output, replyAddr);
+        }
     }
 
     private void serverThread() {

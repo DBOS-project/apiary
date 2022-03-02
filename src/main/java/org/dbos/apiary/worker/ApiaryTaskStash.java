@@ -12,23 +12,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 // This class is used to store the current execution progress of a called function.
 public class ApiaryTaskStash {
-    public final int callerId;
+    public final long callerId;
     public final int currTaskId;  // Task ID for itself.
     public final ZFrame replyAddr;
     public final Map<Integer, String> taskIDtoValue;
-    public final Queue<Task> queuedFunctions;
+    public final Queue<Task> queuedTasks;
     public final AtomicInteger numFinishedTasks = new AtomicInteger(0);
 
     public int totalQueuedTasks;
     public String stringOutput;
     public ApiaryFuture futureOutput;
 
-    public ApiaryTaskStash(int callerId, int currTaskId, ZFrame replyAddr) {
+    public ApiaryTaskStash(long callerId, int currTaskId, ZFrame replyAddr) {
         this.callerId = callerId;
         this.currTaskId = currTaskId;
         this.replyAddr = replyAddr;
         taskIDtoValue = new ConcurrentHashMap<>();
-        queuedFunctions = new ConcurrentLinkedQueue<>();
+        queuedTasks = new ConcurrentLinkedQueue<>();
         totalQueuedTasks = 0;
     }
 

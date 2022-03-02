@@ -7,11 +7,11 @@ import java.util.List;
 public class FunctionOutput {
     public final String stringOutput;
     public ApiaryFuture futureOutput;
-    public final List<Task> calledFunctions;
+    public final List<Task> queuedTasks;
 
-    public FunctionOutput(String stringOutput, ApiaryFuture futureOutput, List<Task> calledFunctions) {
+    public FunctionOutput(String stringOutput, ApiaryFuture futureOutput, List<Task> queuedTasks) {
         this.stringOutput = stringOutput;
         this.futureOutput = futureOutput;
-        this.calledFunctions = calledFunctions;
+        this.queuedTasks = queuedTasks;
     }
 }

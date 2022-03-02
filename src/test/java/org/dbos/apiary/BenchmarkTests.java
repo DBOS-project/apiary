@@ -58,4 +58,27 @@ public class BenchmarkTests {
         clientContext.close();
         worker.shutdown();
     }
+
+    @Test
+    public void testIncrement() throws IOException, InterruptedException {
+        logger.info("testIncrement");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(c);
+        worker.startServing();
+
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+
+        String res;
+        res = client.executeFunction("localhost", "IncrementProcedure", "0");
+        assertEquals("1", res);
+        res = client.executeFunction("localhost", "IncrementProcedure", "0");
+        assertEquals("2", res);
+        res = client.executeFunction("localhost", "IncrementProcedure", "0");
+        assertEquals("3", res);
+        res = client.executeFunction("localhost", "IncrementProcedure", "55");
+        assertEquals("1", res);
+        clientContext.close();
+        worker.shutdown();
+    }
 }

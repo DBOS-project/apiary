@@ -14,6 +14,7 @@ public class BenchmarkingExecutable {
     public static void main(String[] args) throws Exception {
         Options options = new Options();
         options.addOption("b", true, "Which Benchmark?");
+        options.addOption("d", true, "Duration (sec)?");
         options.addOption("i", true, "Benchmarking Interval (μs)");
         options.addOption("vertica", true, "Vertica host name");
         options.addOption("skipLoad", false, "Skip loading data? In distributed clusters, only one client should load data.");
@@ -31,6 +32,7 @@ public class BenchmarkingExecutable {
             if (cmd.hasOption("d")) {
                 duration = Integer.parseInt(cmd.getOptionValue("d"));
             }
+            IncrementBenchmark.benchmark(interval, duration);
         }
     }
 }

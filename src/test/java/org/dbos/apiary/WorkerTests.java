@@ -47,7 +47,6 @@ public class WorkerTests {
     public void testFib() throws IOException, InterruptedException {
         logger.info("testFib");
         for (int i = 0; i < 10; i++) {
-            long loadStart = System.nanoTime();
             ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
             ApiaryWorker worker = new ApiaryWorker(c);
             worker.startServing();
@@ -65,7 +64,6 @@ public class WorkerTests {
             res = client.executeFunction("localhost", "FibonacciFunction", "30");
             assertEquals("832040", res);
 
-            loadStart = System.nanoTime();
             clientContext.close();
             worker.shutdown();
         }

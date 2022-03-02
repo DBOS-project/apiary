@@ -80,24 +80,8 @@ public class ApiaryWorkerClient {
     public String executeFunction(String address, String name, Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
         sendExecuteRequest(socket, name, 0L, 0, arguments);
-        byte[] replyBytes = recvExecuteReply(socket);
+        byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
         return rep.getReply();
-    }
-
-    // Block receiving reply, for synchronous call.
-    private byte[] recvExecuteReply(ZMQ.Socket client) {
-        ZMQ.Poller poller = zContext.createPoller(1);
-        poller.register(client, ZMQ.Poller.POLLIN);
-        byte[] results = null;
-        // TODO: add hard timeouts?
-        poller.poll(100000); // Timeout set to a large value, 100 sec.
-        if (poller.pollin(0)) {
-            ZMsg msg = ZMsg.recvMsg(client);
-            results = msg.getLast().getData();
-            msg.destroy();
-        }
-        poller.close();
-        return results;
     }
 }

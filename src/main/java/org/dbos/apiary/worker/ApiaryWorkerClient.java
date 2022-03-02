@@ -8,9 +8,7 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zeromq.SocketType;
-import org.zeromq.ZContext;
-import org.zeromq.ZMQ;
+import org.zeromq.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -31,19 +29,19 @@ public class ApiaryWorkerClient {
 
     private final Map<String, ZMQ.Socket> sockets = new HashMap<>();
 
-    private ZMQ.Socket getSocket(String address) {
+    public ZMQ.Socket getSocket(String address) {
         if (sockets.containsKey(address)) {
             return sockets.get(address);
         } else {
-            ZMQ.Socket socket = zContext.createSocket(SocketType.REQ);
+            ZMQ.Socket socket = zContext.createSocket(SocketType.DEALER);
             socket.connect("tcp://" + address + ":" + ApiaryConfig.workerPort);
             sockets.put(address, socket);
             return socket;
         }
     }
 
-    public String executeFunction(String address, String name, Object... arguments) throws InvalidProtocolBufferException {
-        ZMQ.Socket socket = getSocket(address);
+    // Send the function execution request to a socket. Do not wait for response.
+    public static void sendExecuteRequest(ZMQ.Socket socket, String name, long callerID, int taskID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
         for (Object o: arguments) {
@@ -62,10 +60,44 @@ public class ApiaryWorkerClient {
                 .setName(name)
                 .addAllArguments(byteArguments)
                 .addAllArgumentTypes(argumentTypes)
+                .setCallerId(callerID)
+                .setTaskId(taskID)
                 .build();
         socket.send(req.toByteArray(), 0);
-        byte[] replyBytes = socket.recv(0);
+    }
+
+    // Send the function execution response to a socket.
+    public static void sendExecuteReply(ZMQ.Socket socket, long callerID, int taskId, String output, ZFrame replyAddr) {
+        ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output)
+                .setCallerId(callerID)
+                .setTaskId(taskId).build();
+        replyAddr.send(socket, ZFrame.REUSE + ZFrame.MORE);
+        ZFrame replyContent = new ZFrame(rep.toByteArray());
+        replyContent.send(socket, 0);
+    }
+
+    // Synchronous blocking invocation, supposed to be used by client/loadgen.
+    public String executeFunction(String address, String name, Object... arguments) throws InvalidProtocolBufferException {
+        ZMQ.Socket socket = getSocket(address);
+        sendExecuteRequest(socket, name, 0L, 0, arguments);
+        byte[] replyBytes = recvExecuteReply(socket);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
         return rep.getReply();
+    }
+
+    // Block receiving reply, for synchronous call.
+    private byte[] recvExecuteReply(ZMQ.Socket client) {
+        ZMQ.Poller poller = zContext.createPoller(1);
+        poller.register(client, ZMQ.Poller.POLLIN);
+        byte[] results = null;
+        // TODO: add hard timeouts?
+        poller.poll(100000); // Timeout set to a large value, 100 sec.
+        if (poller.pollin(0)) {
+            ZMsg msg = ZMsg.recvMsg(client);
+            results = msg.getLast().getData();
+            msg.destroy();
+        }
+        poller.close();
+        return results;
     }
 }

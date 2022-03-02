@@ -42,10 +42,10 @@ public class VoltApiaryProcedure extends VoltProcedure {
             voltOutput = new VoltTable(new VoltTable.ColumnInfo("future", VoltType.SMALLINT));
             voltOutput.addRow(output.futureOutput.futureID);
         }
-        VoltTable[] outputs = new VoltTable[output.calledFunctions.size() + 1];
+        VoltTable[] outputs = new VoltTable[output.queuedTasks.size() + 1];
         outputs[0] = voltOutput;
-        for (int i = 0; i < output.calledFunctions.size(); i++) {
-            outputs[i + 1] = serializeTask(output.calledFunctions.get(i));
+        for (int i = 0; i < output.queuedTasks.size(); i++) {
+            outputs[i + 1] = serializeTask(output.queuedTasks.get(i));
         }
         return outputs;
     }

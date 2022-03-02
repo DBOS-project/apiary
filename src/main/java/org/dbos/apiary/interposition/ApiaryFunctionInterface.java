@@ -9,16 +9,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class ApiaryFunctionInterface {
 
-    private final AtomicInteger calledFunctionID = new AtomicInteger(0);
-    private final List<Task> calledFunctions = new ArrayList<>();
+    private final AtomicInteger calledTaskID = new AtomicInteger(0);
+    private final List<Task> queuedTasks = new ArrayList<>();
 
     /** Public Interface **/
 
     // Asynchronously queue another function for asynchronous execution.
     public ApiaryFuture apiaryQueueFunction(String name, Object... inputs) {
-        int taskID = calledFunctionID.getAndIncrement();
+        int taskID = calledTaskID.getAndIncrement();
         Task futureTask = new Task(taskID, name, inputs);
-        calledFunctions.add(futureTask);
+        queuedTasks.add(futureTask);
         return new ApiaryFuture(taskID);
     }
 
@@ -46,8 +46,8 @@ public abstract class ApiaryFunctionInterface {
     protected abstract Object internalExecuteQuery(Object procedure, Object... input);
 
     public FunctionOutput runFunction(Object... input) {
-        this.calledFunctionID.set(0);
-        this.calledFunctions.clear();
+        this.calledTaskID.set(0);
+        this.queuedTasks.clear();
         // TODO: Log metadata.
         Object retVal = internalRunFunction(input);
         // TODO: Fault tolerance stuff.
@@ -59,7 +59,7 @@ public abstract class ApiaryFunctionInterface {
             assert (retVal instanceof ApiaryFuture);
             futureOutput = (ApiaryFuture) retVal;
         }
-        return new FunctionOutput(stringOutput, futureOutput, this.calledFunctions);
+        return new FunctionOutput(stringOutput, futureOutput, this.queuedTasks);
     }
 
     protected abstract Object internalRunFunction(Object... input);

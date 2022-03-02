@@ -12,10 +12,14 @@ service Worker {
 
 message ExecuteFunctionRequest {
   string name = 1;
+  int64 callerId = 4;
+  int32 taskId = 5;
   repeated bytes arguments = 2;
   repeated int32 argumentTypes = 3;
 }
 
 message ExecuteFunctionReply {
   string reply = 1;
+  int64 callerId = 2;
+  int32 taskId = 3;
 }

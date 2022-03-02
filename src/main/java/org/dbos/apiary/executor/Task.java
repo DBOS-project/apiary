@@ -22,23 +22,40 @@ public class Task {
     }
 
     // Fill out the actual value of the referred future ID.
-    public void dereferenceFutures(Map<Integer, String> taskIDtoValue) {
+    // Return false if failed to resolve.
+    public boolean dereferenceFutures(Map<Integer, String> taskIDtoValue) {
+        boolean allResolved = true;
         for (int i = 0; i < input.length; i++) {
             Object o = input[i];
             if (o instanceof ApiaryFuture) {
                 int futureID = ((ApiaryFuture) o).futureID;
-                assert(taskIDtoValue.containsKey(futureID));
-                input[i] = taskIDtoValue.get(futureID);
+                if (!taskIDtoValue.containsKey(futureID)) {
+                    allResolved = false;
+                } else {
+                    input[i] = taskIDtoValue.get(futureID);
+                }
             } else if (o instanceof ApiaryFuture[]) {
                 ApiaryFuture[] futureArray = (ApiaryFuture[]) o;
                 String[] stringArray = new String[futureArray.length];
                 for (int j = 0; j < futureArray.length; j++) {
                     int futureID = futureArray[j].futureID;
-                    assert(taskIDtoValue.containsKey(futureID));
+                    if(!taskIDtoValue.containsKey(futureID)) {
+                        allResolved = false;
+                        break;
+                    }
+                }
+                // TODO: further optimize this part?
+                if (!allResolved) {
+                    // Skip populating this input.
+                    continue;
+                }
+                for (int j = 0; j < futureArray.length; j++) {
+                    int futureID = futureArray[j].futureID;
                     stringArray[j] = taskIDtoValue.get(futureID);
                 }
                 input[i] = stringArray;
             }
         }
+        return allResolved;
     }
 }

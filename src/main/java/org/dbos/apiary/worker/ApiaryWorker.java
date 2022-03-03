@@ -46,8 +46,8 @@ public class ApiaryWorker {
     }
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) throws InterruptedException {
-        boolean isLockAcquired = currTask.queuedTasksLock.tryLock(1, TimeUnit.MILLISECONDS);
-        while (isLockAcquired && !currTask.queuedTasks.isEmpty()) {
+        boolean canProcess = currTask.isProceessing.compareAndSet(false, true);
+        while (canProcess && !currTask.queuedTasks.isEmpty()) {
             try {
                 Task subtask = currTask.queuedTasks.peek();
                 // Run all tasks that have no dependencies.
@@ -73,7 +73,9 @@ public class ApiaryWorker {
                 break;
             }
         }
-        currTask.queuedTasksLock.unlock();
+        if (canProcess) {
+            currTask.isProceessing.set(false);
+        }
     }
 
     // Resume the execution of the caller function, then send back a reply if everything is finished.

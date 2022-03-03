@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -20,7 +21,7 @@ public class ApiaryTaskStash {
     public final Queue<Task> queuedTasks;
     public final AtomicInteger numFinishedTasks = new AtomicInteger(0);
 
-    public final ReentrantLock queuedTasksLock = new ReentrantLock();
+    public final AtomicBoolean isProceessing = new AtomicBoolean(false);
 
     public int totalQueuedTasks;
     public String stringOutput;

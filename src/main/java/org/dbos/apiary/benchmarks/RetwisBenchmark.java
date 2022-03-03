@@ -1,11 +1,8 @@
 package org.dbos.apiary.benchmarks;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.dbos.apiary.executor.ApiaryConnection;
-import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
-import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,14 +26,9 @@ public class RetwisBenchmark {
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
     private static final int threadPoolSize = 256;
 
-    public static void benchmark(Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
-        VoltDBConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+    public static void benchmark(String voltAddr, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
+        VoltDBConnection ctxt = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
         ctxt.client.callProcedure("TruncateTables");
-
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c);
-        worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
-        worker.startServing();
 
         ZContext clientContext = new ZContext();
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient(ZContext.shadow(clientContext)));
@@ -50,13 +42,13 @@ public class RetwisBenchmark {
             int postID = postIDs.incrementAndGet();
             int ts = timestamp.incrementAndGet();
             String postString = String.format("matei%d", postID);
-            client.get().executeFunction("localhost", "RetwisPost", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
+            client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisPost", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
         }
         for (int userID = 0; userID < numUsers; userID++) {
             int firstFollowee = ThreadLocalRandom.current().nextInt(numUsers);
             for (int i = 0; i < followsPerUsers; i++) {
                 int followeeID = (firstFollowee + i) % numUsers;
-                client.get().executeFunction("localhost", "RetwisFollow", String.valueOf(userID), String.valueOf(followeeID));
+                client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisFollow", String.valueOf(userID), String.valueOf(followeeID));
             }
         }
         logger.info("Finished loading!");
@@ -65,7 +57,7 @@ public class RetwisBenchmark {
             long rStart = System.nanoTime();
             try {
                 int userID = ThreadLocalRandom.current().nextInt(numUsers);
-                client.get().executeFunction("localhost", "RetwisGetTimeline", String.valueOf(userID));
+                client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisGetTimeline", String.valueOf(userID));
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
             }
@@ -100,6 +92,5 @@ public class RetwisBenchmark {
         threadPool.shutdown();
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
-        worker.shutdown();
     }
 }

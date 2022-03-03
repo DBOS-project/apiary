@@ -39,7 +39,7 @@ public class BenchmarkingExecutable {
             IncrementBenchmark.benchmark(voltAddr, interval, duration);
         } else if (benchmark.equals("retwis")) {
             logger.info("Retwis Benchmark");
-            RetwisBenchmark.benchmark(interval, duration);
+            RetwisBenchmark.benchmark(voltAddr, interval, duration);
         }
     }
 }

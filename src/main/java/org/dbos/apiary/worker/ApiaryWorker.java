@@ -31,7 +31,7 @@ public class ApiaryWorker {
     // Store the outgoing messages.
     private final Queue<OutgoingMsg> outgoingMsgQueue = new ConcurrentLinkedQueue<>();
 
-    public static int numWorkerThreads = 8;
+    public static int numWorkerThreads = 128;
 
     private final ApiaryConnection c;
     private ZContext zContext;
@@ -41,7 +41,7 @@ public class ApiaryWorker {
 
     public ApiaryWorker(ApiaryConnection c) {
         this.c = c;
-        this.zContext = new ZContext();
+        this.zContext = new ZContext(2);  // TODO: How many IO threads?
         threadPool = Executors.newFixedThreadPool(numWorkerThreads);
     }
 
@@ -210,14 +210,15 @@ public class ApiaryWorker {
         }
 
         while (!Thread.currentThread().isInterrupted()) {
-            int prs = poller.poll(0);
+            // Poll sockets with timeout 1ms.
+            // TODO: why poll() is expensive? poll(0) had lower performance.
+            int prs = poller.poll(1);
             if (prs == -1) {
                 break;
             }
 
             // Handle request from clients or other workers.
             if (poller.pollin(0)) {
-
                 try {
                     ZMsg msg = ZMsg.recvMsg(frontend);
                     ZFrame address = msg.pop();

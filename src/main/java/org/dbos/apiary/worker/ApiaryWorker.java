@@ -47,15 +47,19 @@ public class ApiaryWorker {
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
         int numTraversed = 0;
-        int totalTasks = currTask.queuedTasks.size();
+        int totalTasks = currTask.totalQueuedTasks;
         while (!currTask.queuedTasks.isEmpty()) {
             try {
-                Task subtask = currTask.queuedTasks.poll();
+                Task subtask = currTask.queuedTasks.peek();
                 if (subtask == null) {
                     break;
                 }
                 // Run all tasks that have no dependencies.
                 if (subtask.dereferenceFutures(currTask.taskIDtoValue)) {
+                    boolean removed = currTask.queuedTasks.remove(subtask);
+                    if (!removed) {
+                        continue;
+                    }
                     String output;
                     if (statelessFunctions.containsKey(subtask.funcName)) {
                         StatelessFunction f = statelessFunctions.get(subtask.funcName).call();
@@ -68,9 +72,6 @@ public class ApiaryWorker {
                         byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes(subtask.funcName, currCallerID, subtask.taskID, subtask.input);
                         outgoingMsgQueue.add(new OutgoingMsg(address, reqBytes));
                     }
-                } else {
-                    // Put the task back.
-                    currTask.queuedTasks.add(subtask);
                 }
                 numTraversed++;
                 if (numTraversed >= totalTasks) {

@@ -16,28 +16,30 @@ public class BenchmarkingExecutable {
         options.addOption("b", true, "Which Benchmark?");
         options.addOption("d", true, "Duration (sec)?");
         options.addOption("i", true, "Benchmarking Interval (μs)");
-        options.addOption("vertica", true, "Vertica host name");
         options.addOption("voltdb", true, "VoltDB host name");
-        options.addOption("skipLoad", false, "Skip loading data? In distributed clusters, only one client should load data.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
 
-        String benchmark = cmd.getOptionValue("b");
-
+        int interval  = 1000;
+        if (cmd.hasOption("i")) {
+            interval = Integer.parseInt(cmd.getOptionValue("i"));
+        }
+        int duration = 60;
+        if (cmd.hasOption("d")) {
+            duration = Integer.parseInt(cmd.getOptionValue("d"));
+        }
         String voltAddr = "localhost";
         if (cmd.hasOption("voltdb")) {
             voltAddr = cmd.getOptionValue("voltdb");
         }
-
+        String benchmark = cmd.getOptionValue("b");
         if (benchmark.equals("increment")) {
             logger.info("Increment Benchmark");
-            int interval = Integer.parseInt(cmd.getOptionValue("i"));
-            int duration = 60;
-            if (cmd.hasOption("d")) {
-                duration = Integer.parseInt(cmd.getOptionValue("d"));
-            }
             IncrementBenchmark.benchmark(voltAddr, interval, duration);
+        } else if (benchmark.equals("retwis")) {
+            logger.info("Retwis Benchmark");
+            RetwisBenchmark.benchmark(interval, duration);
         }
     }
 }

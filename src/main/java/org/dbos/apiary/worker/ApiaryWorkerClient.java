@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 
 // Note: ZMQ.Socket is not thread-safe, so this class is not thread-safe either.
@@ -34,6 +35,8 @@ public class ApiaryWorkerClient {
             return sockets.get(address);
         } else {
             ZMQ.Socket socket = zContext.createSocket(SocketType.DEALER);
+            String identity = String.format("%04X-%04X", ThreadLocalRandom.current().nextInt(), ThreadLocalRandom.current().nextInt());
+            socket.setIdentity(identity.getBytes(ZMQ.CHARSET));
             socket.connect("tcp://" + address + ":" + ApiaryConfig.workerPort);
             sockets.put(address, socket);
             return socket;
@@ -41,7 +44,7 @@ public class ApiaryWorkerClient {
     }
 
     // Send the function execution request to a socket. Do not wait for response.
-    public static void sendExecuteRequest(ZMQ.Socket socket, String name, long callerID, int taskID, Object... arguments) {
+    public static byte[] getExecuteRequestBytes(String name, long callerID, int taskID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
         for (Object o: arguments) {
@@ -63,23 +66,14 @@ public class ApiaryWorkerClient {
                 .setCallerId(callerID)
                 .setTaskId(taskID)
                 .build();
-        socket.send(req.toByteArray(), 0);
-    }
-
-    // Send the function execution response to a socket.
-    public static void sendExecuteReply(ZMQ.Socket socket, long callerID, int taskId, String output, ZFrame replyAddr) {
-        ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output)
-                .setCallerId(callerID)
-                .setTaskId(taskId).build();
-        replyAddr.send(socket, ZFrame.REUSE + ZFrame.MORE);
-        ZFrame replyContent = new ZFrame(rep.toByteArray());
-        replyContent.send(socket, 0);
+        return req.toByteArray();
     }
 
     // Synchronous blocking invocation, supposed to be used by client/loadgen.
     public String executeFunction(String address, String name, Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
-        sendExecuteRequest(socket, name, 0L, 0, arguments);
+        byte[] reqBytes = getExecuteRequestBytes(name, 0L, 0, arguments);
+        socket.send(reqBytes, 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
         return rep.getReply();

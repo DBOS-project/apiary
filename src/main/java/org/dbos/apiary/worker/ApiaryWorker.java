@@ -47,6 +47,9 @@ public class ApiaryWorker {
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) throws InterruptedException {
         boolean canProcess = currTask.isProceessing.compareAndSet(false, true);
+        if (!canProcess) {
+            return;
+        }
         while (canProcess && !currTask.queuedTasks.isEmpty()) {
             try {
                 Task subtask = currTask.queuedTasks.peek();
@@ -73,9 +76,7 @@ public class ApiaryWorker {
                 break;
             }
         }
-        if (canProcess) {
-            currTask.isProceessing.set(false);
-        }
+        currTask.isProceessing.set(false);
     }
 
     // Resume the execution of the caller function, then send back a reply if everything is finished.

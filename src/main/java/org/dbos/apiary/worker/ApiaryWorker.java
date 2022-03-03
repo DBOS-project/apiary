@@ -51,6 +51,9 @@ public class ApiaryWorker {
         while (!currTask.queuedTasks.isEmpty()) {
             try {
                 Task subtask = currTask.queuedTasks.poll();
+                if (subtask == null) {
+                    break;
+                }
                 // Run all tasks that have no dependencies.
                 if (subtask.dereferenceFutures(currTask.taskIDtoValue)) {
                     String output;

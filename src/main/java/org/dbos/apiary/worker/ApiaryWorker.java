@@ -45,17 +45,14 @@ public class ApiaryWorker {
         threadPool = Executors.newFixedThreadPool(numWorkerThreads);
     }
 
-    private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) throws InterruptedException {
-        boolean canProcess = currTask.isProceessing.compareAndSet(false, true);
-        if (!canProcess) {
-            return;
-        }
-        while (canProcess && !currTask.queuedTasks.isEmpty()) {
+    private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
+        int numTraversed = 0;
+        int totalTasks = currTask.queuedTasks.size();
+        while (!currTask.queuedTasks.isEmpty()) {
             try {
-                Task subtask = currTask.queuedTasks.peek();
+                Task subtask = currTask.queuedTasks.poll();
                 // Run all tasks that have no dependencies.
                 if (subtask.dereferenceFutures(currTask.taskIDtoValue)) {
-                    currTask.queuedTasks.poll();
                     String output;
                     if (statelessFunctions.containsKey(subtask.funcName)) {
                         StatelessFunction f = statelessFunctions.get(subtask.funcName).call();
@@ -69,6 +66,11 @@ public class ApiaryWorker {
                         outgoingMsgQueue.add(new OutgoingMsg(address, reqBytes));
                     }
                 } else {
+                    // Put the task back.
+                    currTask.queuedTasks.add(subtask);
+                }
+                numTraversed++;
+                if (numTraversed >= totalTasks) {
                     break;
                 }
             } catch (Exception e) {
@@ -76,7 +78,6 @@ public class ApiaryWorker {
                 break;
             }
         }
-        currTask.isProceessing.set(false);
     }
 
     // Resume the execution of the caller function, then send back a reply if everything is finished.
@@ -85,10 +86,12 @@ public class ApiaryWorker {
         assert (callerTask != null);
         callerTask.taskIDtoValue.put(taskID, output);
         callerTask.numFinishedTasks.incrementAndGet();
+
         processQueuedTasks(callerTask, callerID);
 
         // If everything is resolved, then return the string value.
         String finalOutput = callerTask.getFinalOutput();
+
         if (finalOutput != null) {
             // Send back the response.
             ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput)

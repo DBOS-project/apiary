@@ -21,8 +21,6 @@ public class ApiaryTaskStash {
     public final Queue<Task> queuedTasks;
     public final AtomicInteger numFinishedTasks = new AtomicInteger(0);
 
-    public final AtomicBoolean isProceessing = new AtomicBoolean(false);
-
     public int totalQueuedTasks;
     public String stringOutput;
     public ApiaryFuture futureOutput;

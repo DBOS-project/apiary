@@ -29,13 +29,14 @@ public class ApiaryWorker {
     // Store the call stack for each caller.
     private final Map<Long, ApiaryTaskStash> callerStashMap = new ConcurrentHashMap<>();
     // Store the outgoing messages.
-    private final Queue<OutgoingMsg> outgoingMsgQueue = new ConcurrentLinkedQueue<>();
+    private final Queue<OutgoingReplyMsg> outgoingReplyMsgs = new ConcurrentLinkedQueue<>();
+    private final Queue<OutgoingRequestMsg> outgoingRequestMsgs = new ConcurrentLinkedQueue<>();
 
     public static int numWorkerThreads = 128;
 
     private final ApiaryConnection c;
     private ZContext zContext;
-    private Thread serverThread;
+    private Thread[] serverThreads;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
     private final ExecutorService threadPool;
 
@@ -63,7 +64,7 @@ public class ApiaryWorker {
                         String address = c.getHostname(subtask.input);
                         // Push to the outgoing queue.
                         byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes(subtask.funcName, currCallerID, subtask.taskID, subtask.input);
-                        outgoingMsgQueue.add(new OutgoingMsg(address, reqBytes));
+                        outgoingRequestMsgs.add(new OutgoingRequestMsg(address, reqBytes));
                     }
                 } else {
                     break;
@@ -91,7 +92,7 @@ public class ApiaryWorker {
             ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput)
                     .setCallerId(callerTask.callerId)
                     .setTaskId(callerTask.currTaskId).build();
-            outgoingMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, rep.toByteArray()));
+            outgoingReplyMsgs.add(new OutgoingReplyMsg(callerTask.replyAddr, rep.toByteArray()));
             // Clean up the stash map.
             callerStashMap.remove(callerID);
         }
@@ -134,7 +135,7 @@ public class ApiaryWorker {
             ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output)
                     .setCallerId(callerID)
                     .setTaskId(currTaskID).build();
-            outgoingMsgQueue.add(new OutgoingMsg(replyAddr, rep.toByteArray()));
+            outgoingReplyMsgs.add(new OutgoingReplyMsg(replyAddr, rep.toByteArray()));
         }
     }
 
@@ -189,20 +190,15 @@ public class ApiaryWorker {
         }
     }
 
-    private void serverThread() {
+    // This client hanlde thread is used as I/O thread for receiving replies and sending requests.
+    private void clientHandleThread() {
         ZContext shadowContext = ZContext.shadow(zContext);
-        ZMQ.Socket frontend = shadowContext.createSocket(SocketType.ROUTER);
-        frontend.setRouterMandatory(true);
-        frontend.bind("tcp://*:" + ApiaryConfig.workerPort);
-
-        // This main server thread is used as I/O thread.
         ApiaryWorkerClient client = new ApiaryWorkerClient(shadowContext);
+
         List<String> distinctHosts = c.getPartitionHostMap().values().stream()
                 .distinct()
                 .collect(Collectors.toList());
-        ZMQ.Poller poller = zContext.createPoller(distinctHosts.size() + 1);
-        // The backend worker is always the first poller socket.
-        poller.register(frontend, ZMQ.Poller.POLLIN);
+        ZMQ.Poller poller = zContext.createPoller(distinctHosts.size());
         // Populate sockets for all remote workers in the cluster.
         for (String hostname : distinctHosts) {
             ZMQ.Socket socket = client.getSocket(hostname);
@@ -217,30 +213,11 @@ public class ApiaryWorker {
                 break;
             }
 
-            // Handle request from clients or other workers.
-            if (poller.pollin(0)) {
-                try {
-                    ZMsg msg = ZMsg.recvMsg(frontend);
-                    ZFrame address = msg.pop();
-                    ZFrame content = msg.poll();
-                    assert (content != null);
-                    msg.destroy();
-                    byte[] reqBytes = content.getData();
-                    threadPool.submit(new workerRunnable(address, reqBytes, null));
-                } catch (ZMQException e) {
-                    if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
-                        break;
-                    } else {
-                        e.printStackTrace();
-                    }
-                }
-            }
-
             // Handle reply from requests.
-            for (int i = 1; i < poller.getSize(); i++) {
+            for (int i = 0; i < poller.getSize(); i++) {
                 if (poller.pollin(i)) {
                     try {
-                        String hostname = distinctHosts.get(i-1);
+                        String hostname = distinctHosts.get(i);
                         ZMQ.Socket socket = client.getSocket(hostname);
                         ZMsg msg = ZMsg.recvMsg(socket);
                         ZFrame content = msg.getLast();
@@ -258,23 +235,56 @@ public class ApiaryWorker {
                 }
             }
 
-            // Handle reply to send back.
+            // Handle request to send out.
             // TODO: do we send back all of those, or just send back a few?
-            while (!outgoingMsgQueue.isEmpty()) {
-                OutgoingMsg msg = outgoingMsgQueue.poll();
-                if (msg.hostname == null) {
-                    assert (msg.address != null);
-                    msg.address.send(frontend, ZFrame.REUSE + ZFrame.MORE);
-                    ZFrame replyContent = new ZFrame(msg.output);
-                    replyContent.send(frontend, 0);
-                } else {
-                    ZMQ.Socket socket = client.getSocket(msg.hostname);
-                    socket.send(msg.output, 0);
-                }
+            while (!outgoingRequestMsgs.isEmpty()) {
+                OutgoingRequestMsg msg = outgoingRequestMsgs.poll();
+                ZMQ.Socket socket = client.getSocket(msg.hostname);
+                socket.send(msg.output, 0);
             }
         }
 
         poller.close();
+        shadowContext.close();
+    }
+
+    // This main server thread is used as I/O thread for receiving requests and sending back replies.
+    private void serverThread() {
+        ZContext shadowContext = ZContext.shadow(zContext);
+        ZMQ.Socket frontend = shadowContext.createSocket(SocketType.ROUTER);
+        frontend.setRouterMandatory(true);
+        frontend.bind("tcp://*:" + ApiaryConfig.workerPort);
+
+        while (!Thread.currentThread().isInterrupted()) {
+            // Handle request from clients or other workers.
+            try {
+                ZMsg msg = ZMsg.recvMsg(frontend, ZMQ.DONTWAIT);
+                if (msg != null) {
+                    ZFrame address = msg.pop();
+                    ZFrame content = msg.poll();
+                    assert (content != null);
+                    msg.destroy();
+                    byte[] reqBytes = content.getData();
+                    threadPool.submit(new workerRunnable(address, reqBytes, null));
+                }
+            } catch (ZMQException e) {
+                if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
+                    break;
+                } else {
+                    e.printStackTrace();
+                }
+            }
+
+            // Handle reply to send back.
+            // TODO: do we send back all of those, or just send back a few?
+            while (!outgoingReplyMsgs.isEmpty()) {
+                OutgoingReplyMsg msg = outgoingReplyMsgs.poll();
+                assert (msg.address != null);
+                msg.address.send(frontend, ZFrame.REUSE + ZFrame.MORE);
+                ZFrame replyContent = new ZFrame(msg.output);
+                replyContent.send(frontend, 0);
+            }
+        }
         shadowContext.close();
     }
 
@@ -284,15 +294,20 @@ public class ApiaryWorker {
     }
 
     public void startServing() {
-        serverThread = new Thread(this::serverThread);
-        serverThread.start();
+        serverThreads = new Thread[2];
+        serverThreads[0] = new Thread(this::serverThread);
+        serverThreads[0].start();
+        serverThreads[1] = new Thread(this::clientHandleThread);
+        serverThreads[1].start();
     }
 
     public void shutdown() throws InterruptedException {
         threadPool.shutdown();
         threadPool.awaitTermination(10000, TimeUnit.SECONDS);
-        serverThread.interrupt();
+        for (int i = 0; i < serverThreads.length; i++) {
+            serverThreads[i].interrupt();
+            serverThreads[i].join();
+        }
         zContext.close();
-        serverThread.join();
     }
 }

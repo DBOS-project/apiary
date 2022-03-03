@@ -1,6 +1,7 @@
 package org.dbos.apiary.worker;
 
 import org.dbos.apiary.executor.ApiaryConnection;
+import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
 import org.slf4j.Logger;
@@ -16,6 +17,10 @@ public class ApiaryWorkerExecutable {
         // Only need to connect to localhost.
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c);
+
+        // Register all stateless functions for experiments.
+        worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
+
         worker.startServing();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.err.println("Stopping Apiary worker server.");

@@ -200,9 +200,7 @@ public class ApiaryWorker {
         List<String> distinctHosts = c.getPartitionHostMap().values().stream()
                 .distinct()
                 .collect(Collectors.toList());
-        ZMQ.Poller poller = zContext.createPoller(distinctHosts.size() + 1);
-        // The backend worker is always the first poller socket.
-        poller.register(frontend, ZMQ.Poller.POLLIN);
+        ZMQ.Poller poller = zContext.createPoller(distinctHosts.size());
         // Populate sockets for all remote workers in the cluster.
         for (String hostname : distinctHosts) {
             ZMQ.Socket socket = client.getSocket(hostname);
@@ -210,44 +208,49 @@ public class ApiaryWorker {
         }
 
         while (!Thread.currentThread().isInterrupted()) {
-            // Poll sockets with timeout 1ms.
-            // TODO: why poll() is expensive? poll(0) had lower performance.
-            int prs = poller.poll(1);
-            if (prs == -1) {
-                break;
-            }
-
             // Handle request from clients or other workers.
-            if (poller.pollin(0)) {
-                try {
-                    ZMsg msg = ZMsg.recvMsg(frontend);
+            // TODO: receive multiple messages here?
+            int batchSize = 10;
+            try {
+                for (int i = 0; i < batchSize; i++) {
+                    ZMsg msg = ZMsg.recvMsg(frontend, ZMQ.DONTWAIT);
+                    if (msg == null) { break; }
                     ZFrame address = msg.pop();
                     ZFrame content = msg.poll();
                     assert (content != null);
                     msg.destroy();
                     byte[] reqBytes = content.getData();
                     threadPool.submit(new workerRunnable(address, reqBytes, null));
-                } catch (ZMQException e) {
-                    if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
-                        break;
-                    } else {
-                        e.printStackTrace();
-                    }
+                }
+            } catch (ZMQException e) {
+                if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
+                    break;
+                } else {
+                    e.printStackTrace();
                 }
             }
 
+            // Poll sockets with timeout 1ms.
+            // TODO: why poll() is expensive? poll(0) had lower performance.
+            int prs = poller.poll(1);
+            if (prs == -1) {
+                break;
+            }
             // Handle reply from requests.
-            for (int i = 1; i < poller.getSize(); i++) {
+            for (int i = 0; i < poller.getSize(); i++) {
                 if (poller.pollin(i)) {
                     try {
-                        String hostname = distinctHosts.get(i-1);
-                        ZMQ.Socket socket = client.getSocket(hostname);
-                        ZMsg msg = ZMsg.recvMsg(socket);
-                        ZFrame content = msg.getLast();
-                        assert (content != null);
-                        byte[] replyBytes = content.getData();
-                        msg.destroy();
-                        threadPool.submit(new workerRunnable(null, null, replyBytes));
+                            String hostname = distinctHosts.get(i);
+                            ZMQ.Socket socket = client.getSocket(hostname);
+                        for (int j = 0; j < batchSize; j++) {
+                            ZMsg msg = ZMsg.recvMsg(socket, ZMQ.DONTWAIT);
+                            if (msg == null) { break; }
+                            ZFrame content = msg.getLast();
+                            assert (content != null);
+                            byte[] replyBytes = content.getData();
+                            msg.destroy();
+                            threadPool.submit(new workerRunnable(null, null, replyBytes));
+                        }
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                             break;

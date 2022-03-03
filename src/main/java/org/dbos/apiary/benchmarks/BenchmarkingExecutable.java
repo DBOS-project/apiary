@@ -17,6 +17,7 @@ public class BenchmarkingExecutable {
         options.addOption("d", true, "Duration (sec)?");
         options.addOption("i", true, "Benchmarking Interval (μs)");
         options.addOption("vertica", true, "Vertica host name");
+        options.addOption("voltdb", true, "VoltDB host name");
         options.addOption("skipLoad", false, "Skip loading data? In distributed clusters, only one client should load data.");
 
         CommandLineParser parser = new DefaultParser();
@@ -24,6 +25,10 @@ public class BenchmarkingExecutable {
 
         String benchmark = cmd.getOptionValue("b");
 
+        String voltAddr = "localhost";
+        if (cmd.hasOption("voltdb")) {
+            voltAddr = cmd.getOptionValue("voltdb");
+        }
 
         if (benchmark.equals("increment")) {
             logger.info("Increment Benchmark");
@@ -32,7 +37,7 @@ public class BenchmarkingExecutable {
             if (cmd.hasOption("d")) {
                 duration = Integer.parseInt(cmd.getOptionValue("d"));
             }
-            IncrementBenchmark.benchmark(interval, duration);
+            IncrementBenchmark.benchmark(voltAddr, interval, duration);
         }
     }
 }

@@ -21,8 +21,8 @@ public class IncrementBenchmark {
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
     private static final int threadPoolSize = 256;
 
-    public static void benchmark(Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
-        VoltDBConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+    public static void benchmark(String voltAddr, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
+        VoltDBConnection ctxt = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
         ctxt.client.callProcedure("TruncateTables");
 
         ZContext clientContext = new ZContext();

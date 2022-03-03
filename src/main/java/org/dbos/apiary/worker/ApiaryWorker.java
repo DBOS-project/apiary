@@ -45,11 +45,12 @@ public class ApiaryWorker {
         threadPool = Executors.newFixedThreadPool(numWorkerThreads);
     }
 
-    private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
-        while (!currTask.queuedTasks.isEmpty()) {
-            Task subtask = currTask.queuedTasks.peek();
-            // Run all tasks that have no dependencies.
+    private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) throws InterruptedException {
+        boolean isLockAcquired = currTask.queuedTasksLock.tryLock(1, TimeUnit.MILLISECONDS);
+        while (isLockAcquired && !currTask.queuedTasks.isEmpty()) {
             try {
+                Task subtask = currTask.queuedTasks.peek();
+                // Run all tasks that have no dependencies.
                 if (subtask.dereferenceFutures(currTask.taskIDtoValue)) {
                     currTask.queuedTasks.poll();
                     String output;
@@ -72,10 +73,11 @@ public class ApiaryWorker {
                 break;
             }
         }
+        currTask.queuedTasksLock.unlock();
     }
 
     // Resume the execution of the caller function, then send back a reply if everything is finished.
-    private void resumeExecution(long callerID, int taskID, String output) {
+    private void resumeExecution(long callerID, int taskID, String output) throws InterruptedException {
         ApiaryTaskStash callerTask = callerStashMap.get(callerID);
         assert (callerTask != null);
         callerTask.taskIDtoValue.put(taskID, output);
@@ -96,7 +98,7 @@ public class ApiaryWorker {
     }
 
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
-    private void executeFunction(String name, long callerID, int currTaskID, ZFrame replyAddr, Object[] arguments) {
+    private void executeFunction(String name, long callerID, int currTaskID, ZFrame replyAddr, Object[] arguments) throws InterruptedException {
         FunctionOutput o;
         try {
             o = c.callFunction(name, arguments);
@@ -167,7 +169,7 @@ public class ApiaryWorker {
                         }
                     }
                     executeFunction(req.getName(), callerID, currTaskID, address, arguments);
-                } catch (InvalidProtocolBufferException e) {
+                } catch (InvalidProtocolBufferException | InterruptedException e) {
                     e.printStackTrace();
                 }
             } else {
@@ -180,7 +182,7 @@ public class ApiaryWorker {
                     int taskID = reply.getTaskId();
                     // Resume execution.
                     resumeExecution(callerID, taskID, output);
-                } catch (InvalidProtocolBufferException e) {
+                } catch (InvalidProtocolBufferException | InterruptedException e) {
                     e.printStackTrace();
                 }
             }

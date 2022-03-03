@@ -47,7 +47,7 @@ public class ApiaryWorker {
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
         int numTraversed = 0;
-        int totalTasks = currTask.totalQueuedTasks;
+        int totalTasks = currTask.queuedTasks.size();
         while (!currTask.queuedTasks.isEmpty()) {
             try {
                 Task subtask = currTask.queuedTasks.peek();

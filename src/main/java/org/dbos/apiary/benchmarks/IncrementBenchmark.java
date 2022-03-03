@@ -4,7 +4,6 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
-import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +35,8 @@ public class IncrementBenchmark {
         Runnable r = () -> {
             long rStart = System.nanoTime();
             try {
-                client.get().executeFunction("localhost", "IncrementProcedure", String.valueOf(ThreadLocalRandom.current().nextInt(numKeys)));
+                String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys);
+                client.get().executeFunction(ctxt.getHostname(new Object[]{key}), "IncrementProcedure", key);
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
             }

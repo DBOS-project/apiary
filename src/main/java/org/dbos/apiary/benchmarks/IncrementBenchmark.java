@@ -27,10 +27,6 @@ public class IncrementBenchmark {
         VoltDBConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ctxt.client.callProcedure("TruncateTables");
 
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c);
-        worker.startServing();
-
         ZContext clientContext = new ZContext();
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient(ZContext.shadow(clientContext)));
 
@@ -75,6 +71,5 @@ public class IncrementBenchmark {
         threadPool.shutdown();
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
-        worker.shutdown();
     }
 }

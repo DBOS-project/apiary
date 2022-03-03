@@ -33,7 +33,6 @@ public class BenchmarkingExecutable {
         if (cmd.hasOption("voltdb")) {
             voltAddr = cmd.getOptionValue("voltdb");
         }
-
         String benchmark = cmd.getOptionValue("b");
         if (benchmark.equals("increment")) {
             logger.info("Increment Benchmark");

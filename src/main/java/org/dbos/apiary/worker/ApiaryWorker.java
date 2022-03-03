@@ -298,11 +298,15 @@ public class ApiaryWorker {
         serverThread.start();
     }
 
-    public void shutdown() throws InterruptedException {
-        threadPool.shutdown();
-        threadPool.awaitTermination(10000, TimeUnit.SECONDS);
-        serverThread.interrupt();
-        zContext.close();
-        serverThread.join();
+    public void shutdown() {
+        try {
+            threadPool.shutdown();
+            threadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            serverThread.interrupt();
+            zContext.close();
+            serverThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

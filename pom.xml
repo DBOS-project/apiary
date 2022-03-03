@@ -72,6 +72,22 @@
                                     <mainClass>org.dbos.apiary.benchmarks.BenchmarkingExecutable</mainClass>
                                 </manifest>
                             </archive>
+                            <finalName>apiary-bench-exec</finalName>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>worker-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>org.dbos.apiary.worker.ApiaryWorkerExecutable</mainClass>
+                                </manifest>
+                            </archive>
+                            <finalName>apiary-worker-exec</finalName>
                         </configuration>
                     </execution>
                 </executions>

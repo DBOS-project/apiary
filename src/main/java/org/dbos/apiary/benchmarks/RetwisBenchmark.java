@@ -57,7 +57,7 @@ public class RetwisBenchmark {
             long rStart = System.nanoTime();
             try {
                 int userID = ThreadLocalRandom.current().nextInt(numUsers);
-                client.get().executeFunction("localhost", "RetwisGetTimeline", String.valueOf(userID));
+                client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisGetTimeline", String.valueOf(userID));
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
             }

@@ -54,7 +54,7 @@ public class CockroachDBConnection implements ApiaryConnection {
 
     @Override
     public Map<Integer, String> getPartitionHostMap() {
-        return null;
+        return Map.of(0, "localhost");
     }
 
 }

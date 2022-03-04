@@ -3,7 +3,6 @@ package org.dbos.apiary;
 import org.dbos.apiary.procedures.cockroachdb.CockroachDBFibSumFunction;
 import org.dbos.apiary.procedures.cockroachdb.CockroachDBFibonacciFunction;
 import org.dbos.apiary.cockroachdb.CockroachDBConnection;
-import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.junit.jupiter.api.Test;
@@ -20,7 +19,7 @@ import org.postgresql.ds.PGSimpleDataSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CockroachDBTests {
-    private static final Logger logger = LoggerFactory.getLogger(SQLiteTests.class);
+    private static final Logger logger = LoggerFactory.getLogger(CockroachDBTests.class);
 
     public void createTestTables(PGSimpleDataSource dataSource) throws SQLException {
         Connection conn = dataSource.getConnection();
@@ -66,11 +65,11 @@ public class CockroachDBTests {
         res = client.executeFunction("localhost", "FibonacciFunction", "1");
         assertEquals("1", res);
 
+        res = client.executeFunction("localhost", "FibonacciFunction", "6");
+        assertEquals("8", res);
+
         res = client.executeFunction("localhost", "FibonacciFunction", "10");
         assertEquals("55", res);
-
-        res = client.executeFunction("localhost", "FibonacciFunction", "30");
-        assertEquals("832040", res);
 
         clientContext.close();
         worker.shutdown();

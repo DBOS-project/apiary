@@ -54,7 +54,7 @@ public class CockroachDBTests {
         createTestTables(ds);
 
         Connection conn = ds.getConnection();
-        CockroachDBConnection c = new CockroachDBConnection(conn);
+        CockroachDBConnection c = new CockroachDBConnection(conn, /*tableName=*/"KVTable");
 
         c.registerFunction("FibonacciFunction", () -> new CockroachDBFibonacciFunction(conn));
         c.registerFunction("FibSumFunction", () -> new CockroachDBFibSumFunction(conn));

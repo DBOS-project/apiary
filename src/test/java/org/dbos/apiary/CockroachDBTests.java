@@ -74,9 +74,6 @@ public class CockroachDBTests {
         res = client.executeFunction("localhost", "FibonacciFunction", "10");
         assertEquals("55", res);
 
-        res = client.executeFunction("localhost", "FibonacciFunction", "30");
-        assertEquals("832040", res);
-
         clientContext.close();
         worker.shutdown();
         conn.close();

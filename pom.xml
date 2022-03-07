@@ -90,6 +90,21 @@
                             <finalName>apiary-worker-exec</finalName>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>worker-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>org.dbos.apiary.worker.CockroachDBApiaryWorkerExecutable</mainClass>
+                                </manifest>
+                            </archive>
+                            <finalName>cockroachdb-apiary-worker-exec</finalName>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>

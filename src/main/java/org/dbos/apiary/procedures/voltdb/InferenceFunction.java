@@ -19,7 +19,7 @@ public class InferenceFunction extends VoltApiaryProcedure {
         return super.run(pkey, voltInput);
     }
 
-    public ApiaryFuture runFunction(String keyString) {
+    public ApiaryFuture runFunction(String dummyInput) {
         
         // Grab data and extract from VoltTable
         VoltTable res = ((VoltTable[]) funcApi.apiaryExecuteQuery(getData))[0];

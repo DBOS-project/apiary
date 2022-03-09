@@ -11,7 +11,7 @@ cd ${SCRIPT_DIR}/../
 VOLTDB_BIN="${VOLT_HOME}/bin"
 
 voltdb init -f --dir=/var/tmp --config ${SCRIPT_DIR}/local_config.xml
-voltdb start -B --ignore=thp --dir=/var/tmp
+voltdb start -B --ignore=thp --dir=/var/tmp --http=8888
 
 # Wait until VoltDB is ready.
 MAX_TRY=30

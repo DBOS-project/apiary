@@ -17,7 +17,14 @@ public class InsertMnistFunction extends VoltApiaryProcedure {
         return super.run(pkey, voltInput);
     }
 
-    public String runFunction(Integer[] classifications) {
+    public String runFunction(String response) {
+
+        String[] classificationStrings = response.split("&"); 
+        Integer[] classifications = new Integer[classificationStrings.length];
+        for (int i = 0; i < classificationStrings.length; i++) {
+            classifications[i] = Integer.parseInt(classificationStrings[i]);
+        }
+
         for (int i = 0; i < classifications.length; i++) {
             funcApi.apiaryExecuteUpdate(addResult, 0, i, classifications[i]);
         }

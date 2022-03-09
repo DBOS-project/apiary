@@ -21,7 +21,7 @@ while True:
     if not data:
         break
     print("Received data:", data)
-    conn.send(b"hello client\n")
+    conn.send(b"1&2&3\n")
     print("Sent back data")
 print("Closing")
 conn.close()

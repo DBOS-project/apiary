@@ -19,4 +19,7 @@ DROP PROCEDURE InsertFunction IF EXISTS;
 CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.InsertFunction;
 
 DROP PROCEDURE InferenceFunction IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.InferenceFunction;
+CREATE PROCEDURE PARTITION ON TABLE MnistData COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.InferenceFunction;
+
+DROP PROCEDURE InsertMnistFunction IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE MnistClassifications COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.InsertMnistFunction;

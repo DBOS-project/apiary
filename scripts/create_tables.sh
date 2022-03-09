@@ -5,6 +5,7 @@ SCRIPT_DIR=$(dirname $(readlink -f $0))
 # Enter the root dir of the repo.
 cd ${SCRIPT_DIR}/../
 
+VOLT_HOME="/voltdb-ent-9.3.2"
 VOLTDB_BIN="${VOLT_HOME}/bin"
 
 # Create tables.

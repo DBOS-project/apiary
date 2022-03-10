@@ -23,6 +23,7 @@ public class CockroachDBConnection implements ApiaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(CockroachDBConnection.class);
 
     private final PGSimpleDataSource ds;
+    private final Connection connectionForPartitionInfo;
     private final ThreadLocal<Connection> connectionForFunction;
     private final String tableName;
     private final Map<String, Callable<CockroachDBFunctionInterface>> functions = new HashMap<>();
@@ -46,6 +47,7 @@ public class CockroachDBConnection implements ApiaryConnection {
         this.ds = ds;
         this.tableName = tableName;
 
+        this.connectionForPartitionInfo = ds.getConnection();
         this.connectionForFunction = ThreadLocal.withInitial(() -> {
             try {
                 Connection conn = ds.getConnection();
@@ -86,7 +88,7 @@ public class CockroachDBConnection implements ApiaryConnection {
         try {
             // Fill in `partitionHostMap`.
             partitionHostMap.clear();
-            Statement getNodes = connectionForFunction.get().createStatement();
+            Statement getNodes = connectionForPartitionInfo.createStatement();
             ResultSet nodes = getNodes.executeQuery("select node_id, address from crdb_internal.gossip_nodes;");
             while (nodes.next()) {
                 String[] ipAddrAndPort = nodes.getString("address").split(":");
@@ -96,7 +98,7 @@ public class CockroachDBConnection implements ApiaryConnection {
 
             // Fill in `cockroachDBRanges`.
             cockroachDBRanges.clear();
-            Statement getRanges = connectionForFunction.get().createStatement();
+            Statement getRanges = connectionForPartitionInfo.createStatement();
             ResultSet ranges = getRanges.executeQuery(String.format("SHOW RANGES FROM table %s", tableName));
             while (ranges.next()) {
                 cockroachDBRanges.add(new CockroachDBRange(ranges.getString("start_key"), ranges.getString("end_key"),

@@ -14,16 +14,16 @@ public class CockroachDBIncrementFunction extends CockroachDBFunctionInterface {
 
     public CockroachDBIncrementFunction(Connection c) throws SQLException {
         this.getValue = c.prepareStatement("SELECT KVVAlue FROM KVTable WHERE KVKey=?;");
-        this.updateValue = c.prepareStatement("INSERT INTO KVTable VALUES (?, ?);");
+        this.updateValue = c.prepareStatement("UPSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?);");
     }
 
     public String runFunction(String keyString) {
         int key = Integer.parseInt(keyString);
         ResultSet r = (ResultSet) this.apiaryExecuteQuery(getValue, key);
-        long nextValue = 0;
+        int nextValue = 0;
         try {
             if (r.next()) {
-                nextValue = r.getLong(1) + 1;
+                nextValue = r.getInt(1) + 1;
             }
         } catch (SQLException e) {
             e.printStackTrace();

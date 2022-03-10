@@ -1,5 +1,6 @@
 package org.dbos.apiary.worker;
 
+import org.dbos.apiary.procedures.cockroachdb.CockroachDBIncrementFunction;
 import org.dbos.apiary.procedures.cockroachdb.CockroachDBFibSumFunction;
 import org.dbos.apiary.procedures.cockroachdb.CockroachDBFibonacciFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -32,18 +33,23 @@ public class CockroachDBApiaryWorkerExecutable {
 
         PGSimpleDataSource ds = new PGSimpleDataSource();
         ds.setServerNames(new String[] { cockroachdbAddr });
-        ds.setPortNumbers(new int[] { 26257 });
+        ds.setPortNumbers(new int[] { ApiaryConfig.cockroachdbPort });
         ds.setDatabaseName("test");
         ds.setUser("root");
         ds.setSsl(false);
 
-        Connection conn = ds.getConnection();
-
         logger.info("Starting Apiary worker server.");
-        CockroachDBConnection c = new CockroachDBConnection(conn, /* tableName= */"KVTable");
-        
-        c.registerFunction("FibonacciFunction", () -> new CockroachDBFibonacciFunction(conn));
-        c.registerFunction("FibSumFunction", () -> new CockroachDBFibSumFunction(conn));
+        CockroachDBConnection c = new CockroachDBConnection(ds, /* tableName= */"KVTable");
+
+        c.registerFunction("IncrementFunction", () -> {
+            return new CockroachDBIncrementFunction(c.getConnectionForFunction());
+        });
+        c.registerFunction("FibonacciFunction", () -> {
+            return new CockroachDBFibonacciFunction(c.getConnectionForFunction());
+        });
+        c.registerFunction("FibSumFunction", () -> {
+            return new CockroachDBFibSumFunction(c.getConnectionForFunction());
+        });
         ApiaryWorker worker = new ApiaryWorker(c);
         worker.startServing();
 

@@ -14,7 +14,7 @@ public class CockroachDBFibonacciFunction extends CockroachDBFunctionInterface {
     private final PreparedStatement getValue;
 
     public CockroachDBFibonacciFunction(Connection c) throws SQLException {
-        this.addResult = c.prepareStatement("INSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?);");
+        this.addResult = c.prepareStatement("UPSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?);");
         this.getValue = c.prepareStatement("SELECT KVValue FROM KVTable WHERE KVKey=?;");
     }
 

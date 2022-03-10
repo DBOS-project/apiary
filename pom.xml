@@ -76,7 +76,7 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>worker-assembly</id>
+                        <id>volt-worker-assembly</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
@@ -91,7 +91,7 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>worker-assembly</id>
+                        <id>cockroach-worker-assembly</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>

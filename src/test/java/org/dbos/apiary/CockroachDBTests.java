@@ -22,22 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class CockroachDBTests {
     private static final Logger logger = LoggerFactory.getLogger(CockroachDBTests.class);
 
-    public void createTestTables(PGSimpleDataSource dataSource) throws SQLException {
-        Connection conn = dataSource.getConnection();
-        conn.setAutoCommit(false);
-
-        Statement dropTable = conn.createStatement();
-        dropTable.execute("DROP TABLE IF EXISTS KVTable;");
-        dropTable.close();
-        // Without committing, the subsequent CREATE TABLE fails.
-        conn.commit();
-
-        Statement createTable = conn.createStatement();
-        createTable.execute("CREATE TABLE KVTable(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL);");
-        createTable.close();
-        conn.commit();
-    }
-
     @Test
     public void testFibCockroachDB() throws Exception {
         logger.info("testFibCockroachDB");
@@ -52,12 +36,17 @@ public class CockroachDBTests {
         ds.setUser("root");
         ds.setSsl(false);
 
-        createTestTables(ds);
-
         CockroachDBConnection c = new CockroachDBConnection(ds, /* tableName= */"KVTable");
 
-        c.registerFunction("FibonacciFunction", () -> new CockroachDBFibonacciFunction(c.getConnectionForFunction()));
-        c.registerFunction("FibSumFunction", () -> new CockroachDBFibSumFunction(c.getConnectionForFunction()));
+        c.dropAndCreateTable(/* tableName= */"KVTable",
+                /* columnSpecStr= */"(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL)");
+
+        c.registerFunction("FibonacciFunction", () -> {
+            return new CockroachDBFibonacciFunction(c.getConnectionForFunction());
+        });
+        c.registerFunction("FibSumFunction", () -> {
+            return new CockroachDBFibSumFunction(c.getConnectionForFunction());
+        });
         ApiaryWorker worker = new ApiaryWorker(c);
         worker.startServing();
 

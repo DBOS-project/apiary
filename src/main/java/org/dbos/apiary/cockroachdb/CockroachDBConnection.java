@@ -65,6 +65,19 @@ public class CockroachDBConnection implements ApiaryConnection {
         functions.put(name, function);
     }
 
+    public void dropAndCreateTable(String tableName, String columnSpecStr) throws SQLException {
+        logger.info(String.format("Dropping and creating table %s.", tableName));
+        Connection conn = ds.getConnection();
+
+        Statement dropTable = conn.createStatement();
+        dropTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
+        dropTable.close();
+
+        Statement createTable = conn.createStatement();
+        createTable.execute(String.format("CREATE TABLE %s%s;", tableName, columnSpecStr));
+        createTable.close();
+    }
+
     public Connection getConnectionForFunction() {
         return this.connectionForFunction.get();
     }

@@ -41,6 +41,8 @@ public class CockroachDBApiaryWorkerExecutable {
         logger.info("Starting Apiary worker server.");
         CockroachDBConnection c = new CockroachDBConnection(ds, /* tableName= */"KVTable");
 
+        c.dropAndCreateTable(/* tableName= */"KVTable",
+                /* columnSpecStr= */"(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL)");
         c.registerFunction("IncrementFunction", () -> {
             return new CockroachDBIncrementFunction(c.getConnectionForFunction());
         });

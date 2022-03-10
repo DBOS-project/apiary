@@ -45,43 +45,36 @@ public class CockroachDBTests {
         // CockroachDBConnection is not currently thread-safe.
         ApiaryWorker.numWorkerThreads = 1;
 
-        try {
-            PGSimpleDataSource ds = new PGSimpleDataSource();
-            ds.setServerNames(new String[]{"localhost"});
-            ds.setPortNumbers(new int[]{26257});
-            ds.setDatabaseName("test");
-            ds.setUser("root");
-            ds.setSsl(false);
+        PGSimpleDataSource ds = new PGSimpleDataSource();
+        ds.setServerNames(new String[] { "localhost" });
+        ds.setPortNumbers(new int[] { 26257 });
+        ds.setDatabaseName("test");
+        ds.setUser("root");
+        ds.setSsl(false);
 
-            createTestTables(ds);
+        createTestTables(ds);
 
-            Connection conn = ds.getConnection();
-            CockroachDBConnection c = new CockroachDBConnection(conn, /*tableName=*/"KVTable");
+        CockroachDBConnection c = new CockroachDBConnection(ds, /* tableName= */"KVTable");
 
-            c.registerFunction("FibonacciFunction", () -> new CockroachDBFibonacciFunction(conn));
-            c.registerFunction("FibSumFunction", () -> new CockroachDBFibSumFunction(conn));
-            ApiaryWorker worker = new ApiaryWorker(c);
-            worker.startServing();
+        c.registerFunction("FibonacciFunction", () -> new CockroachDBFibonacciFunction(c.getConnectionForFunction()));
+        c.registerFunction("FibSumFunction", () -> new CockroachDBFibSumFunction(c.getConnectionForFunction()));
+        ApiaryWorker worker = new ApiaryWorker(c);
+        worker.startServing();
 
-            ZContext clientContext = new ZContext();
-            ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-            String res;
-            res = client.executeFunction("localhost", "FibonacciFunction", "1");
-            assertEquals("1", res);
+        String res;
+        res = client.executeFunction("localhost", "FibonacciFunction", "1");
+        assertEquals("1", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "6");
-            assertEquals("8", res);
+        res = client.executeFunction("localhost", "FibonacciFunction", "6");
+        assertEquals("8", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "10");
-            assertEquals("55", res);
+        res = client.executeFunction("localhost", "FibonacciFunction", "10");
+        assertEquals("55", res);
 
-            clientContext.close();
-            worker.shutdown();
-            conn.close();
-        } catch (PSQLException e) {
-            e.printStackTrace();
-            logger.info("No CockroachDB cluster!");
-        }
+        clientContext.close();
+        worker.shutdown();
     }
 }

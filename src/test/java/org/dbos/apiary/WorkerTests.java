@@ -28,6 +28,7 @@ public class WorkerTests {
         ctxt.client.callProcedure("TruncateTables");
     }
 
+    /*
     @Test
     public void testSerialization() {
         logger.info("testSerialization");
@@ -104,6 +105,26 @@ public class WorkerTests {
         clientContext.close();
         worker.shutdown();
     }
+    */
+
+    /*
+    @Test
+    public void testInsertData() throws IOException, InterruptedException {
+        logger.info("testInsertData");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        worker.startServing();
+
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+
+        String res;
+        res = client.executeFunction("localhost:8000", "InsertDummyMnistData", 0, "dummy value");
+
+        clientContext.close();
+        worker.shutdown();
+    }
+    */
 
     @Test
     public void testInfer() throws IOException, InterruptedException {
@@ -118,7 +139,6 @@ public class WorkerTests {
 
         String res;
         res = client.executeFunction("localhost:8000", "InferenceFunction", 0, "dummy value");
-        // assertEquals("hello client", res);
 
         clientContext.close();
         worker.shutdown();

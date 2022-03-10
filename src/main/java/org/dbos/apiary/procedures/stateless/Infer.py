@@ -2,6 +2,8 @@ import socket
 
 import tensorflow as tf
 
+import random
+
 TCP_IP = "localhost"
 TCP_PORT = 6666
 BUFFER_SIZE = 1024
@@ -19,16 +21,36 @@ conn, addr = s.accept()
 print("Client connected:", addr)
 print()
 
-while True:
-    data = conn.recv(BUFFER_SIZE)
-    if not data:
-        continue
-    # print("Received data:", data)
-    print("Received 7.7MB of data from client.")
-    print("Performing inference...")
-    conn.send(b"1&2&3\n")
-    print("Inference complete. Returning 10,000 classifications to client.\n")
+data_string = ""
+collecting_data = True
+while collecting_data:
+    try:
+        data = conn.recv(BUFFER_SIZE)
+        if not data:
+            collecting_data = False
+        data_string += data.decode("utf-8")
+        # print(data_string)
+        # Trailing \n lol
+        if data_string[-2] == "~":
+            collecting_data = False
+    except:
+        collecting_data = False
 
-print("Closing connection with client.")
-conn.close()
+print("Received", round(len(data_string) / 1000, 1), "KB of data from client.")
+print("Performing inference on {} images...".format(data_string.count("&") + 1))
+
+result = ""
+for _ in range(data_string.count("&") + 1):
+    result += str(random.randint(0, 9))
+    result += "&"
+result = result[:-1]
+result += "\n"
+
+conn.send(result.encode("utf-8"))
+
+print("Inference complete. Returning classifications to client.\n")
+
+while True:
+    # Busy spin
+    continue
 

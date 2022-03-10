@@ -37,6 +37,9 @@ public class InferenceFunction extends VoltApiaryProcedure {
             sb.setLength(sb.length() - 1);
         }
 
+        // Append ~
+        sb.append("~");
+
         String data = sb.toString();
         
         // Queue stateless external function

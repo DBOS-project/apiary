@@ -23,3 +23,6 @@ CREATE PROCEDURE PARTITION ON TABLE MnistData COLUMN PKey PARAMETER 0 FROM CLASS
 
 DROP PROCEDURE InsertMnistFunction IF EXISTS;
 CREATE PROCEDURE PARTITION ON TABLE MnistClassifications COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.InsertMnistFunction;
+
+DROP PROCEDURE InsertDummyMnistData IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE MnistData COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.InsertDummyMnistData;

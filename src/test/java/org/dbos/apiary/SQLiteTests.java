@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class SQLiteTests {
     private static final Logger logger = LoggerFactory.getLogger(SQLiteTests.class);
 
+    /*
     @Test
     public void testFibSQLite() throws Exception {
         logger.info("testFibSQLite");
@@ -50,4 +51,5 @@ public class SQLiteTests {
         worker.shutdown();
         conn.close();
     }
+    */
 }

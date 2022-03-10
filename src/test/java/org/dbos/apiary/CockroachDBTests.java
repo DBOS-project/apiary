@@ -33,7 +33,7 @@ public class CockroachDBTests {
         conn.commit();
 
         Statement createTable = conn.createStatement();
-        createTable.execute("CREATE TABLE KVTable(KVKey integer NOT NULL, KVValue integer NOT NULL);");
+        createTable.execute("CREATE TABLE KVTable(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL);");
         createTable.close();
         conn.commit();
     }

@@ -1,11 +1,17 @@
 package org.dbos.apiary.worker;
 
+import org.apache.commons_voltpatches.cli.CommandLine;
+import org.apache.commons_voltpatches.cli.CommandLineParser;
+import org.apache.commons_voltpatches.cli.DefaultParser;
+import org.apache.commons_voltpatches.cli.Options;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 // Executable for the worker daemon.
 public class ApiaryWorkerExecutable {
@@ -14,9 +20,25 @@ public class ApiaryWorkerExecutable {
     // Ignore the illegal reflective access warning from VoltDB.  TODO: Fix it later.
     public static void main(String[] args) throws Exception {
         logger.info("Starting Apiary worker server.");
+        Options options = new Options();
+        options.addOption("s", true, "Which Scheduler?");
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
         // Only need to connect to localhost.
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
+        ApiaryScheduler scheduler = new ApiaryNaiveScheduler(c);
+        if (cmd.hasOption("s")) {
+            if (cmd.getOptionValue("s").equals("wfq")) {
+                logger.info("Using WFQ Scheduler");
+                scheduler = new ApiaryWFQScheduler(c, List.of(0, 1, 2, 3, 4, 5, 6, 7));
+            } else if (cmd.getOptionValue("s").equals("naive")) {
+                logger.info("Using Naive Scheduler");
+                scheduler = new ApiaryNaiveScheduler(c);
+            }
+        }
+
+        ApiaryWorker worker = new ApiaryWorker(c, scheduler);
 
         // Register all stateless functions for experiments.
         worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
@@ -28,6 +50,7 @@ public class ApiaryWorkerExecutable {
         }));
         Thread.sleep(Long.MAX_VALUE);
         worker.shutdown();
+        scheduler.shutdown();
     }
 
 }

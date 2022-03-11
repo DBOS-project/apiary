@@ -53,6 +53,11 @@ public class SQLiteConnection implements ApiaryConnection {
     }
 
     @Override
+    public int getPartition(Object[] input) {
+        return 0;
+    }
+
+    @Override
     public String getHostname(Object[] input) {
         return "localhost";
     }

@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -15,7 +16,7 @@ public class ApiaryWFQScheduler implements ApiaryScheduler {
 
     private final ApiaryConnection c;
     private final Map<Integer, WFQueue> partitionQueues = new HashMap<>();
-    private final Map<WFQTask, FunctionOutput> outputs = new HashMap<>();
+    private final Map<WFQTask, FunctionOutput> outputs = new ConcurrentHashMap<>();
     private final List<Thread> partitionThreads = new ArrayList<>();
 
     private boolean serving = true;
@@ -81,7 +82,7 @@ public class ApiaryWFQScheduler implements ApiaryScheduler {
 
     private static class WFQueue {
         private static final long taskLengthNanos = 10000L;
-        Map<String, AtomicLong> activeCount = new HashMap<>();
+        Map<String, AtomicLong> activeCount = new ConcurrentHashMap<>();
         Queue<WFQTask> queue = new PriorityBlockingQueue<>();
 
         public void enqueue(WFQTask task) {

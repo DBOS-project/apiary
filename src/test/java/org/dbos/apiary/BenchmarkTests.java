@@ -4,6 +4,7 @@ import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
+import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +31,7 @@ public class BenchmarkTests {
     public void testRetwis() throws IOException, InterruptedException {
         logger.info("testRetwis");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
         worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
         worker.startServing();
 
@@ -63,7 +64,7 @@ public class BenchmarkTests {
     public void testIncrement() throws IOException, InterruptedException {
         logger.info("testIncrement");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
         worker.startServing();
 
         ZContext clientContext = new ZContext();

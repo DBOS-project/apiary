@@ -3,6 +3,7 @@ package org.dbos.apiary;
 import org.dbos.apiary.procedures.sqlite.SQLiteFibSumFunction;
 import org.dbos.apiary.procedures.sqlite.SQLiteFibonacciFunction;
 import org.dbos.apiary.sqlite.SQLiteConnection;
+import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ public class SQLiteTests {
         c.createTable("CREATE TABLE KVTable(KVKey integer NOT NULL, KVValue integer NOT NULL);");
         c.registerFunction("FibonacciFunction", () -> new SQLiteFibonacciFunction(conn));
         c.registerFunction("FibSumFunction", () -> new SQLiteFibSumFunction(conn));
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
         worker.startServing();
 
         ZContext clientContext = new ZContext();

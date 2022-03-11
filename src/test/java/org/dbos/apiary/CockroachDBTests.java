@@ -3,6 +3,7 @@ package org.dbos.apiary;
 import org.dbos.apiary.procedures.cockroachdb.CockroachDBFibSumFunction;
 import org.dbos.apiary.procedures.cockroachdb.CockroachDBFibonacciFunction;
 import org.dbos.apiary.cockroachdb.CockroachDBConnection;
+import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.junit.jupiter.api.Test;
@@ -60,7 +61,7 @@ public class CockroachDBTests {
 
             c.registerFunction("FibonacciFunction", () -> new CockroachDBFibonacciFunction(conn));
             c.registerFunction("FibSumFunction", () -> new CockroachDBFibSumFunction(conn));
-            ApiaryWorker worker = new ApiaryWorker(c);
+            ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
             worker.startServing();
 
             ZContext clientContext = new ZContext();

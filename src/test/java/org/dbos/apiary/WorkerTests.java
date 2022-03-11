@@ -5,6 +5,7 @@ import org.dbos.apiary.procedures.stateless.StatelessIncrement;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltDBConnection;
+import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,7 +49,7 @@ public class WorkerTests {
         logger.info("testFib");
         for (int i = 0; i < 10; i++) {
             ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-            ApiaryWorker worker = new ApiaryWorker(c);
+            ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
             worker.startServing();
 
             ZContext clientContext = new ZContext();
@@ -73,7 +74,7 @@ public class WorkerTests {
     public void testAddition() throws IOException, InterruptedException {
         logger.info("testAddition");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
         worker.startServing();
 
         ZContext clientContext = new ZContext();
@@ -90,7 +91,7 @@ public class WorkerTests {
     public void testStatelessCounter() throws IOException, InterruptedException {
         logger.info("testStatelessCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
         worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
         worker.startServing();
 
@@ -115,7 +116,7 @@ public class WorkerTests {
     public void testSynchronousCounter() throws IOException, InterruptedException {
         logger.info("testSynchronousCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
         worker.startServing();
 
         ZContext clientContext = new ZContext();

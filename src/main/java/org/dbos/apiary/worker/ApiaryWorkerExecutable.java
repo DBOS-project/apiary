@@ -16,7 +16,7 @@ public class ApiaryWorkerExecutable {
         logger.info("Starting Apiary worker server.");
         // Only need to connect to localhost.
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
 
         // Register all stateless functions for experiments.
         worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);

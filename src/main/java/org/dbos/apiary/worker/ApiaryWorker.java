@@ -34,13 +34,15 @@ public class ApiaryWorker {
     public static int numWorkerThreads = 128;
 
     private final ApiaryConnection c;
+    private final ApiaryScheduler scheduler;
     private ZContext zContext;
     private Thread serverThread;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
     private final ExecutorService threadPool;
 
-    public ApiaryWorker(ApiaryConnection c) {
+    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
         this.c = c;
+        this.scheduler = scheduler;
         this.zContext = new ZContext(2);  // TODO: How many IO threads?
         threadPool = Executors.newFixedThreadPool(numWorkerThreads);
     }
@@ -110,12 +112,8 @@ public class ApiaryWorker {
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
     private void executeFunction(String name, long callerID, int currTaskID, ZFrame replyAddr, Object[] arguments) throws InterruptedException {
         FunctionOutput o;
-        try {
-            o = c.callFunction(name, arguments);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return;
-        }
+        o = scheduler.scheduleFunction(name, arguments);
+        assert (o != null);
         ApiaryTaskStash currTask = new ApiaryTaskStash(callerID, currTaskID, replyAddr);
         if (o.stringOutput != null) {
             currTask.stringOutput = o.stringOutput;

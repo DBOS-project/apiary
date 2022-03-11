@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class ApiaryWFQScheduler implements ApiaryScheduler {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWFQScheduler.class);
+    private static final int threadsPerPartition = 5;
 
     private final ApiaryConnection c;
     private final Map<Integer, WFQueue> partitionQueues = new HashMap<>();
@@ -29,9 +30,11 @@ public class ApiaryWFQScheduler implements ApiaryScheduler {
             Runnable r = () -> {
                 partitionThread(queue);
             };
-            Thread t = new Thread(r);
-            partitionThreads.add(t);
-            t.start();
+            for (int i = 0; i < threadsPerPartition; i++) {
+                Thread t = new Thread(r);
+                partitionThreads.add(t);
+                t.start();
+            }
         }
     }
 

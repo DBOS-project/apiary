@@ -49,10 +49,15 @@ public class ApiaryWFQScheduler implements ApiaryScheduler {
         }
     }
 
-    public void shutdown() throws InterruptedException {
+    @Override
+    public void shutdown() {
         serving = false;
         for (Thread t: partitionThreads) {
-            t.join();
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 

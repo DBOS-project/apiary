@@ -20,4 +20,9 @@ public class ApiaryNaiveScheduler implements ApiaryScheduler {
             return null;
         }
     }
+
+    @Override
+    public void shutdown() {
+
+    }
 }

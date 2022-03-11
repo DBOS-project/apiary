@@ -80,6 +80,7 @@ public class CockroachDBTests {
             worker.shutdown();
             conn.close();
         } catch (PSQLException e) {
+            e.printStackTrace();
             logger.info("No CockroachDB cluster!");
         }
     }

@@ -31,7 +31,7 @@ do
 done
 JOIN_STR=${JOIN_STR:1}
 
-mkdir cockroach-data/
+mkdir -p cockroach-data/
 for i in "${!DB_PORTS[@]}"; do
     cockroach start \
         --insecure --store=cockroach-data/node$i\

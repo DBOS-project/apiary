@@ -6,6 +6,8 @@ import org.dbos.apiary.voltdb.VoltDBConnection;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.voltdb.VoltTable;
+import org.voltdb.client.NoConnectionsException;
 import org.voltdb.client.ProcCallException;
 import org.zeromq.ZContext;
 
@@ -35,8 +37,13 @@ public class IncrementBenchmark {
             long rStart = System.nanoTime();
             try {
                 String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
-                client.get().executeFunction(ctxt.getHostname(new Object[]{key}), "IncrementProcedure", key);
-            } catch (InvalidProtocolBufferException e) {
+//                client.get().executeFunction(ctxt.getHostname(new Object[]{key}), "IncrementProcedure", key);
+
+                // Directly call SP.
+                VoltTable voltInput = VoltDBConnection.inputToVoltTable(key);
+
+                ctxt.client.callProcedure("IncrementProcedure", Integer.parseInt(key), voltInput).getResults();
+            } catch (Exception e) {
                 e.printStackTrace();
             }
             trialTimes.add(System.nanoTime() - rStart);

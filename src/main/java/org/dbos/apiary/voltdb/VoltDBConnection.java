@@ -38,7 +38,7 @@ public class VoltDBConnection implements ApiaryConnection {
         updatePartitionInfo();
     }
 
-    private static VoltTable inputToVoltTable(Object... inputs) {
+    public static VoltTable inputToVoltTable(Object... inputs) {
         VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[inputs.length];
         for (int i = 0; i < inputs.length; i++) {
             Object input = inputs[i];

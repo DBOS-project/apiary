@@ -1,10 +1,7 @@
 #!/bin/bash
 set -e
 
-# Increase open files limit.
-#ulimit -n 32768
-
-SCRIPT_DIR=$(dirname $(readlink -f $0))
+SCRIPT_DIR=$(dirname $(realpath $0))
 
 if [[ -z $(command -v cockroach) ]]; then
     echo "CockroachDB not installed!"

@@ -43,5 +43,7 @@ done
 
 cockroach init --insecure --host=localhost:26257
 
+# Create DB and tables.
+cat sql/cockroachdb_init.sql | cockroach sql --url "postgresql://root@localhost:26257?sslmode=disable"
 
 echo "==== Finished initializing CockroachDB. ===="

@@ -65,6 +65,15 @@ public class CockroachDBConnection implements ApiaryConnection {
         functions.put(name, function);
     }
 
+    public void deleteEntriesFromTable(String tableName) throws SQLException {
+        logger.info(String.format("Deleting entries from table %s.", tableName));
+        Connection conn = ds.getConnection();
+
+        Statement deleteEntries = conn.createStatement();
+        deleteEntries.execute(String.format("DELETE FROM %s WHERE 1=1;", tableName));
+        deleteEntries.close();
+    }
+
     public void dropAndCreateTable(String tableName, String columnSpecStr) throws SQLException {
         logger.info(String.format("Dropping and creating table %s.", tableName));
         Connection conn = ds.getConnection();

@@ -34,8 +34,7 @@ public class CockroachDBIncrementBenchmark {
         ds.setSsl(false);
 
         CockroachDBConnection ctxt = new CockroachDBConnection(ds, "KVTable");
-        ctxt.dropAndCreateTable(/* tableName= */"KVTable",
-                /* columnSpecStr= */"(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL)");
+        ctxt.deleteEntriesFromTable(/* tableName= */"KVTable");
 
         ZContext clientContext = new ZContext();
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal

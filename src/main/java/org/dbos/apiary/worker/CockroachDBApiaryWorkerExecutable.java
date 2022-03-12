@@ -12,8 +12,6 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 
-import java.sql.Connection;
-
 import org.apache.commons.cli.CommandLine;
 
 // Executable for the worker daemon.

@@ -23,30 +23,25 @@ fi
 # Enter the root dir of the repo.
 cd ${SCRIPT_DIR}/../
 
-# Start DB.
-cockroach start-single-node \
-    --insecure \
-    --listen-addr=localhost \
-    --cache=.25 \
-    --max-sql-memory=.25 \
-    --background
+DB_PORTS=(26257 26258 26259)
+JOIN_STR=""
+for port in ${DB_PORTS[@]}
+do
+    JOIN_STR+=,localhost:$port
+done
+JOIN_STR=${JOIN_STR:1}
 
-echo "CREATE DATABASE IF NOT EXISTS test;" | cockroach sql --insecure
+mkdir cockroach-data/
+for i in "${!DB_PORTS[@]}"; do
+    cockroach start \
+        --insecure --store=cockroach-data/node$i\
+        --listen-addr=localhost:${DB_PORTS[i]}\
+        --http-addr=localhost:$((8080 + $i))\
+        --join=$JOIN_STR\
+        --background
+done
 
-# TODO: Wait until CockroachDB is ready.
-a='MAX_TRY=30
-cnt=0
-while [[ -z "${ready}" ]]; do
-  cnt=$[$cnt+1]
-  if [[ $cnt -eq ${MAX_TRY} ]]; then
-    echo "Wait timed out. Failed to start."
-    exit 1
-  fi
-  sleep 5 # avoid busy loop
-done'
+cockroach init --insecure --host=localhost:26257
 
-# TODO: Create tables
-
-# TODO: Load stored procedures
 
 echo "==== Finished initializing CockroachDB. ===="

@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -86,11 +87,11 @@ public class ApiaryWFQScheduler implements ApiaryScheduler {
     private static class WFQueue {
         private static final long taskLengthNanos = 10000L;
         Map<String, AtomicLong> activeCount = new ConcurrentHashMap<>();
-        Queue<WFQTask> queue = new PriorityBlockingQueue<>();
+        Queue<WFQTask> queue = new ConcurrentLinkedQueue<>();
 
         public void enqueue(WFQTask task) {
             activeCount.putIfAbsent(task.service, new AtomicLong(0L));
-            task.virtualFinishTime = System.nanoTime() + taskLengthNanos * activeCount.get(task.service).incrementAndGet();
+            // task.virtualFinishTime = System.nanoTime() + taskLengthNanos * activeCount.get(task.service).incrementAndGet();
             queue.add(task);
         }
 

@@ -76,6 +76,7 @@ public class MixedBenchmark {
                 retwisPool.submit(r);
            }
         }
+        latch.await();
         logger.info("Finished loading!");
 
         Runnable retwisRunnable = () -> {

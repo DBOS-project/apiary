@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 public class CockroachDBIncrementBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(IncrementBenchmark.class);
 
-    private static final int threadWarmupMs = 5000; // First 5 seconds of request would be warm-up requests.
     private static final int threadPoolSize = 256;
 
     public static void benchmark(String cockroachAddr, Integer interval, Integer duration)
@@ -54,20 +53,14 @@ public class CockroachDBIncrementBenchmark {
             trialTimes.add(System.nanoTime() - rStart);
         };
 
-        long startTime = System.currentTimeMillis();
-        long endTime = startTime + (duration * 1000 + threadWarmupMs);
+        long startTimeMs = System.currentTimeMillis();
+        long endTimeMs = startTimeMs + (duration * 1000);
 
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
-        while (System.currentTimeMillis() < endTime) {
-            long t = System.nanoTime();
-            if ((System.currentTimeMillis() - startTime) <= threadWarmupMs) {
-                // Clean up the arrays if still in warm up time.
-                trialTimes.clear();
-            }
+        while (System.currentTimeMillis() < endTimeMs) {
             threadPool.submit(r);
-            while (System.nanoTime() - t < interval.longValue() * 1000) {
-                // Busy-spin
-            }
+            long timeToSleepUs = Math.min((endTimeMs - System.currentTimeMillis()) * 1000, interval.longValue());
+            TimeUnit.MICROSECONDS.sleep(timeToSleepUs);
         }
         threadPool.shutdown();
         try {
@@ -76,7 +69,7 @@ public class CockroachDBIncrementBenchmark {
             e.printStackTrace();
         }
 
-        long elapsedTime = (System.currentTimeMillis() - startTime) - threadWarmupMs;
+        long elapsedTime = (System.currentTimeMillis() - startTimeMs);
         List<Long> queryTimes = trialTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
         int numQueries = queryTimes.size();
         long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
@@ -88,6 +81,6 @@ public class CockroachDBIncrementBenchmark {
 
         threadPool.shutdown();
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);
-        logger.info("All queries finished! {}ms", System.currentTimeMillis() - startTime);
+        logger.info("All queries finished! {}ms", System.currentTimeMillis() - startTimeMs);
     }
 }

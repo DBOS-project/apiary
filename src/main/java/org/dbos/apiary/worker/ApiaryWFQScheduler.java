@@ -87,16 +87,21 @@ public class ApiaryWFQScheduler implements ApiaryScheduler {
     private static class WFQueue {
         private static final long taskLengthNanos = 10000L;
         Map<String, AtomicLong> activeCount = new ConcurrentHashMap<>();
-        Queue<WFQTask> queue = new ConcurrentLinkedQueue<>();
+        PriorityBlockingQueue<WFQTask> queue = new PriorityBlockingQueue<>();
 
         public void enqueue(WFQTask task) {
             activeCount.putIfAbsent(task.service, new AtomicLong(0L));
-            // task.virtualFinishTime = System.nanoTime() + taskLengthNanos * activeCount.get(task.service).incrementAndGet();
+             task.virtualFinishTime = System.nanoTime() + taskLengthNanos * activeCount.get(task.service).incrementAndGet();
             queue.add(task);
         }
 
         public WFQTask dequeue() {
-            WFQTask task = queue.poll();
+            WFQTask task = null;
+            try {
+                task = queue.take();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             if (task != null) {
                 activeCount.get(task.service).decrementAndGet();
             }

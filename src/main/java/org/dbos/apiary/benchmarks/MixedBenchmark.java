@@ -143,6 +143,8 @@ public class MixedBenchmark {
 
         retwisPool.shutdown();
         retwisPool.awaitTermination(100000, TimeUnit.SECONDS);
+        incrementPool.shutdown();
+        incrementPool.awaitTermination(100000, TimeUnit.SECONDS);
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
     }
 }

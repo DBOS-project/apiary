@@ -41,19 +41,37 @@ public class MixedBenchmark {
 
         AtomicInteger timestamp = new AtomicInteger(0);
         AtomicInteger postIDs = new AtomicInteger(0);
+        ExecutorService retwisPool = Executors.newFixedThreadPool(threadPoolSize);
+        ExecutorService incrementPool = Executors.newFixedThreadPool(threadPoolSize);
         for (int i = 0; i < numPosts; i++) {
-            int userID = ThreadLocalRandom.current().nextInt(numUsers);
-            int postID = postIDs.incrementAndGet();
-            int ts = timestamp.incrementAndGet();
-            String postString = String.format("matei%d", postID);
-            client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisPost", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
+            Runnable r = () -> {
+                try {
+                    int userID = ThreadLocalRandom.current().nextInt(numUsers);
+                    int postID = postIDs.incrementAndGet();
+                    int ts = timestamp.incrementAndGet();
+                    String postString = String.format("matei%d", postID);
+                    client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisPost", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
+                } catch (InvalidProtocolBufferException e) {
+                    e.printStackTrace();
+                }
+            };
+            retwisPool.submit(r);
         }
         for (int userID = 0; userID < numUsers; userID++) {
             int firstFollowee = ThreadLocalRandom.current().nextInt(numUsers);
             for (int i = 0; i < followsPerUsers; i++) {
-                int followeeID = (firstFollowee + i) % numUsers;
-                client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisFollow", String.valueOf(userID), String.valueOf(followeeID));
-            }
+                int finalI = i;
+                int finalUserID = userID;
+                Runnable r = () ->  {
+                    try {
+                        int followeeID = (firstFollowee + finalI) % numUsers;
+                        client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(finalUserID)}), "RetwisFollow", String.valueOf(finalUserID), String.valueOf(followeeID));
+                    } catch (InvalidProtocolBufferException e) {
+                        e.printStackTrace();
+                    }
+                };
+                retwisPool.submit(r);
+           }
         }
         logger.info("Finished loading!");
 
@@ -82,7 +100,6 @@ public class MixedBenchmark {
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
 
-        ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
         assert (interval % interval2 == 0);
         int ratio = interval / interval2;
         int count = 0;
@@ -93,9 +110,9 @@ public class MixedBenchmark {
                 retwisTrialTimes.clear();
                 incrementTrialTimes.clear();
             }
-            threadPool.submit(incrementRunnable);
+            incrementPool.submit(incrementRunnable);
             if (count % ratio == 0) {
-                threadPool.submit(retwisRunnable);
+                retwisPool.submit(retwisRunnable);
             }
             count++;
             while (System.nanoTime() - t < interval2.longValue() * 1000) {
@@ -120,8 +137,8 @@ public class MixedBenchmark {
         p99 = queryTimes.get((numQueries * 99) / 100);
         logger.info("INCREMENT Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval2, numQueries, String.format("%.03f", throughput), average, p50, p99);
 
-        threadPool.shutdown();
-        threadPool.awaitTermination(100000, TimeUnit.SECONDS);
+        retwisPool.shutdown();
+        retwisPool.awaitTermination(100000, TimeUnit.SECONDS);
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
     }
 }

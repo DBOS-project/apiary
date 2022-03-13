@@ -59,6 +59,7 @@ public class ApiaryWFQScheduler implements ApiaryScheduler {
         serving = false;
         for (Thread t: partitionThreads) {
             try {
+                t.interrupt();
                 t.join();
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -99,6 +100,9 @@ public class ApiaryWFQScheduler implements ApiaryScheduler {
             WFQTask task = null;
             try {
                 task = queue.take();
+            } catch (InterruptedException e) {
+                // It means the worker needs to be stopped.
+                return null;
             } catch (Exception e) {
                 e.printStackTrace();
             }

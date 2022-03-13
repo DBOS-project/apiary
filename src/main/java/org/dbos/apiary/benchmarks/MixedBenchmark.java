@@ -43,6 +43,7 @@ public class MixedBenchmark {
         AtomicInteger postIDs = new AtomicInteger(0);
         ExecutorService retwisPool = Executors.newFixedThreadPool(threadPoolSize);
         ExecutorService incrementPool = Executors.newFixedThreadPool(threadPoolSize);
+        CountDownLatch latch = new CountDownLatch(numPosts + numUsers * followsPerUsers);
         for (int i = 0; i < numPosts; i++) {
             Runnable r = () -> {
                 try {
@@ -51,6 +52,7 @@ public class MixedBenchmark {
                     int ts = timestamp.incrementAndGet();
                     String postString = String.format("matei%d", postID);
                     client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisPost", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
+                    latch.countDown();
                 } catch (InvalidProtocolBufferException e) {
                     e.printStackTrace();
                 }
@@ -66,6 +68,7 @@ public class MixedBenchmark {
                     try {
                         int followeeID = (firstFollowee + finalI) % numUsers;
                         client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(finalUserID)}), "RetwisFollow", String.valueOf(finalUserID), String.valueOf(followeeID));
+                        latch.countDown();
                     } catch (InvalidProtocolBufferException e) {
                         e.printStackTrace();
                     }

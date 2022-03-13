@@ -1,6 +1,5 @@
 package org.dbos.apiary.benchmarks;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
@@ -19,7 +18,7 @@ public class IncrementBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(IncrementBenchmark.class);
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
-    private static final int threadPoolSize = 256;
+    private static final int threadPoolSize = 128;
 
     public static void benchmark(String voltAddr, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
         VoltDBConnection ctxt = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
@@ -36,7 +35,7 @@ public class IncrementBenchmark {
             try {
                 String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
                 client.get().executeFunction(ctxt.getHostname(new Object[]{key}), "IncrementProcedure", key);
-            } catch (InvalidProtocolBufferException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
             trialTimes.add(System.nanoTime() - rStart);

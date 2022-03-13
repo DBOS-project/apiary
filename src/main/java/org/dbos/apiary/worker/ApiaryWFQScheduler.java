@@ -5,9 +5,11 @@ import org.dbos.apiary.executor.FunctionOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -59,6 +61,7 @@ public class ApiaryWFQScheduler implements ApiaryScheduler {
         serving = false;
         for (Thread t: partitionThreads) {
             try {
+                t.interrupt();
                 t.join();
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -87,16 +90,24 @@ public class ApiaryWFQScheduler implements ApiaryScheduler {
     private static class WFQueue {
         private static final long taskLengthNanos = 10000L;
         Map<String, AtomicLong> activeCount = new ConcurrentHashMap<>();
-        Queue<WFQTask> queue = new ConcurrentLinkedQueue<>();
+        PriorityBlockingQueue<WFQTask> queue = new PriorityBlockingQueue<>();
 
         public void enqueue(WFQTask task) {
             activeCount.putIfAbsent(task.service, new AtomicLong(0L));
-            // task.virtualFinishTime = System.nanoTime() + taskLengthNanos * activeCount.get(task.service).incrementAndGet();
+             task.virtualFinishTime = System.nanoTime() + taskLengthNanos * activeCount.get(task.service).incrementAndGet();
             queue.add(task);
         }
 
         public WFQTask dequeue() {
-            WFQTask task = queue.poll();
+            WFQTask task = null;
+            try {
+                task = queue.take();
+            } catch (InterruptedException e) {
+                // It means the worker needs to be stopped.
+                return null;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             if (task != null) {
                 activeCount.get(task.service).decrementAndGet();
             }

@@ -507,6 +507,7 @@ public class DumbQueue<E> extends AbstractQueue<E>
     }
 
     public E take() throws InterruptedException {
+        long t0 = System.nanoTime();
         final ReentrantLock lock = this.lock;
         lock.lockInterruptibly();
         E result;
@@ -515,7 +516,7 @@ public class DumbQueue<E> extends AbstractQueue<E>
                 notEmpty.await();
         } finally {
             lock.unlock();
-            logger.info("take");
+            logger.info("take {}", System.nanoTime() - t0);
         }
         return result;
     }

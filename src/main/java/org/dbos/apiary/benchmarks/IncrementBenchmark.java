@@ -12,6 +12,7 @@ import org.voltdb.client.ProcCallException;
 import org.zeromq.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
@@ -21,7 +22,7 @@ public class IncrementBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(IncrementBenchmark.class);
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
-    private static final int threadPoolSize = 128;
+    private static final int numThreads = 4;
     private static final Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
 
     public static void benchmark(String voltAddr, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
@@ -30,7 +31,6 @@ public class IncrementBenchmark {
 
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(ZContext.shadow(clientContext));
-
 
         final int numKeys = 100000;
 
@@ -46,54 +46,69 @@ public class IncrementBenchmark {
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
 
-        long lastSentTime = System.nanoTime();
-        int messagesSent = 0;
-        int messagesReceived = 0;
-        while (System.currentTimeMillis() < endTime || messagesSent != messagesReceived) {
-            if ((System.currentTimeMillis() - startTime) <= threadWarmupMs) {
-                // Clean up the arrays if still in warm up time.
-                trialTimes.clear();
-            }
-            int prs = poller.poll(0);
-            if (prs == -1) {
-                break;
-            }
+        List<Thread> threads = new ArrayList<>();
+        long threadInterval = interval.longValue() * numThreads;
+        for (int threadNum = 0; threadNum < numThreads; threadNum++) {
+            Runnable threadRunnable = () -> {
+                long lastSentTime = System.nanoTime();
+                int messagesSent = 0;
+                int messagesReceived = 0;
+                while (System.currentTimeMillis() < endTime || messagesSent != messagesReceived) {
+                    if ((System.currentTimeMillis() - startTime) <= threadWarmupMs) {
+                        // Clean up the arrays if still in warm up time.
+                        trialTimes.clear();
+                    }
+                    int prs = poller.poll(0);
+                    if (prs == -1) {
+                        break;
+                    }
 
-            // Handle reply from server.
-            for (int i = 0; i < poller.getSize(); i++) {
-                if (poller.pollin(i)) {
-                    try {
-                        String hostname = distinctHosts.get(i);
-                        ZMQ.Socket socket = client.getSocket(hostname);
-                        ZMsg msg = ZMsg.recvMsg(socket);
-                        ZFrame content = msg.getLast();
-                        assert (content != null);
-                        byte[] replyBytes = content.getData();
-                        msg.destroy();
-                        ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
-                        long senderTs = reply.getSenderTimestampNano();
-                        trialTimes.add(System.nanoTime() - senderTs);
-                        messagesReceived++;
-                    } catch (ZMQException e) {
-                        if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
-                            e.printStackTrace();
-                            break;
-                        } else {
-                            e.printStackTrace();
+                    // Handle reply from server.
+                    for (int i = 0; i < poller.getSize(); i++) {
+                        if (poller.pollin(i)) {
+                            try {
+                                String hostname = distinctHosts.get(i);
+                                ZMQ.Socket socket = client.getSocket(hostname);
+                                ZMsg msg = ZMsg.recvMsg(socket);
+                                ZFrame content = msg.getLast();
+                                assert (content != null);
+                                byte[] replyBytes = content.getData();
+                                msg.destroy();
+                                ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
+                                long senderTs = reply.getSenderTimestampNano();
+                                trialTimes.add(System.nanoTime() - senderTs);
+                                messagesReceived++;
+                            } catch (ZMQException e) {
+                                if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
+                                    e.printStackTrace();
+                                    break;
+                                } else {
+                                    e.printStackTrace();
+                                }
+                            } catch (InvalidProtocolBufferException e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
-                }
-            }
 
-            if (System.currentTimeMillis() < endTime && System.nanoTime() - lastSentTime >= interval.longValue() * 1000) {
-                // Send out a request.
-                String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
-                byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes("IncrementProcedure", 0, 0, key);
-                ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[]{key}));
-                socket.send(reqBytes, 0);
-                lastSentTime = System.nanoTime();
-                messagesSent++;
-            }
+                    if (System.currentTimeMillis() < endTime && System.nanoTime() - lastSentTime >= threadInterval * 1000) {
+                        // Send out a request.
+                        String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
+                        byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes("IncrementProcedure", 0, 0, key);
+                        ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[]{key}));
+                        socket.send(reqBytes, 0);
+                        lastSentTime = System.nanoTime();
+                        messagesSent++;
+                    }
+                }
+            };
+            Thread t = new Thread(threadRunnable);
+            threads.add(t);
+            t.start();
+        }
+
+        for (Thread t: threads) {
+            t.join();
         }
 
         long elapsedTime = (System.currentTimeMillis() - startTime) - threadWarmupMs;

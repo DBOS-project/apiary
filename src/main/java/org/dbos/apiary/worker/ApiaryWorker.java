@@ -100,7 +100,8 @@ public class ApiaryWorker {
             // Send back the response.
             ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput)
                     .setCallerId(callerTask.callerId)
-                    .setTaskId(callerTask.currTaskId).build();
+                    .setTaskId(callerTask.currTaskId)
+                    .setSenderTimestampNano(callerTask.senderTimestampNano).build();
             outgoingMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, rep.toByteArray()));
             // Clean up the stash map.
             callerStashMap.remove(callerID);
@@ -108,7 +109,7 @@ public class ApiaryWorker {
     }
 
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
-    private void executeFunction(String name, long callerID, int currTaskID, ZFrame replyAddr, Object[] arguments) throws InterruptedException {
+    private void executeFunction(String name, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
         FunctionOutput o;
         try {
             o = c.callFunction(name, arguments);
@@ -116,7 +117,7 @@ public class ApiaryWorker {
             e.printStackTrace();
             return;
         }
-        ApiaryTaskStash currTask = new ApiaryTaskStash(callerID, currTaskID, replyAddr);
+        ApiaryTaskStash currTask = new ApiaryTaskStash(callerID, currTaskID, replyAddr, senderTimestampNano);
         if (o.stringOutput != null) {
             currTask.stringOutput = o.stringOutput;
         } else  {
@@ -143,7 +144,8 @@ public class ApiaryWorker {
         if (output != null) {
             ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output)
                     .setCallerId(callerID)
-                    .setTaskId(currTaskID).build();
+                    .setTaskId(currTaskID)
+                    .setSenderTimestampNano(senderTimestampNano).build();
             outgoingMsgQueue.add(new OutgoingMsg(replyAddr, rep.toByteArray()));
         }
     }
@@ -178,7 +180,7 @@ public class ApiaryWorker {
                             arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
                         }
                     }
-                    executeFunction(req.getName(), callerID, currTaskID, address, arguments);
+                    executeFunction(req.getName(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
                 } catch (InvalidProtocolBufferException | InterruptedException e) {
                     e.printStackTrace();
                 }

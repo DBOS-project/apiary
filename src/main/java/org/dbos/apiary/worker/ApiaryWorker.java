@@ -262,7 +262,7 @@ public class ApiaryWorker {
                     assert (content != null);
                     msg.destroy();
                     byte[] reqBytes = content.getData();
-                    reqThreadPool.submit(new RequestRunnable(address, reqBytes));
+                    reqThreadPool.execute(new RequestRunnable(address, reqBytes));
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;

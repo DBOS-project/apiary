@@ -147,53 +147,59 @@ public class ApiaryWorker {
         }
     }
 
-    class workerRunnable implements Runnable {
+    private class RequestRunnable implements Runnable {
         private final byte[] reqBytes;
-        private final byte[] replyBytes;
         private final ZFrame address;
 
-        public workerRunnable(ZFrame address, byte[] req, byte[] reply) {
+        public RequestRunnable(ZFrame address, byte[] req) {
             this.address = address;
             this.reqBytes = req;
+        }
+
+        @Override
+        public void run() {
+            // Handle the request.
+            try {
+                ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
+                List<ByteString> byteArguments = req.getArgumentsList();
+                List<Integer> argumentTypes = req.getArgumentTypesList();
+                long callerID = req.getCallerId();
+                int currTaskID = req.getTaskId();
+                Object[] arguments = new Object[byteArguments.size()];
+                for (int i = 0; i < arguments.length; i++) {
+                    if (argumentTypes.get(i) == stringType) {
+                        arguments[i] = new String(byteArguments.get(i).toByteArray());
+                    } else {
+                        assert (argumentTypes.get(i) == stringArrayType);
+                        arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
+                    }
+                }
+                executeFunction(req.getName(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
+            } catch (InvalidProtocolBufferException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private class ReplyRunnable implements Runnable {
+        private final byte[] replyBytes;
+
+        public ReplyRunnable(byte[] reply) {
             this.replyBytes = reply;
         }
 
         @Override
         public void run() {
-            if (reqBytes != null) {
-                // Handle the request.
-                try {
-                    ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
-                    List<ByteString> byteArguments = req.getArgumentsList();
-                    List<Integer> argumentTypes = req.getArgumentTypesList();
-                    long callerID = req.getCallerId();
-                    int currTaskID = req.getTaskId();
-                    Object[] arguments = new Object[byteArguments.size()];
-                    for (int i = 0; i < arguments.length; i++) {
-                        if (argumentTypes.get(i) == stringType) {
-                            arguments[i] = new String(byteArguments.get(i).toByteArray());
-                        } else {
-                            assert (argumentTypes.get(i) == stringArrayType);
-                            arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
-                        }
-                    }
-                    executeFunction(req.getName(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
-                } catch (InvalidProtocolBufferException | InterruptedException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                assert (replyBytes != null);
-                // Handle the reply.
-                try {
-                    ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
-                    String output = reply.getReply();
-                    long callerID = reply.getCallerId();
-                    int taskID = reply.getTaskId();
-                    // Resume execution.
-                    resumeExecution(callerID, taskID, output);
-                } catch (InvalidProtocolBufferException | InterruptedException e) {
-                    e.printStackTrace();
-                }
+            // Handle the reply.
+            try {
+                ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
+                String output = reply.getReply();
+                long callerID = reply.getCallerId();
+                int taskID = reply.getTaskId();
+                // Resume execution.
+                resumeExecution(callerID, taskID, output);
+            } catch (InvalidProtocolBufferException | InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -235,7 +241,7 @@ public class ApiaryWorker {
                     assert (content != null);
                     msg.destroy();
                     byte[] reqBytes = content.getData();
-                    threadPool.submit(new workerRunnable(address, reqBytes, null));
+                    threadPool.submit(new RequestRunnable(address, reqBytes));
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;
@@ -256,7 +262,7 @@ public class ApiaryWorker {
                         assert (content != null);
                         byte[] replyBytes = content.getData();
                         msg.destroy();
-                        threadPool.submit(new workerRunnable(null, null, replyBytes));
+                        threadPool.submit(new ReplyRunnable(replyBytes));
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                             break;

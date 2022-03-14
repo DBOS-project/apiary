@@ -14,10 +14,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.voltdb.client.ProcCallException;
 import org.zeromq.ZContext;
+import org.zeromq.ZFrame;
+import org.zeromq.ZMQ;
+import org.zeromq.ZMsg;
 
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class WorkerTests {
     private static final Logger logger = LoggerFactory.getLogger(WorkerTests.class);
@@ -45,7 +49,7 @@ public class WorkerTests {
     }
 
     @Test
-    public void testFib() throws IOException, InterruptedException {
+    public void testFib() throws IOException {
         logger.info("testFib");
         for (int i = 0; i < 10; i++) {
             ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
@@ -71,7 +75,7 @@ public class WorkerTests {
     }
 
     @Test
-    public void testAddition() throws IOException, InterruptedException {
+    public void testAddition() throws IOException {
         logger.info("testAddition");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
@@ -88,7 +92,61 @@ public class WorkerTests {
     }
 
     @Test
-    public void testStatelessCounter() throws IOException, InterruptedException {
+    public void testAsyncClientAddition() throws IOException {
+        logger.info("testAsyncClientAddition");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(c);
+        worker.startServing();
+
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+
+        ZMQ.Socket socket = client.getSocket("localhost");
+        ZMQ.Poller poller = clientContext.createPoller(1);
+        poller.register(socket, ZMQ.Poller.POLLIN);
+
+        // Non-blocking send. Then get result and calculate latency.
+        long actualSendTime = System.nanoTime();
+        byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes("AdditionFunction", 0, 0, "1", "2", new String[]{"matei", "zaharia"});
+        for (int i = 0; i < 5; i++) {
+            socket.send(reqBytes, 0);
+        }
+
+        // Poll and get the results.
+
+        byte[] replyBytes = null;
+        int recvCnt = 0;
+        while (recvCnt < 5) {
+            poller.poll(0);
+            if (poller.pollin(0)) {
+                ZMsg msg = ZMsg.recvMsg(socket);
+                ZFrame content = msg.getLast();
+                assertTrue(content != null);
+                replyBytes = content.getData();
+                msg.destroy();
+
+                ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
+                String res = reply.getReply();
+                assertEquals("3mateizaharia", res);
+                long senderTs = reply.getSenderTimestampNano();
+                long recvTs = System.nanoTime();
+                long elapse = (recvTs - senderTs) / 1000;
+                assertTrue(elapse > 0);
+                logger.info("Elapsed time: {} μs", elapse);
+
+                long actualElapse = (recvTs - actualSendTime) / 1000;
+                logger.info("Actual elapsed time: {} μs", actualElapse);
+                recvCnt++;
+            }
+        }
+        poller.close();
+        clientContext.close();
+        worker.shutdown();
+    }
+
+
+    @Test
+    public void testStatelessCounter() throws IOException {
         logger.info("testStatelessCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
@@ -113,7 +171,7 @@ public class WorkerTests {
     }
 
     @Test
-    public void testSynchronousCounter() throws IOException, InterruptedException {
+    public void testSynchronousCounter() throws IOException {
         logger.info("testSynchronousCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));

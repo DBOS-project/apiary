@@ -20,15 +20,17 @@ public class ApiaryTaskStash {
     public final Map<Integer, String> taskIDtoValue;
     public final Queue<Task> queuedTasks;
     public final AtomicInteger numFinishedTasks = new AtomicInteger(0);
+    public final long senderTimestampNano;
 
     public int totalQueuedTasks;
     public String stringOutput;
     public ApiaryFuture futureOutput;
 
-    public ApiaryTaskStash(long callerId, int currTaskId, ZFrame replyAddr) {
+    public ApiaryTaskStash(long callerId, int currTaskId, ZFrame replyAddr, long senderTimestampNano) {
         this.callerId = callerId;
         this.currTaskId = currTaskId;
         this.replyAddr = replyAddr;
+        this.senderTimestampNano = senderTimestampNano;
         taskIDtoValue = new ConcurrentHashMap<>();
         queuedTasks = new ConcurrentLinkedQueue<>();
         totalQueuedTasks = 0;

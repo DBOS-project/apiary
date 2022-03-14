@@ -59,12 +59,14 @@ public class ApiaryWorkerClient {
                 argumentTypes.add(ApiaryWorker.stringArrayType);
             }
         }
+        long sendTime = System.nanoTime();
         ExecuteFunctionRequest req = ExecuteFunctionRequest.newBuilder()
                 .setName(name)
                 .addAllArguments(byteArguments)
                 .addAllArgumentTypes(argumentTypes)
                 .setCallerId(callerID)
                 .setTaskId(taskID)
+                .setSenderTimestampNano(sendTime)
                 .build();
         return req.toByteArray();
     }

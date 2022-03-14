@@ -442,10 +442,11 @@ public class DumbQueue<E> extends AbstractQueue<E>
      * @throws NullPointerException if the specified element is null
      */
     public boolean offer(E e) {
-        long t0 = System.nanoTime();
         if (e == null)
             throw new NullPointerException();
         final ReentrantLock lock = this.lock;
+        logger.info("grab");
+        long t0 = System.nanoTime();
         lock.lock();
         long t1, t2, t3 = 0, t4;
         t1 = System.nanoTime() - t0;

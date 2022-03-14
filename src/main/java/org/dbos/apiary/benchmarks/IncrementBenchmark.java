@@ -24,25 +24,6 @@ public class IncrementBenchmark {
     private static final int threadPoolSize = 128;
     private static final Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
 
-    static class CallbackRunnable implements Runnable {
-        private final byte[] replyBytes;
-
-        public CallbackRunnable(byte[] replyBytes) {
-            this.replyBytes = replyBytes;
-        }
-
-        @Override
-        public void run() {
-            try {
-                ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
-                long senderTs = reply.getSenderTimestampNano();
-                trialTimes.add(System.nanoTime() - senderTs);
-            } catch (InvalidProtocolBufferException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     public static void benchmark(String voltAddr, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
         VoltDBConnection ctxt = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
         ctxt.client.callProcedure("TruncateTables");
@@ -65,10 +46,10 @@ public class IncrementBenchmark {
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
 
-        ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
-
         long lastSentTime = System.nanoTime();
-        while (System.currentTimeMillis() < endTime) {
+        int messagesSent = 0;
+        int messagesReceived = 0;
+        while (System.currentTimeMillis() < endTime || messagesSent != messagesReceived) {
             if ((System.currentTimeMillis() - startTime) <= threadWarmupMs) {
                 // Clean up the arrays if still in warm up time.
                 trialTimes.clear();
@@ -89,9 +70,13 @@ public class IncrementBenchmark {
                         assert (content != null);
                         byte[] replyBytes = content.getData();
                         msg.destroy();
-                        threadPool.submit(new CallbackRunnable(replyBytes));
+                        ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
+                        long senderTs = reply.getSenderTimestampNano();
+                        trialTimes.add(System.nanoTime() - senderTs);
+                        messagesReceived++;
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
+                            e.printStackTrace();
                             break;
                         } else {
                             e.printStackTrace();
@@ -100,13 +85,14 @@ public class IncrementBenchmark {
                 }
             }
 
-            if (System.nanoTime() - lastSentTime >= interval.longValue() * 1000) {
+            if (System.currentTimeMillis() < endTime && System.nanoTime() - lastSentTime >= interval.longValue() * 1000) {
                 // Send out a request.
                 String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
                 byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes("IncrementProcedure", 0, 0, key);
                 ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[]{key}));
                 socket.send(reqBytes, 0);
                 lastSentTime = System.nanoTime();
+                messagesSent++;
             }
         }
 
@@ -118,9 +104,5 @@ public class IncrementBenchmark {
         long p50 = queryTimes.get(numQueries / 2);
         long p99 = queryTimes.get((numQueries * 99) / 100);
         logger.info("Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
-
-        threadPool.shutdown();
-        threadPool.awaitTermination(100000, TimeUnit.SECONDS);
-        logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
     }
 }

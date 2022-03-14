@@ -445,7 +445,6 @@ public class DumbQueue<E> extends AbstractQueue<E>
         if (e == null)
             throw new NullPointerException();
         final ReentrantLock lock = this.lock;
-        logger.info("grab");
         long t0 = System.nanoTime();
         lock.lock();
         long t1, t2, t3 = 0, t4;
@@ -517,7 +516,6 @@ public class DumbQueue<E> extends AbstractQueue<E>
                 notEmpty.await();
         } finally {
             lock.unlock();
-            logger.info("take {}", System.nanoTime() - t0);
         }
         return result;
     }
@@ -532,7 +530,6 @@ public class DumbQueue<E> extends AbstractQueue<E>
                 nanos = notEmpty.awaitNanos(nanos);
         } finally {
             lock.unlock();
-            logger.info("poll");
         }
         return result;
     }

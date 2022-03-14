@@ -100,21 +100,23 @@ public class WorkerTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
+        ZMQ.Socket socket = client.getSocket("localhost");
+        ZMQ.Poller poller = clientContext.createPoller(1);
+        poller.register(socket, ZMQ.Poller.POLLIN);
+
         // Non-blocking send. Then get result and calculate latency.
         long actualSendTime = System.nanoTime();
         byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes("AdditionFunction", 0, 0, "1", "2", new String[]{"matei", "zaharia"});
-        ZMQ.Socket socket = client.getSocket("localhost");
         for (int i = 0; i < 5; i++) {
             socket.send(reqBytes, 0);
         }
 
         // Poll and get the results.
-        ZMQ.Poller poller = clientContext.createPoller(1);
-        poller.register(socket, ZMQ.Poller.POLLIN);
+
         byte[] replyBytes = null;
         int recvCnt = 0;
         while (recvCnt < 5) {
-            poller.poll(1);
+            poller.poll(0);
             if (poller.pollin(0)) {
                 ZMsg msg = ZMsg.recvMsg(socket);
                 ZFrame content = msg.getLast();
@@ -125,7 +127,6 @@ public class WorkerTests {
                 ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
                 String res = reply.getReply();
                 assertEquals("3mateizaharia", res);
-                
                 long senderTs = reply.getSenderTimestampNano();
                 long recvTs = System.nanoTime();
                 long elapse = (recvTs - senderTs) / 1000;

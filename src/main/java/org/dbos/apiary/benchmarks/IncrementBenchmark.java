@@ -22,7 +22,7 @@ public class IncrementBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(IncrementBenchmark.class);
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
-    private static final int numThreads = 4;
+    private static final int numThreads = 1;
     private static final Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
 
     public static void benchmark(String voltAddr, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {

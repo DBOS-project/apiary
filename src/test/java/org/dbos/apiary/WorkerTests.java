@@ -101,6 +101,7 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         // Non-blocking send. Then get result and calculate latency.
+        long actualSendTime = System.nanoTime();
         byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes("AdditionFunction", 0, 0, "1", "2", new String[]{"matei", "zaharia"});
         ZMQ.Socket socket = client.getSocket("localhost");
         socket.send(reqBytes, 0);
@@ -132,10 +133,13 @@ public class WorkerTests {
                 }
 
                 long senderTs = reply.getSenderTimestampNano();
-                long elapse = (System.nanoTime() - senderTs) / 1000;
+                long recvTs = System.nanoTime();
+                long elapse = (recvTs - senderTs) / 1000;
                 assertTrue(elapse > 0);
                 logger.info("Elapsed time: {} μs", elapse);
 
+                long actualElapse = (recvTs - actualSendTime) / 1000;
+                logger.info("Actual elapsed time: {} μs", actualElapse);
                 recvCnt++;
             }
         }

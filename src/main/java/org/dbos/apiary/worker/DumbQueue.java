@@ -515,6 +515,7 @@ public class DumbQueue<E> extends AbstractQueue<E>
                 notEmpty.await();
         } finally {
             lock.unlock();
+            logger.info("take");
         }
         return result;
     }
@@ -529,6 +530,7 @@ public class DumbQueue<E> extends AbstractQueue<E>
                 nanos = notEmpty.awaitNanos(nanos);
         } finally {
             lock.unlock();
+            logger.info("poll");
         }
         return result;
     }

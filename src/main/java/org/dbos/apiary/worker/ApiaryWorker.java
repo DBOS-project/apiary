@@ -14,7 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.*;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -45,7 +48,7 @@ public class ApiaryWorker {
         this.c = c;
         this.scheduler = scheduler;
         this.zContext = new ZContext(2);  // TODO: How many IO threads?
-        reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new PriorityBlockingQueue<>());
         repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
     }
 
@@ -154,14 +157,16 @@ public class ApiaryWorker {
         }
     }
 
-    private class RequestRunnable implements Runnable {
+    private class RequestRunnable implements Runnable, Comparable<RequestRunnable> {
         private ExecuteFunctionRequest req;
         private final ZFrame address;
+        public long priority;
 
         public RequestRunnable(ZFrame address, byte[] reqBytes) {
             this.address = address;
             try {
                 this.req = ExecuteFunctionRequest.parseFrom(reqBytes);
+                this.priority = System.nanoTime();
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
             }
@@ -189,6 +194,11 @@ public class ApiaryWorker {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        }
+
+        @Override
+        public int compareTo(RequestRunnable requestRunnable) {
+            return Long.compare(priority, requestRunnable.priority);
         }
     }
 

@@ -29,20 +29,11 @@ public class IncrementBenchmark {
         VoltDBConnection ctxt = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
         ctxt.client.callProcedure("TruncateTables");
 
-        ZContext clientContext = new ZContext();
-        ApiaryWorkerClient client = new ApiaryWorkerClient(ZContext.shadow(clientContext));
-
         final int numKeys = 100000;
 
         List<String> distinctHosts = ctxt.getPartitionHostMap().values().stream()
                 .distinct()
                 .collect(Collectors.toList());
-        ZMQ.Poller poller = clientContext.createPoller(distinctHosts.size());
-        for (String hostname : distinctHosts) {
-            ZMQ.Socket socket = client.getSocket(hostname);
-            poller.register(socket, ZMQ.Poller.POLLIN);
-        }
-
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
 
@@ -50,6 +41,13 @@ public class IncrementBenchmark {
         long threadInterval = interval.longValue() * numThreads;
         for (int threadNum = 0; threadNum < numThreads; threadNum++) {
             Runnable threadRunnable = () -> {
+                ZContext clientContext = new ZContext();
+                ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+                ZMQ.Poller poller = clientContext.createPoller(distinctHosts.size());
+                for (String hostname : distinctHosts) {
+                    ZMQ.Socket socket = client.getSocket(hostname);
+                    poller.register(socket, ZMQ.Poller.POLLIN);
+                }
                 long lastSentTime = System.nanoTime();
                 int messagesSent = 0;
                 int messagesReceived = 0;

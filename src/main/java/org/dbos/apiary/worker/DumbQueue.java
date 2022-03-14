@@ -447,24 +447,26 @@ public class DumbQueue<E> extends AbstractQueue<E>
             throw new NullPointerException();
         final ReentrantLock lock = this.lock;
         lock.lock();
-        logger.info("1 {}", System.nanoTime() - t0);
+        long t1, t2, t3 = 0, t4;
+        t1 = System.nanoTime() - t0;
         int n, cap;
         Object[] array;
         while ((n = size) >= (cap = (array = queue).length))
             tryGrow(array, cap);
-        logger.info("2 {}", System.nanoTime() - t0);
+        t2 = System.nanoTime() - t0;
         try {
             Comparator<? super E> cmp = comparator;
             if (cmp == null) {
                 siftUpComparable(n, e, array);
-                logger.info("3 {}", System.nanoTime() - t0);
             } else
                 siftUpUsingComparator(n, e, array, cmp);
+            t3 = System.nanoTime() - t0;
             size = n + 1;
             notEmpty.signal();
         } finally {
-            logger.info("4 {}", System.nanoTime() - t0);
+            t4 = System.nanoTime() - t0;
             lock.unlock();
+            logger.info("{} {} {} {}", t1, t2, t3, t4);
         }
         return true;
     }

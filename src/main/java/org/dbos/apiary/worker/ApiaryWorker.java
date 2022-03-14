@@ -41,16 +41,14 @@ public class ApiaryWorker {
     private ZContext zContext;
     private Thread serverThread;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
-    private final ExecutorService addReqThreadPool;
     private final ExecutorService reqThreadPool;
     private final ExecutorService repThreadPool;
-    private final BlockingQueue<Runnable> reqQueue = new PriorityBlockingQueue<>(100000);
+    private final BlockingQueue<Runnable> reqQueue = new DumbQueue<>(100000);
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
         this.c = c;
         this.scheduler = scheduler;
         this.zContext = new ZContext(2);  // TODO: How many IO threads?
-        addReqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
         repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
     }
@@ -160,20 +158,6 @@ public class ApiaryWorker {
         }
     }
 
-    private class AddRequestRunnable implements Runnable {
-        private final ZFrame address;
-        private final byte[] reqBytes;
-        public AddRequestRunnable(ZFrame address, byte[] reqBytes) {
-            this.address = address;
-            this.reqBytes = reqBytes;
-        }
-
-        @Override
-        public void run() {
-            reqThreadPool.execute(new RequestRunnable(address, reqBytes));
-        }
-    }
-
     private class RequestRunnable implements Runnable, Comparable<RequestRunnable> {
         private ExecuteFunctionRequest req;
         private final ZFrame address;
@@ -279,7 +263,7 @@ public class ApiaryWorker {
                     assert (content != null);
                     msg.destroy();
                     byte[] reqBytes = content.getData();
-                    addReqThreadPool.execute(new AddRequestRunnable(address, reqBytes));
+                    reqThreadPool.execute(new RequestRunnable(address, reqBytes));
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;
@@ -343,8 +327,6 @@ public class ApiaryWorker {
 
     public void shutdown() {
         try {
-            addReqThreadPool.shutdown();
-            addReqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             reqThreadPool.shutdown();
             reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             repThreadPool.shutdown();

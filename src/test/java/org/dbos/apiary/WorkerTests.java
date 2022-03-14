@@ -95,7 +95,7 @@ public class WorkerTests {
     public void testAsyncClientAddition() throws IOException {
         logger.info("testAsyncClientAddition");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
         worker.startServing();
 
         ZContext clientContext = new ZContext();

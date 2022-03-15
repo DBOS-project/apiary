@@ -6,16 +6,14 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.PriorityQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DumbQueue<E> extends PriorityQueue<E> implements BlockingQueue<E> {
     private static final Logger logger = LoggerFactory.getLogger(DumbQueue.class);
-
-    Lock lock = new ReentrantLock();
-    Condition notEmpty = lock.newCondition();
+    AtomicBoolean used = new AtomicBoolean(false);
+    Semaphore semaphore = new Semaphore(0);
 
     public DumbQueue() {
         super();
@@ -23,34 +21,22 @@ public class DumbQueue<E> extends PriorityQueue<E> implements BlockingQueue<E> {
 
     @Override
     public boolean offer(E e) {
-        long t0 = System.nanoTime();
-        lock.lock();
-        long t1 = System.nanoTime() - t0;
+        assert (e != null);
         boolean b;
-        try {
-            b = super.offer(e);
-            this.notEmpty.signal();
-        } finally {
-            lock.unlock();
-        }
-        long t2 = System.nanoTime() - t0;
-        logger.info("{} {}", t1, t2);
+        while (!used.compareAndSet(false, true));
+        b = super.offer(e);
+        used.set(false);
+        semaphore.release();
         return b;
     }
 
     @Override
     public E take() throws InterruptedException {
-        lock.lockInterruptibly();
-
-        E result;
-        try {
-            while ((result = super.poll()) == null) {
-                this.notEmpty.await();
-            }
-        } finally {
-            lock.unlock();
-        }
-
+        semaphore.acquire();
+        while (!used.compareAndSet(false, true));
+        E result = super.poll();
+        used.set(false);
+        assert result != null;
         return result;
     }
 

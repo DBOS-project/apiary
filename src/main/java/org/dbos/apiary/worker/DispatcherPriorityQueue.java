@@ -12,13 +12,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class DumbQueue<E> extends PriorityQueue<E> implements BlockingQueue<E> {
-    private static final Logger logger = LoggerFactory.getLogger(DumbQueue.class);
+public class DispatcherPriorityQueue<E> extends PriorityQueue<E> implements BlockingQueue<E> {
+    private static final Logger logger = LoggerFactory.getLogger(DispatcherPriorityQueue.class);
     Lock lock = new ReentrantLock();
     AtomicBoolean used = new AtomicBoolean(false);
     Semaphore semaphore = new Semaphore(0);
 
-    public DumbQueue() {
+    public DispatcherPriorityQueue() {
         super();
     }
 

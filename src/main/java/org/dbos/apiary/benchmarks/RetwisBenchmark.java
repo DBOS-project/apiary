@@ -123,10 +123,10 @@ public class RetwisBenchmark {
                                 long senderTs = reply.getSenderTimestampNano();
                                 trialTimes.add(System.nanoTime() - senderTs);
                                 messagesReceived++;
-                                //if (messagesSent < messagesReceived) {
+                                if (messagesSent < messagesReceived) {
                                     logger.info("sent {}, received {}", messagesSent, messagesReceived);
                                     logger.info("sendTime {}, callerID {}", reply.getSenderTimestampNano(), reply.getCallerId());
-                                //}
+                                }
 
                             } catch (ZMQException e) {
                                 if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {

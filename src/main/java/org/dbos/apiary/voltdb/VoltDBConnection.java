@@ -147,7 +147,7 @@ public class VoltDBConnection implements ApiaryConnection {
         return;
     }
 
-    public int getPartition(Object[] input) {
+    private int getPartition(Object[] input) {
         assert (input[0] instanceof String); // TODO: Support int type explicitly.
         int partitionId = TheHashinator.getPartitionForParameter(
                 VoltType.INTEGER, Integer.parseInt((String) input[0]));

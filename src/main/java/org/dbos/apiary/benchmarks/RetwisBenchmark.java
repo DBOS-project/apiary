@@ -139,7 +139,7 @@ public class RetwisBenchmark {
                     if (System.currentTimeMillis() < endTime && System.nanoTime() - lastSentTime >= threadInterval * 1000) {
                         // Send out a request.
                         int userID = ThreadLocalRandom.current().nextInt(numUsers);
-                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("RetwisGetTimeline", service, 0, 0, String.valueOf(userID));
+                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("RetwisGetTimeline", service, 0L, 0, String.valueOf(userID));
                         ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[]{String.valueOf(userID)}));
                         socket.send(reqBytes, 0);
                         lastSentTime = System.nanoTime();

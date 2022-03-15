@@ -4,7 +4,6 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
-import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +14,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 public class IncrementBenchmark {
@@ -25,7 +25,7 @@ public class IncrementBenchmark {
     private static final int numThreads = 1;
     private static final Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
 
-    public static void benchmark(String voltAddr, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
+    public static void benchmark(String voltAddr, String service, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
         VoltDBConnection ctxt = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
         ctxt.client.callProcedure("TruncateTables");
 
@@ -92,7 +92,7 @@ public class IncrementBenchmark {
                     if (System.currentTimeMillis() < endTime && System.nanoTime() - lastSentTime >= threadInterval * 1000) {
                         // Send out a request.
                         String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
-                        byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes("IncrementProcedure", 0, 0, key);
+                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementProcedure", service, 0, 0, key);
                         ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[]{key}));
                         socket.send(reqBytes, 0);
                         lastSentTime = System.nanoTime();

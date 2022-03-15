@@ -3,6 +3,7 @@ package org.dbos.apiary;
 import org.dbos.apiary.procedures.cockroachdb.CockroachDBFibSumFunction;
 import org.dbos.apiary.procedures.cockroachdb.CockroachDBFibonacciFunction;
 import org.dbos.apiary.cockroachdb.CockroachDBConnection;
+import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.junit.jupiter.api.Test;
@@ -60,20 +61,20 @@ public class CockroachDBTests {
 
             c.registerFunction("FibonacciFunction", () -> new CockroachDBFibonacciFunction(conn));
             c.registerFunction("FibSumFunction", () -> new CockroachDBFibSumFunction(conn));
-            ApiaryWorker worker = new ApiaryWorker(c);
+            ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
             worker.startServing();
 
             ZContext clientContext = new ZContext();
             ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
             String res;
-            res = client.executeFunction("localhost", "FibonacciFunction", "1");
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "1");
             assertEquals("1", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "6");
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "6");
             assertEquals("8", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "10");
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "10");
             assertEquals("55", res);
 
             clientContext.close();

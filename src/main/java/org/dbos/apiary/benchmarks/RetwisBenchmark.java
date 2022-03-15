@@ -37,27 +37,48 @@ public class RetwisBenchmark {
 
         AtomicInteger timestamp = new AtomicInteger(0);
         AtomicInteger postIDs = new AtomicInteger(0);
+        ExecutorService retwisPool = Executors.newFixedThreadPool(threadPoolSize);
+        CountDownLatch latch = new CountDownLatch(numPosts + numUsers * followsPerUsers);
         for (int i = 0; i < numPosts; i++) {
-            int userID = ThreadLocalRandom.current().nextInt(numUsers);
-            int postID = postIDs.incrementAndGet();
-            int ts = timestamp.incrementAndGet();
-            String postString = String.format("matei%d", postID);
-            client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisPost", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
+            Runnable r = () -> {
+                try {
+                    int userID = ThreadLocalRandom.current().nextInt(numUsers);
+                    int postID = postIDs.incrementAndGet();
+                    int ts = timestamp.incrementAndGet();
+                    String postString = String.format("matei%d", postID);
+                    client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisPost", "defaultService", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
+                    latch.countDown();
+                } catch (InvalidProtocolBufferException e) {
+                    e.printStackTrace();
+                }
+            };
+            retwisPool.submit(r);
         }
         for (int userID = 0; userID < numUsers; userID++) {
             int firstFollowee = ThreadLocalRandom.current().nextInt(numUsers);
             for (int i = 0; i < followsPerUsers; i++) {
-                int followeeID = (firstFollowee + i) % numUsers;
-                client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisFollow", String.valueOf(userID), String.valueOf(followeeID));
+                int finalI = i;
+                int finalUserID = userID;
+                Runnable r = () ->  {
+                    try {
+                        int followeeID = (firstFollowee + finalI) % numUsers;
+                        client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(finalUserID)}), "RetwisFollow", "defaultService", String.valueOf(finalUserID), String.valueOf(followeeID));
+                        latch.countDown();
+                    } catch (InvalidProtocolBufferException e) {
+                        e.printStackTrace();
+                    }
+                };
+                retwisPool.submit(r);
             }
         }
+        latch.await();
         logger.info("Finished loading!");
 
         Runnable r = () -> {
             long rStart = System.nanoTime();
             try {
                 int userID = ThreadLocalRandom.current().nextInt(numUsers);
-                client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisGetTimeline", String.valueOf(userID));
+                client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisGetTimeline", "defaultService", String.valueOf(userID));
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
             }
@@ -67,14 +88,13 @@ public class RetwisBenchmark {
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
 
-        ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
         while (System.currentTimeMillis() < endTime) {
             long t = System.nanoTime();
             if ((System.currentTimeMillis() - startTime) <= threadWarmupMs) {
                 // Clean up the arrays if still in warm up time.
                 trialTimes.clear();
             }
-            threadPool.submit(r);
+            retwisPool.submit(r);
             while (System.nanoTime() - t < interval.longValue() * 1000) {
                 // Busy-spin
             }
@@ -89,8 +109,8 @@ public class RetwisBenchmark {
         long p99 = queryTimes.get((numQueries * 99) / 100);
         logger.info("Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
 
-        threadPool.shutdown();
-        threadPool.awaitTermination(100000, TimeUnit.SECONDS);
+        retwisPool.shutdown();
+        retwisPool.awaitTermination(100000, TimeUnit.SECONDS);
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
     }
 }

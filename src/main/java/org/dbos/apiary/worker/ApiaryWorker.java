@@ -14,7 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.*;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -34,15 +37,20 @@ public class ApiaryWorker {
     public static int numWorkerThreads = 128;
 
     private final ApiaryConnection c;
+    private final ApiaryScheduler scheduler;
     private ZContext zContext;
     private Thread serverThread;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
-    private final ExecutorService threadPool;
+    private final ExecutorService reqThreadPool;
+    private final ExecutorService repThreadPool;
+    private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
 
-    public ApiaryWorker(ApiaryConnection c) {
+    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
         this.c = c;
+        this.scheduler = scheduler;
         this.zContext = new ZContext(2);  // TODO: How many IO threads?
-        threadPool = Executors.newFixedThreadPool(numWorkerThreads);
+        reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
+        repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
     }
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
@@ -69,7 +77,7 @@ public class ApiaryWorker {
                     } else {
                         String address = c.getHostname(subtask.input);
                         // Push to the outgoing queue.
-                        byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes(subtask.funcName, currCallerID, subtask.taskID, subtask.input);
+                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currCallerID, subtask.taskID, subtask.input);
                         outgoingMsgQueue.add(new OutgoingMsg(address, reqBytes));
                     }
                 }
@@ -109,15 +117,15 @@ public class ApiaryWorker {
     }
 
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
-    private void executeFunction(String name, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
-        FunctionOutput o;
+    private void executeFunction(String name, String service, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
+        FunctionOutput o = null;
         try {
             o = c.callFunction(name, arguments);
         } catch (Exception e) {
             e.printStackTrace();
-            return;
         }
-        ApiaryTaskStash currTask = new ApiaryTaskStash(callerID, currTaskID, replyAddr, senderTimestampNano);
+        assert (o != null);
+        ApiaryTaskStash currTask = new ApiaryTaskStash(service, callerID, currTaskID, replyAddr, senderTimestampNano);
         if (o.stringOutput != null) {
             currTask.stringOutput = o.stringOutput;
         } else  {
@@ -150,53 +158,71 @@ public class ApiaryWorker {
         }
     }
 
-    class workerRunnable implements Runnable {
-        private final byte[] reqBytes;
-        private final byte[] replyBytes;
+    private class RequestRunnable implements Runnable, Comparable<RequestRunnable> {
+        private ExecuteFunctionRequest req;
         private final ZFrame address;
+        public long priority;
 
-        public workerRunnable(ZFrame address, byte[] req, byte[] reply) {
+        public RequestRunnable(ZFrame address, byte[] reqBytes) {
             this.address = address;
-            this.reqBytes = req;
+            try {
+                this.req = ExecuteFunctionRequest.parseFrom(reqBytes);
+                this.priority = scheduler.getPriority(req);
+            } catch (InvalidProtocolBufferException e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void run() {
+            // Handle the request.
+            try {
+                scheduler.onDequeue(req);
+                assert (req != null);
+                List<ByteString> byteArguments = req.getArgumentsList();
+                List<Integer> argumentTypes = req.getArgumentTypesList();
+                long callerID = req.getCallerId();
+                int currTaskID = req.getTaskId();
+                Object[] arguments = new Object[byteArguments.size()];
+                for (int i = 0; i < arguments.length; i++) {
+                    if (argumentTypes.get(i) == stringType) {
+                        arguments[i] = new String(byteArguments.get(i).toByteArray());
+                    } else {
+                        assert (argumentTypes.get(i) == stringArrayType);
+                        arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
+                    }
+                }
+                executeFunction(req.getName(), req.getService(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public int compareTo(RequestRunnable requestRunnable) {
+            return Long.compare(priority, requestRunnable.priority);
+        }
+    }
+
+    private class ReplyRunnable implements Runnable {
+        private final byte[] replyBytes;
+
+        public ReplyRunnable(byte[] reply) {
             this.replyBytes = reply;
         }
 
         @Override
         public void run() {
-            if (reqBytes != null) {
-                // Handle the request.
-                try {
-                    ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
-                    List<ByteString> byteArguments = req.getArgumentsList();
-                    List<Integer> argumentTypes = req.getArgumentTypesList();
-                    long callerID = req.getCallerId();
-                    int currTaskID = req.getTaskId();
-                    Object[] arguments = new Object[byteArguments.size()];
-                    for (int i = 0; i < arguments.length; i++) {
-                        if (argumentTypes.get(i) == stringType) {
-                            arguments[i] = new String(byteArguments.get(i).toByteArray());
-                        } else {
-                            assert (argumentTypes.get(i) == stringArrayType);
-                            arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
-                        }
-                    }
-                    executeFunction(req.getName(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
-                } catch (InvalidProtocolBufferException | InterruptedException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                assert (replyBytes != null);
-                // Handle the reply.
-                try {
-                    ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
-                    String output = reply.getReply();
-                    long callerID = reply.getCallerId();
-                    int taskID = reply.getTaskId();
-                    // Resume execution.
-                    resumeExecution(callerID, taskID, output);
-                } catch (InvalidProtocolBufferException | InterruptedException e) {
-                    e.printStackTrace();
-                }
+            // Handle the reply.
+            try {
+                ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
+                String output = reply.getReply();
+                long callerID = reply.getCallerId();
+                int taskID = reply.getTaskId();
+                // Resume execution.
+                resumeExecution(callerID, taskID, output);
+            } catch (InvalidProtocolBufferException | InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -238,7 +264,7 @@ public class ApiaryWorker {
                     assert (content != null);
                     msg.destroy();
                     byte[] reqBytes = content.getData();
-                    threadPool.submit(new workerRunnable(address, reqBytes, null));
+                    reqThreadPool.execute(new RequestRunnable(address, reqBytes));
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;
@@ -259,7 +285,7 @@ public class ApiaryWorker {
                         assert (content != null);
                         byte[] replyBytes = content.getData();
                         msg.destroy();
-                        threadPool.submit(new workerRunnable(null, null, replyBytes));
+                        repThreadPool.execute(new ReplyRunnable(replyBytes));
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                             break;
@@ -302,8 +328,10 @@ public class ApiaryWorker {
 
     public void shutdown() {
         try {
-            threadPool.shutdown();
-            threadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            reqThreadPool.shutdown();
+            reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            repThreadPool.shutdown();
+            repThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             serverThread.interrupt();
             zContext.close();
             serverThread.join();

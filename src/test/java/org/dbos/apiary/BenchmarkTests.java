@@ -4,6 +4,7 @@ import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
+import org.dbos.apiary.worker.ApiaryWFQScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +31,8 @@ public class BenchmarkTests {
     public void testRetwis() throws IOException, InterruptedException {
         logger.info("testRetwis");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
+        ApiaryWorker worker = new ApiaryWorker(c, scheduler);
         worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
         worker.startServing();
 
@@ -38,19 +40,19 @@ public class BenchmarkTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "RetwisPost", "0", "0", "0", "hello0");
+        res = client.executeFunction("localhost", "RetwisPost", "defaultService", "0", "0", "0", "hello0");
         assertEquals("0", res);
-        res = client.executeFunction("localhost", "RetwisPost", "0", "1", "1", "hello1");
+        res = client.executeFunction("localhost", "RetwisPost", "defaultService", "0", "1", "1", "hello1");
         assertEquals("0", res);
-        res = client.executeFunction("localhost", "RetwisPost", "1", "2", "0", "hello2");
+        res = client.executeFunction("localhost", "RetwisPost", "defaultService", "1", "2", "0", "hello2");
         assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisFollow", "1", "0");
+        res = client.executeFunction("localhost", "RetwisFollow", "defaultService", "1", "0");
         assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisFollow", "1", "1");
+        res = client.executeFunction("localhost", "RetwisFollow", "defaultService", "1", "1");
         assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisGetPosts", "0");
+        res = client.executeFunction("localhost", "RetwisGetPosts", "defaultService", "0");
         assertEquals("hello0,hello1", res);
-        res = client.executeFunction("localhost", "RetwisGetTimeline",  "1");
+        res = client.executeFunction("localhost", "RetwisGetTimeline", "defaultService", "1");
         assertEquals(3, res.split(",").length);
         assertTrue(res.contains("hello0"));
         assertTrue(res.contains("hello1"));
@@ -63,20 +65,21 @@ public class BenchmarkTests {
     public void testIncrement() throws IOException, InterruptedException {
         logger.info("testIncrement");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
+        ApiaryWorker worker = new ApiaryWorker(c, scheduler);
         worker.startServing();
 
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "IncrementProcedure", "0");
+        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", "0");
         assertEquals("1", res);
-        res = client.executeFunction("localhost", "IncrementProcedure", "0");
+        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", "0");
         assertEquals("2", res);
-        res = client.executeFunction("localhost", "IncrementProcedure", "0");
+        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", "0");
         assertEquals("3", res);
-        res = client.executeFunction("localhost", "IncrementProcedure", "55");
+        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", "55");
         assertEquals("1", res);
         clientContext.close();
         worker.shutdown();

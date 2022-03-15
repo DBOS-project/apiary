@@ -43,7 +43,7 @@ public class ApiaryWorker {
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
     private final ExecutorService reqThreadPool;
     private final ExecutorService repThreadPool;
-    private final BlockingQueue<Runnable> reqQueue = new DumbQueue<>(100000);
+    private final BlockingQueue<Runnable> reqQueue = new DumbQueue<>();
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
         this.c = c;

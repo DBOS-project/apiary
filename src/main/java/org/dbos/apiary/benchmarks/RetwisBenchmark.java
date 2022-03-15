@@ -103,10 +103,13 @@ public class RetwisBenchmark {
                         // Clean up the arrays if still in warm up time.
                         trialTimes.clear();
                     }
+                    long t0 = System.nanoTime();
                     int prs = poller.poll(0);
                     if (prs == -1) {
                         break;
                     }
+                    long t1 = System.nanoTime();
+                    logger.info("Poll time: {} us", (t1 - t0)/1000);
 
                     // Handle reply from server.
                     for (int i = 0; i < poller.getSize(); i++) {
@@ -140,6 +143,9 @@ public class RetwisBenchmark {
                             }
                         }
                     }
+
+                    long t2 = System.nanoTime();
+                    logger.info("Pollin time: {} us", (t2 - t1)/1000);
 
                     if (System.currentTimeMillis() < endTime && System.nanoTime() - lastSentTime >= threadInterval * 1000) {
                         // Send out a request.

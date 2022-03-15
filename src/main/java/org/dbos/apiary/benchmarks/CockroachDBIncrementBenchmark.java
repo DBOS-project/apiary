@@ -58,9 +58,11 @@ public class CockroachDBIncrementBenchmark {
 
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
         while (System.currentTimeMillis() < endTimeMs) {
+            long t = System.nanoTime();
             threadPool.submit(r);
-            long timeToSleepUs = Math.min((endTimeMs - System.currentTimeMillis()) * 1000, interval.longValue());
-            TimeUnit.MICROSECONDS.sleep(timeToSleepUs);
+            while (System.nanoTime() - t < interval.longValue() * 1000) {
+                // Busy-spin
+            }
         }
         threadPool.shutdown();
         try {

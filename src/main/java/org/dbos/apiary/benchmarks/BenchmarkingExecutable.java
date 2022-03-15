@@ -17,7 +17,7 @@ public class BenchmarkingExecutable {
         options.addOption("d", true, "Duration (sec)?");
         options.addOption("i", true, "Benchmark Interval (μs)");
         options.addOption("i2", true, "Mixed Benchmark Increment Interval (μs)");
-        options.addOption("s", "Service Name");
+        options.addOption("s", true, "Service Name");
         options.addOption("voltdb", true, "VoltDB host name");
 
         CommandLineParser parser = new DefaultParser();

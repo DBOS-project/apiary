@@ -61,7 +61,7 @@ public class CockroachDBTests {
 
             c.registerFunction("FibonacciFunction", () -> new CockroachDBFibonacciFunction(conn));
             c.registerFunction("FibSumFunction", () -> new CockroachDBFibSumFunction(conn));
-            ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
+            ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
             worker.startServing();
 
             ZContext clientContext = new ZContext();

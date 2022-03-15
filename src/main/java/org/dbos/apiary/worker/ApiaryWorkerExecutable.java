@@ -11,8 +11,6 @@ import org.dbos.apiary.voltdb.VoltDBConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-
 // Executable for the worker daemon.
 public class ApiaryWorkerExecutable {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorkerExecutable.class);
@@ -27,14 +25,14 @@ public class ApiaryWorkerExecutable {
 
         // Only need to connect to localhost.
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryScheduler scheduler = new ApiaryNaiveScheduler(c);
+        ApiaryScheduler scheduler = new ApiaryNaiveScheduler();
         if (cmd.hasOption("s")) {
             if (cmd.getOptionValue("s").equals("wfq")) {
                 logger.info("Using WFQ Scheduler");
-                scheduler = new ApiaryWFQScheduler(c, List.of(0, 1, 2, 3, 4, 5, 6, 7));
+                scheduler = new ApiaryWFQScheduler();
             } else if (cmd.getOptionValue("s").equals("naive")) {
                 logger.info("Using Naive Scheduler");
-                scheduler = new ApiaryNaiveScheduler(c);
+                scheduler = new ApiaryNaiveScheduler();
             }
         }
 
@@ -50,7 +48,6 @@ public class ApiaryWorkerExecutable {
         }));
         Thread.sleep(Long.MAX_VALUE);
         worker.shutdown();
-        scheduler.shutdown();
     }
 
 }

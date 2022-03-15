@@ -53,7 +53,7 @@ public class WorkerTests {
         logger.info("testFib");
         for (int i = 0; i < 10; i++) {
             ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-            ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
+            ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
             worker.startServing();
 
             ZContext clientContext = new ZContext();
@@ -78,7 +78,7 @@ public class WorkerTests {
     public void testAddition() throws IOException {
         logger.info("testAddition");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
         worker.startServing();
 
         ZContext clientContext = new ZContext();
@@ -95,7 +95,7 @@ public class WorkerTests {
     public void testAsyncClientAddition() throws IOException {
         logger.info("testAsyncClientAddition");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
         worker.startServing();
 
         ZContext clientContext = new ZContext();
@@ -149,7 +149,7 @@ public class WorkerTests {
     public void testStatelessCounter() throws IOException {
         logger.info("testStatelessCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
         worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
         worker.startServing();
 
@@ -174,7 +174,7 @@ public class WorkerTests {
     public void testSynchronousCounter() throws IOException {
         logger.info("testSynchronousCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
         worker.startServing();
 
         ZContext clientContext = new ZContext();

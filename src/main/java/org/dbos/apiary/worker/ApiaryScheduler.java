@@ -1,8 +1,9 @@
 package org.dbos.apiary.worker;
 
-import org.dbos.apiary.executor.FunctionOutput;
+import org.dbos.apiary.ExecuteFunctionRequest;
 
 public interface ApiaryScheduler {
-    public FunctionOutput scheduleFunction(String name, Object... inputs);
-    public void shutdown();
+    public long getPriority(ExecuteFunctionRequest req);
+
+    public void onDequeue(ExecuteFunctionRequest req);
 }

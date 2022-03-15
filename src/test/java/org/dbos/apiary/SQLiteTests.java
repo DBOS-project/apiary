@@ -32,7 +32,7 @@ public class SQLiteTests {
         c.createTable("CREATE TABLE KVTable(KVKey integer NOT NULL, KVValue integer NOT NULL);");
         c.registerFunction("FibonacciFunction", () -> new SQLiteFibonacciFunction(conn));
         c.registerFunction("FibSumFunction", () -> new SQLiteFibSumFunction(conn));
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(c));
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
         worker.startServing();
 
         ZContext clientContext = new ZContext();

@@ -4,7 +4,6 @@ import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
-import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWFQScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
@@ -16,7 +15,6 @@ import org.voltdb.client.ProcCallException;
 import org.zeromq.ZContext;
 
 import java.io.IOException;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,7 +31,7 @@ public class BenchmarkTests {
     public void testRetwis() throws IOException, InterruptedException {
         logger.info("testRetwis");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler(c, List.of(0, 1, 2, 3, 4, 5, 6, 7));
+        ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(c, scheduler);
         worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
         worker.startServing();
@@ -61,14 +59,13 @@ public class BenchmarkTests {
         assertTrue(res.contains("hello2"));
         clientContext.close();
         worker.shutdown();
-        scheduler.shutdown();
     }
 
     @Test
     public void testIncrement() throws IOException, InterruptedException {
         logger.info("testIncrement");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler(c, List.of(0, 1, 2, 3, 4, 5, 6, 7));
+        ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(c, scheduler);
         worker.startServing();
 
@@ -86,6 +83,5 @@ public class BenchmarkTests {
         assertEquals("1", res);
         clientContext.close();
         worker.shutdown();
-        scheduler.shutdown();
     }
 }

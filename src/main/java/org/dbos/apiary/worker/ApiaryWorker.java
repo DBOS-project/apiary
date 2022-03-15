@@ -167,7 +167,7 @@ public class ApiaryWorker {
             this.address = address;
             try {
                 this.req = ExecuteFunctionRequest.parseFrom(reqBytes);
-                this.priority = System.nanoTime();
+                this.priority = scheduler.getPriority(req);
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
             }
@@ -177,6 +177,7 @@ public class ApiaryWorker {
         public void run() {
             // Handle the request.
             try {
+                scheduler.onDequeue(req);
                 assert (req != null);
                 List<ByteString> byteArguments = req.getArgumentsList();
                 List<Integer> argumentTypes = req.getArgumentTypesList();

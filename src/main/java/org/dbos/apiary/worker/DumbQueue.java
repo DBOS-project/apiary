@@ -23,7 +23,9 @@ public class DumbQueue<E> extends PriorityQueue<E> implements BlockingQueue<E> {
 
     @Override
     public boolean offer(E e) {
+        long t0 = System.nanoTime();
         lock.lock();
+        long t1 = System.nanoTime() - t0;
         boolean b;
         try {
             b = super.offer(e);
@@ -31,6 +33,8 @@ public class DumbQueue<E> extends PriorityQueue<E> implements BlockingQueue<E> {
         } finally {
             lock.unlock();
         }
+        long t2 = System.nanoTime() - t0;
+        logger.info("{} {}", t1, t2);
         return b;
     }
 

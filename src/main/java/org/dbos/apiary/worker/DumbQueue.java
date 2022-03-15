@@ -9,9 +9,12 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class DumbQueue<E> extends PriorityQueue<E> implements BlockingQueue<E> {
     private static final Logger logger = LoggerFactory.getLogger(DumbQueue.class);
+    Lock lock = new ReentrantLock();
     AtomicBoolean used = new AtomicBoolean(false);
     Semaphore semaphore = new Semaphore(0);
 
@@ -33,9 +36,11 @@ public class DumbQueue<E> extends PriorityQueue<E> implements BlockingQueue<E> {
     @Override
     public E take() throws InterruptedException {
         semaphore.acquire();
+        lock.lock();
         while (!used.compareAndSet(false, true));
         E result = super.poll();
         used.set(false);
+        lock.unlock();
         assert result != null;
         return result;
     }

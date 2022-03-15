@@ -17,6 +17,7 @@ public class BenchmarkingExecutable {
         options.addOption("d", true, "Duration (sec)?");
         options.addOption("i", true, "Benchmark Interval (μs)");
         options.addOption("i2", true, "Mixed Benchmark Increment Interval (μs)");
+        options.addOption("s", "Service Name");
         options.addOption("voltdb", true, "VoltDB host name");
 
         CommandLineParser parser = new DefaultParser();
@@ -35,9 +36,13 @@ public class BenchmarkingExecutable {
             voltAddr = cmd.getOptionValue("voltdb");
         }
         String benchmark = cmd.getOptionValue("b");
+        String service = benchmark;
+        if (cmd.hasOption("s")) {
+            service = cmd.getOptionValue("s");
+        }
         if (benchmark.equals("increment")) {
-            logger.info("Increment Benchmark");
-            IncrementBenchmark.benchmark(voltAddr, interval, duration);
+            logger.info("Increment Benchmark. Service: {}", service);
+            IncrementBenchmark.benchmark(voltAddr, service, interval, duration);
         } else if (benchmark.equals("retwis")) {
             logger.info("Retwis Benchmark");
             RetwisBenchmark.benchmark(voltAddr, interval, duration);

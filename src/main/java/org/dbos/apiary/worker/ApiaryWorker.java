@@ -104,8 +104,8 @@ public class ApiaryWorker {
         // If everything is resolved, then return the string value.
         String finalOutput = callerTask.getFinalOutput();
 
-        if (finalOutput != null) {
-            // Send back the response.
+        if ((finalOutput != null) && (callerTask.sentOutput.compareAndSet(false, true))) {
+            // Send back the response only once.
             ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput)
                     .setCallerId(callerTask.callerId)
                     .setTaskId(callerTask.currTaskId)

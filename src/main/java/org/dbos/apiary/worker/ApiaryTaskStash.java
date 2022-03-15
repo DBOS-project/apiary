@@ -26,6 +26,7 @@ public class ApiaryTaskStash {
     public int totalQueuedTasks;
     public String stringOutput;
     public ApiaryFuture futureOutput;
+    public AtomicBoolean sentOutput = new AtomicBoolean(false);
 
     public ApiaryTaskStash(String service, long callerId, int currTaskId, ZFrame replyAddr, long senderTimestampNano) {
         this.service = service;

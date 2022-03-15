@@ -16,14 +16,14 @@ public class ApiaryWFQScheduler implements ApiaryScheduler {
 
     @Override
     public long getPriority(ExecuteFunctionRequest req) {
-        String service = req.getName().substring(0, 2);
+        String service = req.getService();
         activeCount.putIfAbsent(service, new AtomicLong(0));
         return System.nanoTime() + taskLengthNanos * activeCount.get(service).incrementAndGet();
     }
 
     @Override
     public void onDequeue(ExecuteFunctionRequest req) {
-        String service = req.getName().substring(0, 2);
+        String service = req.getService();
         activeCount.get(service).decrementAndGet();
     }
 }

@@ -285,7 +285,7 @@ public class ApiaryWorker {
                         assert (content != null);
                         byte[] replyBytes = content.getData();
                         msg.destroy();
-                        repThreadPool.submit(new ReplyRunnable(replyBytes));
+                        repThreadPool.execute(new ReplyRunnable(replyBytes));
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                             break;

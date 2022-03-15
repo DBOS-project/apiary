@@ -107,11 +107,6 @@ public class CockroachDBConnection implements ApiaryConnection {
     }
 
     @Override
-    public int getPartition(Object[] input) {
-        return -1;
-    }
-
-    @Override
     public String getHostname(Object[] input) {
         assert (input[0] instanceof String); // TODO: Support int type explicitly.
         String key = (String) input[0];

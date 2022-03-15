@@ -92,7 +92,7 @@ public class IncrementBenchmark {
                     if (System.currentTimeMillis() < endTime && System.nanoTime() - lastSentTime >= threadInterval * 1000) {
                         // Send out a request.
                         String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
-                        byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes("IncrementProcedure", 0, 0, key);
+                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementProcedure", "Increment", 0, 0, key);
                         ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[]{key}));
                         socket.send(reqBytes, 0);
                         lastSentTime = System.nanoTime();

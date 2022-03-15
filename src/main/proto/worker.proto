@@ -12,11 +12,12 @@ service Worker {
 
 message ExecuteFunctionRequest {
   string name = 1;
+  repeated bytes arguments = 2;
+  repeated int32 argumentTypes = 3;
   int64 callerId = 4;
   int32 taskId = 5;
   int64 senderTimestampNano = 6;
-  repeated bytes arguments = 2;
-  repeated int32 argumentTypes = 3;
+  string service = 7;
 }
 
 message ExecuteFunctionReply {

@@ -51,7 +51,7 @@ public class MixedBenchmark {
                     int postID = postIDs.incrementAndGet();
                     int ts = timestamp.incrementAndGet();
                     String postString = String.format("matei%d", postID);
-                    client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisPost", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
+                    client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisPost", "defaultService", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
                     latch.countDown();
                 } catch (InvalidProtocolBufferException e) {
                     e.printStackTrace();
@@ -67,7 +67,7 @@ public class MixedBenchmark {
                 Runnable r = () ->  {
                     try {
                         int followeeID = (firstFollowee + finalI) % numUsers;
-                        client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(finalUserID)}), "RetwisFollow", String.valueOf(finalUserID), String.valueOf(followeeID));
+                        client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(finalUserID)}), "RetwisFollow", "defaultService", String.valueOf(finalUserID), String.valueOf(followeeID));
                         latch.countDown();
                     } catch (InvalidProtocolBufferException e) {
                         e.printStackTrace();
@@ -83,7 +83,7 @@ public class MixedBenchmark {
             long rStart = System.nanoTime();
             try {
                 int userID = ThreadLocalRandom.current().nextInt(numUsers);
-                client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisGetTimeline", String.valueOf(userID));
+                client.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisGetTimeline", "defaultService", String.valueOf(userID));
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
             }
@@ -94,7 +94,7 @@ public class MixedBenchmark {
             long rStart = System.nanoTime();
             try {
                 String key = String.valueOf(ThreadLocalRandom.current().nextInt(numIncrementKeys));
-                client.get().executeFunction(ctxt.getHostname(new Object[]{key}), "IncrementProcedure", key);
+                client.get().executeFunction(ctxt.getHostname(new Object[]{key}), "IncrementProcedure", "defaultService", key);
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
             }

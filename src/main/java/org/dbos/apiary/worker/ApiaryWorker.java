@@ -77,7 +77,7 @@ public class ApiaryWorker {
                     } else {
                         String address = c.getHostname(subtask.input);
                         // Push to the outgoing queue.
-                        byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes(subtask.funcName, currCallerID, subtask.taskID, subtask.input);
+                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currCallerID, subtask.taskID, subtask.input);
                         outgoingMsgQueue.add(new OutgoingMsg(address, reqBytes));
                     }
                 }
@@ -117,7 +117,7 @@ public class ApiaryWorker {
     }
 
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
-    private void executeFunction(String name, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
+    private void executeFunction(String name, String service, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
         FunctionOutput o = null;
         try {
             o = c.callFunction(name, arguments);
@@ -125,7 +125,7 @@ public class ApiaryWorker {
             e.printStackTrace();
         }
         assert (o != null);
-        ApiaryTaskStash currTask = new ApiaryTaskStash(callerID, currTaskID, replyAddr, senderTimestampNano);
+        ApiaryTaskStash currTask = new ApiaryTaskStash(service, callerID, currTaskID, replyAddr, senderTimestampNano);
         if (o.stringOutput != null) {
             currTask.stringOutput = o.stringOutput;
         } else  {
@@ -192,7 +192,7 @@ public class ApiaryWorker {
                         arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
                     }
                 }
-                executeFunction(req.getName(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
+                executeFunction(req.getName(), req.getService(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

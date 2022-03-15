@@ -60,13 +60,13 @@ public class WorkerTests {
             ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
             String res;
-            res = client.executeFunction("localhost", "FibonacciFunction", "1");
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "1");
             assertEquals("1", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "10");
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "10");
             assertEquals("55", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "30");
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "30");
             assertEquals("832040", res);
 
             clientContext.close();
@@ -84,7 +84,7 @@ public class WorkerTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String res = client.executeFunction("localhost", "AdditionFunction", "1", "2", new String[]{"matei", "zaharia"});
+        String res = client.executeFunction("localhost", "AdditionFunction", "defaultService", "1", "2", new String[]{"matei", "zaharia"});
         assertEquals("3mateizaharia", res);
 
         clientContext.close();
@@ -107,13 +107,12 @@ public class WorkerTests {
 
         // Non-blocking send. Then get result and calculate latency.
         long actualSendTime = System.nanoTime();
-        byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes("AdditionFunction", 0, 0, "1", "2", new String[]{"matei", "zaharia"});
+        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("AdditionFunction", "defaultService", 0, 0, "1", "2", new String[]{"matei", "zaharia"});
         for (int i = 0; i < 5; i++) {
             socket.send(reqBytes, 0);
         }
 
         // Poll and get the results.
-
         byte[] replyBytes = null;
         int recvCnt = 0;
         while (recvCnt < 5) {
@@ -157,13 +156,13 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "CounterFunction",  "0");
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", "0");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "CounterFunction",  "0");
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", "0");
         assertEquals("2", res);
 
-        res = client.executeFunction("localhost", "CounterFunction",  "1");
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", "1");
         assertEquals("1", res);
 
         clientContext.close();
@@ -181,13 +180,13 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "SynchronousCounter", "0");
+        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", "0");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "SynchronousCounter",  "0");
+        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", "0");
         assertEquals("2", res);
 
-        res = client.executeFunction("localhost", "SynchronousCounter", "1");
+        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", "1");
         assertEquals("1", res);
 
         clientContext.close();

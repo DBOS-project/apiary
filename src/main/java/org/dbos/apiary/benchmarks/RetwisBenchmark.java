@@ -34,8 +34,7 @@ public class RetwisBenchmark {
         ctxt.client.callProcedure("TruncateTables");
 
         ZContext loadClientContext = new ZContext();
-        ApiaryWorkerClient loadClient = new ApiaryWorkerClient(ZContext.shadow(loadClientContext));
-
+        ThreadLocal<ApiaryWorkerClient> loadClient = ThreadLocal.withInitial(() -> new ApiaryWorkerClient(ZContext.shadow(loadClientContext)));
         Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
 
         AtomicInteger timestamp = new AtomicInteger(0);
@@ -49,7 +48,7 @@ public class RetwisBenchmark {
                     int postID = postIDs.incrementAndGet();
                     int ts = timestamp.incrementAndGet();
                     String postString = String.format("matei%d", postID);
-                    loadClient.executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisPost", "defaultService", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
+                    loadClient.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisPost", "defaultService", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
                     latch.countDown();
                 } catch (InvalidProtocolBufferException e) {
                     e.printStackTrace();
@@ -65,7 +64,7 @@ public class RetwisBenchmark {
                 Runnable r = () ->  {
                     try {
                         int followeeID = (firstFollowee + finalI) % numUsers;
-                        loadClient.executeFunction(ctxt.getHostname(new Object[]{String.valueOf(finalUserID)}), "RetwisFollow", "defaultService", String.valueOf(finalUserID), String.valueOf(followeeID));
+                        loadClient.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(finalUserID)}), "RetwisFollow", "defaultService", String.valueOf(finalUserID), String.valueOf(followeeID));
                         latch.countDown();
                     } catch (InvalidProtocolBufferException e) {
                         e.printStackTrace();

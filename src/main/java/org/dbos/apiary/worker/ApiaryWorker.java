@@ -318,14 +318,30 @@ public class ApiaryWorker {
             }
             while (!outgoingMsgQueue.isEmpty()) {
                 OutgoingMsg msg = outgoingMsgQueue.poll();
+                boolean sent = false;
                 if (msg.hostname == null) {
                     assert (msg.address != null);
+
                     msg.address.send(frontend, ZFrame.REUSE + ZFrame.MORE);
                     ZFrame replyContent = new ZFrame(msg.output);
-                    replyContent.send(frontend, 0);
+                    sent = replyContent.send(frontend, ZMQ.DONTWAIT);
+                    if (!sent) {
+                        // Something went wrong.
+                        int errno = frontend.errno();
+                        logger.info("Frontend Failed to send, errno == EAGAIN? {}", errno);
+                    }
                 } else {
                     ZMQ.Socket socket = client.getSocket(msg.hostname);
-                    socket.send(msg.output, 0);
+                    sent = socket.send(msg.output, ZMQ.DONTWAIT);
+                    if (!sent) {
+                        // Something went wrong.
+                        int errno = socket.errno();
+                        logger.info("Socket Failed to send, errno == EAGAIN? {}", errno);
+                    }
+                }
+                if (!sent) {
+                    // Add it back.
+                    outgoingMsgQueue.add(msg);
                 }
             }
         }

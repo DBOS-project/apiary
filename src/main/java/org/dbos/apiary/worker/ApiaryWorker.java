@@ -7,7 +7,7 @@ import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.interposition.ApiaryFunction;
+import org.dbos.apiary.interposition.StatelessFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
@@ -39,7 +39,7 @@ public class ApiaryWorker {
     private final ApiaryScheduler scheduler;
     private ZContext zContext;
     private Thread serverThread;
-    private final Map<String, Callable<ApiaryFunction>> statelessFunctions = new HashMap<>();
+    private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
     private final ExecutorService reqThreadPool;
     private final ExecutorService repThreadPool;
     private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
@@ -70,8 +70,8 @@ public class ApiaryWorker {
                     }
                     String output;
                     if (statelessFunctions.containsKey(subtask.funcName)) {
-                        ApiaryFunction f = statelessFunctions.get(subtask.funcName).call();
-                        output = f.runFunction(subtask.input).stringOutput;
+                        StatelessFunction f = statelessFunctions.get(subtask.funcName).call();
+                        output = f.apiaryRunFunction(subtask.input).stringOutput;
                         currTask.taskIDtoValue.put(subtask.taskID, output);
                         currTask.numFinishedTasks.incrementAndGet();
                     } else {
@@ -366,7 +366,7 @@ public class ApiaryWorker {
     }
 
     // TODO: Can registration be centralized instead of doing it on every worker separately?
-    public void registerStatelessFunction(String name, Callable<ApiaryFunction> function) {
+    public void registerStatelessFunction(String name, Callable<StatelessFunction> function) {
         statelessFunctions.put(name, function);
     }
 

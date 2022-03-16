@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class ApiaryStatefulFunction extends ApiaryFunction {
+public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContext {
 
     protected final AtomicInteger calledTaskID = new AtomicInteger(0);
     protected final List<Task> queuedTasks = new ArrayList<>();
@@ -39,23 +39,14 @@ public abstract class ApiaryStatefulFunction extends ApiaryFunction {
         return internalExecuteQuery(procedure, input);
     }
 
-    /** Exposed to Apiary callers. **/
+    /** Package-private **/
 
-    public FunctionOutput runFunction(Object... input) {
-        this.calledTaskID.set(0);
-        this.queuedTasks.clear();
-        // TODO: Log metadata.
-        Object retVal = internalRunFunction(input);
-        // TODO: Fault tolerance stuff.
-        String stringOutput = null;
-        ApiaryFuture futureOutput = null;
-        if (retVal instanceof String) {
-            stringOutput = (String) retVal;
-        } else {
-            assert (retVal instanceof ApiaryFuture);
-            futureOutput = (ApiaryFuture) retVal;
-        }
-        return new FunctionOutput(stringOutput, futureOutput, this.queuedTasks);
+    public FunctionOutput getFunctionOutput(String stringOutput) {
+        return new FunctionOutput(stringOutput, null, queuedTasks);
+    }
+
+    public FunctionOutput getFunctionOutput(ApiaryFuture futureOutput) {
+        return new FunctionOutput(null, futureOutput, queuedTasks);
     }
 
     /** Abstract and require implementation. **/
@@ -63,6 +54,5 @@ public abstract class ApiaryStatefulFunction extends ApiaryFunction {
     protected abstract Object internalCallFunction(String name, Object... inputs);
     protected abstract void internalExecuteUpdate(Object procedure, Object... input);
     protected abstract Object internalExecuteQuery(Object procedure, Object... input);
-    protected abstract Object internalRunFunction(Object... input);
 
 }

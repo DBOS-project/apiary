@@ -28,22 +28,22 @@ public class FibonacciFunction extends VoltApiaryProcedure {
             return "";
         }
         if (key == 0) {
-            funcApi.apiaryExecuteUpdate(addResult, key, 0);
+            context.apiaryExecuteUpdate(addResult, key, 0);
             return "0";
         }
         if (key == 1) {
-            funcApi.apiaryExecuteUpdate(addResult, key, 1);
+            context.apiaryExecuteUpdate(addResult, key, 1);
             return "1";
         }
         // Check if the number has been calculated before.
-        VoltTable res = ((VoltTable[]) funcApi.apiaryExecuteQuery(getValue, key))[0];
+        VoltTable res = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];
         if (res.getRowCount() > 0) {
             return String.valueOf(res.fetchRow(0).getLong(0));
         }
 
         // Otherwise, call functions.
-        ApiaryFuture f1 = funcApi.apiaryQueueFunction("FibonacciFunction", String.valueOf(key - 2));
-        ApiaryFuture f2 = funcApi.apiaryQueueFunction("FibonacciFunction", String.valueOf(key - 1));
-        return funcApi.apiaryQueueFunction("FibSumFunction", strKey, f1, f2);
+        ApiaryFuture f1 = context.apiaryQueueFunction("FibonacciFunction", String.valueOf(key - 2));
+        ApiaryFuture f2 = context.apiaryQueueFunction("FibonacciFunction", String.valueOf(key - 1));
+        return context.apiaryQueueFunction("FibSumFunction", strKey, f1, f2);
     }
 }

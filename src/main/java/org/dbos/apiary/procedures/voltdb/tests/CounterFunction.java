@@ -20,15 +20,15 @@ public class CounterFunction extends VoltApiaryProcedure {
     public ApiaryFuture runFunction(String keyString) {
         int key = Integer.parseInt(keyString);
 
-        VoltTable res = ((VoltTable[]) funcApi.apiaryExecuteQuery(getValue, key))[0];
+        VoltTable res = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];
         int value;
         if (res.getRowCount() > 0) {
             value = (int) res.fetchRow(0).getLong(0);
         } else {
             value = 0;
         }
-        ApiaryFuture incrementedValue = funcApi.apiaryQueueFunction("StatelessIncrement", String.valueOf(value));
-        funcApi.apiaryQueueFunction("InsertFunction", keyString, incrementedValue);
+        ApiaryFuture incrementedValue = context.apiaryQueueFunction("StatelessIncrement", String.valueOf(value));
+        context.apiaryQueueFunction("InsertFunction", keyString, incrementedValue);
         return incrementedValue;
     }
 }

@@ -20,7 +20,7 @@ public class FibSumFunction extends VoltApiaryProcedure {
         int num1 = Integer.parseInt(str1);
         int num2 = Integer.parseInt(str2);
         int sum = num1 + num2;
-        funcApi.apiaryExecuteUpdate(addResult, Integer.parseInt(key), sum);
+        context.apiaryExecuteUpdate(addResult, Integer.parseInt(key), sum);
         return String.valueOf(sum);
     }
 }

@@ -1,12 +1,13 @@
 package org.dbos.apiary.procedures.sqlite;
 
-import org.dbos.apiary.sqlite.SQLiteFunctionInterface;
+import org.dbos.apiary.sqlite.SQLiteFunction;
+import org.dbos.apiary.sqlite.SQLiteFunctionContext;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-public class SQLiteFibSumFunction extends SQLiteFunctionInterface {
+public class SQLiteFibSumFunction extends SQLiteFunction {
 
     private final PreparedStatement addResult;
 
@@ -18,7 +19,7 @@ public class SQLiteFibSumFunction extends SQLiteFunctionInterface {
         int num1 = Integer.parseInt(str1);
         int num2 = Integer.parseInt(str2);
         int sum = num1 + num2;
-        this.apiaryExecuteUpdate(addResult, Integer.parseInt(key), sum);
+        context.apiaryExecuteUpdate(addResult, Integer.parseInt(key), sum);
         return String.valueOf(sum);
     }
 }

@@ -1,13 +1,13 @@
-package org.dbos.apiary.sqlite;
+package org.dbos.apiary.cockroachdb;
 
-import org.dbos.apiary.interposition.ApiaryStatefulFunction;
+import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.dbos.apiary.utilities.Utilities;
 
 import java.lang.reflect.Method;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-public class SQLiteFunctionInterface extends ApiaryStatefulFunction {
+public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
 
     private void prepareStatement(PreparedStatement ps, Object[] input) throws SQLException {
         for (int i = 0; i < input.length; i++) {
@@ -48,20 +48,5 @@ public class SQLiteFunctionInterface extends ApiaryStatefulFunction {
             e.printStackTrace();
             return null;
         }
-    }
-
-    @Override
-    protected Object internalRunFunction(Object... input) {
-        // Use reflection to find internal runFunction.
-        Method functionMethod = Utilities.getFunctionMethod(this, "runFunction");
-        assert functionMethod != null;
-        Object output;
-        try {
-            output = functionMethod.invoke(this, input);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-        return output;
     }
 }

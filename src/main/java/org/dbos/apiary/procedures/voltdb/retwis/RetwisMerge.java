@@ -1,8 +1,8 @@
 package org.dbos.apiary.procedures.voltdb.retwis;
 
-import org.dbos.apiary.interposition.ApiaryFunction;
+import org.dbos.apiary.interposition.StatelessFunction;
 
-public class RetwisMerge extends ApiaryFunction {
+public class RetwisMerge extends StatelessFunction {
 
     public String runFunction(String[] inputs) {
         StringBuilder ret = new StringBuilder();

@@ -319,50 +319,55 @@ public class ApiaryWorker {
             while (!outgoingMsgQueue.isEmpty()) {
                 OutgoingMsg msg = outgoingMsgQueue.poll();
                 boolean sent = false;
-                if (msg.hostname == null) {
-                    assert (msg.address != null);
+                try {
+                    if (msg.hostname == null) {
+                        assert (msg.address != null);
 
-                    sent = msg.address.send(frontend, ZFrame.REUSE | ZFrame.MORE | ZMQ.DONTWAIT);
-                    if (!sent) {
-                        // Something went wrong.
-                        int errno = frontend.errno();
-                        logger.info("Frontend replyAddress failed to send, errno == {}", errno);
-                        if (errno != ZError.EAGAIN) {
-                            // Ignore the error.
-                            continue;
-                        } else {
-                            outgoingMsgQueue.add(msg);
-                            break;
+                        sent = msg.address.send(frontend, ZFrame.REUSE | ZFrame.MORE | ZMQ.DONTWAIT);
+                        if (!sent) {
+                            // Something went wrong.
+                            int errno = frontend.errno();
+                            logger.info("Frontend replyAddress failed to send, errno == {}", errno);
+                            if (errno != ZError.EAGAIN) {
+                                // Ignore the error.
+                                continue;
+                            } else {
+                                outgoingMsgQueue.add(msg);
+                                break;
+                            }
+                        }
+                        ZFrame replyContent = new ZFrame(msg.output);
+                        sent = replyContent.send(frontend, ZMQ.DONTWAIT);
+                        if (!sent) {
+                            // Something went wrong.
+                            int errno = frontend.errno();
+                            logger.info("Frontend replyContent failed to send, errno == {}", errno);
+                            if (errno != ZError.EAGAIN) {
+                                continue;
+                            } else {
+                                outgoingMsgQueue.add(msg);
+                                break;
+                            }
+                        }
+                    } else {
+                        ZMQ.Socket socket = client.getSocket(msg.hostname);
+                        sent = socket.send(msg.output, ZMQ.DONTWAIT);
+                        if (!sent) {
+                            // Something went wrong.
+                            int errno = socket.errno();
+                            logger.info("Socket Failed to send, errno == {}", errno);
+                            if (errno != ZError.EAGAIN) {
+                                // Ignore the error.
+                                continue;
+                            } else {
+                                outgoingMsgQueue.add(msg);
+                                break;
+                            }
                         }
                     }
-                    ZFrame replyContent = new ZFrame(msg.output);
-                    sent = replyContent.send(frontend, ZMQ.DONTWAIT);
-                    if (!sent) {
-                        // Something went wrong.
-                        int errno = frontend.errno();
-                        logger.info("Frontend replyContent failed to send, errno == {}", errno);
-                        if (errno != ZError.EAGAIN) {
-                            continue;
-                        } else {
-                            outgoingMsgQueue.add(msg);
-                            break;
-                        }
-                    }
-                } else {
-                    ZMQ.Socket socket = client.getSocket(msg.hostname);
-                    sent = socket.send(msg.output, ZMQ.DONTWAIT);
-                    if (!sent) {
-                        // Something went wrong.
-                        int errno = socket.errno();
-                        logger.info("Socket Failed to send, errno == {}", errno);
-                        if (errno != ZError.EAGAIN) {
-                            // Ignore the error.
-                            continue;
-                        } else {
-                            outgoingMsgQueue.add(msg);
-                            break;
-                        }
-                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    logger.info("Continue processing.");
                 }
             }
         }

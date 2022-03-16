@@ -110,7 +110,7 @@ public class ApiaryWorker {
         int finishedTasks = callerTask.numFinishedTasks.incrementAndGet();
 
         // If everything is resolved, then return the string value.
-        if ((finishedTasks == callerTask.totalQueuedTasks) && callerTask.sentOutput.compareAndSet(false, true)) {
+        if (finishedTasks == callerTask.totalQueuedTasks) {
             String finalOutput = callerTask.getFinalOutput();
             assert (finalOutput != null);
             // Send back the response only once.
@@ -120,7 +120,7 @@ public class ApiaryWorker {
                     .setSenderTimestampNano(callerTask.senderTimestampNano).build();
             outgoingMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, rep.toByteArray()));
 
-            // TODO: Need to clean up the stash map somewhere, without causing error.
+            // Clean up the stash map.
             callerStashMap.remove(callerID);
         }
     }
@@ -185,7 +185,6 @@ public class ApiaryWorker {
         @Override
         public void run() {
             // Handle the request.
-//            logger.info("req queue length: {}", reqQueue.size());
             try {
                 scheduler.onDequeue(req);
                 assert (req != null);
@@ -206,7 +205,6 @@ public class ApiaryWorker {
             } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }
-//            logger.info("Finished execution.");
         }
 
         @Override
@@ -224,7 +222,6 @@ public class ApiaryWorker {
 
         @Override
         public void run() {
-//            logger.info("resume exec, reply queue length: {}", repQueue.size());
             // Handle the reply.
             try {
                 ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
@@ -236,7 +233,6 @@ public class ApiaryWorker {
             } catch (InvalidProtocolBufferException | InterruptedException e) {
                 e.printStackTrace();
             }
-//            logger.info("Finished resume");
         }
     }
 
@@ -318,6 +314,8 @@ public class ApiaryWorker {
             // TODO: do we send back all of those, or just send back a few?
             if (outgoingMsgQueue.size() > 0) {
                 logger.info("outgoing queue size: {}", outgoingMsgQueue.size());
+                logger.info("req queue length: {}", reqQueue.size());
+                logger.info("resume exec, reply queue length: {}", repQueue.size());
             }
             while (!outgoingMsgQueue.isEmpty()) {
                 OutgoingMsg msg = outgoingMsgQueue.poll();

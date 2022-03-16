@@ -43,7 +43,7 @@ public class ApiaryWorker {
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
     private final ExecutorService reqThreadPool;
     private final ExecutorService repThreadPool;
-    private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
+    private final BlockingQueue<Runnable> reqQueue = new LinkedBlockingQueue<>();
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
         this.c = c;
@@ -264,7 +264,9 @@ public class ApiaryWorker {
                     assert (content != null);
                     msg.destroy();
                     byte[] reqBytes = content.getData();
+                    logger.info("req queue length: {}", reqQueue.size());
                     reqThreadPool.execute(new RequestRunnable(address, reqBytes));
+                    logger.info("Finished execution.");
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;
@@ -285,7 +287,9 @@ public class ApiaryWorker {
                         assert (content != null);
                         byte[] replyBytes = content.getData();
                         msg.destroy();
+                        logger.info("resume exec, req queue length: {}", reqQueue.size());
                         repThreadPool.execute(new ReplyRunnable(replyBytes));
+                        logger.info("Finished resume");
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                             break;
@@ -298,6 +302,7 @@ public class ApiaryWorker {
 
             // Handle reply to send back.
             // TODO: do we send back all of those, or just send back a few?
+            logger.info("outgoing queue size: {}", outgoingMsgQueue.size());
             while (!outgoingMsgQueue.isEmpty()) {
                 OutgoingMsg msg = outgoingMsgQueue.poll();
                 if (msg.hostname == null) {

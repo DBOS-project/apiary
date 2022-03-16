@@ -68,18 +68,10 @@ public class ApiaryWorker {
                     if (!removed) {
                         continue;
                     }
-                    String output;
-                    if (statelessFunctions.containsKey(subtask.funcName)) {
-                        StatelessFunction f = statelessFunctions.get(subtask.funcName).call();
-                        output = f.apiaryRunFunction(subtask.input).stringOutput;
-                        currTask.taskIDtoValue.put(subtask.taskID, output);
-                        currTask.numFinishedTasks.incrementAndGet();
-                    } else {
-                        String address = c.getHostname(subtask.input);
-                        // Push to the outgoing queue.
-                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currCallerID, subtask.taskID, subtask.input);
-                        outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
-                    }
+                    String address = statelessFunctions.containsKey(subtask.funcName) ? c.getPartitionHostMap().get(0) : c.getHostname(subtask.input); // TODO: Fix hack, use local hostname.
+                    // Push to the outgoing queue.
+                    byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currCallerID, subtask.taskID, subtask.input);
+                    outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
                 }
                 numTraversed++;
                 if (numTraversed >= totalTasks) {
@@ -121,7 +113,12 @@ public class ApiaryWorker {
     private void executeFunction(String name, String service, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
         FunctionOutput o = null;
         try {
-            o = c.callFunction(name, arguments);
+            if (!statelessFunctions.containsKey(name)) {
+                o = c.callFunction(name, arguments);
+            } else {
+                StatelessFunction f = statelessFunctions.get(name).call();
+                o = f.apiaryRunFunction(arguments);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

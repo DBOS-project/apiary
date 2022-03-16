@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.procedures.stateless.StatelessIncrement;
+import org.dbos.apiary.procedures.voltdb.tests.StatelessDriver;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltDBConnection;
@@ -164,6 +165,28 @@ public class WorkerTests {
 
         res = client.executeFunction("localhost", "CounterFunction", "defaultService", "1");
         assertEquals("1", res);
+
+        clientContext.close();
+        worker.shutdown();
+    }
+
+    @Test
+    public void testStatelessDriver() throws IOException {
+        logger.info("testStatelessDriver");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
+        worker.registerStatelessFunction("StatelessDriver", StatelessDriver::new);
+        worker.startServing();
+
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+
+        String res;
+        res = client.executeFunction("localhost", "StatelessDriver", "defaultService", "1");
+        assertEquals("1", res);
+
+        res = client.executeFunction("localhost", "StatelessDriver", "defaultService", "10");
+        assertEquals("55", res);
 
         clientContext.close();
         worker.shutdown();

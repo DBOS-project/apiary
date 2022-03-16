@@ -8,7 +8,7 @@ import java.util.List;
 
 public class StatelessFunction implements ApiaryFunction {
 
-    private ApiaryFunctionContext context;
+    private ApiaryFunctionContext context = new ApiaryFunctionContext();
 
     @Override
     public void setContext(ApiaryFunctionContext context) {
@@ -32,7 +32,11 @@ public class StatelessFunction implements ApiaryFunction {
             e.printStackTrace();
             return null;
         }
-        assert (output instanceof String);
-        return new FunctionOutput((String) output, null, List.of());
+        if (output instanceof String) {
+            return context.getFunctionOutput((String) output);
+        } else {
+            assert (output instanceof ApiaryFuture);
+            return context.getFunctionOutput((ApiaryFuture) output);
+        }
     }
 }

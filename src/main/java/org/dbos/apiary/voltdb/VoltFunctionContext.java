@@ -53,9 +53,4 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         return p.voltExecuteSQL();
     }
 
-    protected void reset() {
-        this.queuedTasks.clear();
-        this.calledTaskID.set(0);
-    }
-
 }

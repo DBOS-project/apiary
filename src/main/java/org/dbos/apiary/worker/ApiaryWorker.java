@@ -97,19 +97,16 @@ public class ApiaryWorker {
     // Resume the execution of the caller function, then send back a reply if everything is finished.
     private void resumeExecution(long callerID, int taskID, String output) throws InterruptedException {
         ApiaryTaskStash callerTask = callerStashMap.get(callerID);
-        if (callerTask == null) {
-            logger.info("Nothing to resume.");
-            return;
-        }
+        assert (callerTask != null);
         callerTask.taskIDtoValue.put(taskID, output);
-        callerTask.numFinishedTasks.incrementAndGet();
-
         processQueuedTasks(callerTask, callerID);
 
-        String finalOutput = callerTask.getFinalOutput();
+        int finishedTasks = callerTask.numFinishedTasks.incrementAndGet();
 
         // If everything is resolved, then return the string value.
-        if ((finalOutput != null) && callerTask.sentOutput.compareAndSet(false, true)) {
+        if ((finishedTasks == callerTask.totalQueuedTasks) && callerTask.sentOutput.compareAndSet(false, true)) {
+            String finalOutput = callerTask.getFinalOutput();
+            assert (finalOutput != null);
             // Send back the response only once.
             ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput)
                     .setCallerId(callerTask.callerId)
@@ -117,8 +114,8 @@ public class ApiaryWorker {
                     .setSenderTimestampNano(callerTask.senderTimestampNano).build();
             outgoingMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, rep.toByteArray()));
 
-            // Clean up the stash map.
-            // callerStashMap.remove(callerID);
+            // TODO: Need to clean up the stash map somewhere, without causing error.
+            callerStashMap.remove(callerID);
         }
     }
 

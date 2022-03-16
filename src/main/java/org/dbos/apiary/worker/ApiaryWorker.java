@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.*;
 import zmq.ZError;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +30,7 @@ public class ApiaryWorker {
 
     public static int stringType = 0;
     public static int stringArrayType = 1;
+    private final String localHostName;
 
     private final AtomicLong callerIDs = new AtomicLong(0);
     // Store the call stack for each caller.
@@ -44,15 +47,18 @@ public class ApiaryWorker {
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
     private final ExecutorService reqThreadPool;
     private final ExecutorService repThreadPool;
-    private final BlockingQueue<Runnable> reqQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
     private final BlockingQueue<Runnable> repQueue = new LinkedBlockingQueue<>();
 
-    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
+    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) throws UnknownHostException {
         this.c = c;
         this.scheduler = scheduler;
         this.zContext = new ZContext(2);  // TODO: How many IO threads?
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
         repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, repQueue);
+        InetAddress id = InetAddress.getLocalHost();
+        this.localHostName = id.getHostName();
+        logger.info("Worker hostname: {}", this.localHostName);
     }
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {

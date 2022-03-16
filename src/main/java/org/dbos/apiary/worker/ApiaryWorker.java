@@ -315,7 +315,7 @@ public class ApiaryWorker {
             if (outgoingMsgQueue.size() > 0) {
                 logger.info("outgoing queue size: {}", outgoingMsgQueue.size());
                 logger.info("req queue length: {}", reqQueue.size());
-                logger.info("resume exec, reply queue length: {}", repQueue.size());
+                logger.info("reply queue length: {}", repQueue.size());
             }
             while (!outgoingMsgQueue.isEmpty()) {
                 OutgoingMsg msg = outgoingMsgQueue.poll();

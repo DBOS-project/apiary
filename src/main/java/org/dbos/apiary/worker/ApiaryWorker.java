@@ -100,20 +100,22 @@ public class ApiaryWorker {
             return;
         }
         callerTask.taskIDtoValue.put(taskID, output);
-        int numFinished = callerTask.numFinishedTasks.incrementAndGet();
 
         processQueuedTasks(callerTask, callerID);
 
-        // If everything is resolved, then return the string value.
-        String finalOutput = callerTask.getFinalOutput();
+        int numFinished = callerTask.numFinishedTasks.incrementAndGet();
 
-        if ((finalOutput != null) && (numFinished == callerTask.totalQueuedTasks)) {
-            // Send back the response only once.
-            ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput)
-                    .setCallerId(callerTask.callerId)
-                    .setTaskId(callerTask.currTaskId)
-                    .setSenderTimestampNano(callerTask.senderTimestampNano).build();
-            outgoingMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, rep.toByteArray()));
+        if (numFinished == callerTask.totalQueuedTasks) {
+            // If everything is resolved, then return the string value.
+            String finalOutput = callerTask.getFinalOutput();
+            if (finalOutput != null) {
+                // Send back the response only once.
+                ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput)
+                        .setCallerId(callerTask.callerId)
+                        .setTaskId(callerTask.currTaskId)
+                        .setSenderTimestampNano(callerTask.senderTimestampNano).build();
+                outgoingMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, rep.toByteArray()));
+            }
             // Clean up the stash map.
             callerStashMap.remove(callerID);
         }

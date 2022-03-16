@@ -340,8 +340,9 @@ public class ApiaryWorker {
                     }
                 }
                 if (!sent) {
-                    // Add it back.
+                    // Add it back and process next round.
                     outgoingMsgQueue.add(msg);
+                    break;
                 }
             }
         }

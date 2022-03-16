@@ -15,8 +15,6 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.*;
 import zmq.ZError;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -27,7 +25,6 @@ public class ApiaryWorker {
 
     public static int stringType = 0;
     public static int stringArrayType = 1;
-    private final String localHostName;
 
     private final AtomicLong callerIDs = new AtomicLong(0);
     // Store the call stack for each caller.
@@ -48,15 +45,12 @@ public class ApiaryWorker {
     private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
     private final BlockingQueue<Runnable> repQueue = new LinkedBlockingQueue<>();
 
-    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) throws UnknownHostException {
+    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
         this.c = c;
         this.scheduler = scheduler;
         this.zContext = new ZContext(2);  // TODO: How many IO threads?
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
         repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, repQueue);
-        InetAddress id = InetAddress.getLocalHost();
-        this.localHostName = id.getHostName();
-        logger.info("Worker hostname: {}", this.localHostName);
     }
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
@@ -237,7 +231,9 @@ public class ApiaryWorker {
     private void serverThread() {
         ZContext shadowContext = ZContext.shadow(zContext);
         ZMQ.Socket frontend = shadowContext.createSocket(SocketType.ROUTER);
-        frontend.setHWM(0); // Outstanding messages.
+        // Set high water mark to unbounded, so we can have unlimited outstanding messages.
+        // TODO: it may be better to add a bound.
+        frontend.setHWM(0);
         frontend.setRouterMandatory(true);
         frontend.bind("tcp://*:" + ApiaryConfig.workerPort);
 
@@ -311,12 +307,6 @@ public class ApiaryWorker {
 
             // Handle reply to send back.
             // TODO: do we send back all of those, or just send back a few?
-            if (outgoingReqMsgQueue.size() > 0) {
-                logger.info("outgoing request queue size: {}", outgoingReqMsgQueue.size());
-                logger.info("outgoing reply queue size: {}", outgoingReplyMsgQueue.size());
-                logger.info("req queue length: {}", reqQueue.size());
-                logger.info("reply queue length: {}", repQueue.size());
-            }
             while (!outgoingReplyMsgQueue.isEmpty()) {
                 OutgoingMsg msg = outgoingReplyMsgQueue.poll();
                 boolean sent;
@@ -325,7 +315,6 @@ public class ApiaryWorker {
                     assert (msg.address != null);
                     sent = msg.address.send(frontend, ZFrame.REUSE | ZFrame.MORE | ZMQ.DONTWAIT);
                     if (!sent) {
-                        // Something went wrong.
                         int errno = frontend.errno();
                         logger.info("Frontend replyAddress failed to send, errno == {}", errno);
                         if (errno != ZError.EAGAIN) {

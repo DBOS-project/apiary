@@ -17,10 +17,7 @@ import zmq.ZError;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -36,7 +33,8 @@ public class ApiaryWorker {
     // Store the call stack for each caller.
     private final Map<Long, ApiaryTaskStash> callerStashMap = new ConcurrentHashMap<>();
     // Store the outgoing messages.
-    private final Queue<OutgoingMsg> outgoingMsgQueue = new ConcurrentLinkedQueue<>();
+    private final Deque<OutgoingMsg> outgoingReqMsgQueue = new ConcurrentLinkedDeque<>();
+    private final Deque<OutgoingMsg> outgoingReplyMsgQueue = new ConcurrentLinkedDeque<>();
 
     public static int numWorkerThreads = 128;
 
@@ -86,7 +84,7 @@ public class ApiaryWorker {
                         String address = c.getHostname(subtask.input);
                         // Push to the outgoing queue.
                         byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currCallerID, subtask.taskID, subtask.input);
-                        outgoingMsgQueue.add(new OutgoingMsg(address, reqBytes));
+                        outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
                     }
                 }
                 numTraversed++;
@@ -118,7 +116,7 @@ public class ApiaryWorker {
                     .setCallerId(callerTask.callerId)
                     .setTaskId(callerTask.currTaskId)
                     .setSenderTimestampNano(callerTask.senderTimestampNano).build();
-            outgoingMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, rep.toByteArray()));
+            outgoingReplyMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, rep.toByteArray()));
 
             // Clean up the stash map.
             callerStashMap.remove(callerID);
@@ -163,7 +161,7 @@ public class ApiaryWorker {
                     .setCallerId(callerID)
                     .setTaskId(currTaskID)
                     .setSenderTimestampNano(senderTimestampNano).build();
-            outgoingMsgQueue.add(new OutgoingMsg(replyAddr, rep.toByteArray()));
+            outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, rep.toByteArray()));
         }
     }
 
@@ -312,60 +310,70 @@ public class ApiaryWorker {
 
             // Handle reply to send back.
             // TODO: do we send back all of those, or just send back a few?
-            if (outgoingMsgQueue.size() > 0) {
-                logger.info("outgoing queue size: {}", outgoingMsgQueue.size());
+            if (outgoingReqMsgQueue.size() > 0) {
+                logger.info("outgoing request queue size: {}", outgoingReqMsgQueue.size());
+                logger.info("outgoing reply queue size: {}", outgoingReplyMsgQueue.size());
                 logger.info("req queue length: {}", reqQueue.size());
                 logger.info("reply queue length: {}", repQueue.size());
             }
-            while (!outgoingMsgQueue.isEmpty()) {
-                OutgoingMsg msg = outgoingMsgQueue.poll();
-                boolean sent = false;
+            while (!outgoingReplyMsgQueue.isEmpty()) {
+                OutgoingMsg msg = outgoingReplyMsgQueue.poll();
+                boolean sent;
                 try {
-                    if (msg.hostname == null) {
-                        assert (msg.address != null);
-
-                        sent = msg.address.send(frontend, ZFrame.REUSE | ZFrame.MORE | ZMQ.DONTWAIT);
-                        if (!sent) {
-                            // Something went wrong.
-                            int errno = frontend.errno();
-                            logger.info("Frontend replyAddress failed to send, errno == {}", errno);
-                            if (errno != ZError.EAGAIN) {
-                                // Ignore the error.
-                                continue;
-                            } else {
-                                outgoingMsgQueue.add(msg);
-                                break;
-                            }
-                        }
-                        ZFrame replyContent = new ZFrame(msg.output);
-                        sent = replyContent.send(frontend, ZMQ.DONTWAIT);
-                        if (!sent) {
-                            // Something went wrong.
-                            int errno = frontend.errno();
-                            logger.info("Frontend replyContent failed to send, errno == {}", errno);
-                            if (errno != ZError.EAGAIN) {
-                                continue;
-                            } else {
-                                outgoingMsgQueue.add(msg);
-                                break;
-                            }
-                        }
-                    } else {
-                        ZMQ.Socket socket = client.getSocket(msg.hostname);
-                        sent = socket.send(msg.output, ZMQ.DONTWAIT);
-                        if (!sent) {
-                            // Something went wrong.
-                            int errno = socket.errno();
-                            logger.info("Socket Failed to send, errno == {}", errno);
-                            if (errno != ZError.EAGAIN) {
-                                // Ignore the error.
-                                continue;
-                            } else {
-                                outgoingMsgQueue.add(msg);
-                                break;
-                            }
+                    assert (msg.hostname == null);
+                    assert (msg.address != null);
+                    sent = msg.address.send(frontend, ZFrame.REUSE | ZFrame.MORE | ZMQ.DONTWAIT);
+                    if (!sent) {
+                        // Something went wrong.
+                        int errno = frontend.errno();
+                        logger.info("Frontend replyAddress failed to send, errno == {}", errno);
+                        if (errno != ZError.EAGAIN) {
+                            // Ignore the error.
+                            continue;
+                        } else {
+                            outgoingReplyMsgQueue.addFirst(msg);
+                            break;
                         }
                     }
+                    ZFrame replyContent = new ZFrame(msg.output);
+                    sent = replyContent.send(frontend, ZMQ.DONTWAIT);
+                    if (!sent) {
+                        // Something went wrong.
+                        int errno = frontend.errno();
+                        logger.info("Frontend replyContent failed to send, errno == {}", errno);
+                        if (errno != ZError.EAGAIN) {
+                            continue;
+                        } else {
+                            outgoingReplyMsgQueue.addFirst(msg);
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    logger.info("Continue processing.");
+                }
+            }
+
+            while (!outgoingReqMsgQueue.isEmpty()) {
+                OutgoingMsg msg = outgoingReqMsgQueue.poll();
+                boolean sent;
+                try {
+                    assert  (msg.hostname != null);
+                    ZMQ.Socket socket = client.getSocket(msg.hostname);
+                    sent = socket.send(msg.output, ZMQ.DONTWAIT);
+                    if (!sent) {
+                        // Something went wrong.
+                        int errno = socket.errno();
+                        logger.info("Socket Failed to send, errno == {}", errno);
+                        if (errno != ZError.EAGAIN) {
+                            // Ignore the error.
+                            continue;
+                        } else {
+                            outgoingReqMsgQueue.addFirst(msg);
+                            break;
+                        }
+                    }
+
                 } catch (Exception e) {
                     e.printStackTrace();
                     logger.info("Continue processing.");

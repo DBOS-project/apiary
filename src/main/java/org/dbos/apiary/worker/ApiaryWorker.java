@@ -267,13 +267,18 @@ public class ApiaryWorker {
             // Handle request from clients or other workers.
             if (poller.pollin(0)) {
                 try {
-                    ZMsg msg = ZMsg.recvMsg(frontend);
-                    ZFrame address = msg.pop();
-                    ZFrame content = msg.poll();
-                    assert (content != null);
-                    msg.destroy();
-                    byte[] reqBytes = content.getData();
-                    reqThreadPool.execute(new RequestRunnable(address, reqBytes));
+                    for (int i = 0; i < outgoingMsgQueue.size(); i++) {
+                        ZMsg msg = ZMsg.recvMsg(frontend, false);
+                        if (msg == null) {
+                            break;
+                        }
+                        ZFrame address = msg.pop();
+                        ZFrame content = msg.poll();
+                        assert (content != null);
+                        msg.destroy();
+                        byte[] reqBytes = content.getData();
+                        reqThreadPool.execute(new RequestRunnable(address, reqBytes));
+                    }
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;
@@ -315,11 +320,11 @@ public class ApiaryWorker {
             if (outgoingMsgQueue.size() > 0) {
                 logger.info("outgoing queue size: {}", outgoingMsgQueue.size());
                 logger.info("req queue length: {}", reqQueue.size());
-                logger.info("resume exec, reply queue length: {}", repQueue.size());
+                logger.info("reply queue length: {}", repQueue.size());
             }
             while (!outgoingMsgQueue.isEmpty()) {
                 OutgoingMsg msg = outgoingMsgQueue.poll();
-                boolean sent = false;
+                boolean sent;
                 try {
                     if (msg.hostname == null) {
                         assert (msg.address != null);

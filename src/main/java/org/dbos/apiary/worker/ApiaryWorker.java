@@ -327,17 +327,7 @@ public class ApiaryWorker {
                     }
                     ZFrame replyContent = new ZFrame(msg.output);
                     sent = replyContent.send(frontend, ZMQ.DONTWAIT);
-                    if (!sent) {
-                        // Something went wrong.
-                        int errno = frontend.errno();
-                        logger.info("Frontend replyContent failed to send, errno == {}", errno);
-                        if (errno != ZError.EAGAIN) {
-                            continue;
-                        } else {
-                            outgoingReplyMsgQueue.addFirst(msg);
-                            break;
-                        }
-                    }
+                    assert (sent);
                 } catch (Exception e) {
                     e.printStackTrace();
                     logger.info("Continue processing.");

@@ -172,7 +172,7 @@ public class ApiaryWorker {
             try {
                 this.req = ExecuteFunctionRequest.parseFrom(reqBytes);
                 this.priority = scheduler.getPriority(req);
-            } catch (InvalidProtocolBufferException e) {
+            } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }
         }
@@ -197,7 +197,7 @@ public class ApiaryWorker {
                     }
                 }
                 executeFunction(req.getName(), req.getService(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
-            } catch (InterruptedException e) {
+            } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }
         }

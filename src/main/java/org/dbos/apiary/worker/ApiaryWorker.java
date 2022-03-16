@@ -237,6 +237,7 @@ public class ApiaryWorker {
     private void serverThread() {
         ZContext shadowContext = ZContext.shadow(zContext);
         ZMQ.Socket frontend = shadowContext.createSocket(SocketType.ROUTER);
+        frontend.setHWM(0); // Outstanding messages.
         frontend.setRouterMandatory(true);
         frontend.bind("tcp://*:" + ApiaryConfig.workerPort);
 

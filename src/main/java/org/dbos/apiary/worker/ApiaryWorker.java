@@ -13,6 +13,7 @@ import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.*;
+import zmq.ZError;
 
 import java.util.HashMap;
 import java.util.List;
@@ -321,13 +322,31 @@ public class ApiaryWorker {
                 if (msg.hostname == null) {
                     assert (msg.address != null);
 
-                    msg.address.send(frontend, ZFrame.REUSE + ZFrame.MORE);
+                    sent = msg.address.send(frontend, ZFrame.REUSE | ZFrame.MORE | ZMQ.DONTWAIT);
+                    if (!sent) {
+                        // Something went wrong.
+                        int errno = frontend.errno();
+                        logger.info("Frontend replyAddress failed to send, errno == {}", errno);
+                        if (errno != ZError.EAGAIN) {
+                            // Ignore the error.
+                            continue;
+                        } else {
+                            outgoingMsgQueue.add(msg);
+                            break;
+                        }
+                    }
                     ZFrame replyContent = new ZFrame(msg.output);
                     sent = replyContent.send(frontend, ZMQ.DONTWAIT);
                     if (!sent) {
                         // Something went wrong.
                         int errno = frontend.errno();
-                        logger.info("Frontend Failed to send, errno == EAGAIN? {}", errno);
+                        logger.info("Frontend replyContent failed to send, errno == {}", errno);
+                        if (errno != ZError.EAGAIN) {
+                            continue;
+                        } else {
+                            outgoingMsgQueue.add(msg);
+                            break;
+                        }
                     }
                 } else {
                     ZMQ.Socket socket = client.getSocket(msg.hostname);
@@ -335,13 +354,15 @@ public class ApiaryWorker {
                     if (!sent) {
                         // Something went wrong.
                         int errno = socket.errno();
-                        logger.info("Socket Failed to send, errno == EAGAIN? {}", errno);
+                        logger.info("Socket Failed to send, errno == {}", errno);
+                        if (errno != ZError.EAGAIN) {
+                            // Ignore the error.
+                            continue;
+                        } else {
+                            outgoingMsgQueue.add(msg);
+                            break;
+                        }
                     }
-                }
-                if (!sent) {
-                    // Add it back and process next round.
-                    outgoingMsgQueue.add(msg);
-                    break;
                 }
             }
         }

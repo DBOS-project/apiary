@@ -95,16 +95,19 @@ public class ApiaryWorker {
     // Resume the execution of the caller function, then send back a reply if everything is finished.
     private void resumeExecution(long callerID, int taskID, String output) throws InterruptedException {
         ApiaryTaskStash callerTask = callerStashMap.get(callerID);
-        assert (callerTask != null);
+        if (callerTask == null) {
+            logger.info("Nothing to resume.");
+            return;
+        }
         callerTask.taskIDtoValue.put(taskID, output);
-        callerTask.numFinishedTasks.incrementAndGet();
+        int numFinished = callerTask.numFinishedTasks.incrementAndGet();
 
         processQueuedTasks(callerTask, callerID);
 
         // If everything is resolved, then return the string value.
         String finalOutput = callerTask.getFinalOutput();
 
-        if ((finalOutput != null) && (callerTask.sentOutput.compareAndSet(false, true))) {
+        if ((finalOutput != null) && (numFinished == callerTask.totalQueuedTasks)) {
             // Send back the response only once.
             ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput)
                     .setCallerId(callerTask.callerId)
@@ -264,9 +267,9 @@ public class ApiaryWorker {
                     assert (content != null);
                     msg.destroy();
                     byte[] reqBytes = content.getData();
-                    logger.info("req queue length: {}", reqQueue.size());
+//                    logger.info("req queue length: {}", reqQueue.size());
                     reqThreadPool.execute(new RequestRunnable(address, reqBytes));
-                    logger.info("Finished execution.");
+//                    logger.info("Finished execution.");
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;
@@ -287,9 +290,9 @@ public class ApiaryWorker {
                         assert (content != null);
                         byte[] replyBytes = content.getData();
                         msg.destroy();
-                        logger.info("resume exec, req queue length: {}", reqQueue.size());
+//                        logger.info("resume exec, req queue length: {}", reqQueue.size());
                         repThreadPool.execute(new ReplyRunnable(replyBytes));
-                        logger.info("Finished resume");
+//                        logger.info("Finished resume");
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                             break;
@@ -302,7 +305,7 @@ public class ApiaryWorker {
 
             // Handle reply to send back.
             // TODO: do we send back all of those, or just send back a few?
-            logger.info("outgoing queue size: {}", outgoingMsgQueue.size());
+//            logger.info("outgoing queue size: {}", outgoingMsgQueue.size());
             while (!outgoingMsgQueue.isEmpty()) {
                 OutgoingMsg msg = outgoingMsgQueue.poll();
                 if (msg.hostname == null) {

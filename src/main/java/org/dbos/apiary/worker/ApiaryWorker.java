@@ -267,7 +267,7 @@ public class ApiaryWorker {
             // Handle request from clients or other workers.
             if (poller.pollin(0)) {
                 try {
-                    for (int i = 0; i < outgoingMsgQueue.size() + 1; i++) {
+                    for (int i = 0; i < outgoingMsgQueue.size(); i++) {
                         ZMsg msg = ZMsg.recvMsg(frontend, false);
                         if (msg == null) {
                             break;

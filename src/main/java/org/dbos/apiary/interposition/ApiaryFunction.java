@@ -1,12 +1,16 @@
-package org.dbos.apiary.stateless;
+package org.dbos.apiary.interposition;
 
+import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.utilities.Utilities;
 
 import java.lang.reflect.Method;
+import java.util.List;
 
-public class StatelessFunction {
+public abstract class ApiaryFunction {
 
-    public String internalRunFunction(Object... input) {
+    /** Exposed to Apiary callers. **/
+
+    public FunctionOutput runFunction(Object... input) {
         // TODO: Logging.
         // Use reflection to find internal runFunction.
         Method functionMethod = Utilities.getFunctionMethod(this, "runFunction");
@@ -19,6 +23,6 @@ public class StatelessFunction {
             return null;
         }
         assert (output instanceof String);
-        return (String) output;
+        return new FunctionOutput((String) output, null, List.of());
     }
 }

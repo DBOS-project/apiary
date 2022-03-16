@@ -1,13 +1,13 @@
 package org.dbos.apiary.cockroachdb;
 
-import org.dbos.apiary.interposition.ApiaryFunctionInterface;
+import org.dbos.apiary.interposition.ApiaryStatefulFunction;
 import org.dbos.apiary.utilities.Utilities;
 
 import java.lang.reflect.Method;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-public class CockroachDBFunctionInterface extends ApiaryFunctionInterface {
+public class CockroachDBFunctionInterface extends ApiaryStatefulFunction {
 
     private void prepareStatement(PreparedStatement ps, Object[] input) throws SQLException {
         for (int i = 0; i < input.length; i++) {

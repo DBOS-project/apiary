@@ -7,12 +7,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class ApiaryFunctionInterface {
+public abstract class ApiaryStatefulFunction extends ApiaryFunction {
 
-    private final AtomicInteger calledTaskID = new AtomicInteger(0);
-    private final List<Task> queuedTasks = new ArrayList<>();
+    protected final AtomicInteger calledTaskID = new AtomicInteger(0);
+    protected final List<Task> queuedTasks = new ArrayList<>();
 
-    /** Public Interface **/
+    /** Public Interface for functions. **/
 
     // Asynchronously queue another function for asynchronous execution.
     public ApiaryFuture apiaryQueueFunction(String name, Object... inputs) {
@@ -39,11 +39,7 @@ public abstract class ApiaryFunctionInterface {
         return internalExecuteQuery(procedure, input);
     }
 
-    /** Internal Interface **/
-
-    protected abstract Object internalCallFunction(String name, Object... inputs);
-    protected abstract void internalExecuteUpdate(Object procedure, Object... input);
-    protected abstract Object internalExecuteQuery(Object procedure, Object... input);
+    /** Exposed to Apiary callers. **/
 
     public FunctionOutput runFunction(Object... input) {
         this.calledTaskID.set(0);
@@ -62,6 +58,11 @@ public abstract class ApiaryFunctionInterface {
         return new FunctionOutput(stringOutput, futureOutput, this.queuedTasks);
     }
 
+    /** Abstract and require implementation. **/
+
+    protected abstract Object internalCallFunction(String name, Object... inputs);
+    protected abstract void internalExecuteUpdate(Object procedure, Object... input);
+    protected abstract Object internalExecuteQuery(Object procedure, Object... input);
     protected abstract Object internalRunFunction(Object... input);
 
 }

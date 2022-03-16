@@ -1,7 +1,7 @@
 package org.dbos.apiary.voltdb;
 
-import org.dbos.apiary.interposition.ApiaryFunctionInterface;
-import org.dbos.apiary.stateless.StatelessFunction;
+import org.dbos.apiary.interposition.ApiaryStatefulFunction;
+import org.dbos.apiary.interposition.ApiaryFunction;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -9,7 +9,7 @@ import org.voltdb.VoltTable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-public class VoltFunctionInterface extends ApiaryFunctionInterface {
+public class VoltFunctionInterface extends ApiaryStatefulFunction {
 
     private final VoltApiaryProcedure p;
 
@@ -39,9 +39,9 @@ public class VoltFunctionInterface extends ApiaryFunctionInterface {
                 return null;
             }
             return output;
-        } else if (clazz instanceof StatelessFunction) {
-            StatelessFunction s = (StatelessFunction) clazz;
-            return s.internalRunFunction(inputs);
+        } else if (clazz instanceof ApiaryFunction) {
+            ApiaryFunction s = (ApiaryFunction) clazz;
+            return s.runFunction(inputs).stringOutput;
         } else {
             new Exception().printStackTrace();
             return null;

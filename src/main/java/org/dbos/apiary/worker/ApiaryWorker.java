@@ -181,7 +181,7 @@ public class ApiaryWorker {
         @Override
         public void run() {
             // Handle the request.
-            logger.info("req queue length: {}", reqQueue.size());
+//            logger.info("req queue length: {}", reqQueue.size());
             try {
                 scheduler.onDequeue(req);
                 assert (req != null);
@@ -202,7 +202,7 @@ public class ApiaryWorker {
             } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }
-            logger.info("Finished execution.");
+//            logger.info("Finished execution.");
         }
 
         @Override
@@ -220,7 +220,7 @@ public class ApiaryWorker {
 
         @Override
         public void run() {
-            logger.info("resume exec, reply queue length: {}", repQueue.size());
+//            logger.info("resume exec, reply queue length: {}", repQueue.size());
             // Handle the reply.
             try {
                 ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
@@ -232,7 +232,7 @@ public class ApiaryWorker {
             } catch (InvalidProtocolBufferException | InterruptedException e) {
                 e.printStackTrace();
             }
-            logger.info("Finished resume");
+//            logger.info("Finished resume");
         }
     }
 
@@ -314,7 +314,6 @@ public class ApiaryWorker {
             // TODO: do we send back all of those, or just send back a few?
             if (outgoingMsgQueue.size() > 0) {
                 logger.info("outgoing queue size: {}", outgoingMsgQueue.size());
-
             }
             while (!outgoingMsgQueue.isEmpty()) {
                 OutgoingMsg msg = outgoingMsgQueue.poll();

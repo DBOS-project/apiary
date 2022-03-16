@@ -44,13 +44,14 @@ public class ApiaryWorker {
     private final ExecutorService reqThreadPool;
     private final ExecutorService repThreadPool;
     private final BlockingQueue<Runnable> reqQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<Runnable> repQueue = new LinkedBlockingQueue<>();
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
         this.c = c;
         this.scheduler = scheduler;
         this.zContext = new ZContext(2);  // TODO: How many IO threads?
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
-        repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, repQueue);
     }
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
@@ -180,6 +181,7 @@ public class ApiaryWorker {
         @Override
         public void run() {
             // Handle the request.
+            logger.info("req queue length: {}", reqQueue.size());
             try {
                 scheduler.onDequeue(req);
                 assert (req != null);
@@ -200,6 +202,7 @@ public class ApiaryWorker {
             } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }
+            logger.info("Finished execution.");
         }
 
         @Override
@@ -217,6 +220,7 @@ public class ApiaryWorker {
 
         @Override
         public void run() {
+            logger.info("resume exec, reply queue length: {}", repQueue.size());
             // Handle the reply.
             try {
                 ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
@@ -228,6 +232,7 @@ public class ApiaryWorker {
             } catch (InvalidProtocolBufferException | InterruptedException e) {
                 e.printStackTrace();
             }
+            logger.info("Finished resume");
         }
     }
 
@@ -268,9 +273,7 @@ public class ApiaryWorker {
                     assert (content != null);
                     msg.destroy();
                     byte[] reqBytes = content.getData();
-//                    logger.info("req queue length: {}", reqQueue.size());
                     reqThreadPool.execute(new RequestRunnable(address, reqBytes));
-//                    logger.info("Finished execution.");
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;
@@ -291,9 +294,8 @@ public class ApiaryWorker {
                         assert (content != null);
                         byte[] replyBytes = content.getData();
                         msg.destroy();
-//                        logger.info("resume exec, req queue length: {}", reqQueue.size());
+
                         repThreadPool.execute(new ReplyRunnable(replyBytes));
-//                        logger.info("Finished resume");
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                             break;
@@ -306,7 +308,10 @@ public class ApiaryWorker {
 
             // Handle reply to send back.
             // TODO: do we send back all of those, or just send back a few?
-//            logger.info("outgoing queue size: {}", outgoingMsgQueue.size());
+            if (outgoingMsgQueue.size() > 0) {
+                logger.info("outgoing queue size: {}", outgoingMsgQueue.size());
+
+            }
             while (!outgoingMsgQueue.isEmpty()) {
                 OutgoingMsg msg = outgoingMsgQueue.poll();
                 if (msg.hostname == null) {

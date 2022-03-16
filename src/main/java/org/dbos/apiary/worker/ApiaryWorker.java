@@ -280,6 +280,8 @@ public class ApiaryWorker {
                     } else {
                         e.printStackTrace();
                     }
+                } catch (Exception | AssertionError e) {
+                    e.printStackTrace();
                 }
             }
 
@@ -302,6 +304,8 @@ public class ApiaryWorker {
                         } else {
                             e.printStackTrace();
                         }
+                    } catch (Exception | AssertionError e) {
+                        e.printStackTrace();
                     }
                 }
             }

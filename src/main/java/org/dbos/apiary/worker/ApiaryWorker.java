@@ -122,10 +122,10 @@ public class ApiaryWorker {
                 o = c.callFunction(name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();
-                ZContext z = new ZContext();
+                ZContext z = ZContext.shadow(zContext);
                 f.setContext(new ApiaryStatelessFunctionContext(c, new ApiaryWorkerClient(z), service, statelessFunctions));
                 o = f.apiaryRunFunction(arguments);
-                z.close();
+                z.close(); // TODO: Find a better way to clean up these contexts instead of recreating them each time.
             }
         } catch (Exception e) {
             e.printStackTrace();

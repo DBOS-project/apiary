@@ -1,13 +1,13 @@
 package org.dbos.apiary.procedures.cockroachdb;
 
-import org.dbos.apiary.cockroachdb.CockroachDBFunctionInterface;
+import org.dbos.apiary.cockroachdb.CockroachDBFunction;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class CockroachDBIncrementFunction extends CockroachDBFunctionInterface {
+public class CockroachDBIncrementFunction extends CockroachDBFunction {
 
     private final PreparedStatement getValue;
     private final PreparedStatement updateValue;
@@ -19,7 +19,7 @@ public class CockroachDBIncrementFunction extends CockroachDBFunctionInterface {
 
     public String runFunction(String keyString) {
         int key = Integer.parseInt(keyString);
-        ResultSet r = (ResultSet) this.apiaryExecuteQuery(getValue, key);
+        ResultSet r = (ResultSet) context.apiaryExecuteQuery(getValue, key);
         int nextValue = 0;
         try {
             if (r.next()) {
@@ -28,7 +28,7 @@ public class CockroachDBIncrementFunction extends CockroachDBFunctionInterface {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        this.apiaryExecuteUpdate(updateValue, key, nextValue);
+        context.apiaryExecuteUpdate(updateValue, key, nextValue);
         return String.valueOf(nextValue);
     }
 }

@@ -183,12 +183,11 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "StatelessDriver", "defaultService", "0");
+        res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "0");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "StatelessDriver", "defaultService", "9");
+        res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "8");
         assertEquals("55", res);
-
         clientContext.close();
         worker.shutdown();
     }

@@ -1,9 +1,8 @@
 package org.dbos.apiary.interposition;
 
-import org.dbos.apiary.utilities.Utilities;
+import org.dbos.apiary.executor.FunctionOutput;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 
 public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContext {
 
@@ -19,18 +18,10 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
             return null;
         }
         assert(clazz instanceof ApiaryFunction);
-        ApiaryFunction v = (ApiaryFunction) clazz;
-        v.setContext(this);
-        Method functionMethod = Utilities.getFunctionMethod(v, "runFunction");
-        assert functionMethod != null;
-        Object output;
-        try {
-            output = functionMethod.invoke(v, inputs);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-        return output;
+        ApiaryFunction f = (ApiaryFunction) clazz;
+        f.setContext(this);
+        FunctionOutput o = f.apiaryRunFunction(inputs);
+        return o.stringOutput == null ? o.futureOutput : o.stringOutput;
     }
 
     // Execute an update in the database.

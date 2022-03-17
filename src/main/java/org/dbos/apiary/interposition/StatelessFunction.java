@@ -14,6 +14,7 @@ public class StatelessFunction implements ApiaryFunction {
         this.context = context;
     }
 
+    @Override
     public ApiaryFunctionContext getContext() {
         return this.context;
     }

@@ -13,7 +13,6 @@ import org.voltdb.VoltTableRow;
 import org.voltdb.VoltType;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 
 public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction {
 
@@ -26,23 +25,8 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
     }
 
     @Override
-    public FunctionOutput apiaryRunFunction(Object... input) {
-        // Use reflection to find internal runFunction.
-        Method functionMethod = Utilities.getFunctionMethod(this, "runFunction");
-        assert functionMethod != null;
-        Object output;
-        try {
-            output = functionMethod.invoke(this, input);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-        if (output instanceof String) {
-            return context.getFunctionOutput((String) output);
-        } else {
-            assert (output instanceof ApiaryFuture);
-            return context.getFunctionOutput((ApiaryFuture) output);
-        }
+    public ApiaryFunctionContext getContext() {
+        return context;
     }
 
     public VoltTable[] run(VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {

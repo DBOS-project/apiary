@@ -21,11 +21,6 @@ public class SQLiteFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
-    public Object internalCallFunction(String name, Object... inputs) {
-        return null;
-    }
-
-    @Override
     protected void internalExecuteUpdate(Object procedure, Object... input) {
         try {
             PreparedStatement ps = (PreparedStatement) procedure;

@@ -1,9 +1,7 @@
 package org.dbos.apiary.cockroachdb;
 
 import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
-import org.dbos.apiary.utilities.Utilities;
 
-import java.lang.reflect.Method;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
@@ -20,11 +18,6 @@ public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
                 assert (false); // TODO: More types.
             }
         }
-    }
-
-    @Override
-    public Object internalCallFunction(String name, Object... inputs) {
-        return null;
     }
 
     @Override

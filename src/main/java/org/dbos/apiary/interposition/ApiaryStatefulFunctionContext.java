@@ -1,6 +1,9 @@
 package org.dbos.apiary.interposition;
 
-import org.dbos.apiary.executor.FunctionOutput;
+import org.dbos.apiary.utilities.Utilities;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContext {
 
@@ -8,7 +11,26 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
 
     public Object apiaryCallFunction(String name, Object... inputs) {
         // TODO: Logging?
-        return internalCallFunction(name, inputs);
+        Object clazz;
+        try {
+            clazz = Class.forName(name).getDeclaredConstructor().newInstance();
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+            e.printStackTrace();
+            return null;
+        }
+        assert(clazz instanceof ApiaryFunction);
+        ApiaryFunction v = (ApiaryFunction) clazz;
+        v.setContext(this);
+        Method functionMethod = Utilities.getFunctionMethod(v, "runFunction");
+        assert functionMethod != null;
+        Object output;
+        try {
+            output = functionMethod.invoke(v, inputs);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return output;
     }
 
     // Execute an update in the database.
@@ -24,8 +46,6 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
     }
 
     /** Abstract and require implementation. **/
-
-    protected abstract Object internalCallFunction(String name, Object... inputs);
     protected abstract void internalExecuteUpdate(Object procedure, Object... input);
     protected abstract Object internalExecuteQuery(Object procedure, Object... input);
 

@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ApiaryFunctionContext {
+public abstract class ApiaryFunctionContext {
 
     private final AtomicInteger calledTaskID = new AtomicInteger(0);
     private final List<Task> queuedTasks = new ArrayList<>();
@@ -21,6 +21,8 @@ public class ApiaryFunctionContext {
         queuedTasks.add(futureTask);
         return new ApiaryFuture(taskID);
     }
+
+    public abstract Object apiaryCallFunction(String name, Object... inputs);
 
     /** Apiary-private **/
 

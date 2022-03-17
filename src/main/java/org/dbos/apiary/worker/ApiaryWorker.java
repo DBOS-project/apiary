@@ -7,6 +7,7 @@ import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
+import org.dbos.apiary.interposition.ApiaryStatelessFunctionContext;
 import org.dbos.apiary.interposition.StatelessFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
@@ -15,7 +16,10 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.*;
 import zmq.ZError;
 
-import java.util.*;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -117,6 +121,7 @@ public class ApiaryWorker {
                 o = c.callFunction(name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();
+                f.setContext(new ApiaryStatelessFunctionContext());
                 o = f.apiaryRunFunction(arguments);
             }
         } catch (Exception e) {

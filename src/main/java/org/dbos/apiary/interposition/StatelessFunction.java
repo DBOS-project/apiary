@@ -4,11 +4,10 @@ import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.utilities.Utilities;
 
 import java.lang.reflect.Method;
-import java.util.List;
 
 public class StatelessFunction implements ApiaryFunction {
 
-    private ApiaryFunctionContext context = new ApiaryFunctionContext();
+    private ApiaryFunctionContext context;
 
     @Override
     public void setContext(ApiaryFunctionContext context) {

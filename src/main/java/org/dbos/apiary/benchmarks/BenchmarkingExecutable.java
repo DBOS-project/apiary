@@ -16,8 +16,8 @@ public class BenchmarkingExecutable {
         options.addOption("b", true, "Which Benchmark?");
         options.addOption("d", true, "Duration (sec)?");
         options.addOption("i", true, "Benchmark Interval (μs)");
-        options.addOption("i2", true, "Mixed Benchmark Increment Interval (μs)");
         options.addOption("mainHostAddr", true, "Address of the main host to connect to.");
+        options.addOption("s", true, "Service Name");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -35,16 +35,16 @@ public class BenchmarkingExecutable {
             mainHostAddr = cmd.getOptionValue("mainHostAddr");
         }
         String benchmark = cmd.getOptionValue("b");
+        String service = benchmark;
+        if (cmd.hasOption("s")) {
+            service = cmd.getOptionValue("s");
+        }
         if (benchmark.equals("increment")) {
-            logger.info("Increment Benchmark");
-            IncrementBenchmark.benchmark(mainHostAddr, interval, duration);
+            logger.info("Increment Benchmark. Service: {}", service);
+            IncrementBenchmark.benchmark(mainHostAddr, service, interval, duration);
         } else if (benchmark.equals("retwis")) {
             logger.info("Retwis Benchmark");
-            RetwisBenchmark.benchmark(mainHostAddr, interval, duration);
-        } else if (benchmark.equals("mixed")) {
-            logger.info("Mixed Benchmark");
-            int interval2 = Integer.parseInt(cmd.getOptionValue("i2"));
-            MixedBenchmark.benchmark(mainHostAddr, interval, interval2, duration);
+            RetwisBenchmark.benchmark(mainHostAddr, service, interval, duration);
         } else if (benchmark.equals("cockroach-increment")) {
             logger.info("CockroachDB Increment Benchmark");
             CockroachDBIncrementBenchmark.benchmark(mainHostAddr, interval, duration);

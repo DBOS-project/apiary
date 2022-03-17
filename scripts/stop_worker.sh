@@ -15,7 +15,7 @@ if [[ ! -f $PIDFILE ]]; then
 fi
 
 while read pid; do
-  kill -SIGTERM $pid
+  kill -9 $pid
 done <$PIDFILE
 
 rm $PIDFILE

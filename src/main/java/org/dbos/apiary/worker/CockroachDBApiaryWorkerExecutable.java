@@ -48,7 +48,7 @@ public class CockroachDBApiaryWorkerExecutable {
         c.registerFunction("FibSumFunction", () -> {
             return new CockroachDBFibSumFunction(c.getConnectionForFunction());
         });
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
         worker.startServing();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

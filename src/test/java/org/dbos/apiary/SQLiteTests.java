@@ -3,6 +3,7 @@ package org.dbos.apiary;
 import org.dbos.apiary.procedures.sqlite.SQLiteFibSumFunction;
 import org.dbos.apiary.procedures.sqlite.SQLiteFibonacciFunction;
 import org.dbos.apiary.sqlite.SQLiteConnection;
+import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.junit.jupiter.api.Test;
@@ -31,20 +32,20 @@ public class SQLiteTests {
         c.createTable("CREATE TABLE KVTable(KVKey integer NOT NULL, KVValue integer NOT NULL);");
         c.registerFunction("FibonacciFunction", () -> new SQLiteFibonacciFunction(conn));
         c.registerFunction("FibSumFunction", () -> new SQLiteFibSumFunction(conn));
-        ApiaryWorker worker = new ApiaryWorker(c);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
         worker.startServing();
 
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "FibonacciFunction", "1");
+        res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "1");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "FibonacciFunction", "10");
+        res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "10");
         assertEquals("55", res);
 
-        res = client.executeFunction("localhost", "FibonacciFunction", "30");
+        res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "30");
         assertEquals("832040", res);
 
         clientContext.close();

@@ -13,6 +13,7 @@ import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.*;
+import zmq.ZError;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -29,20 +30,27 @@ public class ApiaryWorker {
     // Store the call stack for each caller.
     private final Map<Long, ApiaryTaskStash> callerStashMap = new ConcurrentHashMap<>();
     // Store the outgoing messages.
-    private final Queue<OutgoingMsg> outgoingMsgQueue = new ConcurrentLinkedQueue<>();
+    private final Deque<OutgoingMsg> outgoingReqMsgQueue = new ConcurrentLinkedDeque<>();
+    private final Deque<OutgoingMsg> outgoingReplyMsgQueue = new ConcurrentLinkedDeque<>();
 
     public static int numWorkerThreads = 128;
 
     private final ApiaryConnection c;
+    private final ApiaryScheduler scheduler;
     private ZContext zContext;
     private Thread serverThread;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
-    private final ExecutorService threadPool;
+    private final ExecutorService reqThreadPool;
+    private final ExecutorService repThreadPool;
+    private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
+    private final BlockingQueue<Runnable> repQueue = new LinkedBlockingQueue<>();
 
-    public ApiaryWorker(ApiaryConnection c) {
+    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
         this.c = c;
+        this.scheduler = scheduler;
         this.zContext = new ZContext(2);  // TODO: How many IO threads?
-        threadPool = Executors.newFixedThreadPool(numWorkerThreads);
+        reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
+        repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, repQueue);
     }
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
@@ -69,8 +77,8 @@ public class ApiaryWorker {
                     } else {
                         String address = c.getHostname(subtask.input);
                         // Push to the outgoing queue.
-                        byte[] reqBytes = ApiaryWorkerClient.getExecuteRequestBytes(subtask.funcName, currCallerID, subtask.taskID, subtask.input);
-                        outgoingMsgQueue.add(new OutgoingMsg(address, reqBytes));
+                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currCallerID, subtask.taskID, subtask.input);
+                        outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
                     }
                 }
                 numTraversed++;
@@ -89,35 +97,36 @@ public class ApiaryWorker {
         ApiaryTaskStash callerTask = callerStashMap.get(callerID);
         assert (callerTask != null);
         callerTask.taskIDtoValue.put(taskID, output);
-        callerTask.numFinishedTasks.incrementAndGet();
-
         processQueuedTasks(callerTask, callerID);
 
-        // If everything is resolved, then return the string value.
-        String finalOutput = callerTask.getFinalOutput();
+        int finishedTasks = callerTask.numFinishedTasks.incrementAndGet();
 
-        if (finalOutput != null) {
-            // Send back the response.
+        // If everything is resolved, then return the string value.
+        if (finishedTasks == callerTask.totalQueuedTasks) {
+            String finalOutput = callerTask.getFinalOutput();
+            assert (finalOutput != null);
+            // Send back the response only once.
             ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput)
                     .setCallerId(callerTask.callerId)
                     .setTaskId(callerTask.currTaskId)
                     .setSenderTimestampNano(callerTask.senderTimestampNano).build();
-            outgoingMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, rep.toByteArray()));
+            outgoingReplyMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, rep.toByteArray()));
+
             // Clean up the stash map.
             callerStashMap.remove(callerID);
         }
     }
 
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
-    private void executeFunction(String name, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
-        FunctionOutput o;
+    private void executeFunction(String name, String service, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
+        FunctionOutput o = null;
         try {
             o = c.callFunction(name, arguments);
         } catch (Exception e) {
             e.printStackTrace();
-            return;
         }
-        ApiaryTaskStash currTask = new ApiaryTaskStash(callerID, currTaskID, replyAddr, senderTimestampNano);
+        assert (o != null);
+        ApiaryTaskStash currTask = new ApiaryTaskStash(service, callerID, currTaskID, replyAddr, senderTimestampNano);
         if (o.stringOutput != null) {
             currTask.stringOutput = o.stringOutput;
         } else  {
@@ -146,57 +155,75 @@ public class ApiaryWorker {
                     .setCallerId(callerID)
                     .setTaskId(currTaskID)
                     .setSenderTimestampNano(senderTimestampNano).build();
-            outgoingMsgQueue.add(new OutgoingMsg(replyAddr, rep.toByteArray()));
+            outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, rep.toByteArray()));
         }
     }
 
-    class workerRunnable implements Runnable {
-        private final byte[] reqBytes;
-        private final byte[] replyBytes;
+    private class RequestRunnable implements Runnable, Comparable<RequestRunnable> {
+        private ExecuteFunctionRequest req;
         private final ZFrame address;
+        public long priority;
 
-        public workerRunnable(ZFrame address, byte[] req, byte[] reply) {
+        public RequestRunnable(ZFrame address, byte[] reqBytes) {
             this.address = address;
-            this.reqBytes = req;
+            try {
+                this.req = ExecuteFunctionRequest.parseFrom(reqBytes);
+                this.priority = scheduler.getPriority(req);
+            } catch (AssertionError | Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void run() {
+            // Handle the request.
+            try {
+                scheduler.onDequeue(req);
+                assert (req != null);
+                List<ByteString> byteArguments = req.getArgumentsList();
+                List<Integer> argumentTypes = req.getArgumentTypesList();
+                long callerID = req.getCallerId();
+                int currTaskID = req.getTaskId();
+                Object[] arguments = new Object[byteArguments.size()];
+                for (int i = 0; i < arguments.length; i++) {
+                    if (argumentTypes.get(i) == stringType) {
+                        arguments[i] = new String(byteArguments.get(i).toByteArray());
+                    } else {
+                        assert (argumentTypes.get(i) == stringArrayType);
+                        arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
+                    }
+                }
+                executeFunction(req.getName(), req.getService(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
+            } catch (AssertionError | Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public int compareTo(RequestRunnable requestRunnable) {
+            return Long.compare(priority, requestRunnable.priority);
+        }
+    }
+
+    private class ReplyRunnable implements Runnable {
+        private final byte[] replyBytes;
+
+        public ReplyRunnable(byte[] reply) {
             this.replyBytes = reply;
         }
 
         @Override
         public void run() {
-            if (reqBytes != null) {
-                // Handle the request.
-                try {
-                    ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
-                    List<ByteString> byteArguments = req.getArgumentsList();
-                    List<Integer> argumentTypes = req.getArgumentTypesList();
-                    long callerID = req.getCallerId();
-                    int currTaskID = req.getTaskId();
-                    Object[] arguments = new Object[byteArguments.size()];
-                    for (int i = 0; i < arguments.length; i++) {
-                        if (argumentTypes.get(i) == stringType) {
-                            arguments[i] = new String(byteArguments.get(i).toByteArray());
-                        } else {
-                            assert (argumentTypes.get(i) == stringArrayType);
-                            arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
-                        }
-                    }
-                    executeFunction(req.getName(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
-                } catch (InvalidProtocolBufferException | InterruptedException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                assert (replyBytes != null);
-                // Handle the reply.
-                try {
-                    ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
-                    String output = reply.getReply();
-                    long callerID = reply.getCallerId();
-                    int taskID = reply.getTaskId();
-                    // Resume execution.
-                    resumeExecution(callerID, taskID, output);
-                } catch (InvalidProtocolBufferException | InterruptedException e) {
-                    e.printStackTrace();
-                }
+            // Handle the reply.
+            try {
+                ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
+                String output = reply.getReply();
+                long callerID = reply.getCallerId();
+                int taskID = reply.getTaskId();
+                // Resume execution.
+                resumeExecution(callerID, taskID, output);
+            } catch (InvalidProtocolBufferException | InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -204,6 +231,9 @@ public class ApiaryWorker {
     private void serverThread() {
         ZContext shadowContext = ZContext.shadow(zContext);
         ZMQ.Socket frontend = shadowContext.createSocket(SocketType.ROUTER);
+        // Set high water mark to unbounded, so we can have unlimited outstanding messages.
+        // TODO: it may be better to add a bound.
+        frontend.setHWM(0);
         frontend.setRouterMandatory(true);
         frontend.bind("tcp://*:" + ApiaryConfig.workerPort);
 
@@ -238,13 +268,15 @@ public class ApiaryWorker {
                     assert (content != null);
                     msg.destroy();
                     byte[] reqBytes = content.getData();
-                    threadPool.submit(new workerRunnable(address, reqBytes, null));
+                    reqThreadPool.execute(new RequestRunnable(address, reqBytes));
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;
                     } else {
                         e.printStackTrace();
                     }
+                } catch (Exception | AssertionError e) {
+                    e.printStackTrace();
                 }
             }
 
@@ -259,29 +291,72 @@ public class ApiaryWorker {
                         assert (content != null);
                         byte[] replyBytes = content.getData();
                         msg.destroy();
-                        threadPool.submit(new workerRunnable(null, null, replyBytes));
+
+                        repThreadPool.execute(new ReplyRunnable(replyBytes));
                     } catch (ZMQException e) {
                         if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                             break;
                         } else {
                             e.printStackTrace();
                         }
+                    } catch (Exception | AssertionError e) {
+                        e.printStackTrace();
                     }
                 }
             }
 
             // Handle reply to send back.
             // TODO: do we send back all of those, or just send back a few?
-            while (!outgoingMsgQueue.isEmpty()) {
-                OutgoingMsg msg = outgoingMsgQueue.poll();
-                if (msg.hostname == null) {
+            while (!outgoingReplyMsgQueue.isEmpty()) {
+                OutgoingMsg msg = outgoingReplyMsgQueue.poll();
+                boolean sent;
+                try {
+                    assert (msg.hostname == null);
                     assert (msg.address != null);
-                    msg.address.send(frontend, ZFrame.REUSE + ZFrame.MORE);
+                    sent = msg.address.send(frontend, ZFrame.REUSE | ZFrame.MORE | ZMQ.DONTWAIT);
+                    if (!sent) {
+                        int errno = frontend.errno();
+                        logger.info("Frontend replyAddress failed to send, errno == {}", errno);
+                        if (errno != ZError.EAGAIN) {
+                            // Ignore the error.
+                            continue;
+                        } else {
+                            outgoingReplyMsgQueue.addFirst(msg);
+                            break;
+                        }
+                    }
                     ZFrame replyContent = new ZFrame(msg.output);
-                    replyContent.send(frontend, 0);
-                } else {
+                    sent = replyContent.send(frontend, ZMQ.DONTWAIT);
+                    assert (sent);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    logger.info("Continue processing.");
+                }
+            }
+
+            while (!outgoingReqMsgQueue.isEmpty()) {
+                OutgoingMsg msg = outgoingReqMsgQueue.poll();
+                boolean sent;
+                try {
+                    assert  (msg.hostname != null);
                     ZMQ.Socket socket = client.getSocket(msg.hostname);
-                    socket.send(msg.output, 0);
+                    sent = socket.send(msg.output, ZMQ.DONTWAIT);
+                    if (!sent) {
+                        // Something went wrong.
+                        int errno = socket.errno();
+                        logger.info("Socket Failed to send, errno == {}", errno);
+                        if (errno != ZError.EAGAIN) {
+                            // Ignore the error.
+                            continue;
+                        } else {
+                            outgoingReqMsgQueue.addFirst(msg);
+                            break;
+                        }
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    logger.info("Continue processing.");
                 }
             }
         }
@@ -302,8 +377,10 @@ public class ApiaryWorker {
 
     public void shutdown() {
         try {
-            threadPool.shutdown();
-            threadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            reqThreadPool.shutdown();
+            reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            repThreadPool.shutdown();
+            repThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             serverThread.interrupt();
             zContext.close();
             serverThread.join();

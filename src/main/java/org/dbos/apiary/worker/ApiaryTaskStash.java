@@ -8,9 +8,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
 
 // This class is used to store the current execution progress of a called function.
 public class ApiaryTaskStash {
@@ -21,12 +19,14 @@ public class ApiaryTaskStash {
     public final Queue<Task> queuedTasks;
     public final AtomicInteger numFinishedTasks = new AtomicInteger(0);
     public final long senderTimestampNano;
+    public final String service;
 
     public int totalQueuedTasks;
     public String stringOutput;
     public ApiaryFuture futureOutput;
 
-    public ApiaryTaskStash(long callerId, int currTaskId, ZFrame replyAddr, long senderTimestampNano) {
+    public ApiaryTaskStash(String service, long callerId, int currTaskId, ZFrame replyAddr, long senderTimestampNano) {
+        this.service = service;
         this.callerId = callerId;
         this.currTaskId = currTaskId;
         this.replyAddr = replyAddr;

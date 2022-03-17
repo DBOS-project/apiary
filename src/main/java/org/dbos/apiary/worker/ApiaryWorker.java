@@ -121,7 +121,7 @@ public class ApiaryWorker {
                 o = c.callFunction(name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();
-                f.setContext(new ApiaryStatelessFunctionContext());
+                f.setContext(new ApiaryStatelessFunctionContext(null, statelessFunctions));
                 o = f.apiaryRunFunction(arguments);
             }
         } catch (Exception e) {
@@ -140,10 +140,8 @@ public class ApiaryWorker {
         // Caller ID to be passed to its subtasks;
         long currCallerID = callerIDs.incrementAndGet();
         currTask.totalQueuedTasks = o.queuedTasks.size();
-        for (Task subtask : o.queuedTasks) {
-            // Queue the task.
-            currTask.queuedTasks.add(subtask);
-        }
+        // Queue the task.
+        currTask.queuedTasks.addAll(o.queuedTasks);
 
         processQueuedTasks(currTask, currCallerID);
         if (currTask.totalQueuedTasks != currTask.numFinishedTasks.get()) {

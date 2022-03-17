@@ -176,16 +176,17 @@ public class WorkerTests {
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
         worker.registerStatelessFunction("StatelessDriver", StatelessDriver::new);
+        worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
         worker.startServing();
 
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "StatelessDriver", "defaultService", "1");
+        res = client.executeFunction("localhost", "StatelessDriver", "defaultService", "0");
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "StatelessDriver", "defaultService", "10");
+        res = client.executeFunction("localhost", "StatelessDriver", "defaultService", "9");
         assertEquals("55", res);
 
         clientContext.close();

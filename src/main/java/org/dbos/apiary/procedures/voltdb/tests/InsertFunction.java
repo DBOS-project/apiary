@@ -11,7 +11,7 @@ public class InsertFunction extends VoltProcedureContainer {
     }
 
     public String runFunction(String keyString, String valueString) {
-        funcApi.apiaryExecuteUpdate(addResult, Integer.parseInt(keyString), Integer.parseInt(valueString));
+        context.apiaryExecuteUpdate(addResult, Integer.parseInt(keyString), Integer.parseInt(valueString));
         return valueString;
     }
 }

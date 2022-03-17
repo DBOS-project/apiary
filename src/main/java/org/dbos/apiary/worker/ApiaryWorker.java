@@ -7,7 +7,8 @@ import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.stateless.StatelessFunction;
+import org.dbos.apiary.interposition.ApiaryStatelessFunctionContext;
+import org.dbos.apiary.interposition.StatelessFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
@@ -15,7 +16,10 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.*;
 import zmq.ZError;
 
-import java.util.*;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -37,20 +41,21 @@ public class ApiaryWorker {
 
     private final ApiaryConnection c;
     private final ApiaryScheduler scheduler;
-    private ZContext zContext;
+    private final ZContext zContext;
     private Thread serverThread;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
     private final ExecutorService reqThreadPool;
+    private final ExecutorService statelessReqThreadPool;
     private final ExecutorService repThreadPool;
     private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
-    private final BlockingQueue<Runnable> repQueue = new LinkedBlockingQueue<>();
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
         this.c = c;
         this.scheduler = scheduler;
         this.zContext = new ZContext(2);  // TODO: How many IO threads?
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
-        repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, repQueue);
+        statelessReqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new DispatcherPriorityQueue<>());
+        repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
     }
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
@@ -68,18 +73,10 @@ public class ApiaryWorker {
                     if (!removed) {
                         continue;
                     }
-                    String output;
-                    if (statelessFunctions.containsKey(subtask.funcName)) {
-                        StatelessFunction f = statelessFunctions.get(subtask.funcName).call();
-                        output = f.internalRunFunction(subtask.input);
-                        currTask.taskIDtoValue.put(subtask.taskID, output);
-                        currTask.numFinishedTasks.incrementAndGet();
-                    } else {
-                        String address = c.getHostname(subtask.input);
-                        // Push to the outgoing queue.
-                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currCallerID, subtask.taskID, subtask.input);
-                        outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
-                    }
+                    String address = statelessFunctions.containsKey(subtask.funcName) ? c.getPartitionHostMap().get(0) : c.getHostname(subtask.input); // TODO: Fix hack, use local hostname.
+                    // Push to the outgoing queue.
+                    byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currCallerID, subtask.taskID, subtask.input);
+                    outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
                 }
                 numTraversed++;
                 if (numTraversed >= totalTasks) {
@@ -121,7 +118,15 @@ public class ApiaryWorker {
     private void executeFunction(String name, String service, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
         FunctionOutput o = null;
         try {
-            o = c.callFunction(name, arguments);
+            if (!statelessFunctions.containsKey(name)) {
+                o = c.callFunction(name, arguments);
+            } else {
+                StatelessFunction f = statelessFunctions.get(name).call();
+                ZContext z = ZContext.shadow(zContext);
+                f.setContext(new ApiaryStatelessFunctionContext(c, new ApiaryWorkerClient(z), service, statelessFunctions));
+                o = f.apiaryRunFunction(arguments);
+                z.close(); // TODO: Find a better way to clean up these contexts instead of recreating them each time.
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -138,10 +143,8 @@ public class ApiaryWorker {
         // Caller ID to be passed to its subtasks;
         long currCallerID = callerIDs.incrementAndGet();
         currTask.totalQueuedTasks = o.queuedTasks.size();
-        for (Task subtask : o.queuedTasks) {
-            // Queue the task.
-            currTask.queuedTasks.add(subtask);
-        }
+        // Queue the task.
+        currTask.queuedTasks.addAll(o.queuedTasks);
 
         processQueuedTasks(currTask, currCallerID);
         if (currTask.totalQueuedTasks != currTask.numFinishedTasks.get()) {
@@ -164,10 +167,10 @@ public class ApiaryWorker {
         private final ZFrame address;
         public long priority;
 
-        public RequestRunnable(ZFrame address, byte[] reqBytes) {
+        public RequestRunnable(ZFrame address, ExecuteFunctionRequest req) {
             this.address = address;
             try {
-                this.req = ExecuteFunctionRequest.parseFrom(reqBytes);
+                this.req = req;
                 this.priority = scheduler.getPriority(req);
             } catch (AssertionError | Exception e) {
                 e.printStackTrace();
@@ -268,7 +271,12 @@ public class ApiaryWorker {
                     assert (content != null);
                     msg.destroy();
                     byte[] reqBytes = content.getData();
-                    reqThreadPool.execute(new RequestRunnable(address, reqBytes));
+                    ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
+                    if (statelessFunctions.containsKey(req.getName())) {
+                        statelessReqThreadPool.execute(new RequestRunnable(address, req));
+                    } else {
+                        reqThreadPool.execute(new RequestRunnable(address, req));
+                    }
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;
@@ -381,6 +389,8 @@ public class ApiaryWorker {
             reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             repThreadPool.shutdown();
             repThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            statelessReqThreadPool.shutdown();
+            statelessReqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             serverThread.interrupt();
             zContext.close();
             serverThread.join();

@@ -2,8 +2,10 @@ package org.dbos.apiary.voltdb;
 
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.interposition.ApiaryFunctionInterface;
+import org.dbos.apiary.interposition.ApiaryFunction;
+import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryFuture;
+import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
@@ -12,9 +14,29 @@ import org.voltdb.VoltType;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class VoltApiaryProcedure extends VoltProcedure {
+public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction {
 
-    public ApiaryFunctionInterface funcApi = new VoltFunctionInterface(this);
+    protected ApiaryStatefulFunctionContext context = new VoltFunctionContext(this);
+
+    @Override
+    public void setContext(ApiaryFunctionContext context) {
+        assert (context instanceof ApiaryStatefulFunctionContext);
+        this.context = (ApiaryStatefulFunctionContext) context;
+    }
+
+    @Override
+    public ApiaryFunctionContext getContext() {
+        return context;
+    }
+
+    public VoltTable[] run(VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+        ((VoltFunctionContext) context).reset();
+        Object[] parsedInput = parseInput(voltInput);
+        FunctionOutput output = apiaryRunFunction(parsedInput);
+        return serializeOutput(output);
+    }
+
+    /** Private static helper functions. **/
 
     private static Object[] parseInput(VoltTable voltInput) {
         Object[] input = new Object[voltInput.getColumnCount()];
@@ -83,11 +105,4 @@ public class VoltApiaryProcedure extends VoltProcedure {
         v.addRow(row);
         return v;
     }
-
-    public VoltTable[] run(VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
-        Object[] parsedInput = parseInput(voltInput);
-        FunctionOutput output = funcApi.runFunction(parsedInput);
-        return serializeOutput(output);
-    }
-
 }

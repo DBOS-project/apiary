@@ -16,7 +16,7 @@ public class RetwisFollow extends VoltApiaryProcedure {
     }
 
     public String runFunction(String userID, String followeeID) {
-        funcApi.apiaryExecuteUpdate(addItem, Integer.parseInt(userID), Integer.parseInt(followeeID));
+        context.apiaryExecuteUpdate(addItem, Integer.parseInt(userID), Integer.parseInt(followeeID));
         return userID;
     }
 }

@@ -1,13 +1,11 @@
 package org.dbos.apiary.cockroachdb;
 
-import org.dbos.apiary.interposition.ApiaryFunctionInterface;
-import org.dbos.apiary.utilities.Utilities;
+import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 
-import java.lang.reflect.Method;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-public class CockroachDBFunctionInterface extends ApiaryFunctionInterface {
+public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
 
     private void prepareStatement(PreparedStatement ps, Object[] input) throws SQLException {
         for (int i = 0; i < input.length; i++) {
@@ -20,11 +18,6 @@ public class CockroachDBFunctionInterface extends ApiaryFunctionInterface {
                 assert (false); // TODO: More types.
             }
         }
-    }
-
-    @Override
-    public Object internalCallFunction(String name, Object... inputs) {
-        return null;
     }
 
     @Override
@@ -48,20 +41,5 @@ public class CockroachDBFunctionInterface extends ApiaryFunctionInterface {
             e.printStackTrace();
             return null;
         }
-    }
-
-    @Override
-    protected Object internalRunFunction(Object... input) {
-        // Use reflection to find internal runFunction.
-        Method functionMethod = Utilities.getFunctionMethod(this, "runFunction");
-        assert functionMethod != null;
-        Object output;
-        try {
-            output = functionMethod.invoke(this, input);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-        return output;
     }
 }

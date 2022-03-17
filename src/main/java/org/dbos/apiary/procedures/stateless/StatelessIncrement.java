@@ -1,6 +1,6 @@
 package org.dbos.apiary.procedures.stateless;
 
-import org.dbos.apiary.stateless.StatelessFunction;
+import org.dbos.apiary.interposition.StatelessFunction;
 
 public class StatelessIncrement extends StatelessFunction {
 

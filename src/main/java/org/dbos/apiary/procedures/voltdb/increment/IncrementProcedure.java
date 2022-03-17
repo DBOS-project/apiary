@@ -22,9 +22,9 @@ public class IncrementProcedure extends VoltApiaryProcedure {
 
     public String runFunction(String keyString) {
         int key = Integer.parseInt(keyString);
-        VoltTable results = ((VoltTable[]) funcApi.apiaryExecuteQuery(getValue, key))[0];
+        VoltTable results = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];
         long value = results.getRowCount() == 0 ? 0 : results.fetchRow(0).getLong(0);
-        funcApi.apiaryExecuteUpdate(updateValue, key, value + 1);
+        context.apiaryExecuteUpdate(updateValue, key, value + 1);
         return String.valueOf(value + 1);
     }
 

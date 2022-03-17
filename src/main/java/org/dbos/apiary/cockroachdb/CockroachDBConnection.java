@@ -5,7 +5,6 @@ import org.dbos.apiary.executor.FunctionOutput;
 import org.postgresql.ds.PGSimpleDataSource;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -26,7 +25,7 @@ public class CockroachDBConnection implements ApiaryConnection {
     private final Connection connectionForPartitionInfo;
     private final ThreadLocal<Connection> connectionForFunction;
     private final String tableName;
-    private final Map<String, Callable<CockroachDBFunctionInterface>> functions = new HashMap<>();
+    private final Map<String, Callable<CockroachDBFunction>> functions = new HashMap<>();
     private final Map<Integer, String> partitionHostMap = new HashMap<>();
 
     private class CockroachDBRange {
@@ -61,7 +60,7 @@ public class CockroachDBConnection implements ApiaryConnection {
         updatePartitionInfo();
     }
 
-    public void registerFunction(String name, Callable<CockroachDBFunctionInterface> function) {
+    public void registerFunction(String name, Callable<CockroachDBFunction> function) {
         functions.put(name, function);
     }
 
@@ -93,10 +92,10 @@ public class CockroachDBConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput callFunction(String name, Object... inputs) throws Exception {
-        CockroachDBFunctionInterface function = functions.get(name).call();
+        CockroachDBFunction function = functions.get(name).call();
         FunctionOutput f = null;
         try {
-            f = function.runFunction(inputs);
+            f = function.apiaryRunFunction(inputs);
             connectionForFunction.get().commit();
         } catch (Exception e) {
             e.printStackTrace();

@@ -13,7 +13,7 @@ import java.util.concurrent.Callable;
 public class SQLiteConnection implements ApiaryConnection {
 
     private final Connection c;
-    private final Map<String, Callable<SQLiteFunctionInterface>> functions = new HashMap<>();
+    private final Map<String, Callable<SQLiteFunction>> functions = new HashMap<>();
 
     public SQLiteConnection(Connection c) throws SQLException {
         this.c = c;
@@ -26,16 +26,16 @@ public class SQLiteConnection implements ApiaryConnection {
         s.close();
     }
 
-    public void registerFunction(String name, Callable<SQLiteFunctionInterface> function) {
+    public void registerFunction(String name, Callable<SQLiteFunction> function) {
         functions.put(name, function);
     }
 
     @Override
     public FunctionOutput callFunction(String name, Object... inputs) throws Exception {
-        SQLiteFunctionInterface function = functions.get(name).call();
+        SQLiteFunction function = functions.get(name).call();
         FunctionOutput f = null;
         try {
-            f = function.runFunction(inputs);
+            f = function.apiaryRunFunction(inputs);
             c.commit();
         } catch (Exception e) {
             e.printStackTrace();

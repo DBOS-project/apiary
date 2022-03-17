@@ -23,7 +23,7 @@ public class CockroachDBIncrementBenchmark {
 
     private static final int threadPoolSize = 256;
 
-    public static void benchmark(String cockroachAddr, Integer interval, Integer duration)
+    public static void benchmark(String cockroachAddr, String service, Integer interval, Integer duration)
             throws IOException, InterruptedException, ProcCallException, SQLException {
         PGSimpleDataSource ds = new PGSimpleDataSource();
         ds.setServerNames(new String[] { cockroachAddr });
@@ -46,7 +46,7 @@ public class CockroachDBIncrementBenchmark {
             long rStart = System.nanoTime();
             try {
                 String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
-                client.get().executeFunction(ctxt.getHostname(new Object[] { key }), "IncrementFunction", key);
+                client.get().executeFunction(ctxt.getHostname(new Object[] { key }), "IncrementFunction", service, key);
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
             }

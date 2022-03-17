@@ -10,19 +10,19 @@ import org.slf4j.LoggerFactory;
 public class BenchmarkingExecutable {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkingExecutable.class);
 
-    // Ignore the illegal reflective access warning from VoltDB.  TODO: Fix it later.
+    // Ignore the illegal reflective access warning from VoltDB. TODO: Fix it later.
     public static void main(String[] args) throws Exception {
         Options options = new Options();
         options.addOption("b", true, "Which Benchmark?");
         options.addOption("d", true, "Duration (sec)?");
         options.addOption("i", true, "Benchmark Interval (μs)");
+        options.addOption("mainHostAddr", true, "Address of the main host to connect to.");
         options.addOption("s", true, "Service Name");
-        options.addOption("voltdb", true, "VoltDB host name");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
 
-        int interval  = 1000;
+        int interval = 1000;
         if (cmd.hasOption("i")) {
             interval = Integer.parseInt(cmd.getOptionValue("i"));
         }
@@ -30,9 +30,9 @@ public class BenchmarkingExecutable {
         if (cmd.hasOption("d")) {
             duration = Integer.parseInt(cmd.getOptionValue("d"));
         }
-        String voltAddr = "localhost";
-        if (cmd.hasOption("voltdb")) {
-            voltAddr = cmd.getOptionValue("voltdb");
+        String mainHostAddr = "localhost";
+        if (cmd.hasOption("mainHostAddr")) {
+            mainHostAddr = cmd.getOptionValue("mainHostAddr");
         }
         String benchmark = cmd.getOptionValue("b");
         String service = benchmark;
@@ -41,10 +41,13 @@ public class BenchmarkingExecutable {
         }
         if (benchmark.equals("increment")) {
             logger.info("Increment Benchmark. Service: {}", service);
-            IncrementBenchmark.benchmark(voltAddr, service, interval, duration);
+            IncrementBenchmark.benchmark(mainHostAddr, service, interval, duration);
         } else if (benchmark.equals("retwis")) {
             logger.info("Retwis Benchmark");
-            RetwisBenchmark.benchmark(voltAddr, service, interval, duration);
+            RetwisBenchmark.benchmark(mainHostAddr, service, interval, duration);
+        } else if (benchmark.equals("cockroach-increment")) {
+            logger.info("CockroachDB Increment Benchmark");
+            CockroachDBIncrementBenchmark.benchmark(mainHostAddr, service, interval, duration);
         }
     }
 }

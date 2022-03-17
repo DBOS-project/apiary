@@ -23,44 +23,29 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class CockroachDBTests {
     private static final Logger logger = LoggerFactory.getLogger(CockroachDBTests.class);
 
-    public void createTestTables(PGSimpleDataSource dataSource) throws SQLException {
-        Connection conn = dataSource.getConnection();
-        conn.setAutoCommit(false);
-
-        Statement dropTable = conn.createStatement();
-        dropTable.execute("DROP TABLE IF EXISTS KVTable;");
-        dropTable.close();
-        // Without committing, the subsequent CREATE TABLE fails.
-        conn.commit();
-
-        Statement createTable = conn.createStatement();
-        createTable.execute("CREATE TABLE KVTable(KVKey integer NOT NULL, KVValue integer NOT NULL);");
-        createTable.close();
-        conn.commit();
-    }
-
     @Test
     public void testFibCockroachDB() throws Exception {
         logger.info("testFibCockroachDB");
 
-        // CockroachDBConnection is not currently thread-safe.
-        ApiaryWorker.numWorkerThreads = 1;
-
         try {
             PGSimpleDataSource ds = new PGSimpleDataSource();
-            ds.setServerNames(new String[]{"localhost"});
-            ds.setPortNumbers(new int[]{26257});
+            ds.setServerNames(new String[] { "localhost" });
+            ds.setPortNumbers(new int[] { 26257 });
             ds.setDatabaseName("test");
             ds.setUser("root");
             ds.setSsl(false);
 
-            createTestTables(ds);
+            CockroachDBConnection c = new CockroachDBConnection(ds, /* tableName= */"KVTable");
 
-            Connection conn = ds.getConnection();
-            CockroachDBConnection c = new CockroachDBConnection(conn, /*tableName=*/"KVTable");
+            c.dropAndCreateTable(/* tableName= */"KVTable",
+                    /* columnSpecStr= */"(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL)");
 
-            c.registerFunction("FibonacciFunction", () -> new CockroachDBFibonacciFunction(conn));
-            c.registerFunction("FibSumFunction", () -> new CockroachDBFibSumFunction(conn));
+            c.registerFunction("FibonacciFunction", () -> {
+                return new CockroachDBFibonacciFunction(c.getConnectionForFunction());
+            });
+            c.registerFunction("FibSumFunction", () -> {
+                return new CockroachDBFibSumFunction(c.getConnectionForFunction());
+            });
             ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
             worker.startServing();
 
@@ -79,10 +64,10 @@ public class CockroachDBTests {
 
             clientContext.close();
             worker.shutdown();
-            conn.close();
         } catch (PSQLException e) {
             e.printStackTrace();
             logger.info("No CockroachDB cluster!");
         }
+
     }
 }

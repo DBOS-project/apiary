@@ -11,7 +11,7 @@ public class CockroachDBFibSumFunction extends CockroachDBFunctionInterface {
     private final PreparedStatement addResult;
 
     public CockroachDBFibSumFunction(Connection c) throws SQLException {
-        this.addResult = c.prepareStatement("INSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?);");
+        this.addResult = c.prepareStatement("UPSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?);");
     }
 
     public String runFunction(String key, String str1, String str2) {

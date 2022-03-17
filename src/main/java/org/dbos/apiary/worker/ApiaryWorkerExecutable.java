@@ -37,6 +37,7 @@ public class ApiaryWorkerExecutable {
         String db = "voltdb";
         if (cmd.hasOption("db")) {
             db = cmd.getOptionValue("db");
+            logger.info("Using database: {}", db);
         }
         ApiaryConnection c;
         if (db.equals("voltdb")) {

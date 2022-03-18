@@ -63,12 +63,13 @@ public class BenchmarkTests {
     }
 
     @Test
-    public void testStatelessRetwis() throws IOException, InterruptedException {
+    public void testStatelessRetwis() throws IOException {
         logger.info("testStatelessRetwis");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(c, scheduler);
         worker.registerStatelessFunction("RetwisStatelessGetTimeline", RetwisStatelessGetTimeline::new);
+        worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
         worker.startServing();
 
         ZContext clientContext = new ZContext();

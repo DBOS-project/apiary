@@ -7,6 +7,7 @@ import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
 import org.apache.commons_voltpatches.cli.Options;
 import org.dbos.apiary.executor.ApiaryConnection;
+import org.dbos.apiary.procedures.voltdb.increment.IncrementStatelessDriver;
 import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
@@ -66,6 +67,7 @@ public class ApiaryWorkerExecutable {
         // Register all stateless functions for experiments.
         if (db.equals("voltdb")) {
             worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
+            worker.registerStatelessFunction("IncrementStatelessDriver", IncrementStatelessDriver::new);
         }
 
         worker.startServing();

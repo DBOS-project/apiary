@@ -16,10 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.*;
 import zmq.ZError;
 
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -41,18 +38,23 @@ public class ApiaryWorker {
 
     private final ApiaryConnection c;
     private final ApiaryScheduler scheduler;
-    private final ZContext zContext;
+    private final ZContext zContext = new ZContext(2);  // TODO: How many IO threads?
     private Thread serverThread;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
     private final ExecutorService reqThreadPool;
     private final ExecutorService statelessReqThreadPool;
     private final ExecutorService repThreadPool;
     private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
+    private final Set<ZContext> localContexts = ConcurrentHashMap.newKeySet();
+    private final ThreadLocal<ApiaryWorkerClient> localClients = ThreadLocal.withInitial(() -> {
+        ZContext context = ZContext.shadow(zContext);
+        localContexts.add(context);
+        return new ApiaryWorkerClient(context);
+    });
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
         this.c = c;
         this.scheduler = scheduler;
-        this.zContext = new ZContext(2);  // TODO: How many IO threads?
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
         statelessReqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new DispatcherPriorityQueue<>());
         repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
@@ -122,10 +124,8 @@ public class ApiaryWorker {
                 o = c.callFunction(name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();
-                ZContext z = ZContext.shadow(zContext);
-                f.setContext(new ApiaryStatelessFunctionContext(c, new ApiaryWorkerClient(z), service, statelessFunctions));
+                f.setContext(new ApiaryStatelessFunctionContext(c, localClients.get(), service, statelessFunctions));
                 o = f.apiaryRunFunction(arguments);
-                z.close(); // TODO: Find a better way to clean up these contexts instead of recreating them each time.
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -391,6 +391,7 @@ public class ApiaryWorker {
             repThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             statelessReqThreadPool.shutdown();
             statelessReqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            localContexts.forEach(ZContext::close);
             serverThread.interrupt();
             zContext.close();
             serverThread.join();

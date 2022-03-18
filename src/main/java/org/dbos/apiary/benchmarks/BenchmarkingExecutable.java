@@ -41,7 +41,10 @@ public class BenchmarkingExecutable {
         }
         if (benchmark.equals("increment")) {
             logger.info("Increment Benchmark. Service: {}", service);
-            IncrementBenchmark.benchmark(mainHostAddr, service, interval, duration);
+            IncrementBenchmark.benchmark(mainHostAddr, service, interval, duration, false);
+        } else if (benchmark.equals("stateless-increment")) {
+            logger.info("Stateless Increment Benchmark. Service: {}", service);
+            IncrementBenchmark.benchmark(mainHostAddr, service, interval, duration, true);
         } else if (benchmark.equals("retwis")) {
             logger.info("Retwis Benchmark");
             RetwisBenchmark.benchmark(mainHostAddr, service, interval, duration);

@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
+import org.dbos.apiary.procedures.voltdb.retwis.RetwisStatelessGetTimeline;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
 import org.dbos.apiary.worker.ApiaryWFQScheduler;
@@ -53,6 +54,42 @@ public class BenchmarkTests {
         res = client.executeFunction("localhost", "RetwisGetPosts", "defaultService", "0");
         assertEquals("hello0,hello1", res);
         res = client.executeFunction("localhost", "RetwisGetTimeline", "defaultService", "1");
+        assertEquals(3, res.split(",").length);
+        assertTrue(res.contains("hello0"));
+        assertTrue(res.contains("hello1"));
+        assertTrue(res.contains("hello2"));
+        clientContext.close();
+        worker.shutdown();
+    }
+
+    @Test
+    public void testStatelessRetwis() throws IOException, InterruptedException {
+        logger.info("testStatelessRetwis");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
+        ApiaryWorker worker = new ApiaryWorker(c, scheduler);
+        worker.registerStatelessFunction("RetwisStatelessGetTimeline", RetwisStatelessGetTimeline::new);
+        worker.startServing();
+
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+
+        String res;
+        res = client.executeFunction("localhost", "RetwisPost", "defaultService", "0", "0", "0", "hello0");
+        assertEquals("0", res);
+        res = client.executeFunction("localhost", "RetwisPost", "defaultService", "0", "1", "1", "hello1");
+        assertEquals("0", res);
+        res = client.executeFunction("localhost", "RetwisPost", "defaultService", "1", "2", "0", "hello2");
+        assertEquals("1", res);
+        res = client.executeFunction("localhost", "RetwisFollow", "defaultService", "1", "0");
+        assertEquals("1", res);
+        res = client.executeFunction("localhost", "RetwisFollow", "defaultService", "1", "1");
+        assertEquals("1", res);
+        res = client.executeFunction("localhost", "RetwisGetFollowees", "defaultService", "1");
+        assertEquals(2, res.split(",").length);
+        assertTrue(res.contains("0"));
+        assertTrue(res.contains("1"));
+        res = client.executeFunction("localhost", "RetwisStatelessGetTimeline", "defaultService", "1");
         assertEquals(3, res.split(",").length);
         assertTrue(res.contains("hello0"));
         assertTrue(res.contains("hello1"));

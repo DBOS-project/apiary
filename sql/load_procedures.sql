@@ -33,5 +33,8 @@ CREATE PROCEDURE PARTITION ON TABLE RetwisFollowees COLUMN UserID PARAMETER 0 FR
 DROP PROCEDURE RetwisGetTimeline IF EXISTS;
 CREATE PROCEDURE PARTITION ON TABLE RetwisFollowees COLUMN UserID PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisGetTimeline;
 
+DROP PROCEDURE RetwisGetFollowees IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE RetwisFollowees COLUMN UserID PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.retwis.RetwisGetFollowees;
+
 DROP PROCEDURE IncrementProcedure IF EXISTS;
 CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN KVKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.increment.IncrementProcedure;

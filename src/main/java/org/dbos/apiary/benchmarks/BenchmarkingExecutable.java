@@ -38,12 +38,13 @@ public class BenchmarkingExecutable {
         String service = benchmark;
         if (cmd.hasOption("s")) {
             service = cmd.getOptionValue("s");
+            logger.info("Service: {}", service);
         }
         if (benchmark.equals("increment")) {
-            logger.info("Increment Benchmark. Service: {}", service);
+            logger.info("Increment Benchmark");
             IncrementBenchmark.benchmark(mainHostAddr, service, interval, duration, false);
         } else if (benchmark.equals("stateless-increment")) {
-            logger.info("Stateless Increment Benchmark. Service: {}", service);
+            logger.info("Stateless Increment Benchmark");
             IncrementBenchmark.benchmark(mainHostAddr, service, interval, duration, true);
         } else if (benchmark.equals("retwis")) {
             logger.info("Retwis Benchmark");

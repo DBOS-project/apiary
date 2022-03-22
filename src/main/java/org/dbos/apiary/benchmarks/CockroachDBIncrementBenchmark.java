@@ -1,7 +1,6 @@
 package org.dbos.apiary.benchmarks;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.cockroachdb.CockroachDBConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -9,14 +8,13 @@ import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.voltdb.client.ProcCallException;
 import org.zeromq.*;
 
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 public class CockroachDBIncrementBenchmark {
@@ -26,7 +24,7 @@ public class CockroachDBIncrementBenchmark {
     private static final int numKeys = 100000;
 
     public static void benchmark(String cockroachAddr, String service, Integer interval, Integer duration)
-            throws IOException, InterruptedException, ProcCallException, SQLException {
+            throws SQLException {
         PGSimpleDataSource ds = new PGSimpleDataSource();
         ds.setServerNames(new String[] { cockroachAddr });
         ds.setPortNumbers(new int[] { ApiaryConfig.cockroachdbPort });
@@ -105,7 +103,7 @@ public class CockroachDBIncrementBenchmark {
             }
         }
 
-        long elapsedTime = (System.currentTimeMillis() - startTimeMs);
+        long elapsedTime = (System.currentTimeMillis() - startTimeMs) - threadWarmupMs;
         List<Long> queryTimes = trialTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
         int numQueries = queryTimes.size();
         long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;

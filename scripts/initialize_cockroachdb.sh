@@ -20,6 +20,14 @@ if [[ -z $(command -v cockroach) ]]; then
     cockroach init --insecure --host=localhost
 fi
 
+HOSTNAME="localhost"
+if [[ $# -eq 1 ]]; then
+    HOSTNAME="$1"
+elif [[ $# -gt 1 ]]; then
+    echo "Too many arguments!"
+    exit 1
+fi
+
 # Enter the root dir of the repo.
 cd ${SCRIPT_DIR}/../
 
@@ -35,8 +43,8 @@ mkdir -p cockroach-data/
 for i in "${!DB_PORTS[@]}"; do
     cockroach start \
         --insecure --store=cockroach-data/node$i\
-        --listen-addr=localhost:${DB_PORTS[i]}\
-        --http-addr=localhost:$((8080 + $i))\
+        --listen-addr=HOSTNAME:${DB_PORTS[i]}\
+        --http-addr=HOSTNAME:$((8080 + $i))\
         --join=$JOIN_STR\
         --background
 done

@@ -1,30 +1,30 @@
 package org.dbos.apiary.benchmarks;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-
+import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.cockroachdb.CockroachDBConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.voltdb.client.ProcCallException;
-import org.zeromq.ZContext;
+import org.zeromq.*;
 
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 public class CockroachDBIncrementBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(IncrementBenchmark.class);
 
-    private static final int threadPoolSize = 256;
+    private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
+    private static final int numKeys = 100000;
 
     public static void benchmark(String cockroachAddr, String service, Integer interval, Integer duration)
-            throws IOException, InterruptedException, ProcCallException, SQLException {
+            throws SQLException {
         PGSimpleDataSource ds = new PGSimpleDataSource();
         ds.setServerNames(new String[] { cockroachAddr });
         ds.setPortNumbers(new int[] { ApiaryConfig.cockroachdbPort });
@@ -35,43 +35,75 @@ public class CockroachDBIncrementBenchmark {
         CockroachDBConnection ctxt = new CockroachDBConnection(ds, "KVTable");
         ctxt.deleteEntriesFromTable(/* tableName= */"KVTable");
 
-        ZContext clientContext = new ZContext();
-        ThreadLocal<ApiaryWorkerClient> client = ThreadLocal
-                .withInitial(() -> new ApiaryWorkerClient(ZContext.shadow(clientContext)));
-
         Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
+        List<String> distinctHosts = ctxt.getPartitionHostMap().values().stream()
+                .distinct()
+                .collect(Collectors.toList());
 
-        final int numKeys = 100000;
-        Runnable r = () -> {
-            long rStart = System.nanoTime();
-            try {
-                String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
-                client.get().executeFunction(ctxt.getHostname(new Object[] { key }), "IncrementFunction", service, key);
-            } catch (InvalidProtocolBufferException e) {
-                e.printStackTrace();
-            }
-            trialTimes.add(System.nanoTime() - rStart);
-        };
 
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+        ZMQ.Poller poller = clientContext.createPoller(distinctHosts.size());
+        for (String hostname : distinctHosts) {
+            ZMQ.Socket socket = client.getSocket(hostname);
+            poller.register(socket, ZMQ.Poller.POLLIN);
+        }
         long startTimeMs = System.currentTimeMillis();
-        long endTimeMs = startTimeMs + (duration * 1000);
+        long endTimeMs = startTimeMs + (duration * 1000 + threadWarmupMs);
+        long lastSentTime = System.nanoTime();
+        int messagesSent = 0;
+        int messagesReceived = 0;
+        while (System.currentTimeMillis() < endTimeMs || messagesSent != messagesReceived) {
+            if ((System.currentTimeMillis() - startTimeMs) <= threadWarmupMs) {
+                // Clean up the arrays if still in warm up time.
+                trialTimes.clear();
+            }
+            int prs = poller.poll(0);
+            if (prs == -1) {
+                break;
+            }
 
-        ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
-        while (System.currentTimeMillis() < endTimeMs) {
-            long t = System.nanoTime();
-            threadPool.submit(r);
-            while (System.nanoTime() - t < interval.longValue() * 1000) {
-                // Busy-spin
+            // Handle reply from server.
+            for (int i = 0; i < poller.getSize(); i++) {
+                if (poller.pollin(i)) {
+                    try {
+                        String hostname = distinctHosts.get(i);
+                        ZMQ.Socket socket = client.getSocket(hostname);
+                        ZMsg msg = ZMsg.recvMsg(socket);
+                        ZFrame content = msg.getLast();
+                        assert (content != null);
+                        byte[] replyBytes = content.getData();
+                        msg.destroy();
+                        ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
+                        long senderTs = reply.getSenderTimestampNano();
+                        trialTimes.add(System.nanoTime() - senderTs);
+                        messagesReceived++;
+                    } catch (ZMQException e) {
+                        if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
+                            e.printStackTrace();
+                            break;
+                        } else {
+                            e.printStackTrace();
+                        }
+                    } catch (InvalidProtocolBufferException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            if (System.currentTimeMillis() < endTimeMs && System.nanoTime() - lastSentTime >= interval * 1000) {
+                // Send out a request.
+                String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
+                byte[] reqBytes;
+                reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementFunction", service, 0, 0, key);
+                ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[]{key}));
+                socket.send(reqBytes, 0);
+                lastSentTime = System.nanoTime();
+                messagesSent++;
             }
         }
-        threadPool.shutdown();
-        try {
-            threadPool.awaitTermination(10L, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
-        long elapsedTime = (System.currentTimeMillis() - startTimeMs);
+        long elapsedTime = (System.currentTimeMillis() - startTimeMs) - threadWarmupMs;
         List<Long> queryTimes = trialTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
         int numQueries = queryTimes.size();
         long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
@@ -80,9 +112,5 @@ public class CockroachDBIncrementBenchmark {
         long p99 = queryTimes.get((numQueries * 99) / 100);
         logger.info("Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime,
                 interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
-
-        threadPool.shutdown();
-        threadPool.awaitTermination(100000, TimeUnit.SECONDS);
-        logger.info("All queries finished! {}ms", System.currentTimeMillis() - startTimeMs);
     }
 }

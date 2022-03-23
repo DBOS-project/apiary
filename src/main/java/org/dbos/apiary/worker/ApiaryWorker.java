@@ -189,8 +189,8 @@ public class ApiaryWorker {
             this.address = address;
             try {
                 this.req = req;
-                this.priority = scheduler.getPriority(req.getService(),
-                        functionAverageRuntimesNs.getOrDefault(req.getName(), new AtomicDouble(defaultTimeNs)).longValue());
+                long runtime = functionAverageRuntimesNs.getOrDefault(req.getName(), new AtomicDouble(defaultTimeNs)).longValue();
+                this.priority = scheduler.getPriority(req.getService(), runtime);
             } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }

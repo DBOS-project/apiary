@@ -1,5 +1,6 @@
 package org.dbos.apiary.worker;
 
+import com.google.common.util.concurrent.AtomicDouble;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.ExecuteFunctionReply;
@@ -46,6 +47,11 @@ public class ApiaryWorker {
     private final ExecutorService repThreadPool;
     private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
     private final Set<ZContext> localContexts = ConcurrentHashMap.newKeySet();
+    private final Map<String, Deque<Long>> functionRuntimesNs = new ConcurrentHashMap<>();
+    private final Map<String, AtomicDouble> functionAverageRuntimesNs = new ConcurrentHashMap<>();
+    private final int runningAverageLength = 100;
+    private final List<Long> defaultQueue = new ArrayList<>();
+    private final Long defaultTimeNs = 100000L;
     private final ThreadLocal<ApiaryWorkerClient> localClients = ThreadLocal.withInitial(() -> {
         ZContext context = ZContext.shadow(zContext);
         localContexts.add(context);
@@ -58,6 +64,9 @@ public class ApiaryWorker {
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
         statelessReqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new DispatcherPriorityQueue<>());
         repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        for (int i = 0; i < runningAverageLength; i++) {
+            defaultQueue.add(defaultTimeNs);
+        }
     }
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
@@ -119,6 +128,7 @@ public class ApiaryWorker {
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
     private void executeFunction(String name, String service, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
         FunctionOutput o = null;
+        long tStart = System.nanoTime();
         try {
             if (!statelessFunctions.containsKey(name)) {
                 o = c.callFunction(name, arguments);
@@ -130,6 +140,7 @@ public class ApiaryWorker {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        long runtime = System.nanoTime() - tStart;
         assert (o != null);
         ApiaryTaskStash currTask = new ApiaryTaskStash(service, callerID, currTaskID, replyAddr, senderTimestampNano);
         if (o.stringOutput != null) {
@@ -160,6 +171,13 @@ public class ApiaryWorker {
                     .setSenderTimestampNano(senderTimestampNano).build();
             outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, rep.toByteArray()));
         }
+        // Record runtime.
+        functionRuntimesNs.putIfAbsent(name, new ConcurrentLinkedDeque<>(defaultQueue));
+        functionAverageRuntimesNs.putIfAbsent(name, new AtomicDouble((double) defaultTimeNs));
+        Deque<Long> times = functionRuntimesNs.get(name);
+        times.offerFirst(runtime);
+        long old = times.pollLast();
+        functionAverageRuntimesNs.get(name).getAndAdd(((double) (runtime - old)) / runningAverageLength);
     }
 
     private class RequestRunnable implements Runnable, Comparable<RequestRunnable> {
@@ -171,7 +189,8 @@ public class ApiaryWorker {
             this.address = address;
             try {
                 this.req = req;
-                this.priority = scheduler.getPriority(req);
+                this.priority = scheduler.getPriority(req.getService(),
+                        functionAverageRuntimesNs.getOrDefault(req.getName(), new AtomicDouble(defaultTimeNs)).longValue());
             } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }

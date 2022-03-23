@@ -33,7 +33,7 @@ public class BenchmarkTests {
         logger.info("testRetwis");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
-        ApiaryWorker worker = new ApiaryWorker(c, scheduler);
+        ApiaryWorker worker = new ApiaryWorker(c, scheduler, 128);
         worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
         worker.startServing();
 
@@ -67,7 +67,7 @@ public class BenchmarkTests {
         logger.info("testStatelessRetwis");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
-        ApiaryWorker worker = new ApiaryWorker(c, scheduler);
+        ApiaryWorker worker = new ApiaryWorker(c, scheduler, 128);
         worker.registerStatelessFunction("RetwisStatelessGetTimeline", RetwisStatelessGetTimeline::new);
         worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
         worker.startServing();
@@ -104,7 +104,7 @@ public class BenchmarkTests {
         logger.info("testIncrement");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
-        ApiaryWorker worker = new ApiaryWorker(c, scheduler);
+        ApiaryWorker worker = new ApiaryWorker(c, scheduler, 128);
         worker.startServing();
 
         ZContext clientContext = new ZContext();

@@ -12,10 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 
-import java.sql.Connection;
-import java.sql.Statement;
-import java.sql.SQLException;
-
 import org.postgresql.ds.PGSimpleDataSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,7 +42,7 @@ public class CockroachDBTests {
             c.registerFunction("FibSumFunction", () -> {
                 return new CockroachDBFibSumFunction(c.getConnectionForFunction());
             });
-            ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler());
+            ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
             worker.startServing();
 
             ZContext clientContext = new ZContext();

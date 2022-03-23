@@ -30,6 +30,7 @@ public class ApiaryWorkerExecutable {
         options.addOption("db", true,
                 "The db used by this worker. Can be one of (voltdb, cockroachdb). Defaults to voltdb.");
         options.addOption("s", true, "Which Scheduler?");
+        options.addOption("t", true, "How many worker threads?  Defaults to 128.");
         options.addOption("cockroachdbAddr", true, "Address of the CockroachDB server (e.g. localhost or ip addr).");
 
         CommandLineParser parser = new DefaultParser();
@@ -62,7 +63,12 @@ public class ApiaryWorkerExecutable {
                 scheduler = new ApiaryNaiveScheduler();
             }
         }
-        ApiaryWorker worker = new ApiaryWorker(c, scheduler);
+        int numThreads = 128;
+        if (cmd.hasOption("t")) {
+            numThreads = Integer.parseInt(cmd.getOptionValue("t"));
+        }
+        logger.info("{} worker threads", numThreads);
+        ApiaryWorker worker = new ApiaryWorker(c, scheduler, numThreads);
 
         // Register all stateless functions for experiments.
         if (db.equals("voltdb")) {

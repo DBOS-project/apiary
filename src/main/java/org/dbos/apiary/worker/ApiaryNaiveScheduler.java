@@ -5,7 +5,7 @@ import org.dbos.apiary.ExecuteFunctionRequest;
 public class ApiaryNaiveScheduler implements ApiaryScheduler {
 
     @Override
-    public long getPriority(ExecuteFunctionRequest req) {
+    public long getPriority(String service, long runtime) {
         return System.nanoTime();
     }
 

@@ -35,8 +35,6 @@ public class ApiaryWorker {
     private final Deque<OutgoingMsg> outgoingReqMsgQueue = new ConcurrentLinkedDeque<>();
     private final Deque<OutgoingMsg> outgoingReplyMsgQueue = new ConcurrentLinkedDeque<>();
 
-    public static int numWorkerThreads = 128;
-
     private final ApiaryConnection c;
     private final ApiaryScheduler scheduler;
     private final ZContext zContext = new ZContext(2);  // TODO: How many IO threads?
@@ -58,7 +56,7 @@ public class ApiaryWorker {
         return new ApiaryWorkerClient(context);
     });
 
-    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler) {
+    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads) {
         this.c = c;
         this.scheduler = scheduler;
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);

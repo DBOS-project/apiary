@@ -9,7 +9,7 @@ import java.lang.reflect.InvocationTargetException;
 
 import static org.dbos.apiary.utilities.ApiaryConfig.defaultPkey;
 
-public class InferenceFunction extends VoltApiaryProcedure {
+public class MnistInferenceFunction extends VoltApiaryProcedure {
 
     public final SQLStmt getData = new SQLStmt(
             "SELECT * FROM MnistData ORDER BY ID;"
@@ -46,7 +46,7 @@ public class InferenceFunction extends VoltApiaryProcedure {
         ApiaryFuture classifications = funcApi.apiaryQueueFunction("infer", defaultPkey, data);
         
         // Queue insertion back into DB
-        funcApi.apiaryQueueFunction("InsertMnistFunction", defaultPkey, classifications);
+        funcApi.apiaryQueueFunction("MnistInsertFunction", defaultPkey, classifications);
         
         return classifications;
     }

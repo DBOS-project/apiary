@@ -119,7 +119,7 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost:8000", "InsertDummyMnistData", 0, "dummy value");
+        res = client.executeFunction("localhost:8000", "MnistInsertDummyData", 0, "dummy value");
 
         clientContext.close();
         worker.shutdown();
@@ -138,7 +138,7 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost:8000", "InferenceFunction", 0, "dummy value");
+        res = client.executeFunction("localhost:8000", "MnistInferenceFunction", 0, "dummy value");
 
         clientContext.close();
         worker.shutdown();

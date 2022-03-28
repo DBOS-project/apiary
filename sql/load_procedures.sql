@@ -18,11 +18,11 @@ CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS o
 DROP PROCEDURE InsertFunction IF EXISTS;
 CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.InsertFunction;
 
-DROP PROCEDURE InferenceFunction IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE MnistData COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.InferenceFunction;
+DROP PROCEDURE MnistInferenceFunction IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE MnistData COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.MnistInferenceFunction;
 
-DROP PROCEDURE InsertMnistFunction IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE MnistClassifications COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.InsertMnistFunction;
+DROP PROCEDURE MnistInsertFunction IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE MnistClassifications COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.MnistInsertFunction;
 
-DROP PROCEDURE InsertDummyMnistData IF EXISTS;
-CREATE PROCEDURE PARTITION ON TABLE MnistData COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.InsertDummyMnistData;
+DROP PROCEDURE MnistInsertDummyData IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE MnistData COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.MnistInsertDummyData;

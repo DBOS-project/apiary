@@ -7,13 +7,14 @@ import random
 TCP_IP = "localhost"
 TCP_PORT = 6666
 BUFFER_SIZE = 1024
+MODEL = "mnist"
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind((TCP_IP, TCP_PORT))
 s.listen(1)
 
 print("Loading pre-trained model...")
-model = tf.keras.models.load_model("mnist_model")
+model = tf.keras.models.load_model("models/" + MODEL)
 print("Finished loading model.\n")
 
 print("Waiting for client...")

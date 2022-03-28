@@ -6,11 +6,11 @@ import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class InsertDummyMnistData extends VoltApiaryProcedure {
+public class ImagenetInsertDummyData extends VoltApiaryProcedure {
 
     public final SQLStmt insertData = new SQLStmt(
             // PKEY, ID, IMAGE
-            "UPSERT INTO MnistData VALUES (?, ?, ?);"
+            "UPSERT INTO ImagenetData VALUES (?, ?, ?);"
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {

@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 public class CockroachDBIncrementBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(IncrementBenchmark.class);
 
-    private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
+    private static final int threadWarmupMs = 5000; // First 5 seconds of request would be warm-up requests.
     private static final int numKeys = 100000;
 
     public static void benchmark(String cockroachAddr, String service, Integer interval, Integer duration)
@@ -34,12 +34,12 @@ public class CockroachDBIncrementBenchmark {
 
         CockroachDBConnection ctxt = new CockroachDBConnection(ds, "KVTable");
         ctxt.deleteEntriesFromTable(/* tableName= */"KVTable");
+        ctxt.seedKVTable(/* numRows= */ 10000);
 
         Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
         List<String> distinctHosts = ctxt.getPartitionHostMap().values().stream()
                 .distinct()
                 .collect(Collectors.toList());
-
 
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
@@ -79,7 +79,8 @@ public class CockroachDBIncrementBenchmark {
                         trialTimes.add(System.nanoTime() - senderTs);
                         messagesReceived++;
                     } catch (ZMQException e) {
-                        if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
+                        if (e.getErrorCode() == ZMQ.Error.ETERM.getCode()
+                                || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                             e.printStackTrace();
                             break;
                         } else {
@@ -96,7 +97,7 @@ public class CockroachDBIncrementBenchmark {
                 String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
                 byte[] reqBytes;
                 reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementFunction", service, 0, 0, key);
-                ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[]{key}));
+                ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[] { key }));
                 socket.send(reqBytes, 0);
                 lastSentTime = System.nanoTime();
                 messagesSent++;

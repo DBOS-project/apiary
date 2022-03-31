@@ -5,6 +5,7 @@ import org.dbos.apiary.executor.FunctionOutput;
 import org.postgresql.ds.PGSimpleDataSource;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -71,6 +72,20 @@ public class CockroachDBConnection implements ApiaryConnection {
         Statement deleteEntries = conn.createStatement();
         deleteEntries.execute(String.format("DELETE FROM %s WHERE 1=1;", tableName));
         deleteEntries.close();
+    }
+
+    public void seedKVTable(int numRows) throws SQLException {
+        logger.info(String.format("Seeding data into KVTable."));
+        Connection conn = ds.getConnection();
+
+        String insertSql = "UPSERT INTO KVTable VALUES (?, ?)";
+        PreparedStatement pstmt = conn.prepareStatement(insertSql);
+        for (int i = 0; i < numRows; i++) {
+            pstmt.setInt(1, i);
+            pstmt.setInt(2, (int) (Math.random() * 10000));
+            pstmt.addBatch();
+        }
+        pstmt.executeBatch();        
     }
 
     public void dropAndCreateTable(String tableName, String columnSpecStr) throws SQLException {

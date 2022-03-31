@@ -77,7 +77,7 @@ public class CockroachDBConnection implements ApiaryConnection {
     public void seedKVTable(int numRows) throws SQLException {
         logger.info(String.format("Seeding data into KVTable."));
         Connection conn = ds.getConnection();
-
+        conn.setAutoCommit(false);
         String insertSql = "UPSERT INTO KVTable VALUES (?, ?)";
         PreparedStatement pstmt = conn.prepareStatement(insertSql);
         for (int i = 0; i < numRows; i++) {
@@ -85,7 +85,8 @@ public class CockroachDBConnection implements ApiaryConnection {
             pstmt.setInt(2, (int) (Math.random() * 10000));
             pstmt.addBatch();
         }
-        pstmt.executeBatch();        
+        pstmt.executeBatch();
+        conn.commit();
     }
 
     public void dropAndCreateTable(String tableName, String columnSpecStr) throws SQLException {

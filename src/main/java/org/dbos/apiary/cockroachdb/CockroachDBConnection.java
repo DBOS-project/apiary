@@ -81,8 +81,8 @@ public class CockroachDBConnection implements ApiaryConnection {
         String insertSql = "UPSERT INTO KVTable VALUES (?, ?)";
         PreparedStatement pstmt = conn.prepareStatement(insertSql);
         for (int i = 0; i < numRows; i++) {
-            pstmt.setInt(1, i);
-            pstmt.setInt(2, (int) (Math.random() * 10000));
+            pstmt.setInt(1, (int) (Math.random() * Integer.MAX_VALUE));
+            pstmt.setInt(2, (int) (Math.random() * Integer.MAX_VALUE));
             pstmt.addBatch();
         }
         pstmt.executeBatch();

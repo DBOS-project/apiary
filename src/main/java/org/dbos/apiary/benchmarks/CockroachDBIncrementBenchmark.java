@@ -33,7 +33,7 @@ public class CockroachDBIncrementBenchmark {
         ds.setSsl(false);
 
         CockroachDBConnection ctxt = new CockroachDBConnection(ds, "KVTable");
-        ctxt.deleteEntriesFromTable(/* tableName= */"KVTable");
+        // ctxt.deleteEntriesFromTable(/* tableName= */"KVTable");
         ctxt.seedKVTable(/* numRows= */ 10000);
 
         Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();

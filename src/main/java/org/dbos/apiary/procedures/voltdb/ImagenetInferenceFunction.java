@@ -4,6 +4,7 @@ import org.dbos.apiary.interposition.ApiaryFuture;
 import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
+import org.voltdb.VoltTableRow;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -12,38 +13,26 @@ import static org.dbos.apiary.utilities.ApiaryConfig.defaultPkey;
 public class ImagenetInferenceFunction extends VoltApiaryProcedure {
 
     public final SQLStmt getData = new SQLStmt(
-            "SELECT * FROM ImagenetData ORDER BY ID;"
+            "SELECT * FROM ImagenetData WHERE ID=?;"
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
         return super.run(pkey, voltInput);
     }
 
-    public ApiaryFuture runFunction(String dummyInput) {
+    public ApiaryFuture runFunction(String stringId) {
+
+        int id = Integer.parseInt(stringId);
         
         // Grab data and extract from VoltTable
-        VoltTable res = ((VoltTable[]) funcApi.apiaryExecuteQuery(getData))[0];
+        VoltTable res = ((VoltTable[]) funcApi.apiaryExecuteQuery(getData, id))[0];
 
-        StringBuilder sb = new StringBuilder();
+        VoltTableRow row = res.fetchRow(0);
+        byte[] data = row.getVarbinary("IMAGE");
+        String dataString = new String(data);
 
-        for (int i = 0; i < res.getRowCount(); i++) {
-            String image = res.fetchRow(i).getString("IMAGE");
-            sb.append(image);
-            sb.append("&");
-        }
-
-        // Remove last &
-        if (sb.length() > 0) {
-            sb.setLength(sb.length() - 1);
-        }
-
-        // Append ~
-        sb.append("~");
-
-        String data = sb.toString();
-        
         // Queue stateless external function
-        ApiaryFuture classifications = funcApi.apiaryQueueFunction("infer", defaultPkey, data);
+        ApiaryFuture classifications = funcApi.apiaryQueueFunction("infer", defaultPkey, dataString);
         
         // Queue insertion back into DB
         funcApi.apiaryQueueFunction("ImagenetInsertFunction", defaultPkey, classifications);

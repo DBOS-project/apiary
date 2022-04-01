@@ -1,5 +1,7 @@
 package org.dbos.apiary.procedures.voltdb;
 
+import java.util.Random;
+
 import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -19,29 +21,9 @@ public class ImagenetInsertDummyData extends VoltApiaryProcedure {
 
     public String runFunction(String dummyInput) {
 
-        StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < 784; i++) {
-            // Pick a number idk
-            int character;
-            if (i / 28 < 5 || 22 < i / 28) {
-                character = 0;
-            } else if (i % 28 < 5 || 22 < i % 28) {
-                character = 0;
-            } else {
-                character = (i * 37) % 256;
-            }
-
-            sb.append(String.valueOf(character));
-            sb.append(",");
-        }
-
-        // Remove last ,
-        if (sb.length() > 0) {
-            sb.setLength(sb.length() - 1);
-        }
-
-        String data = sb.toString();
+        // TODO
+        byte[] data = new byte[224*224*3];
+        new Random().nextBytes(data);
 
         for (int i = 0; i < 200; i++) {
             funcApi.apiaryExecuteUpdate(insertData, 0, i, data);

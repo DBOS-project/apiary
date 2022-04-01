@@ -109,8 +109,8 @@ public class WorkerTests {
 
     /*
     @Test
-    public void testInsertData() throws IOException, InterruptedException {
-        logger.info("testInsertData");
+    public void testMnistInsertData() throws IOException, InterruptedException {
+        logger.info("testMnistInsertData");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
         worker.startServing();
@@ -124,11 +124,10 @@ public class WorkerTests {
         clientContext.close();
         worker.shutdown();
     }
-    */
 
     @Test
-    public void testInfer() throws IOException, InterruptedException {
-        logger.info("testInfer");
+    public void testMnistInfer() throws IOException, InterruptedException {
+        logger.info("testMnistInfer");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
         worker.registerStatelessFunction("infer", Infer::new);
@@ -139,6 +138,44 @@ public class WorkerTests {
 
         String res;
         res = client.executeFunction("localhost:8000", "MnistInferenceFunction", 0, "dummy value");
+
+        clientContext.close();
+        worker.shutdown();
+    }
+    */
+
+    /*
+    @Test
+    public void testImagenetInsertData() throws IOException, InterruptedException {
+        logger.info("testImagenetInsertData");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        worker.startServing();
+
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+
+        String res;
+        res = client.executeFunction("localhost:8000", "ImagenetInsertDummyData", 0, "dummy value");
+
+        clientContext.close();
+        worker.shutdown();
+    }
+    */
+
+    @Test
+    public void testImagenetInfer() throws IOException, InterruptedException {
+        logger.info("testImagenetInfer");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(8000, c, Map.of(0L, "localhost:8000"), 1);
+        worker.registerStatelessFunction("infer", Infer::new);
+        worker.startServing();
+
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+
+        String res;
+        res = client.executeFunction("localhost:8000", "ImagenetInferenceFunction", 0, "0");
 
         clientContext.close();
         worker.shutdown();

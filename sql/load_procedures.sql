@@ -26,3 +26,12 @@ CREATE PROCEDURE PARTITION ON TABLE MnistClassifications COLUMN PKey PARAMETER 0
 
 DROP PROCEDURE MnistInsertDummyData IF EXISTS;
 CREATE PROCEDURE PARTITION ON TABLE MnistData COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.MnistInsertDummyData;
+
+DROP PROCEDURE ImagenetInferenceFunction IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE ImagenetData COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.ImagenetInferenceFunction;
+
+DROP PROCEDURE ImagenetInsertFunction IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE ImagenetClassifications COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.ImagenetInsertFunction;
+
+DROP PROCEDURE ImagenetInsertDummyData IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE ImagenetData COLUMN PKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.ImagenetInsertDummyData;

@@ -89,6 +89,7 @@ public class CockroachDBConnection implements ApiaryConnection {
                 pstmt.addBatch();
             }
             pstmt.executeBatch();
+            i += batchSize;
         }
         conn.commit();
     }

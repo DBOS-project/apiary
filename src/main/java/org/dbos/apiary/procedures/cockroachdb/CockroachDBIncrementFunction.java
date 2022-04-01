@@ -17,18 +17,23 @@ public class CockroachDBIncrementFunction extends CockroachDBFunction {
         this.updateValue = c.prepareStatement("UPSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?);");
     }
 
-    public String runFunction(String keyString) {
-        int key = Integer.parseInt(keyString);
-        ResultSet r = (ResultSet) context.apiaryExecuteQuery(getValue, key);
+    public String runFunction(String keyString1, String keyString2) {
+        int key1 = Integer.parseInt(keyString1);
+        int key2 = Integer.parseInt(keyString2);
+        ResultSet r1 = (ResultSet) context.apiaryExecuteQuery(getValue, key1);
+        ResultSet r2 = (ResultSet) context.apiaryExecuteQuery(getValue, key2);
         int nextValue = 0;
         try {
-            if (r.next()) {
-                nextValue = r.getInt(1) + 1;
+            if (r1.next()) {
+                nextValue += r1.getInt(1);
+            }
+            if (r2.next()) {
+                nextValue += r2.getInt(1);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        context.apiaryExecuteUpdate(updateValue, key, nextValue);
+        context.apiaryExecuteUpdate(updateValue, key1, nextValue);
         return String.valueOf(nextValue);
     }
 }

@@ -94,10 +94,11 @@ public class CockroachDBIncrementBenchmark {
 
             if (System.currentTimeMillis() < endTimeMs && System.nanoTime() - lastSentTime >= interval * 1000) {
                 // Send out a request.
-                String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
+                String key1 = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
+                String key2 = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
                 byte[] reqBytes;
-                reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementFunction", service, 0, 0, key);
-                ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[] { key }));
+                reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementFunction", service, 0, 0, key1, key2);
+                ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[] { key1 }));
                 socket.send(reqBytes, 0);
                 lastSentTime = System.nanoTime();
                 messagesSent++;

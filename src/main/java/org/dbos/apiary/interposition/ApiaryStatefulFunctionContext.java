@@ -6,6 +6,9 @@ import java.lang.reflect.InvocationTargetException;
 
 public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContext {
 
+    public ApiaryStatefulFunctionContext(ProvenanceBuffer provBuff, String service, long execID) {
+        super(provBuff, service, execID);
+    }
     /** Public Interface for functions. **/
 
     public abstract FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs);
@@ -25,5 +28,7 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
     /** Abstract and require implementation. **/
     protected abstract void internalExecuteUpdate(Object procedure, Object... input);
     protected abstract Object internalExecuteQuery(Object procedure, Object... input);
+
+    public abstract long getTransactionId();
 
 }

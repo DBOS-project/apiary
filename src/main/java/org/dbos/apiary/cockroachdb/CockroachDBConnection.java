@@ -2,6 +2,7 @@ package org.dbos.apiary.cockroachdb;
 
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
+import org.dbos.apiary.interposition.ProvenanceBuffer;
 import org.postgresql.ds.PGSimpleDataSource;
 
 import java.sql.Connection;
@@ -111,11 +112,11 @@ public class CockroachDBConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String name, Object... inputs) throws Exception {
+    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, String name, Object... inputs) throws Exception {
         CockroachDBFunction function = functions.get(name).call();
         FunctionOutput f = null;
         try {
-            f = function.apiaryRunFunction(new CockroachDBFunctionContext(), inputs);
+            f = function.apiaryRunFunction(new CockroachDBFunctionContext(provBuff, service, execID), inputs);
             connectionForFunction.get().commit();
         } catch (Exception e) {
             e.printStackTrace();

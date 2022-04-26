@@ -43,7 +43,7 @@ public class ApiaryWorkerClient {
             return socket;
         }
     }
-    public static byte[] serializeExecuteRequest(String name, String service, long callerID, int taskID, Object... arguments) {
+    public static byte[] serializeExecuteRequest(String name, String service, long execID, long callerID, int taskID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
         for (Object o: arguments) {
@@ -70,15 +70,16 @@ public class ApiaryWorkerClient {
                 .setCallerId(callerID)
                 .setTaskId(taskID)
                 .setService(service)
+                .setExecutionId(execID)
                 .setSenderTimestampNano(sendTime)
                 .build();
         return req.toByteArray();
     }
 
     // Synchronous blocking invocation, supposed to be used by client/loadgen.
-    public FunctionOutput executeFunction(String address, String name, String service, Object... arguments) throws InvalidProtocolBufferException {
+    public FunctionOutput executeFunction(String address, String name, String service, long execID, Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
-        byte[] reqBytes = serializeExecuteRequest(name, service, 0L, 0, arguments);
+        byte[] reqBytes = serializeExecuteRequest(name, service, execID, 0L, 0, arguments);
         socket.send(reqBytes, 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);

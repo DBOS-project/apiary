@@ -10,6 +10,7 @@ import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
 import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryStatelessFunctionContext;
+import org.dbos.apiary.interposition.ProvenanceBuffer;
 import org.dbos.apiary.interposition.StatelessFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
@@ -58,7 +59,13 @@ public class ApiaryWorker {
         return new ApiaryWorkerClient(context);
     });
 
+    private final ProvenanceBuffer provenanceBuffer;
+
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads) {
+        this(c, scheduler, numWorkerThreads, "localhost");
+    }
+
+    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads, String olapAddress) {
         this.c = c;
         this.scheduler = scheduler;
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
@@ -67,6 +74,18 @@ public class ApiaryWorker {
         for (int i = 0; i < runningAverageLength; i++) {
             defaultQueue.add(defaultTimeNs);
         }
+
+        ProvenanceBuffer tempBuffer = null;
+        try {
+            tempBuffer = new ProvenanceBuffer(olapAddress);
+            if (tempBuffer.conn.get() == null) {
+                // No vertica connection.
+                tempBuffer = null;
+            }
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        provenanceBuffer = tempBuffer;
     }
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
@@ -86,7 +105,7 @@ public class ApiaryWorker {
                     }
                     String address = statelessFunctions.containsKey(subtask.funcName) ? c.getPartitionHostMap().get(0) : c.getHostname(subtask.input); // TODO: Fix hack, use local hostname.
                     // Push to the outgoing queue.
-                    byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currCallerID, subtask.taskID, subtask.input);
+                    byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currCallerID, subtask.taskID, subtask.input);
                     outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
                 }
                 numTraversed++;
@@ -133,15 +152,15 @@ public class ApiaryWorker {
     }
 
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
-    private void executeFunction(String name, String service, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
+    private void executeFunction(String name, String service, long execID, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {
             if (!statelessFunctions.containsKey(name)) {
-                o = c.callFunction(name, arguments);
+                o = c.callFunction(provenanceBuffer, service, execID, name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();
-                ApiaryFunctionContext ctxt = new ApiaryStatelessFunctionContext(c, localClients.get(), service, statelessFunctions);
+                ApiaryFunctionContext ctxt = new ApiaryStatelessFunctionContext(c, localClients.get(), provenanceBuffer, service, execID, statelessFunctions);
                 o = f.apiaryRunFunction(ctxt, arguments);
             }
         } catch (Exception e) {
@@ -149,7 +168,7 @@ public class ApiaryWorker {
         }
         long runtime = System.nanoTime() - tStart;
         assert (o != null);
-        ApiaryTaskStash currTask = new ApiaryTaskStash(service, callerID, currTaskID, replyAddr, senderTimestampNano);
+        ApiaryTaskStash currTask = new ApiaryTaskStash(service, execID, callerID, currTaskID, replyAddr, senderTimestampNano);
         currTask.output = o.output;
 
         // Store tasks in the list and async invoke all sub-tasks that are ready.
@@ -215,6 +234,7 @@ public class ApiaryWorker {
                 List<Integer> argumentTypes = req.getArgumentTypesList();
                 long callerID = req.getCallerId();
                 int currTaskID = req.getTaskId();
+                long execID = req.getExecutionId();
                 Object[] arguments = new Object[byteArguments.size()];
                 for (int i = 0; i < arguments.length; i++) {
                     byte[] byteArray = byteArguments.get(i).toByteArray();
@@ -227,7 +247,7 @@ public class ApiaryWorker {
                         arguments[i] = Utilities.byteArrayToStringArray(byteArray);
                     }
                 }
-                executeFunction(req.getName(), req.getService(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
+                executeFunction(req.getName(), req.getService(), execID, callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
             } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }

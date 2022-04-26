@@ -20,12 +20,14 @@ public class ApiaryTaskStash {
     public final AtomicInteger numFinishedTasks = new AtomicInteger(0);
     public final long senderTimestampNano;
     public final String service;
+    public final long execId;
 
     public int totalQueuedTasks;
     public Object output;
 
-    public ApiaryTaskStash(String service, long callerId, int currTaskId, ZFrame replyAddr, long senderTimestampNano) {
+    public ApiaryTaskStash(String service, long execId, long callerId, int currTaskId, ZFrame replyAddr, long senderTimestampNano) {
         this.service = service;
+        this.execId = execId;
         this.callerId = callerId;
         this.currTaskId = currTaskId;
         this.replyAddr = replyAddr;

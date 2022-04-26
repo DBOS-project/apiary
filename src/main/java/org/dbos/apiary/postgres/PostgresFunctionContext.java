@@ -4,18 +4,19 @@ import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.interposition.ApiaryFunction;
 import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
+import org.dbos.apiary.interposition.ProvenanceBuffer;
 
 import java.lang.reflect.InvocationTargetException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Savepoint;
+import java.sql.*;
 
 public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     // This connection ties to all prepared statements in one transaction.
     private final Connection conn;
 
-    public PostgresFunctionContext(Connection c) { this.conn= c; }
+    public PostgresFunctionContext(Connection c, ProvenanceBuffer provBuff, String service, long execID) {
+        super(provBuff, service, execID);
+        this.conn= c;
+    }
 
     @Override
     public FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
@@ -83,5 +84,22 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
             e.printStackTrace();
             return null;
         }
+    }
+
+    @Override
+    public long getTransactionId() {
+        long txid = 0l;
+        try {
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("select txid_current();");
+            while (rs.next()) {
+                txid = rs.getLong(1);
+                break;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0l;
+        }
+        return txid;
     }
 }

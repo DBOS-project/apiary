@@ -12,14 +12,13 @@ public class ApiaryStatelessFunctionContext extends ApiaryFunctionContext {
 
     private final ApiaryConnection c;
     private final ApiaryWorkerClient client;
-    private final String service;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions;
 
-    public ApiaryStatelessFunctionContext(ApiaryConnection c, ApiaryWorkerClient client, String service, Map<String, Callable<StatelessFunction>> statelessFunctions) {
+    public ApiaryStatelessFunctionContext(ApiaryConnection c, ApiaryWorkerClient client, ProvenanceBuffer provBuff, String service, long execID, Map<String, Callable<StatelessFunction>> statelessFunctions) {
+        super(provBuff, service, execID);
         this.client = client;
         this.statelessFunctions = statelessFunctions;
         this.c = c;
-        this.service = service;
     }
 
     @Override
@@ -35,7 +34,7 @@ public class ApiaryStatelessFunctionContext extends ApiaryFunctionContext {
             return f.apiaryRunFunction(ctxt, inputs);
         } else {
             try {
-                return client.executeFunction(c.getHostname(inputs), name, service, inputs);
+                return client.executeFunction(c.getHostname(inputs), name, service, execID, inputs);
             } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
                 return null;

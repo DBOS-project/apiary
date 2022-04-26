@@ -1,6 +1,7 @@
 package org.dbos.apiary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.dbos.apiary.interposition.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.PostgresFibSumFunction;
 import org.dbos.apiary.procedures.postgres.PostgresFibonacciFunction;
@@ -37,7 +38,7 @@ public class PostgresTests {
     }
 
     @Test
-    public void testFibPostgres() throws InvalidProtocolBufferException {
+    public void testFibPostgres() throws InvalidProtocolBufferException, InterruptedException {
         logger.info("testFibPostgres");
 
         PostgresConnection conn;
@@ -57,15 +58,17 @@ public class PostgresTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         int res;
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 1).getInt();
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 1l, 1).getInt();
         assertEquals(1, res);
 
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 6).getInt();
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 2l, 6).getInt();
         assertEquals(8, res);
 
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 10).getInt();
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 3l, 10).getInt();
         assertEquals(55, res);
 
+        // Should be able to see provenance data if Vertica is running.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
         clientContext.close();
         worker.shutdown();
 

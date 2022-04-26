@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 
 public class Utilities {
@@ -123,5 +125,9 @@ public class Utilities {
             }
         }
         return null;
+    }
+
+    public static long getMicroTimestamp() {
+        return ChronoUnit.MICROS.between(Instant.EPOCH, Instant.now());
     }
 }

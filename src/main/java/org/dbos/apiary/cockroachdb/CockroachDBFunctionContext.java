@@ -4,12 +4,17 @@ import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.interposition.ApiaryFunction;
 import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
+import org.dbos.apiary.interposition.ProvenanceBuffer;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
+
+    public CockroachDBFunctionContext(ProvenanceBuffer provBuff, String service, long execID) {
+        super(provBuff, service, execID);
+    }
 
     @Override
     public FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
@@ -60,5 +65,10 @@ public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
             e.printStackTrace();
             return null;
         }
+    }
+
+    @Override
+    public long getTransactionId() {
+        return 0;
     }
 }

@@ -1,5 +1,6 @@
 package org.dbos.apiary;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.PostgresFibSumFunction;
 import org.dbos.apiary.procedures.postgres.PostgresFibonacciFunction;
@@ -32,34 +33,37 @@ public class PostgresTests {
     }
 
     @Test
-    public void testFibPostgres() throws Exception {
+    public void testFibPostgres() throws InvalidProtocolBufferException {
         logger.info("testFibPostgres");
 
+        PostgresConnection ctxt = null;
         try {
-            PostgresConnection ctxt = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
-            ctxt.registerFunction("PostgresFibonacciFunction", PostgresFibonacciFunction::new);
-            ctxt.registerFunction("PostgresFibSumFunction", PostgresFibSumFunction::new);
-
-            ApiaryWorker worker = new ApiaryWorker(ctxt, new ApiaryNaiveScheduler(), 4);
-            worker.startServing();
-
-            ZContext clientContext = new ZContext();
-            ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
-
-            String res;
-            res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", "1");
-            assertEquals("1", res);
-
-            res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", "6");
-            assertEquals("8", res);
-
-            res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", "10");
-            assertEquals("55", res);
-
-            clientContext.close();
-            worker.shutdown();
+            ctxt = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
         } catch (Exception e) {
             logger.info("No Postgres instance!");
+            return;
         }
+        ctxt.registerFunction("PostgresFibonacciFunction", PostgresFibonacciFunction::new);
+        ctxt.registerFunction("PostgresFibSumFunction", PostgresFibSumFunction::new);
+
+        ApiaryWorker worker = new ApiaryWorker(ctxt, new ApiaryNaiveScheduler(), 4);
+        worker.startServing();
+
+        ZContext clientContext = new ZContext();
+        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+
+        String res;
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", "1");
+        assertEquals("1", res);
+
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", "6");
+        assertEquals("8", res);
+
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", "10");
+        assertEquals("55", res);
+
+        clientContext.close();
+        worker.shutdown();
+
     }
 }

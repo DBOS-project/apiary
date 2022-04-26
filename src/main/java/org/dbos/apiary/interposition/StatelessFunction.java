@@ -1,10 +1,5 @@
 package org.dbos.apiary.interposition;
 
-import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.utilities.Utilities;
-
-import java.lang.reflect.Method;
-
 public class StatelessFunction implements ApiaryFunction {
 
     private ApiaryFunctionContext context;

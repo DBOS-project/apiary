@@ -45,6 +45,7 @@ public class PostgresConnection implements ApiaryConnection {
             testConn.close();
         } catch (SQLException e) {
             logger.info("Failed to connect to Postgres");
+            throw new RuntimeException("Failed to connect to Postgres");
         }
     }
 

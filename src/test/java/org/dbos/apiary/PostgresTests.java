@@ -9,7 +9,6 @@ import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
@@ -22,10 +21,14 @@ public class PostgresTests {
     private static final Logger logger = LoggerFactory.getLogger(PostgresTests.class);
 
     @BeforeEach
-    public void resetTables() throws SQLException {
-        PostgresConnection ctxt = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
-        ctxt.createTable("KVTable", "(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL)");
-        ctxt.truncateTable("KVTable");
+    public void resetTables() {
+        try {
+            PostgresConnection ctxt = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+            ctxt.createTable("KVTable", "(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL)");
+            ctxt.truncateTable("KVTable");
+        } catch (Exception e) {
+            logger.info("Failed to connect to Postgres.");
+        }
     }
 
     @Test
@@ -55,7 +58,7 @@ public class PostgresTests {
 
             clientContext.close();
             worker.shutdown();
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             logger.info("No Postgres instance!");
         }
     }

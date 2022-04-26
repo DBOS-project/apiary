@@ -3,7 +3,6 @@ package org.dbos.apiary.postgres;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.postgresql.ds.PGSimpleDataSource;
-import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,8 +40,11 @@ public class PostgresConnection implements ApiaryConnection {
            }
            return null;
         });
-        if (this.connection.get() == null) {
-            throw new RuntimeException("Cannot connect to Postgres!");
+        try {
+            Connection testConn = ds.getConnection();
+            testConn.close();
+        } catch (SQLException e) {
+            logger.info("Failed to connect to Postgres");
         }
     }
 

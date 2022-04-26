@@ -36,17 +36,17 @@ public class PostgresTests {
     public void testFibPostgres() throws InvalidProtocolBufferException {
         logger.info("testFibPostgres");
 
-        PostgresConnection ctxt = null;
+        PostgresConnection conn;
         try {
-            ctxt = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
         } catch (Exception e) {
             logger.info("No Postgres instance!");
             return;
         }
-        ctxt.registerFunction("PostgresFibonacciFunction", PostgresFibonacciFunction::new);
-        ctxt.registerFunction("PostgresFibSumFunction", PostgresFibSumFunction::new);
+        conn.registerFunction("PostgresFibonacciFunction", PostgresFibonacciFunction::new);
+        conn.registerFunction("PostgresFibSumFunction", PostgresFibSumFunction::new);
 
-        ApiaryWorker worker = new ApiaryWorker(ctxt, new ApiaryNaiveScheduler(), 4);
+        ApiaryWorker worker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
         worker.startServing();
 
         ZContext clientContext = new ZContext();

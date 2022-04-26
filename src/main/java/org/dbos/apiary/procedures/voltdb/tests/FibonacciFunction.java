@@ -1,6 +1,7 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
 import org.dbos.apiary.interposition.ApiaryFuture;
+import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -22,7 +23,7 @@ public class FibonacciFunction extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public Object runFunction(String strKey) {
+    public Object runFunction(ApiaryStatefulFunctionContext context, String strKey) {
         int key = Integer.parseInt(strKey);
         if (key < 0) {
             return "";

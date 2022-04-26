@@ -1,5 +1,6 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
+import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
@@ -10,7 +11,7 @@ public class SynchronousCounter extends VoltProcedureContainer {
         return super.run(voltInput);
     }
 
-    public String runFunction(String keyString) {
+    public String runFunction(ApiaryStatefulFunctionContext context, String keyString) {
         int key = Integer.parseInt(keyString);
 
         VoltTable res = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];
@@ -20,8 +21,8 @@ public class SynchronousCounter extends VoltProcedureContainer {
         } else {
             value = 0;
         }
-        String incremented = (String) context.apiaryCallFunction("org.dbos.apiary.procedures.stateless.StatelessIncrement", Integer.toString(value));
-        context.apiaryCallFunction("org.dbos.apiary.procedures.voltdb.tests.InsertFunction", keyString, incremented);
+        String incremented = (String) context.apiaryCallFunction(context, "org.dbos.apiary.procedures.stateless.StatelessIncrement", Integer.toString(value));
+        context.apiaryCallFunction(context, "org.dbos.apiary.procedures.voltdb.tests.InsertFunction", keyString, incremented);
         return incremented;
     }
 }

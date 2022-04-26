@@ -6,27 +6,25 @@ import org.dbos.apiary.utilities.Utilities;
 import java.lang.reflect.Method;
 
 public interface ApiaryFunction {
-
-    ApiaryFunctionContext getContext();
-
-    void setContext(ApiaryFunctionContext context);
-
-    default FunctionOutput apiaryRunFunction(Object... input) {
+    default FunctionOutput apiaryRunFunction(ApiaryFunctionContext ctxt, Object... input) {
         // Use reflection to find internal runFunction.
         Method functionMethod = Utilities.getFunctionMethod(this, "runFunction");
         assert functionMethod != null;
         Object output;
+        Object[] contextInput = new Object[input.length + 1];
+        contextInput[0] = ctxt;
+        System.arraycopy(input, 0, contextInput, 1, input.length);
         try {
-            output = functionMethod.invoke(this, input);
+            output = functionMethod.invoke(this, contextInput);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
         if (output instanceof String) {
-            return getContext().getFunctionOutput((String) output);
+            return ctxt.getFunctionOutput((String) output);
         } else {
             assert (output instanceof ApiaryFuture);
-            return getContext().getFunctionOutput((ApiaryFuture) output);
+            return ctxt.getFunctionOutput((ApiaryFuture) output);
         }
     }
 }

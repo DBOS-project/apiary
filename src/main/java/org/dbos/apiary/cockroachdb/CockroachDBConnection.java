@@ -115,7 +115,7 @@ public class CockroachDBConnection implements ApiaryConnection {
         CockroachDBFunction function = functions.get(name).call();
         FunctionOutput f = null;
         try {
-            f = function.apiaryRunFunction(inputs);
+            f = function.apiaryRunFunction(new CockroachDBFunctionContext(), inputs);
             connectionForFunction.get().commit();
         } catch (Exception e) {
             e.printStackTrace();

@@ -1,5 +1,6 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
+import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.VoltTable;
 
@@ -11,7 +12,7 @@ public class AdditionFunction extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(String one, String two, String[] strings) {
+    public String runFunction(ApiaryStatefulFunctionContext context, String one, String two, String[] strings) {
         long sum = Integer.parseInt(one) + Integer.parseInt(two);
         StringBuilder sb = new StringBuilder(Long.toString(sum));
         for (String s: strings) {

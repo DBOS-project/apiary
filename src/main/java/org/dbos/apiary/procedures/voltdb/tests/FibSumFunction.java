@@ -1,5 +1,6 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
+import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -16,7 +17,7 @@ public class FibSumFunction extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(String key, String str1, String str2) {
+    public String runFunction(ApiaryStatefulFunctionContext context, String key, String str1, String str2) {
         int num1 = Integer.parseInt(str1);
         int num2 = Integer.parseInt(str2);
         int sum = num1 + num2;

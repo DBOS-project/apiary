@@ -22,7 +22,7 @@ public abstract class ApiaryFunctionContext {
         return new ApiaryFuture(taskID);
     }
 
-    public abstract Object apiaryCallFunction(String name, Object... inputs);
+    public abstract Object apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs);
 
     /** Apiary-private **/
 

@@ -8,6 +8,7 @@ import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
+import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryStatelessFunctionContext;
 import org.dbos.apiary.interposition.StatelessFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -132,8 +133,8 @@ public class ApiaryWorker {
                 o = c.callFunction(name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();
-                f.setContext(new ApiaryStatelessFunctionContext(c, localClients.get(), service, statelessFunctions));
-                o = f.apiaryRunFunction(arguments);
+                ApiaryFunctionContext ctxt = new ApiaryStatelessFunctionContext(c, localClients.get(), service, statelessFunctions);
+                o = f.apiaryRunFunction(ctxt, arguments);
             }
         } catch (Exception e) {
             e.printStackTrace();

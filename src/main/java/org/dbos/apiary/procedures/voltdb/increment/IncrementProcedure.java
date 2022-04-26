@@ -1,5 +1,6 @@
 package org.dbos.apiary.procedures.voltdb.increment;
 
+import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -20,7 +21,7 @@ public class IncrementProcedure extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(String keyString) {
+    public String runFunction(ApiaryStatefulFunctionContext context, String keyString) {
         int key = Integer.parseInt(keyString);
         VoltTable results = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];
         long value = results.getRowCount() == 0 ? 0 : results.fetchRow(0).getLong(0);

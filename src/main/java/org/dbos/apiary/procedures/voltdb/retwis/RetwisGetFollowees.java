@@ -1,5 +1,6 @@
 package org.dbos.apiary.procedures.voltdb.retwis;
 
+import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.dbos.apiary.voltdb.VoltApiaryProcedure;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -15,7 +16,7 @@ public class RetwisGetFollowees extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(String userIDString) {
+    public String runFunction(ApiaryStatefulFunctionContext context, String userIDString) {
         int userID = Integer.parseInt(userIDString);
         VoltTable followeesTable = ((VoltTable[]) context.apiaryExecuteQuery(getFollowees, userID))[0];
         StringBuilder followees = new StringBuilder();

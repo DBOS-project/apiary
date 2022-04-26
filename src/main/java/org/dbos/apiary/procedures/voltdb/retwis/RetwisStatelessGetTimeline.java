@@ -6,7 +6,7 @@ import org.dbos.apiary.interposition.StatelessFunction;
 
 public class RetwisStatelessGetTimeline extends StatelessFunction {
 
-    public ApiaryFuture runFunction(ApiaryFunctionContext ctxt, String userIDString) {
+    public static ApiaryFuture runFunction(ApiaryFunctionContext ctxt, String userIDString) {
         String followees = (String) ctxt.apiaryCallFunction(ctxt, "RetwisGetFollowees", userIDString);
         String[] followeesList = followees.split(",");
         ApiaryFuture[] futures = new ApiaryFuture[followeesList.length];

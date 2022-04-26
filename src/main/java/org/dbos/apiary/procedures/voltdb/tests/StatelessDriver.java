@@ -6,7 +6,7 @@ import org.dbos.apiary.interposition.StatelessFunction;
 
 public class StatelessDriver extends StatelessFunction {
 
-    public ApiaryFuture runFunction(ApiaryFunctionContext context, String inputString) {
+    public static ApiaryFuture runFunction(ApiaryFunctionContext context, String inputString) {
         String incrementString = (String) context.apiaryCallFunction(context, "StatelessIncrement", inputString);
         String one = (String) context.apiaryCallFunction(context, "FibonacciFunction", "1");
         String sum = Integer.toString(Integer.parseInt(incrementString) + Integer.parseInt(one));

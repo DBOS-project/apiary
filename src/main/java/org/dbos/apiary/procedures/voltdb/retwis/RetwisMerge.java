@@ -5,7 +5,7 @@ import org.dbos.apiary.interposition.StatelessFunction;
 
 public class RetwisMerge extends StatelessFunction {
 
-    public String runFunction(ApiaryFunctionContext context, String[] inputs) {
+    public static String runFunction(ApiaryFunctionContext context, String[] inputs) {
         StringBuilder ret = new StringBuilder();
         String sep = "";
         for (String input: inputs) {

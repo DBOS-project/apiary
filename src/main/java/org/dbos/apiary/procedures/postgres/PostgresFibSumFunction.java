@@ -5,9 +5,9 @@ import org.dbos.apiary.postgres.PostgresFunction;
 
 public class PostgresFibSumFunction extends PostgresFunction {
 
-    private final String addResult = "INSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?) ON CONFLICT (KVKey) DO NOTHING;";
+    private static final String addResult = "INSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?) ON CONFLICT (KVKey) DO NOTHING;";
 
-    public String runFunction(ApiaryStatefulFunctionContext ctxt, String key, String str1, String str2) {
+    public static String runFunction(ApiaryStatefulFunctionContext ctxt, String key, String str1, String str2) {
         int num1 = Integer.parseInt(str1);
         int num2 = Integer.parseInt(str2);
         int sum = num1 + num2;

@@ -8,10 +8,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class PostgresFibonacciFunction extends PostgresFunction {
-    private final String addResult = "INSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?) ON CONFLICT (KVKey) DO NOTHING;";
-    private final String getValue = "SELECT KVValue FROM KVTable WHERE KVKey=?;";
+    private static final String addResult = "INSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?) ON CONFLICT (KVKey) DO NOTHING;";
+    private static final String getValue = "SELECT KVValue FROM KVTable WHERE KVKey=?;";
 
-    public Object runFunction(ApiaryStatefulFunctionContext ctxt, String strKey) throws SQLException {
+    public static Object runFunction(ApiaryStatefulFunctionContext ctxt, String strKey) throws SQLException {
         int key = Integer.parseInt(strKey);
         if (key < 0) {
             return "";

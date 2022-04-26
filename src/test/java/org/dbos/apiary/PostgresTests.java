@@ -53,7 +53,7 @@ public class PostgresTests {
             res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", "6");
             assertEquals("8", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "10");
+            res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", "10");
             assertEquals("55", res);
 
             clientContext.close();

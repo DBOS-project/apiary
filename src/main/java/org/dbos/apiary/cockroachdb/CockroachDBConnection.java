@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// Not thread-safe and only works for a single table.
 public class CockroachDBConnection implements ApiaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(CockroachDBConnection.class);
 

@@ -1,12 +1,12 @@
 package org.dbos.apiary.procedures.voltdb.retwis;
 
+import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryFuture;
-import org.dbos.apiary.interposition.ApiaryStatelessFunctionContext;
 import org.dbos.apiary.interposition.StatelessFunction;
 
 public class RetwisStatelessGetTimeline extends StatelessFunction {
 
-    public ApiaryFuture runFunction(ApiaryStatelessFunctionContext ctxt, String userIDString) {
+    public ApiaryFuture runFunction(ApiaryFunctionContext ctxt, String userIDString) {
         String followees = (String) ctxt.apiaryCallFunction(ctxt, "RetwisGetFollowees", userIDString);
         String[] followeesList = followees.split(",");
         ApiaryFuture[] futures = new ApiaryFuture[followeesList.length];

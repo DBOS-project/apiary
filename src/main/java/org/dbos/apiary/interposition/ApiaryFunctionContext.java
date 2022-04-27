@@ -22,20 +22,15 @@ public abstract class ApiaryFunctionContext {
         return new ApiaryFuture(taskID);
     }
 
-    public abstract Object apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs);
+    public abstract FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs);
 
     /** Apiary-private **/
 
-    public FunctionOutput getFunctionOutput(String stringOutput) {
-        return new FunctionOutput(stringOutput, null, queuedTasks);
-    }
-
-    public FunctionOutput getFunctionOutput(ApiaryFuture futureOutput) {
-        return new FunctionOutput(null, futureOutput, queuedTasks);
-    }
-
-    public void reset() {
-        this.queuedTasks.clear();
-        this.calledTaskID.set(0);
+    public FunctionOutput getFunctionOutput(Object output) {
+        if (output instanceof ApiaryFuture) {
+            return new FunctionOutput(null, (ApiaryFuture) output, queuedTasks);
+        } else {
+            return new FunctionOutput(output, null, queuedTasks);
+        }
     }
 }

@@ -101,7 +101,7 @@ public class ApiaryWorker {
     }
 
     // Resume the execution of the caller function, then send back a reply if everything is finished.
-    private void resumeExecution(long callerID, int taskID, String output) throws InterruptedException {
+    private void resumeExecution(long callerID, int taskID, Object output) throws InterruptedException {
         ApiaryTaskStash callerTask = callerStashMap.get(callerID);
         assert (callerTask != null);
         callerTask.taskIDtoValue.put(taskID, output);
@@ -111,14 +111,21 @@ public class ApiaryWorker {
 
         // If everything is resolved, then return the string value.
         if (finishedTasks == callerTask.totalQueuedTasks) {
-            String finalOutput = callerTask.getFinalOutput();
+            Object finalOutput = callerTask.getFinalOutput();
             assert (finalOutput != null);
             // Send back the response only once.
-            ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(finalOutput)
+            ExecuteFunctionReply.Builder b = ExecuteFunctionReply.newBuilder()
                     .setCallerId(callerTask.callerId)
                     .setTaskId(callerTask.currTaskId)
-                    .setSenderTimestampNano(callerTask.senderTimestampNano).build();
-            outgoingReplyMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, rep.toByteArray()));
+                    .setSenderTimestampNano(callerTask.senderTimestampNano);
+            if (output instanceof String) {
+                b.setReplyType(stringType);
+                b.setReplyString((String) output);
+            } else if (output instanceof Integer) {
+                b.setReplyType(intType);
+                b.setReplyInt((int) output);
+            }
+            outgoingReplyMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, b.build().toByteArray()));
 
             // Clean up the stash map.
             callerStashMap.remove(callerID);
@@ -143,8 +150,8 @@ public class ApiaryWorker {
         long runtime = System.nanoTime() - tStart;
         assert (o != null);
         ApiaryTaskStash currTask = new ApiaryTaskStash(service, callerID, currTaskID, replyAddr, senderTimestampNano);
-        if (o.stringOutput != null) {
-            currTask.stringOutput = o.stringOutput;
+        if (o.valueOutput != null) {
+            currTask.valueOutput = o.valueOutput;
         } else  {
             assert (o.futureOutput != null);
             currTask.futureOutput = o.futureOutput;
@@ -162,14 +169,19 @@ public class ApiaryWorker {
             // Need to store the stash map only if we have future tasks. Otherwise, we don't have to store.
             callerStashMap.put(currCallerID, currTask);
         }
-        String output = currTask.getFinalOutput();
+        Object output = currTask.getFinalOutput();
         // If the output is not null, meaning everything is done. Directly return.
         if (output != null) {
-            ExecuteFunctionReply rep = ExecuteFunctionReply.newBuilder().setReply(output)
+            ExecuteFunctionReply.Builder b = ExecuteFunctionReply.newBuilder()
                     .setCallerId(callerID)
                     .setTaskId(currTaskID)
-                    .setSenderTimestampNano(senderTimestampNano).build();
-            outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, rep.toByteArray()));
+                    .setSenderTimestampNano(senderTimestampNano);
+            if (output instanceof String) {
+                b.setReplyString((String) output);
+            } else if (output instanceof Integer) {
+                b.setReplyInt((int) output);
+            }
+            outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
         }
         // Record runtime.
         functionRuntimesNs.putIfAbsent(name, new ConcurrentLinkedDeque<>(defaultQueue));
@@ -242,7 +254,7 @@ public class ApiaryWorker {
             // Handle the reply.
             try {
                 ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
-                String output = reply.getReply();
+                Object output = reply.getReplyType() == stringType ? reply.getReplyString() : reply.getReplyInt();
                 long callerID = reply.getCallerId();
                 int taskID = reply.getTaskId();
                 // Resume execution.

@@ -42,9 +42,17 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
 
     private static VoltTable[] serializeOutput(FunctionOutput output) {
         VoltTable voltOutput;
-        if (output.stringOutput != null) {
-            voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
-            voltOutput.addRow(output.stringOutput);
+        if (output.valueOutput != null) {
+            if (output.valueOutput instanceof String) {
+                voltOutput = new VoltTable(new VoltTable.ColumnInfo("stringOutput", VoltType.STRING));
+                voltOutput.addRow(output.valueOutput);
+            } else if (output.valueOutput instanceof Integer) {
+                voltOutput = new VoltTable(new VoltTable.ColumnInfo("intOutput", VoltType.BIGINT));
+                voltOutput.addRow(output.valueOutput);
+            } else {
+                assert(false);
+                voltOutput = null;
+            }
         } else {
             assert(output.futureOutput != null);
             voltOutput = new VoltTable(new VoltTable.ColumnInfo("future", VoltType.SMALLINT));

@@ -4,6 +4,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
+import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
@@ -75,12 +76,12 @@ public class ApiaryWorkerClient {
     }
 
     // Synchronous blocking invocation, supposed to be used by client/loadgen.
-    public String executeFunction(String address, String name, String service, Object... arguments) throws InvalidProtocolBufferException {
+    public FunctionOutput executeFunction(String address, String name, String service, Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
         byte[] reqBytes = serializeExecuteRequest(name, service, 0L, 0, arguments);
         socket.send(reqBytes, 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
-        return rep.getReply();
+        return new FunctionOutput(rep.getReplyType() == ApiaryWorker.stringType ? rep.getReplyString() : rep.getReplyInt(), null, null);
     }
 }

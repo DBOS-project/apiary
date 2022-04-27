@@ -53,13 +53,13 @@ public class PostgresTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 1);
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 1).getString();
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 6);
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 6).getString();
         assertEquals("8", res);
 
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 10);
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 10).getString();
         assertEquals("55", res);
 
         clientContext.close();

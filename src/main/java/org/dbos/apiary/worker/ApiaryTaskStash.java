@@ -15,14 +15,14 @@ public class ApiaryTaskStash {
     public final long callerId;
     public final int currTaskId;  // Task ID for itself.
     public final ZFrame replyAddr;
-    public final Map<Integer, String> taskIDtoValue;
+    public final Map<Integer, Object> taskIDtoValue;
     public final Queue<Task> queuedTasks;
     public final AtomicInteger numFinishedTasks = new AtomicInteger(0);
     public final long senderTimestampNano;
     public final String service;
 
     public int totalQueuedTasks;
-    public String stringOutput;
+    public Object valueOutput;
     public ApiaryFuture futureOutput;
 
     public ApiaryTaskStash(String service, long callerId, int currTaskId, ZFrame replyAddr, long senderTimestampNano) {
@@ -38,10 +38,10 @@ public class ApiaryTaskStash {
 
     // If everything is resolved, then return the string value.
     // Otherwise, return null.
-    String getFinalOutput() {
+    Object getFinalOutput() {
         if (numFinishedTasks.get() == totalQueuedTasks) {
-            if (stringOutput != null) {
-                return stringOutput;
+            if (valueOutput != null) {
+                return valueOutput;
             } else {
                 assert (futureOutput != null);
                 assert (taskIDtoValue.containsKey(futureOutput.futureID));

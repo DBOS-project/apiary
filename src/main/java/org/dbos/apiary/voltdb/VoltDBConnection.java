@@ -107,10 +107,12 @@ public class VoltDBConnection implements ApiaryConnection {
         VoltTable[] res  = client.callProcedure(funcName, keyInput, voltInput).getResults();
         VoltTable retVal = res[0];
         assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);
-        String stringOutput = null;
+        Object valueOutput = null;
         ApiaryFuture futureOutput = null;
         if (retVal.getColumnType(0).equals(VoltType.STRING)) { // Handle a string output.
-            stringOutput = retVal.fetchRow(0).getString(0);
+            valueOutput = retVal.fetchRow(0).getString(0);
+        } else if (retVal.getColumnType(0).equals(VoltType.BIGINT)) { // Handle an int output;
+            valueOutput = retVal.fetchRow(0).getLong(0);
         } else { // Handle a future output.
             assert (retVal.getColumnType(0).equals(VoltType.SMALLINT));
             int futureID = (int) retVal.fetchRow(0).getLong(0);
@@ -120,7 +122,7 @@ public class VoltDBConnection implements ApiaryConnection {
         for (int i = 1; i < res.length; i++) {
             calledFunctions.add(voltOutputToTask(res[i]));
         }
-        return new FunctionOutput(stringOutput, futureOutput, calledFunctions);
+        return new FunctionOutput(valueOutput, futureOutput, calledFunctions);
     }
 
     // Update partition info table: (partitionID, pkey, hostId, hostname, isLeader).

@@ -21,8 +21,10 @@ message ExecuteFunctionRequest {
 }
 
 message ExecuteFunctionReply {
-  string reply = 1;
-  int64 callerId = 2;
-  int32 taskId = 3;
-  int64 senderTimestampNano = 4;
+  string replyString = 1;
+  int32 replyInt = 2;
+  int64 callerId = 3;
+  int32 taskId = 4;
+  int64 senderTimestampNano = 5;
+  int64 replyType = 6;
 }

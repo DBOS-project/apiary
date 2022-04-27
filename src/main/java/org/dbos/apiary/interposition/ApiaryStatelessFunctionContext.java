@@ -23,7 +23,7 @@ public class ApiaryStatelessFunctionContext extends ApiaryFunctionContext {
     }
 
     @Override
-    public Object apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
+    public FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
         if (statelessFunctions.containsKey(name)) {
             StatelessFunction f = null;
             try {
@@ -32,8 +32,7 @@ public class ApiaryStatelessFunctionContext extends ApiaryFunctionContext {
                 e.printStackTrace();
             }
             assert f != null;
-            FunctionOutput o = f.apiaryRunFunction(ctxt, inputs);
-            return o.stringOutput == null ? o.futureOutput : o.stringOutput;
+            return f.apiaryRunFunction(ctxt, inputs);
         } else {
             try {
                 return client.executeFunction(c.getHostname(inputs), name, service, inputs);

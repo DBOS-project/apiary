@@ -21,8 +21,7 @@ public class IncrementProcedure extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(ApiaryStatefulFunctionContext context, String keyString) {
-        int key = Integer.parseInt(keyString);
+    public String runFunction(ApiaryStatefulFunctionContext context, Integer key) {
         VoltTable results = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];
         long value = results.getRowCount() == 0 ? 0 : results.fetchRow(0).getLong(0);
         context.apiaryExecuteUpdate(updateValue, key, value + 1);

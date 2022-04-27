@@ -16,8 +16,8 @@ public class RetwisGetPosts extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(ApiaryStatefulFunctionContext context, String userID) {
-        VoltTable result = ((VoltTable[]) context.apiaryExecuteQuery(getPosts, Integer.parseInt(userID)))[0];
+    public String runFunction(ApiaryStatefulFunctionContext context, int userID) {
+        VoltTable result = ((VoltTable[]) context.apiaryExecuteQuery(getPosts, userID))[0];
         StringBuilder posts = new StringBuilder();
         String sep = "";
         while (result.advanceRow()) { // TODO: Use properly escaped JSON or something.

@@ -19,8 +19,7 @@ public class RetwisGetTimeline extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public ApiaryFuture runFunction(ApiaryStatefulFunctionContext context, String userIDString) {
-        int userID = Integer.parseInt(userIDString);
+    public ApiaryFuture runFunction(ApiaryStatefulFunctionContext context, int userID) {
         VoltTable followeesTable = ((VoltTable[]) context.apiaryExecuteQuery(getFollowees, userID))[0];
         List<Integer> followeesList = new ArrayList<>();
         while(followeesTable.advanceRow()) {
@@ -28,7 +27,7 @@ public class RetwisGetTimeline extends VoltApiaryProcedure {
         }
         ApiaryFuture[] futures = new ApiaryFuture[followeesList.size()];
         for (int i = 0; i < followeesList.size(); i++) {
-            futures[i] = context.apiaryQueueFunction("RetwisGetPosts", String.valueOf(followeesList.get(i)));
+            futures[i] = context.apiaryQueueFunction("RetwisGetPosts", followeesList.get(i));
         }
         return context.apiaryQueueFunction("RetwisMerge", (Object) futures);
     }

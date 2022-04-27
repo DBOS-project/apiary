@@ -85,7 +85,7 @@ public class WorkerTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String res = client.executeFunction("localhost", "AdditionFunction", "defaultService", "1", "2", new String[]{"matei", "zaharia"});
+        String res = client.executeFunction("localhost", "AdditionFunction", "defaultService", 1, "2", new String[]{"matei", "zaharia"});
         assertEquals("3mateizaharia", res);
 
         clientContext.close();
@@ -108,7 +108,7 @@ public class WorkerTests {
 
         // Non-blocking send. Then get result and calculate latency.
         long actualSendTime = System.nanoTime();
-        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("AdditionFunction", "defaultService", 0, 0, "1", "2", new String[]{"matei", "zaharia"});
+        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("AdditionFunction", "defaultService", 0, 0, 1, "2", new String[]{"matei", "zaharia"});
         for (int i = 0; i < 5; i++) {
             socket.send(reqBytes, 0);
         }

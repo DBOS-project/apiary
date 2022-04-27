@@ -7,11 +7,8 @@ public class PostgresFibSumFunction extends PostgresFunction {
 
     private static final String addResult = "INSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?) ON CONFLICT (KVKey) DO NOTHING;";
 
-    public static String runFunction(ApiaryStatefulFunctionContext ctxt, String key, String str1, String str2) {
-        int num1 = Integer.parseInt(str1);
-        int num2 = Integer.parseInt(str2);
-        int sum = num1 + num2;
-        ctxt.apiaryExecuteUpdate(addResult, Integer.parseInt(key), sum);
-        return String.valueOf(sum);
+    public static int runFunction(ApiaryStatefulFunctionContext ctxt, int key, int num1, int num2) {
+        ctxt.apiaryExecuteUpdate(addResult, key, num1 + num2);
+        return num1 + num2;
     }
 }

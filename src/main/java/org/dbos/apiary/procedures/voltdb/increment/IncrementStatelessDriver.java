@@ -5,7 +5,7 @@ import org.dbos.apiary.interposition.StatelessFunction;
 
 public class IncrementStatelessDriver extends StatelessFunction {
 
-    public static String runFunction(ApiaryFunctionContext context, Integer key) {
-        return context.apiaryCallFunction(context, "IncrementProcedure", key).getString();
+    public static int runFunction(ApiaryFunctionContext context, Integer key) {
+        return context.apiaryCallFunction(context, "IncrementProcedure", key).getInt();
     }
 }

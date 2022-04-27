@@ -16,9 +16,9 @@ public class RetwisPost extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(ApiaryStatefulFunctionContext context, int userID, int postID, int timestamp, String post) {
+    public int runFunction(ApiaryStatefulFunctionContext context, int userID, int postID, int timestamp, String post) {
         context.apiaryExecuteUpdate(addItem, userID, postID, timestamp, post);
-        return Integer.toString(userID);
+        return userID;
     }
 
 }

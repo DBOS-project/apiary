@@ -21,7 +21,7 @@ public class SynchronousCounter extends VoltProcedureContainer {
         } else {
             value = 0;
         }
-        String incremented = context.apiaryCallFunction(context, "org.dbos.apiary.procedures.stateless.StatelessIncrement", Integer.toString(value)).getString();
+        String incremented = context.apiaryCallFunction(context, "org.dbos.apiary.procedures.voltdb.tests.StatelessIncrement", Integer.toString(value)).getString();
         context.apiaryCallFunction(context, "org.dbos.apiary.procedures.voltdb.tests.InsertFunction", keyString, incremented);
         return incremented;
     }

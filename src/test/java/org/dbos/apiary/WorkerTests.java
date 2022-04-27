@@ -1,7 +1,7 @@
 package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
-import org.dbos.apiary.procedures.stateless.StatelessIncrement;
+import org.dbos.apiary.procedures.voltdb.tests.StatelessIncrement;
 import org.dbos.apiary.procedures.voltdb.tests.StatelessDriver;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;

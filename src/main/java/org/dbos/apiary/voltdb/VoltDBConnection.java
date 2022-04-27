@@ -110,7 +110,7 @@ public class VoltDBConnection implements ApiaryConnection {
         Object output;
         if (retVal.getColumnType(0).equals(VoltType.STRING)) { // Handle a string output.
             output = retVal.fetchRow(0).getString(0);
-        } else if (retVal.getColumnType(0).equals(VoltType.BIGINT)) { // Handle an int output;
+        } else if (retVal.getColumnType(0).equals(VoltType.INTEGER)) { // Handle an int output;
             output = (int) retVal.fetchRow(0).getLong(0);
         } else { // Handle a future output.
             assert (retVal.getColumnType(0).equals(VoltType.SMALLINT));

@@ -50,6 +50,10 @@ public class ApiaryWorkerClient {
                 String s = (String) o;
                 byteArguments.add(ByteString.copyFrom(s.getBytes(StandardCharsets.UTF_8)));
                 argumentTypes.add(ApiaryWorker.stringType);
+            }  else if (o instanceof Integer) {
+                Integer i = (Integer) o;
+                byteArguments.add(ByteString.copyFrom(Utilities.toByteArray(i)));
+                argumentTypes.add(ApiaryWorker.intType);
             } else {
                 assert(o instanceof String[]);
                 String[] s = (String[]) o;

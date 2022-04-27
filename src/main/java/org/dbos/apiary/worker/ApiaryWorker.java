@@ -28,6 +28,7 @@ public class ApiaryWorker {
 
     public static int stringType = 0;
     public static int stringArrayType = 1;
+    public static int intType = 2;
 
     private final AtomicLong callerIDs = new AtomicLong(0);
     // Store the call stack for each caller.
@@ -207,11 +208,14 @@ public class ApiaryWorker {
                 int currTaskID = req.getTaskId();
                 Object[] arguments = new Object[byteArguments.size()];
                 for (int i = 0; i < arguments.length; i++) {
+                    byte[] byteArray = byteArguments.get(i).toByteArray();
                     if (argumentTypes.get(i) == stringType) {
-                        arguments[i] = new String(byteArguments.get(i).toByteArray());
+                        arguments[i] = new String(byteArray);
+                    } else if (argumentTypes.get(i) == intType) {
+                        arguments[i] = Utilities.fromByteArray(byteArray);
                     } else {
                         assert (argumentTypes.get(i) == stringArrayType);
-                        arguments[i] = Utilities.byteArrayToStringArray(byteArguments.get(i).toByteArray());
+                        arguments[i] = Utilities.byteArrayToStringArray(byteArray);
                     }
                 }
                 executeFunction(req.getName(), req.getService(), callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);

@@ -25,25 +25,25 @@ public class FibonacciFunction extends VoltApiaryProcedure {
 
     public Object runFunction(ApiaryStatefulFunctionContext context, int key) {
         if (key < 0) {
-            return "";
+            return -1;
         }
         if (key == 0) {
             context.apiaryExecuteUpdate(addResult, key, 0);
-            return "0";
+            return 0;
         }
         if (key == 1) {
             context.apiaryExecuteUpdate(addResult, key, 1);
-            return "1";
+            return 1;
         }
         // Check if the number has been calculated before.
         VoltTable res = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];
         if (res.getRowCount() > 0) {
-            return String.valueOf(res.fetchRow(0).getLong(0));
+            return (int) res.fetchRow(0).getLong(0);
         }
 
         // Otherwise, call functions.
         ApiaryFuture f1 = context.apiaryQueueFunction("FibonacciFunction", key - 2);
         ApiaryFuture f2 = context.apiaryQueueFunction("FibonacciFunction", key - 1);
-        return context.apiaryQueueFunction("FibSumFunction", Integer.toString(key), f1, f2);
+        return context.apiaryQueueFunction("FibSumFunction", key, f1, f2);
     }
 }

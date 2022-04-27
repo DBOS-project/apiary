@@ -60,15 +60,15 @@ public class WorkerTests {
             ZContext clientContext = new ZContext();
             ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-            String res;
-            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 1).getString();
-            assertEquals("1", res);
+            int res;
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 1).getInt();
+            assertEquals(1, res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 10).getString();
-            assertEquals("55", res);
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 10).getInt();
+            assertEquals(55, res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 30).getString();
-            assertEquals("832040", res);
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 30).getInt();
+            assertEquals(832040, res);
 
             clientContext.close();
             worker.shutdown();

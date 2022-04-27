@@ -177,8 +177,10 @@ public class ApiaryWorker {
                     .setTaskId(currTaskID)
                     .setSenderTimestampNano(senderTimestampNano);
             if (output instanceof String) {
+                b.setReplyType(stringType);
                 b.setReplyString((String) output);
             } else if (output instanceof Integer) {
+                b.setReplyType(intType);
                 b.setReplyInt((int) output);
             }
             outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));

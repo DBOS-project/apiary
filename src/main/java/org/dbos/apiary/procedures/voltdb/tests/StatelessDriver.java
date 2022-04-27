@@ -8,8 +8,8 @@ public class StatelessDriver extends StatelessFunction {
 
     public static ApiaryFuture runFunction(ApiaryFunctionContext context, String inputString) {
         String incrementString = context.apiaryCallFunction(context, "StatelessIncrement", inputString).getString();
-        String one = context.apiaryCallFunction(context, "FibonacciFunction", 1).getString();
-        int sum = Integer.parseInt(incrementString) + Integer.parseInt(one);
+        int one = context.apiaryCallFunction(context, "FibonacciFunction", 1).getInt();
+        int sum = Integer.parseInt(incrementString) + one;
         return context.apiaryQueueFunction("FibonacciFunction", sum);
     }
 }

@@ -104,7 +104,7 @@ public class VoltDBConnection implements ApiaryConnection {
         VoltTable voltInput = inputToVoltTable(inputs);
         assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
         Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];
-        VoltTable[] res  = client.callProcedure(funcName, keyInput, voltInput).getResults();
+        VoltTable[] res = client.callProcedure(funcName, keyInput, voltInput).getResults();
         VoltTable retVal = res[0];
         assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);
         Object valueOutput = null;
@@ -112,7 +112,7 @@ public class VoltDBConnection implements ApiaryConnection {
         if (retVal.getColumnType(0).equals(VoltType.STRING)) { // Handle a string output.
             valueOutput = retVal.fetchRow(0).getString(0);
         } else if (retVal.getColumnType(0).equals(VoltType.BIGINT)) { // Handle an int output;
-            valueOutput = retVal.fetchRow(0).getLong(0);
+            valueOutput = (int) retVal.fetchRow(0).getLong(0);
         } else { // Handle a future output.
             assert (retVal.getColumnType(0).equals(VoltType.SMALLINT));
             int futureID = (int) retVal.fetchRow(0).getLong(0);

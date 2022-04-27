@@ -22,7 +22,7 @@ public class Task {
 
     // Fill out the actual value of the referred future ID.
     // Return false if failed to resolve.
-    public boolean dereferenceFutures(Map<Integer, String> taskIDtoValue) {
+    public boolean dereferenceFutures(Map<Integer, Object> taskIDtoValue) {
         boolean allResolved = true;
         for (int i = 0; i < input.length; i++) {
             Object o = input[i];
@@ -43,14 +43,14 @@ public class Task {
                         break;
                     }
                 }
-                // TODO: further optimize this part?
+                // TODO: further optimize this part?  Also support int arrays later.
                 if (!allResolved) {
                     // Skip populating this input.
                     continue;
                 }
                 for (int j = 0; j < futureArray.length; j++) {
                     int futureID = futureArray[j].futureID;
-                    stringArray[j] = taskIDtoValue.get(futureID);
+                    stringArray[j] = (String) taskIDtoValue.get(futureID);
                 }
                 input[i] = stringArray;
             }

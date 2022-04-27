@@ -40,24 +40,26 @@ public class BenchmarkTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String res;
-        res = client.executeFunction("localhost", "RetwisPost", "defaultService", 0, 0, 0, "hello0");
-        assertEquals("0", res);
-        res = client.executeFunction("localhost", "RetwisPost", "defaultService", 0, 1, 1, "hello1");
-        assertEquals("0", res);
-        res = client.executeFunction("localhost", "RetwisPost", "defaultService", 1, 2, 0, "hello2");
-        assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 0);
-        assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 1);
-        assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisGetPosts", "defaultService", 0);
-        assertEquals("hello0,hello1", res);
-        res = client.executeFunction("localhost", "RetwisGetTimeline", "defaultService", 1);
-        assertEquals(3, res.split(",").length);
-        assertTrue(res.contains("hello0"));
-        assertTrue(res.contains("hello1"));
-        assertTrue(res.contains("hello2"));
+        int resInt;
+        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService", 0, 0, 0, "hello0").getInt();
+        assertEquals(0, resInt);
+        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService", 0, 1, 1, "hello1").getInt();
+        assertEquals(0, resInt);
+        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService", 1, 2, 0, "hello2").getInt();
+        assertEquals(1, resInt);
+        resInt = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 0).getInt();
+        assertEquals(1, resInt);
+        resInt = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 1).getInt();
+        assertEquals(1, resInt);
+
+        String resString;
+        resString = client.executeFunction("localhost", "RetwisGetPosts", "defaultService", 0).getString();
+        assertEquals("hello0,hello1", resString);
+        resString = client.executeFunction("localhost", "RetwisGetTimeline", "defaultService", 1).getString();
+        assertEquals(3, resString.split(",").length);
+        assertTrue(resString.contains("hello0"));
+        assertTrue(resString.contains("hello1"));
+        assertTrue(resString.contains("hello2"));
         clientContext.close();
         worker.shutdown();
     }
@@ -75,22 +77,24 @@ public class BenchmarkTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
+        int resInt;
+        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService", 0, 0, 0, "hello0").getInt();
+        assertEquals(0, resInt);
+        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService", 0, 1, 1, "hello1").getInt();
+        assertEquals(0, resInt);
+        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService", 1, 2, 0, "hello2").getInt();
+        assertEquals(1, resInt);
+        resInt = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 0).getInt();
+        assertEquals(1, resInt);
+        resInt = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 1).getInt();
+        assertEquals(1, resInt);
+
         String res;
-        res = client.executeFunction("localhost", "RetwisPost", "defaultService", 0, 0, 0, "hello0");
-        assertEquals("0", res);
-        res = client.executeFunction("localhost", "RetwisPost", "defaultService", 0, 1, 1, "hello1");
-        assertEquals("0", res);
-        res = client.executeFunction("localhost", "RetwisPost", "defaultService", 1, 2, 0, "hello2");
-        assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 0);
-        assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 1);
-        assertEquals("1", res);
-        res = client.executeFunction("localhost", "RetwisGetFollowees", "defaultService", 1);
+        res = client.executeFunction("localhost", "RetwisGetFollowees", "defaultService", 1).getString();
         assertEquals(2, res.split(",").length);
         assertTrue(res.contains("0"));
         assertTrue(res.contains("1"));
-        res = client.executeFunction("localhost", "RetwisStatelessGetTimeline", "defaultService", 1);
+        res = client.executeFunction("localhost", "RetwisStatelessGetTimeline", "defaultService", 1).getString();
         assertEquals(3, res.split(",").length);
         assertTrue(res.contains("hello0"));
         assertTrue(res.contains("hello1"));
@@ -110,15 +114,15 @@ public class BenchmarkTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String res;
-        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", 0);
-        assertEquals("1", res);
-        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", 0);
-        assertEquals("2", res);
-        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", 0);
-        assertEquals("3", res);
-        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", 55);
-        assertEquals("1", res);
+        int res;
+        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", 0).getInt();
+        assertEquals(1, res);
+        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", 0).getInt();
+        assertEquals(2, res);
+        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", 0).getInt();
+        assertEquals(3, res);
+        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", 55).getInt();
+        assertEquals(1, res);
         clientContext.close();
         worker.shutdown();
     }

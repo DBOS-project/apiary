@@ -17,11 +17,8 @@ public class FibSumFunction extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(ApiaryStatefulFunctionContext context, String key, String str1, String str2) {
-        int num1 = Integer.parseInt(str1);
-        int num2 = Integer.parseInt(str2);
-        int sum = num1 + num2;
-        context.apiaryExecuteUpdate(addResult, Integer.parseInt(key), sum);
-        return String.valueOf(sum);
+    public int runFunction(ApiaryStatefulFunctionContext context, int key, int num1, int num2) {
+        context.apiaryExecuteUpdate(addResult, key, num1 + num2);
+        return num1 + num2;
     }
 }

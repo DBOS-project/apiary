@@ -8,7 +8,7 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
 
     /** Public Interface for functions. **/
 
-    public Object apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
+    public FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
         // TODO: Logging?
         Object clazz;
         try {
@@ -19,8 +19,7 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
         }
         assert(clazz instanceof ApiaryFunction);
         ApiaryFunction f = (ApiaryFunction) clazz;
-        FunctionOutput o = f.apiaryRunFunction(ctxt, inputs);
-        return o.stringOutput == null ? o.futureOutput : o.stringOutput;
+        return f.apiaryRunFunction(ctxt, inputs);
     }
 
     // Execute an update in the database.

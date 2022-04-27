@@ -52,15 +52,15 @@ public class PostgresTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String res;
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 1);
-        assertEquals("1", res);
+        int res;
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 1).getInt();
+        assertEquals(1, res);
 
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 6);
-        assertEquals("8", res);
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 6).getInt();
+        assertEquals(8, res);
 
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 10);
-        assertEquals("55", res);
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 10).getInt();
+        assertEquals(55, res);
 
         clientContext.close();
         worker.shutdown();

@@ -1,4 +1,4 @@
-package org.dbos.apiary.procedures.stateless;
+package org.dbos.apiary.procedures.voltdb.tests;
 
 import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.StatelessFunction;

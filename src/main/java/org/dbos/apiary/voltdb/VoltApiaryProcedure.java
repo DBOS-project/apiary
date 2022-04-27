@@ -42,13 +42,19 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
 
     private static VoltTable[] serializeOutput(FunctionOutput output) {
         VoltTable voltOutput;
-        if (output.stringOutput != null) {
-            voltOutput = new VoltTable(new VoltTable.ColumnInfo("jsonOutput", VoltType.STRING));
-            voltOutput.addRow(output.stringOutput);
-        } else {
-            assert(output.futureOutput != null);
+        assert(output.output != null);
+        if (output.output instanceof String) {
+            voltOutput = new VoltTable(new VoltTable.ColumnInfo("stringOutput", VoltType.STRING));
+            voltOutput.addRow(output.output);
+        } else if (output.output instanceof Integer || output.output instanceof Long) {
+            voltOutput = new VoltTable(new VoltTable.ColumnInfo("intOutput", VoltType.INTEGER));
+            voltOutput.addRow(output.output);
+        } else if (output.output instanceof ApiaryFuture) {
+            ApiaryFuture futureOutput = (ApiaryFuture) output.output;
             voltOutput = new VoltTable(new VoltTable.ColumnInfo("future", VoltType.SMALLINT));
-            voltOutput.addRow(output.futureOutput.futureID);
+            voltOutput.addRow(futureOutput.futureID);
+        } else {
+            throw new RuntimeException();
         }
         VoltTable[] outputs = new VoltTable[output.queuedTasks.size() + 1];
         outputs[0] = voltOutput;

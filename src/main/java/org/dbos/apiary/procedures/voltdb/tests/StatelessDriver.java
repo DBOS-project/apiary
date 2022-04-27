@@ -7,9 +7,9 @@ import org.dbos.apiary.interposition.StatelessFunction;
 public class StatelessDriver extends StatelessFunction {
 
     public static ApiaryFuture runFunction(ApiaryFunctionContext context, String inputString) {
-        String incrementString = (String) context.apiaryCallFunction(context, "StatelessIncrement", inputString);
-        String one = (String) context.apiaryCallFunction(context, "FibonacciFunction", 1);
-        int sum = Integer.parseInt(incrementString) + Integer.parseInt(one);
+        String incrementString = context.apiaryCallFunction(context, "StatelessIncrement", inputString).getString();
+        int one = context.apiaryCallFunction(context, "FibonacciFunction", 1).getInt();
+        int sum = Integer.parseInt(incrementString) + one;
         return context.apiaryQueueFunction("FibonacciFunction", sum);
     }
 }

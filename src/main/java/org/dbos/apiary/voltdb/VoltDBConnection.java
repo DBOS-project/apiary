@@ -104,23 +104,24 @@ public class VoltDBConnection implements ApiaryConnection {
         VoltTable voltInput = inputToVoltTable(inputs);
         assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
         Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];
-        VoltTable[] res  = client.callProcedure(funcName, keyInput, voltInput).getResults();
+        VoltTable[] res = client.callProcedure(funcName, keyInput, voltInput).getResults();
         VoltTable retVal = res[0];
         assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);
-        String stringOutput = null;
-        ApiaryFuture futureOutput = null;
+        Object output;
         if (retVal.getColumnType(0).equals(VoltType.STRING)) { // Handle a string output.
-            stringOutput = retVal.fetchRow(0).getString(0);
+            output = retVal.fetchRow(0).getString(0);
+        } else if (retVal.getColumnType(0).equals(VoltType.INTEGER)) { // Handle an int output;
+            output = (int) retVal.fetchRow(0).getLong(0);
         } else { // Handle a future output.
             assert (retVal.getColumnType(0).equals(VoltType.SMALLINT));
             int futureID = (int) retVal.fetchRow(0).getLong(0);
-            futureOutput = new ApiaryFuture(futureID);
+            output = new ApiaryFuture(futureID);
         }
         List<Task> calledFunctions = new ArrayList<>();
         for (int i = 1; i < res.length; i++) {
             calledFunctions.add(voltOutputToTask(res[i]));
         }
-        return new FunctionOutput(stringOutput, futureOutput, calledFunctions);
+        return new FunctionOutput(output, calledFunctions);
     }
 
     // Update partition info table: (partitionID, pkey, hostId, hostname, isLeader).

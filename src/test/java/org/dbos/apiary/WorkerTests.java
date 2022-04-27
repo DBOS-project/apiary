@@ -1,7 +1,7 @@
 package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
-import org.dbos.apiary.procedures.stateless.StatelessIncrement;
+import org.dbos.apiary.procedures.voltdb.tests.StatelessIncrement;
 import org.dbos.apiary.procedures.voltdb.tests.StatelessDriver;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
@@ -60,15 +60,15 @@ public class WorkerTests {
             ZContext clientContext = new ZContext();
             ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-            String res;
-            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 1);
-            assertEquals("1", res);
+            int res;
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 1).getInt();
+            assertEquals(1, res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 10);
-            assertEquals("55", res);
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 10).getInt();
+            assertEquals(55, res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 30);
-            assertEquals("832040", res);
+            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 30).getInt();
+            assertEquals(832040, res);
 
             clientContext.close();
             worker.shutdown();
@@ -85,7 +85,7 @@ public class WorkerTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String res = client.executeFunction("localhost", "AdditionFunction", "defaultService", 1, "2", new String[]{"matei", "zaharia"});
+        String res = client.executeFunction("localhost", "AdditionFunction", "defaultService", 1, "2", new String[]{"matei", "zaharia"}).getString();
         assertEquals("3mateizaharia", res);
 
         clientContext.close();
@@ -126,7 +126,7 @@ public class WorkerTests {
                 msg.destroy();
 
                 ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
-                String res = reply.getReply();
+                String res = reply.getReplyString();
                 assertEquals("3mateizaharia", res);
                 long senderTs = reply.getSenderTimestampNano();
                 long recvTs = System.nanoTime();
@@ -157,13 +157,13 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "CounterFunction", "defaultService", "0");
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", "0").getString();
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "CounterFunction", "defaultService", "0");
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", "0").getString();
         assertEquals("2", res);
 
-        res = client.executeFunction("localhost", "CounterFunction", "defaultService", "1");
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", "1").getString();
         assertEquals("1", res);
 
         clientContext.close();
@@ -182,12 +182,12 @@ public class WorkerTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String res;
-        res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "0");
-        assertEquals("1", res);
+        int res;
+        res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "0").getInt();
+        assertEquals(1, res);
 
-        res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "8");
-        assertEquals("55", res);
+        res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "8").getInt();
+        assertEquals(55, res);
         clientContext.close();
         worker.shutdown();
     }
@@ -203,13 +203,13 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
         String res;
-        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", "0");
+        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", "0").getString();
         assertEquals("1", res);
 
-        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", "0");
+        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", "0").getString();
         assertEquals("2", res);
 
-        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", "1");
+        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", "1").getString();
         assertEquals("1", res);
 
         clientContext.close();

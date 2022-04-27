@@ -20,11 +20,6 @@ public interface ApiaryFunction {
             e.printStackTrace();
             return null;
         }
-        if (output instanceof String) {
-            return ctxt.getFunctionOutput((String) output);
-        } else {
-            assert (output instanceof ApiaryFuture);
-            return ctxt.getFunctionOutput((ApiaryFuture) output);
-        }
+        return ctxt.getFunctionOutput(output);
     }
 }

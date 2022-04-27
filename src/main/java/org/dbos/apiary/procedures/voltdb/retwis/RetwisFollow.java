@@ -16,8 +16,8 @@ public class RetwisFollow extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(ApiaryStatefulFunctionContext context, int userID, int followeeID) {
+    public int runFunction(ApiaryStatefulFunctionContext context, int userID, int followeeID) {
         context.apiaryExecuteUpdate(addItem, userID, followeeID);
-        return Integer.toString(userID);
+        return userID;
     }
 }

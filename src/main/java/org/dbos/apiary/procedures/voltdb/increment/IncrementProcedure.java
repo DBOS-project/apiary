@@ -21,11 +21,11 @@ public class IncrementProcedure extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(ApiaryStatefulFunctionContext context, Integer key) {
+    public int runFunction(ApiaryStatefulFunctionContext context, Integer key) {
         VoltTable results = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];
-        long value = results.getRowCount() == 0 ? 0 : results.fetchRow(0).getLong(0);
+        int value = results.getRowCount() == 0 ? 0 : (int) results.fetchRow(0).getLong(0);
         context.apiaryExecuteUpdate(updateValue, key, value + 1);
-        return String.valueOf(value + 1);
+        return value + 1;
     }
 
 }

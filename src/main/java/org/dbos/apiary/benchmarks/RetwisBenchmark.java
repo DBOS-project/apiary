@@ -30,8 +30,8 @@ public class RetwisBenchmark {
     private static final int numThreads = 1;
 
     public static void benchmark(String voltAddr, String service, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
-        VoltDBConnection ctxt = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
-        ctxt.client.callProcedure("TruncateTables");
+        VoltDBConnection conn = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
+        conn.client.callProcedure("TruncateTables");
 
         ZContext loadClientContext = new ZContext();
         ThreadLocal<ApiaryWorkerClient> loadClient = ThreadLocal.withInitial(() -> new ApiaryWorkerClient(ZContext.shadow(loadClientContext)));
@@ -48,7 +48,7 @@ public class RetwisBenchmark {
                     int postID = postIDs.incrementAndGet();
                     int ts = timestamp.incrementAndGet();
                     String postString = String.format("matei%d", postID);
-                    loadClient.get().executeFunction(ctxt.getHostname(new Object[]{userID}), "RetwisPost", "defaultService", userID, postID, ts, postString);
+                    loadClient.get().executeFunction(conn.getHostname(userID), "RetwisPost", "defaultService", userID, postID, ts, postString);
                     latch.countDown();
                 } catch (InvalidProtocolBufferException e) {
                     e.printStackTrace();
@@ -64,7 +64,7 @@ public class RetwisBenchmark {
                 Runnable r = () ->  {
                     try {
                         int followeeID = (firstFollowee + finalI) % numUsers;
-                        loadClient.get().executeFunction(ctxt.getHostname(new Object[]{finalUserID}), "RetwisFollow", "defaultService", finalUserID, followeeID);
+                        loadClient.get().executeFunction(conn.getHostname(finalUserID), "RetwisFollow", "defaultService", finalUserID, followeeID);
                         latch.countDown();
                     } catch (InvalidProtocolBufferException e) {
                         e.printStackTrace();
@@ -78,7 +78,7 @@ public class RetwisBenchmark {
         retwisPool.shutdown();
         retwisPool.awaitTermination(100000, TimeUnit.SECONDS);
 
-        List<String> distinctHosts = ctxt.getPartitionHostMap().values().stream()
+        List<String> distinctHosts = conn.getPartitionHostMap().values().stream()
                 .distinct()
                 .collect(Collectors.toList());
         long startTime = System.currentTimeMillis();
@@ -146,7 +146,7 @@ public class RetwisBenchmark {
                         lastSentTime = System.nanoTime();
                         int userID = ThreadLocalRandom.current().nextInt(numUsers);
                         byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("RetwisGetTimeline", service, messagesSent, 0, userID);
-                        ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[]{String.valueOf(userID)}));
+                        ZMQ.Socket socket = client.getSocket(conn.getHostname(String.valueOf(userID)));
                         socket.send(reqBytes, 0);
                         messagesSent++;
                     }

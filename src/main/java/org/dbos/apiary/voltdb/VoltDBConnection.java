@@ -161,7 +161,7 @@ public class VoltDBConnection implements ApiaryConnection {
     }
 
     @Override
-    public String getHostname(Object[] input) {
+    public String getHostname(Object... input) {
         return this.partitionHostMap.get(getPartition(input));
     }
 

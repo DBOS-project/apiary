@@ -26,12 +26,12 @@ public class IncrementBenchmark {
     private static final Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
 
     public static void benchmark(String voltAddr, String service, Integer interval, Integer duration, boolean stateless) throws IOException, InterruptedException, ProcCallException {
-        VoltDBConnection ctxt = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
-        ctxt.client.callProcedure("TruncateTables");
+        VoltDBConnection conn = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
+        conn.client.callProcedure("TruncateTables");
 
         final int numKeys = 100000;
 
-        List<String> distinctHosts = ctxt.getPartitionHostMap().values().stream()
+        List<String> distinctHosts = conn.getPartitionHostMap().values().stream()
                 .distinct()
                 .collect(Collectors.toList());
         long startTime = System.currentTimeMillis();
@@ -98,7 +98,7 @@ public class IncrementBenchmark {
                         } else {
                             reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementProcedure", service, 0, 0, key);
                         }
-                        ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[]{key}));
+                        ZMQ.Socket socket = client.getSocket(conn.getHostname(new Object[]{key}));
                         socket.send(reqBytes, 0);
                         lastSentTime = System.nanoTime();
                         messagesSent++;

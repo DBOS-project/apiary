@@ -10,6 +10,8 @@ public class VoltUtilities {
             return new VoltTable.ColumnInfo("StringT" + index, VoltType.STRING);
         } else if (input instanceof String[]) {
             return new VoltTable.ColumnInfo("StringArrayT" + index, VoltType.VARBINARY);
+        } else if (input instanceof Integer) {
+            return new VoltTable.ColumnInfo("IntegerT" + index, VoltType.INTEGER);
         } else if (input instanceof ApiaryFuture) {
             return new VoltTable.ColumnInfo("FutureT" + index, VoltType.SMALLINT);
         } else if (input instanceof ApiaryFuture[]) {

@@ -79,6 +79,8 @@ public class VoltDBConnection implements ApiaryConnection {
                 input[objIndex] = inputRow.getString(i);
             } else if (name.startsWith("StringArrayT")) {
                 input[objIndex] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
+            } else if (name.startsWith("IntegerT")) {
+                input[objIndex] = (int) inputRow.getLong(i);
             } else if (name.startsWith("FutureT")) {
                 int futureID = (int) inputRow.getLong(i);
                 input[objIndex] = new ApiaryFuture(futureID);
@@ -100,8 +102,9 @@ public class VoltDBConnection implements ApiaryConnection {
     @Override
     public FunctionOutput callFunction(String funcName, Object... inputs) throws IOException, ProcCallException {
         VoltTable voltInput = inputToVoltTable(inputs);
-        assert(inputs[0] instanceof String); // TODO: Support int type explicitly.
-        VoltTable[] res  = client.callProcedure(funcName, Integer.parseInt((String) inputs[0]), voltInput).getResults();
+        assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
+        Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];
+        VoltTable[] res  = client.callProcedure(funcName, keyInput, voltInput).getResults();
         VoltTable retVal = res[0];
         assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);
         String stringOutput = null;
@@ -147,10 +150,11 @@ public class VoltDBConnection implements ApiaryConnection {
         return;
     }
 
-    private int getPartition(Object[] input) {
-        assert (input[0] instanceof String); // TODO: Support int type explicitly.
+    private int getPartition(Object[] inputs) {
+        assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
+        Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];
         int partitionId = TheHashinator.getPartitionForParameter(
-                VoltType.INTEGER, Integer.parseInt((String) input[0]));
+                VoltType.INTEGER, keyInput);
         assert partitionId < this.numPartitions;
         assert partitionId >= 0;
         return partitionId;

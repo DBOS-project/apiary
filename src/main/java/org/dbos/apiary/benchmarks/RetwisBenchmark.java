@@ -48,7 +48,7 @@ public class RetwisBenchmark {
                     int postID = postIDs.incrementAndGet();
                     int ts = timestamp.incrementAndGet();
                     String postString = String.format("matei%d", postID);
-                    loadClient.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(userID)}), "RetwisPost", "defaultService", String.valueOf(userID), String.valueOf(postID), String.valueOf(ts), postString);
+                    loadClient.get().executeFunction(ctxt.getHostname(new Object[]{userID}), "RetwisPost", "defaultService", userID, postID, ts, postString);
                     latch.countDown();
                 } catch (InvalidProtocolBufferException e) {
                     e.printStackTrace();
@@ -64,7 +64,7 @@ public class RetwisBenchmark {
                 Runnable r = () ->  {
                     try {
                         int followeeID = (firstFollowee + finalI) % numUsers;
-                        loadClient.get().executeFunction(ctxt.getHostname(new Object[]{String.valueOf(finalUserID)}), "RetwisFollow", "defaultService", String.valueOf(finalUserID), String.valueOf(followeeID));
+                        loadClient.get().executeFunction(ctxt.getHostname(new Object[]{finalUserID}), "RetwisFollow", "defaultService", finalUserID, followeeID);
                         latch.countDown();
                     } catch (InvalidProtocolBufferException e) {
                         e.printStackTrace();
@@ -145,7 +145,7 @@ public class RetwisBenchmark {
                         // Send out a request.
                         lastSentTime = System.nanoTime();
                         int userID = ThreadLocalRandom.current().nextInt(numUsers);
-                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("RetwisGetTimeline", service, messagesSent, 0, String.valueOf(userID));
+                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("RetwisGetTimeline", service, messagesSent, 0, userID);
                         ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[]{String.valueOf(userID)}));
                         socket.send(reqBytes, 0);
                         messagesSent++;

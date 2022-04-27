@@ -91,7 +91,7 @@ public class IncrementBenchmark {
 
                     if (System.currentTimeMillis() < endTime && System.nanoTime() - lastSentTime >= threadInterval * 1000) {
                         // Send out a request.
-                        String key = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
+                        Integer key = ThreadLocalRandom.current().nextInt(numKeys);
                         byte[] reqBytes;
                         if (stateless) {
                             reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementStatelessDriver", service, 0, 0, key);

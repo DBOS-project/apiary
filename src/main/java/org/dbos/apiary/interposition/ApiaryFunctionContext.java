@@ -27,10 +27,6 @@ public abstract class ApiaryFunctionContext {
     /** Apiary-private **/
 
     public FunctionOutput getFunctionOutput(Object output) {
-        if (output instanceof ApiaryFuture) {
-            return new FunctionOutput(null, (ApiaryFuture) output, queuedTasks);
-        } else {
-            return new FunctionOutput(output, null, queuedTasks);
-        }
+        return new FunctionOutput(output, queuedTasks);
     }
 }

@@ -42,20 +42,19 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
 
     private static VoltTable[] serializeOutput(FunctionOutput output) {
         VoltTable voltOutput;
-        if (output.valueOutput != null) {
-            if (output.valueOutput instanceof String) {
-                voltOutput = new VoltTable(new VoltTable.ColumnInfo("stringOutput", VoltType.STRING));
-                voltOutput.addRow(output.valueOutput);
-            } else if (output.valueOutput instanceof Integer || output.valueOutput instanceof Long) {
-                voltOutput = new VoltTable(new VoltTable.ColumnInfo("intOutput", VoltType.BIGINT));
-                voltOutput.addRow(output.valueOutput);
-            } else {
-                throw new RuntimeException();
-            }
-        } else {
-            assert(output.futureOutput != null);
+        assert(output.output != null);
+        if (output.output instanceof String) {
+            voltOutput = new VoltTable(new VoltTable.ColumnInfo("stringOutput", VoltType.STRING));
+            voltOutput.addRow(output.output);
+        } else if (output.output instanceof Integer || output.output instanceof Long) {
+            voltOutput = new VoltTable(new VoltTable.ColumnInfo("intOutput", VoltType.BIGINT));
+            voltOutput.addRow(output.output);
+        } else if (output.output instanceof ApiaryFuture) {
+            ApiaryFuture futureOutput = (ApiaryFuture) output.output;
             voltOutput = new VoltTable(new VoltTable.ColumnInfo("future", VoltType.SMALLINT));
-            voltOutput.addRow(output.futureOutput.futureID);
+            voltOutput.addRow(futureOutput.futureID);
+        } else {
+            throw new RuntimeException();
         }
         VoltTable[] outputs = new VoltTable[output.queuedTasks.size() + 1];
         outputs[0] = voltOutput;

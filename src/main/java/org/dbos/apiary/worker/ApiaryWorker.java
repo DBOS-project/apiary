@@ -150,12 +150,7 @@ public class ApiaryWorker {
         long runtime = System.nanoTime() - tStart;
         assert (o != null);
         ApiaryTaskStash currTask = new ApiaryTaskStash(service, callerID, currTaskID, replyAddr, senderTimestampNano);
-        if (o.valueOutput != null) {
-            currTask.valueOutput = o.valueOutput;
-        } else  {
-            assert (o.futureOutput != null);
-            currTask.futureOutput = o.futureOutput;
-        }
+        currTask.output = o.output;
 
         // Store tasks in the list and async invoke all sub-tasks that are ready.
         // Caller ID to be passed to its subtasks;

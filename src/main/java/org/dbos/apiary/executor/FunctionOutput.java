@@ -5,25 +5,23 @@ import org.dbos.apiary.interposition.ApiaryFuture;
 import java.util.List;
 
 public class FunctionOutput {
-    public final Object valueOutput;
-    public ApiaryFuture futureOutput;
+    public final Object output;
     public final List<Task> queuedTasks;
 
-    public FunctionOutput(Object valueOutput, ApiaryFuture futureOutput, List<Task> queuedTasks) {
-        this.valueOutput = valueOutput;
-        this.futureOutput = futureOutput;
+    public FunctionOutput(Object output, List<Task> queuedTasks) {
+        this.output = output;
         this.queuedTasks = queuedTasks;
     }
 
     public String getString() {
-        assert(valueOutput != null);
-        assert (valueOutput instanceof String);
-        return (String) valueOutput;
+        return output instanceof String ? (String) output : null;
     }
 
-    public int getInt() {
-        assert (valueOutput != null);
-        assert (valueOutput instanceof Integer);
-        return (int) valueOutput;
+    public Integer getInt() {
+        return output instanceof Integer ? (Integer) output : null;
+    }
+
+    public ApiaryFuture getFuture() {
+        return output instanceof ApiaryFuture ? (ApiaryFuture) output : null;
     }
 }

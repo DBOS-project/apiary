@@ -22,8 +22,7 @@ public class ApiaryTaskStash {
     public final String service;
 
     public int totalQueuedTasks;
-    public Object valueOutput;
-    public ApiaryFuture futureOutput;
+    public Object output;
 
     public ApiaryTaskStash(String service, long callerId, int currTaskId, ZFrame replyAddr, long senderTimestampNano) {
         this.service = service;
@@ -40,12 +39,12 @@ public class ApiaryTaskStash {
     // Otherwise, return null.
     Object getFinalOutput() {
         if (numFinishedTasks.get() == totalQueuedTasks) {
-            if (valueOutput != null) {
-                return valueOutput;
-            } else {
-                assert (futureOutput != null);
+            if (output instanceof ApiaryFuture) {
+                ApiaryFuture futureOutput = (ApiaryFuture) output;
                 assert (taskIDtoValue.containsKey(futureOutput.futureID));
                 return taskIDtoValue.get(futureOutput.futureID);
+            } else {
+                return output;
             }
         }
         return null;

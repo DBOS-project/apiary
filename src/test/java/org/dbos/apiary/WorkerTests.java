@@ -182,12 +182,12 @@ public class WorkerTests {
         ZContext clientContext = new ZContext();
         ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
 
-        String res;
-        res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "0").getString();
-        assertEquals("1", res);
+        int res;
+        res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "0").getInt();
+        assertEquals(1, res);
 
-        res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "8").getString();
-        assertEquals("55", res);
+        res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "8").getInt();
+        assertEquals(55, res);
         clientContext.close();
         worker.shutdown();
     }

@@ -38,7 +38,7 @@ public class FibonacciFunction extends VoltApiaryProcedure {
         // Check if the number has been calculated before.
         VoltTable res = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];
         if (res.getRowCount() > 0) {
-            return (int) res.fetchRow(0).getLong(0);
+            return res.fetchRow(0).getLong(0);
         }
 
         // Otherwise, call functions.

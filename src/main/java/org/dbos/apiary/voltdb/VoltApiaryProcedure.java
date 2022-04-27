@@ -46,12 +46,11 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
             if (output.valueOutput instanceof String) {
                 voltOutput = new VoltTable(new VoltTable.ColumnInfo("stringOutput", VoltType.STRING));
                 voltOutput.addRow(output.valueOutput);
-            } else if (output.valueOutput instanceof Integer) {
+            } else if (output.valueOutput instanceof Integer || output.valueOutput instanceof Long) {
                 voltOutput = new VoltTable(new VoltTable.ColumnInfo("intOutput", VoltType.BIGINT));
                 voltOutput.addRow(output.valueOutput);
             } else {
-                assert(false);
-                voltOutput = null;
+                throw new RuntimeException();
             }
         } else {
             assert(output.futureOutput != null);

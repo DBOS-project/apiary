@@ -5,10 +5,7 @@ import org.dbos.apiary.interposition.StatelessFunction;
 
 public class IncrementStatelessDriver extends StatelessFunction {
 
-    public static String runFunction(ApiaryFunctionContext context, String inputString) {
-        // Pre-process the key to a new key.
-        String newKey = Integer.toString(Integer.parseInt(inputString) + 1);
-        String result = (String) context.apiaryCallFunction(context, "IncrementProcedure", newKey);
-        return result;
+    public static String runFunction(ApiaryFunctionContext context, Integer key) {
+        return (String) context.apiaryCallFunction(context, "IncrementProcedure", key);
     }
 }

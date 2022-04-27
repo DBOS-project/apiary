@@ -31,6 +31,8 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
                 input[i] = inputRow.getString(i);
             } else if (t.equals(VoltType.VARBINARY)) {
                 input[i] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
+            } else if (t.equals(VoltType.INTEGER)) {
+                input[i] = (int) inputRow.getLong(i);
             } else {
                 System.out.println("Error: Unrecognized input type: " + t.getName());
             }
@@ -75,6 +77,8 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
                 row[i + offset] = input;
             } else if (input instanceof String[]) {
                 row[i + offset] = Utilities.stringArraytoByteArray((String[]) input);
+            } else if (input instanceof Integer) {
+                row[i + offset] = input;
             } else if (input instanceof ApiaryFuture) {
                 row[i + offset] = ((ApiaryFuture) input).futureID;
             } else if (input instanceof ApiaryFuture[]) {

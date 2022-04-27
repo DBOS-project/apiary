@@ -16,8 +16,7 @@ public class RetwisGetFollowees extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(ApiaryStatefulFunctionContext context, String userIDString) {
-        int userID = Integer.parseInt(userIDString);
+    public String runFunction(ApiaryStatefulFunctionContext context, int userID) {
         VoltTable followeesTable = ((VoltTable[]) context.apiaryExecuteQuery(getFollowees, userID))[0];
         StringBuilder followees = new StringBuilder();
         String sep = "";

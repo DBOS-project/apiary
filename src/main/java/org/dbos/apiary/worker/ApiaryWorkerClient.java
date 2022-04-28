@@ -1,23 +1,13 @@
 package org.dbos.apiary.worker;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.dbos.apiary.ExecuteFunctionReply;
-import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.*;
 
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 
 

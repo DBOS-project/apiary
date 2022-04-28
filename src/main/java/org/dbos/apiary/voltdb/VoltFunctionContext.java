@@ -48,8 +48,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
-    public long getTransactionId() {
+    protected long internalGetTransactionId() {
         return DeprecatedProcedureAPIAccess.getVoltPrivateRealTransactionId(this.p);
     }
-
 }

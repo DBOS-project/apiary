@@ -87,7 +87,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
-    public long getTransactionId() {
+    public long internalGetTransactionId() {
         long txid = 0l;
         try {
             Statement stmt = conn.createStatement();

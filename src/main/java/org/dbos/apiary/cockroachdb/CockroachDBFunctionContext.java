@@ -68,7 +68,7 @@ public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
-    public long getTransactionId() {
+    protected long internalGetTransactionId() {
         return 0;
     }
 }

@@ -25,10 +25,15 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
         return internalExecuteQuery(procedure, input);
     }
 
+    // Get the current transaction ID.
+    public long apiaryGetTransactionId() {
+        return internalGetTransactionId();
+    }
+
     /** Abstract and require implementation. **/
     protected abstract void internalExecuteUpdate(Object procedure, Object... input);
     protected abstract Object internalExecuteQuery(Object procedure, Object... input);
 
-    public abstract long getTransactionId();
+    protected abstract long internalGetTransactionId();
 
 }

@@ -14,7 +14,7 @@ public class PostgresFunction implements ApiaryFunction {
             return;
         }
         long timestamp = Utilities.getMicroTimestamp();
-        long txid = ((ApiaryStatefulFunctionContext) ctxt).getTransactionId();
+        long txid = ((ApiaryStatefulFunctionContext) ctxt).apiaryGetTransactionId();
         ctxt.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txid, timestamp, ctxt.execID, ctxt.service, funcName);
     }
 }

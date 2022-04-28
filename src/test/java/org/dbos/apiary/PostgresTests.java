@@ -4,10 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.PostgresFibSumFunction;
 import org.dbos.apiary.procedures.postgres.PostgresFibonacciFunction;
-import org.dbos.apiary.procedures.postgres.retwis.RetwisFollow;
-import org.dbos.apiary.procedures.postgres.retwis.RetwisGetFollowees;
-import org.dbos.apiary.procedures.postgres.retwis.RetwisGetPosts;
-import org.dbos.apiary.procedures.postgres.retwis.RetwisPost;
+import org.dbos.apiary.procedures.postgres.retwis.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -89,6 +86,7 @@ public class PostgresTests {
         conn.registerFunction("RetwisFollow", RetwisFollow::new);
         conn.registerFunction("RetwisGetPosts", RetwisGetPosts::new);
         conn.registerFunction("RetwisGetFollowees", RetwisGetFollowees::new);
+        conn.registerFunction("RetwisGetTimeline", RetwisGetTimeline::new);
 
         ApiaryWorker worker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
         worker.startServing();
@@ -116,6 +114,11 @@ public class PostgresTests {
         assertEquals(2, res.split(",").length);
         assertTrue(res.contains("0"));
         assertTrue(res.contains("1"));
+        res = client.executeFunction("localhost", "RetwisGetTimeline", "defaultService", 1).getString();
+        assertEquals(3, res.split(",").length);
+        assertTrue(res.contains("hello0"));
+        assertTrue(res.contains("hello1"));
+        assertTrue(res.contains("hello2"));
 
         clientContext.close();
         worker.shutdown();

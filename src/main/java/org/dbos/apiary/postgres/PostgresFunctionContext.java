@@ -38,6 +38,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
             } catch (Exception e) {
                 e.printStackTrace();
                 conn.rollback(s);
+                conn.releaseSavepoint(s);
                 return null;
             }
         } catch (SQLException e) {

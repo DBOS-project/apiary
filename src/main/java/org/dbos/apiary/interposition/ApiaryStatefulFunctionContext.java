@@ -8,19 +8,7 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
 
     /** Public Interface for functions. **/
 
-    public FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
-        // TODO: Logging?
-        Object clazz;
-        try {
-            clazz = Class.forName(name).getDeclaredConstructor().newInstance();
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-            e.printStackTrace();
-            return null;
-        }
-        assert(clazz instanceof ApiaryFunction);
-        ApiaryFunction f = (ApiaryFunction) clazz;
-        return f.apiaryRunFunction(ctxt, inputs);
-    }
+    public abstract FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs);
 
     // Execute an update in the database.
     public void apiaryExecuteUpdate(Object procedure, Object... input) {

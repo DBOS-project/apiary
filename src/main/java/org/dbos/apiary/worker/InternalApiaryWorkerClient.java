@@ -90,7 +90,17 @@ public class InternalApiaryWorkerClient {
         socket.send(reqBytes, 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
-        return new FunctionOutput(rep.getReplyType() == ApiaryWorker.stringType ? rep.getReplyString() : rep.getReplyInt(), null);
+        Object output = null;
+        if (rep.getReplyType() == ApiaryWorker.stringType) {
+            output = rep.getReplyString();
+        } else if (rep.getReplyType() == ApiaryWorker.intType) {
+            output = rep.getReplyInt();
+        } else if (rep.getReplyType() == ApiaryWorker.stringArrayType) {
+            output = Utilities.byteArrayToStringArray(rep.getReplyArray().toByteArray());
+        } else if (rep.getReplyType() == ApiaryWorker.intArrayType) {
+            output = Utilities.byteArrayToIntArray(rep.getReplyArray().toByteArray());
+        }
+        return new FunctionOutput(output, null);
     }
 
 }

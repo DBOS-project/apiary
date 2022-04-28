@@ -144,6 +144,12 @@ public class ApiaryWorker {
             } else if (output instanceof Integer) {
                 b.setReplyType(intType);
                 b.setReplyInt((int) output);
+            } else if (output instanceof String[]) {
+                b.setReplyType(stringArrayType);
+                b.setReplyArray(ByteString.copyFrom(Utilities.stringArraytoByteArray((String[]) output)));
+            } else if (output instanceof int[]) {
+                b.setReplyType(intArrayType);
+                b.setReplyArray(ByteString.copyFrom(Utilities.intArrayToByteArray((int[]) output)));
             }
             outgoingReplyMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, b.build().toByteArray()));
 
@@ -197,6 +203,12 @@ public class ApiaryWorker {
             } else if (output instanceof Integer) {
                 b.setReplyType(intType);
                 b.setReplyInt((int) output);
+            } else if (output instanceof String[]) {
+                b.setReplyType(stringArrayType);
+                b.setReplyArray(ByteString.copyFrom(Utilities.stringArraytoByteArray((String[]) output)));
+            } else if (output instanceof int[]) {
+                b.setReplyType(intArrayType);
+                b.setReplyArray(ByteString.copyFrom(Utilities.intArrayToByteArray((int[]) output)));
             }
             outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
         }

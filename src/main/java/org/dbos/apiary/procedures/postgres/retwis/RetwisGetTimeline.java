@@ -8,12 +8,11 @@ import java.sql.SQLException;
 public class RetwisGetTimeline extends PostgresFunction {
 
     public static String runFunction(ApiaryStatefulFunctionContext ctxt, int userID) throws SQLException {
-        String followees = ctxt.apiaryCallFunction(ctxt, "org.dbos.apiary.procedures.postgres.retwis.RetwisGetFollowees", userID).getString();
-        String[] followeesList = followees.split(",");
+        int[] followees = ctxt.apiaryCallFunction(ctxt, "org.dbos.apiary.procedures.postgres.retwis.RetwisGetFollowees", userID).getIntArray();
         String sep = "";
         StringBuilder posts = new StringBuilder();
-        for (String followee: followeesList) {
-            String userPosts = ctxt.apiaryCallFunction(ctxt, "org.dbos.apiary.procedures.postgres.retwis.RetwisGetPosts", Integer.valueOf(followee)).getString();
+        for (int followee: followees) {
+            String userPosts = ctxt.apiaryCallFunction(ctxt, "org.dbos.apiary.procedures.postgres.retwis.RetwisGetPosts", followee).getString();
             posts.append(sep);
             posts.append(userPosts);
             sep = ",";

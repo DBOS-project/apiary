@@ -21,6 +21,10 @@ public class FunctionOutput {
         return output instanceof Integer ? (Integer) output : null;
     }
 
+    public String[] getStringArray() { return output instanceof String[] ? (String[]) output : null; }
+
+    public int[] getIntArray() { return output instanceof int[] ? (int[]) output : null; }
+
     public ApiaryFuture getFuture() {
         return output instanceof ApiaryFuture ? (ApiaryFuture) output : null;
     }

@@ -16,8 +16,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.Arrays;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class PostgresTests {
     private static final Logger logger = LoggerFactory.getLogger(PostgresTests.class);
@@ -107,18 +108,16 @@ public class PostgresTests {
         resInt = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 1).getInt();
         assertEquals(1, resInt);
 
-        String resString;
-        resString = client.executeFunction("localhost", "RetwisGetPosts", "defaultService", 0).getString();
-        assertEquals("hello0,hello1", resString);
+        String[] postResult = client.executeFunction("localhost", "RetwisGetPosts", "defaultService", 0).getStringArray();
+        assertArrayEquals(new String[]{"hello0", "hello1"}, postResult);
         int[] resArray;
         resArray = client.executeFunction("localhost", "RetwisGetFollowees", "defaultService", 1).getIntArray();
         assertEquals(2, resArray.length);
         assertTrue(resArray[0] == 0 && resArray[1] == 1 || resArray[0] == 1 && resArray[1] == 0);
-        resString = client.executeFunction("localhost", "RetwisGetTimeline", "defaultService", 1).getString();
-        assertEquals(3, resString.split(",").length);
-        assertTrue(resString.contains("hello0"));
-        assertTrue(resString.contains("hello1"));
-        assertTrue(resString.contains("hello2"));
+        String[] timeline = client.executeFunction("localhost", "RetwisGetTimeline", "defaultService", 1).getStringArray();
+        assertTrue(Arrays.asList(timeline).contains("hello0"));
+        assertTrue(Arrays.asList(timeline).contains("hello1"));
+        assertTrue(Arrays.asList(timeline).contains("hello2"));
 
         clientContext.close();
         worker.shutdown();

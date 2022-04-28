@@ -27,9 +27,10 @@ import java.util.stream.Collectors;
 public class ApiaryWorker {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorker.class);
 
-    public static int stringType = 0;
-    public static int stringArrayType = 1;
-    public static int intType = 2;
+    public static int stringType = 1;
+    public static int stringArrayType = 2;
+    public static int intType = 3;
+    public static int intArrayType = 4;
 
     private final AtomicLong callerIDs = new AtomicLong(0);
     // Store the call stack for each caller.

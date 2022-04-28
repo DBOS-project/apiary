@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class IncrementBenchmark {
@@ -94,9 +95,9 @@ public class IncrementBenchmark {
                         Integer key = ThreadLocalRandom.current().nextInt(numKeys);
                         byte[] reqBytes;
                         if (stateless) {
-                            reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementStatelessDriver", service, 0, 0, key);
+                            reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementStatelessDriver", service,   key);
                         } else {
-                            reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementProcedure", service, 0, 0, key);
+                            reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementProcedure", service, key);
                         }
                         ZMQ.Socket socket = client.getSocket(conn.getHostname(new Object[]{key}));
                         socket.send(reqBytes, 0);

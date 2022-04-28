@@ -3,6 +3,7 @@ package org.dbos.apiary.voltdb;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
 import org.dbos.apiary.interposition.ApiaryFunction;
+import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryFuture;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.VoltProcedure;
@@ -98,5 +99,10 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
         }
         v.addRow(row);
         return v;
+    }
+
+    @Override
+    public void recordInvocation(ApiaryFunctionContext ctxt, String funcName) {
+        // TODO: implement this.
     }
 }

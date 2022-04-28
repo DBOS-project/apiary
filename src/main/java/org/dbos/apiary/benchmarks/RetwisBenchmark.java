@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class RetwisBenchmark {
@@ -86,6 +87,7 @@ public class RetwisBenchmark {
 
         List<Thread> threads = new ArrayList<>();
         long threadInterval = interval.longValue() * numThreads;
+
         for (int threadNum = 0; threadNum < numThreads; threadNum++) {
             Runnable threadRunnable = () -> {
                 ZContext clientContext = new ZContext();
@@ -145,7 +147,7 @@ public class RetwisBenchmark {
                         // Send out a request.
                         lastSentTime = System.nanoTime();
                         int userID = ThreadLocalRandom.current().nextInt(numUsers);
-                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("RetwisGetTimeline", service, messagesSent, 0, userID);
+                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("RetwisGetTimeline", service, userID);
                         ZMQ.Socket socket = client.getSocket(conn.getHostname(String.valueOf(userID)));
                         socket.send(reqBytes, 0);
                         messagesSent++;

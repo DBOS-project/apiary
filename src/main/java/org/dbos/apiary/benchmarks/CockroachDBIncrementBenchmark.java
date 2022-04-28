@@ -97,7 +97,7 @@ public class CockroachDBIncrementBenchmark {
                 String key1 = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
                 String key2 = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
                 byte[] reqBytes;
-                reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementFunction", service, 0, 0, key1, key2);
+                reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementFunction", service, key1, key2);
                 ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[] { key1 }));
                 socket.send(reqBytes, 0);
                 lastSentTime = System.nanoTime();

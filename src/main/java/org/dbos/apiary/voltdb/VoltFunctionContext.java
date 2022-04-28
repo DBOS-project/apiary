@@ -4,6 +4,7 @@ import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.interposition.ApiaryFunction;
 import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
+import org.voltdb.DeprecatedProcedureAPIAccess;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
@@ -14,6 +15,8 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     private final VoltApiaryProcedure p;
 
     public VoltFunctionContext(VoltApiaryProcedure p) {
+        // TODO: add actual provenance buffer, service name, and execution ID.
+        super(null, null, 0l);
         this.p = p;
     }
 
@@ -44,4 +47,8 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         return p.voltExecuteSQL();
     }
 
+    @Override
+    protected long internalGetTransactionId() {
+        return DeprecatedProcedureAPIAccess.getVoltPrivateRealTransactionId(this.p);
+    }
 }

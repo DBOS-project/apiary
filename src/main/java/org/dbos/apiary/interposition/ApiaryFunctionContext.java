@@ -12,6 +12,16 @@ public abstract class ApiaryFunctionContext {
     private final AtomicInteger calledTaskID = new AtomicInteger(0);
     private final List<Task> queuedTasks = new ArrayList<>();
 
+    public final ProvenanceBuffer provBuff;
+    public final String service;
+    public final long execID;
+
+    public ApiaryFunctionContext(ProvenanceBuffer provBuff, String service, long execID) {
+        this.provBuff = provBuff;
+        this.service = service;
+        this.execID = execID;
+    }
+
     /** Public Interface for functions. **/
 
     // Asynchronously queue another function for asynchronous execution.

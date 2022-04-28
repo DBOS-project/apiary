@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.tests.StatelessIncrement;
+import org.dbos.apiary.interposition.ProvenanceBuffer;
 import org.dbos.apiary.procedures.voltdb.tests.StatelessDriver;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
@@ -57,8 +58,7 @@ public class WorkerTests {
             ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
             worker.startServing();
 
-            ZContext clientContext = new ZContext();
-            ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+            ApiaryWorkerClient client = new ApiaryWorkerClient();
 
             int res;
             res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 1).getInt();
@@ -70,7 +70,6 @@ public class WorkerTests {
             res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", 30).getInt();
             assertEquals(832040, res);
 
-            clientContext.close();
             worker.shutdown();
         }
     }
@@ -82,13 +81,11 @@ public class WorkerTests {
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
         worker.startServing();
 
-        ZContext clientContext = new ZContext();
-        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+        ApiaryWorkerClient client = new ApiaryWorkerClient();
 
         String res = client.executeFunction("localhost", "AdditionFunction", "defaultService", 1, "2", new String[]{"matei", "zaharia"}).getString();
         assertEquals("3mateizaharia", res);
 
-        clientContext.close();
         worker.shutdown();
     }
 
@@ -108,7 +105,7 @@ public class WorkerTests {
 
         // Non-blocking send. Then get result and calculate latency.
         long actualSendTime = System.nanoTime();
-        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("AdditionFunction", "defaultService", 0, 0, 1, "2", new String[]{"matei", "zaharia"});
+        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("AdditionFunction", "defaultService", 1, "2", new String[]{"matei", "zaharia"});
         for (int i = 0; i < 5; i++) {
             socket.send(reqBytes, 0);
         }
@@ -146,15 +143,14 @@ public class WorkerTests {
 
 
     @Test
-    public void testStatelessCounter() throws IOException {
+    public void testStatelessCounter() throws IOException, InterruptedException {
         logger.info("testStatelessCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
         worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
         worker.startServing();
 
-        ZContext clientContext = new ZContext();
-        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+        ApiaryWorkerClient client = new ApiaryWorkerClient();
 
         String res;
         res = client.executeFunction("localhost", "CounterFunction", "defaultService", "0").getString();
@@ -166,7 +162,9 @@ public class WorkerTests {
         res = client.executeFunction("localhost", "CounterFunction", "defaultService", "1").getString();
         assertEquals("1", res);
 
-        clientContext.close();
+        // Should be able to see provenance data if Vertica is running.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
         worker.shutdown();
     }
 
@@ -179,8 +177,7 @@ public class WorkerTests {
         worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
         worker.startServing();
 
-        ZContext clientContext = new ZContext();
-        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+        ApiaryWorkerClient client = new ApiaryWorkerClient();
 
         int res;
         res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "0").getInt();
@@ -188,7 +185,6 @@ public class WorkerTests {
 
         res = client.executeFunction("localhost", "StatelessDriver", "testStatelessDriver", "8").getInt();
         assertEquals(55, res);
-        clientContext.close();
         worker.shutdown();
     }
 
@@ -199,8 +195,7 @@ public class WorkerTests {
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
         worker.startServing();
 
-        ZContext clientContext = new ZContext();
-        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+        ApiaryWorkerClient client = new ApiaryWorkerClient();
 
         String res;
         res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", "0").getString();
@@ -212,7 +207,6 @@ public class WorkerTests {
         res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", "1").getString();
         assertEquals("1", res);
 
-        clientContext.close();
         worker.shutdown();
     }
 }

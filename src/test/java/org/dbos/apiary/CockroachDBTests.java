@@ -45,8 +45,7 @@ public class CockroachDBTests {
             ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
             worker.startServing();
 
-            ZContext clientContext = new ZContext();
-            ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+            ApiaryWorkerClient client = new ApiaryWorkerClient();
 
             String res;
             res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "1").getString();
@@ -56,9 +55,9 @@ public class CockroachDBTests {
             assertEquals("8", res);
 
             res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "10").getString();
+
             assertEquals("55", res);
 
-            clientContext.close();
             worker.shutdown();
         } catch (PSQLException e) {
             logger.info("No CockroachDB cluster!");

@@ -4,6 +4,7 @@ import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
 import org.dbos.apiary.interposition.ApiaryFuture;
+import org.dbos.apiary.interposition.ProvenanceBuffer;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,7 +101,7 @@ public class VoltDBConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String funcName, Object... inputs) throws IOException, ProcCallException {
+    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, String funcName, Object... inputs) throws IOException, ProcCallException {
         VoltTable voltInput = inputToVoltTable(inputs);
         assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
         Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];

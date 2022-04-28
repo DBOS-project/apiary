@@ -18,6 +18,7 @@ message ExecuteFunctionRequest {
   int32 taskId = 5;
   int64 senderTimestampNano = 6;
   string service = 7;
+  int64 executionId = 8;  // Unique global IDs for an entire workflow.
 }
 
 message ExecuteFunctionReply {

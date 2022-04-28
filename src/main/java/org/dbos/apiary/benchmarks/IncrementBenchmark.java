@@ -40,7 +40,6 @@ public class IncrementBenchmark {
 
         List<Thread> threads = new ArrayList<>();
         long threadInterval = interval.longValue() * numThreads;
-        AtomicLong execId = new AtomicLong(0);
         for (int threadNum = 0; threadNum < numThreads; threadNum++) {
             Runnable threadRunnable = () -> {
                 ZContext clientContext = new ZContext();
@@ -96,9 +95,9 @@ public class IncrementBenchmark {
                         Integer key = ThreadLocalRandom.current().nextInt(numKeys);
                         byte[] reqBytes;
                         if (stateless) {
-                            reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementStatelessDriver", service, execId.getAndIncrement(), 0, 0, key);
+                            reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementStatelessDriver", service,   key);
                         } else {
-                            reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementProcedure", service, execId.getAndIncrement(), 0, 0, key);
+                            reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementProcedure", service, key);
                         }
                         ZMQ.Socket socket = client.getSocket(conn.getHostname(new Object[]{key}));
                         socket.send(reqBytes, 0);

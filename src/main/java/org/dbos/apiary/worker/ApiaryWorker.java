@@ -53,10 +53,10 @@ public class ApiaryWorker {
     private final int runningAverageLength = 100;
     private final List<Long> defaultQueue = new ArrayList<>();
     private final Long defaultTimeNs = 100000L;
-    private final ThreadLocal<ApiaryWorkerClient> localClients = ThreadLocal.withInitial(() -> {
+    private final ThreadLocal<InternalApiaryWorkerClient> localClients = ThreadLocal.withInitial(() -> {
         ZContext context = ZContext.shadow(zContext);
         localContexts.add(context);
-        return new ApiaryWorkerClient(context);
+        return new InternalApiaryWorkerClient(context);
     });
 
     private final ProvenanceBuffer provenanceBuffer;
@@ -105,7 +105,7 @@ public class ApiaryWorker {
                     }
                     String address = statelessFunctions.containsKey(subtask.funcName) ? c.getPartitionHostMap().get(0) : c.getHostname(subtask.input); // TODO: Fix hack, use local hostname.
                     // Push to the outgoing queue.
-                    byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currCallerID, subtask.taskID, subtask.input);
+                    byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currCallerID, subtask.taskID, subtask.input);
                     outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
                 }
                 numTraversed++;
@@ -292,7 +292,7 @@ public class ApiaryWorker {
         frontend.bind("tcp://*:" + ApiaryConfig.workerPort);
 
         // This main server thread is used as I/O thread.
-        ApiaryWorkerClient client = new ApiaryWorkerClient(shadowContext);
+        InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(shadowContext);
         List<String> distinctHosts = c.getPartitionHostMap().values().stream()
                 .distinct()
                 .collect(Collectors.toList());

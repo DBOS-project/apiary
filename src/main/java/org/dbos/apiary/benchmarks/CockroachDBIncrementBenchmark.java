@@ -35,7 +35,6 @@ public class CockroachDBIncrementBenchmark {
         CockroachDBConnection ctxt = new CockroachDBConnection(ds, "KVTable");
         // ctxt.deleteEntriesFromTable(/* tableName= */"KVTable");
         ctxt.seedKVTable(/* numRows= */ 10000);
-        long execID = 0;
 
         Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
         List<String> distinctHosts = ctxt.getPartitionHostMap().values().stream()
@@ -98,7 +97,7 @@ public class CockroachDBIncrementBenchmark {
                 String key1 = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
                 String key2 = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
                 byte[] reqBytes;
-                reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementFunction", service, execID++, 0, 0, key1, key2);
+                reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementFunction", service, key1, key2);
                 ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[] { key1 }));
                 socket.send(reqBytes, 0);
                 lastSentTime = System.nanoTime();

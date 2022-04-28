@@ -3,7 +3,7 @@ package org.dbos.apiary.interposition;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.worker.ApiaryWorkerClient;
+import org.dbos.apiary.worker.InternalApiaryWorkerClient;
 
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -11,10 +11,10 @@ import java.util.concurrent.Callable;
 public class ApiaryStatelessFunctionContext extends ApiaryFunctionContext {
 
     private final ApiaryConnection c;
-    private final ApiaryWorkerClient client;
+    private final InternalApiaryWorkerClient client;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions;
 
-    public ApiaryStatelessFunctionContext(ApiaryConnection c, ApiaryWorkerClient client, ProvenanceBuffer provBuff, String service, long execID, Map<String, Callable<StatelessFunction>> statelessFunctions) {
+    public ApiaryStatelessFunctionContext(ApiaryConnection c, InternalApiaryWorkerClient client, ProvenanceBuffer provBuff, String service, long execID, Map<String, Callable<StatelessFunction>> statelessFunctions) {
         super(provBuff, service, execID);
         this.client = client;
         this.statelessFunctions = statelessFunctions;

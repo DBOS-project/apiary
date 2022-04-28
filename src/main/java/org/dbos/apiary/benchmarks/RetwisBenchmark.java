@@ -31,7 +31,6 @@ public class RetwisBenchmark {
     private static final int numThreads = 1;
 
     public static void benchmark(String voltAddr, String service, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
-        AtomicLong execId = new AtomicLong(0);
         VoltDBConnection conn = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
         conn.client.callProcedure("TruncateTables");
 
@@ -50,7 +49,7 @@ public class RetwisBenchmark {
                     int postID = postIDs.incrementAndGet();
                     int ts = timestamp.incrementAndGet();
                     String postString = String.format("matei%d", postID);
-                    loadClient.get().executeFunction(conn.getHostname(userID), "RetwisPost", "defaultService", execId.getAndIncrement(), userID, postID, ts, postString);
+                    loadClient.get().executeFunction(conn.getHostname(userID), "RetwisPost", "defaultService", userID, postID, ts, postString);
                     latch.countDown();
                 } catch (InvalidProtocolBufferException e) {
                     e.printStackTrace();
@@ -66,7 +65,7 @@ public class RetwisBenchmark {
                 Runnable r = () ->  {
                     try {
                         int followeeID = (firstFollowee + finalI) % numUsers;
-                        loadClient.get().executeFunction(conn.getHostname(finalUserID), "RetwisFollow", "defaultService", execId.getAndIncrement(), finalUserID, followeeID);
+                        loadClient.get().executeFunction(conn.getHostname(finalUserID), "RetwisFollow", "defaultService", finalUserID, followeeID);
                         latch.countDown();
                     } catch (InvalidProtocolBufferException e) {
                         e.printStackTrace();
@@ -148,7 +147,7 @@ public class RetwisBenchmark {
                         // Send out a request.
                         lastSentTime = System.nanoTime();
                         int userID = ThreadLocalRandom.current().nextInt(numUsers);
-                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("RetwisGetTimeline", service, execId.getAndDecrement(), messagesSent, 0, userID);
+                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("RetwisGetTimeline", service, userID);
                         ZMQ.Socket socket = client.getSocket(conn.getHostname(String.valueOf(userID)));
                         socket.send(reqBytes, 0);
                         messagesSent++;

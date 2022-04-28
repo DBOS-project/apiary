@@ -16,22 +16,53 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 // Note: ZMQ.Socket is not thread-safe, so this class is not thread-safe either.
 public class ApiaryWorkerClient {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorkerClient.class);
 
-    private final ZContext zContext;
+    protected final ZContext zContext;
+
+    private final Map<String, ZMQ.Socket> sockets = new HashMap<>();
+
+    // A map that stores unique execution ID for each service.
+    private final static Map<String, AtomicLong> serviceExecutionIdMap = new ConcurrentHashMap<>();
+
+    public ApiaryWorkerClient() {
+        this.zContext = new ZContext();
+    }
 
     public ApiaryWorkerClient(ZContext zContext) {
         this.zContext = zContext;
     }
-
-    private final Map<String, ZMQ.Socket> sockets = new HashMap<>();
-
+    
+    // This can be used by asynchronous client.
     public ZMQ.Socket getSocket(String address) {
+        return this.internalGetSocket(address);
+    }
+
+    public static byte[] serializeExecuteRequest(String name, String service, Object... arguments) {
+        return internalSerializeExecuteRequest(name, service, getExecutionId(service), 0l, 0, arguments);
+    }
+
+    // Synchronous blocking invocation, supposed to be used by client/loadgen.
+    public FunctionOutput executeFunction(String address, String name, String service, Object... arguments) throws InvalidProtocolBufferException {
+        return internalExecuteFunction(address, name, service, getExecutionId(service), 0l, 0, arguments);
+    }
+
+    /* --------------------------- Internal functions ------------------------------- */
+    private static long getExecutionId(String service) {
+        if (!serviceExecutionIdMap.containsKey(service)) {
+            serviceExecutionIdMap.put(service, new AtomicLong(0));
+        }
+        return serviceExecutionIdMap.get(service).getAndIncrement();
+    }
+
+    protected ZMQ.Socket internalGetSocket(String address) {
         if (sockets.containsKey(address)) {
             return sockets.get(address);
         } else {
@@ -43,7 +74,8 @@ public class ApiaryWorkerClient {
             return socket;
         }
     }
-    public static byte[] serializeExecuteRequest(String name, String service, long execID, long callerID, int taskID, Object... arguments) {
+
+    protected static byte[] internalSerializeExecuteRequest(String name, String service, long execID, long callerID, int taskID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
         for (Object o: arguments) {
@@ -76,13 +108,13 @@ public class ApiaryWorkerClient {
         return req.toByteArray();
     }
 
-    // Synchronous blocking invocation, supposed to be used by client/loadgen.
-    public FunctionOutput executeFunction(String address, String name, String service, long execID, Object... arguments) throws InvalidProtocolBufferException {
-        ZMQ.Socket socket = getSocket(address);
-        byte[] reqBytes = serializeExecuteRequest(name, service, execID, 0L, 0, arguments);
+    protected FunctionOutput internalExecuteFunction(String address, String name, String service, long execID, long callerID, int taskID, Object... arguments) throws InvalidProtocolBufferException {
+        ZMQ.Socket socket = internalGetSocket(address);
+        byte[] reqBytes = internalSerializeExecuteRequest(name, service, execID, callerID, taskID, arguments);
         socket.send(reqBytes, 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
         return new FunctionOutput(rep.getReplyType() == ApiaryWorker.stringType ? rep.getReplyString() : rep.getReplyInt(), null);
     }
+
 }

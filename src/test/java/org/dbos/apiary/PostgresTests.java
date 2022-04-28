@@ -54,22 +54,20 @@ public class PostgresTests {
         ApiaryWorker worker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
         worker.startServing();
 
-        ZContext clientContext = new ZContext();
-        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+        ApiaryWorkerClient client = new ApiaryWorkerClient();
 
         int res;
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 1l, 1).getInt();
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 1).getInt();
         assertEquals(1, res);
 
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 2l, 6).getInt();
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 6).getInt();
         assertEquals(8, res);
 
-        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 3l, 10).getInt();
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 10).getInt();
         assertEquals(55, res);
 
         // Should be able to see provenance data if Vertica is running.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
-        clientContext.close();
         worker.shutdown();
 
     }

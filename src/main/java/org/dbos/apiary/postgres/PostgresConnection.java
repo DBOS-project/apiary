@@ -52,10 +52,10 @@ public class PostgresConnection implements ApiaryConnection {
 
     public void registerFunction(String name, Callable<PostgresFunction> function) { functions.put(name, function); }
 
-    public void truncateTable(String tableName) throws SQLException {
+    public void dropTable(String tableName) throws SQLException {
         Connection conn = ds.getConnection();
         Statement truncateTable = conn.createStatement();
-        truncateTable.execute(String.format("TRUNCATE TABLE %s;", tableName));
+        truncateTable.execute(String.format("DROP TABLE %s;", tableName));
         truncateTable.close();
         conn.close();
     }

@@ -1,8 +1,13 @@
 package org.dbos.apiary.voltdb;
 
+import org.dbos.apiary.executor.FunctionOutput;
+import org.dbos.apiary.interposition.ApiaryFunction;
+import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
+
+import java.lang.reflect.InvocationTargetException;
 
 public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
@@ -10,6 +15,21 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
     public VoltFunctionContext(VoltApiaryProcedure p) {
         this.p = p;
+    }
+
+    @Override
+    public FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
+        // TODO: Logging?
+        Object clazz;
+        try {
+            clazz = Class.forName(name).getDeclaredConstructor().newInstance();
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+            e.printStackTrace();
+            return null;
+        }
+        assert(clazz instanceof ApiaryFunction);
+        ApiaryFunction f = (ApiaryFunction) clazz;
+        return f.apiaryRunFunction(ctxt, inputs);
     }
 
     @Override

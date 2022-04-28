@@ -5,19 +5,18 @@ import org.dbos.apiary.postgres.PostgresFunction;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RetwisGetPosts extends PostgresFunction {
     private static final String getPosts = "SELECT Post FROM RetwisPosts WHERE UserID=? ORDER BY Timestamp LIMIT 10;";
 
-    public static String runFunction(ApiaryStatefulFunctionContext ctxt, int userID) throws SQLException {
+    public static String[] runFunction(ApiaryStatefulFunctionContext ctxt, int userID) throws SQLException {
         ResultSet result = (ResultSet) ctxt.apiaryExecuteQuery(getPosts, userID);
-        StringBuilder posts = new StringBuilder();
-        String sep = "";
-        while (result.next()) { // TODO: Use properly escaped JSON or something.
-            posts.append(sep);
-            posts.append(result.getString(1));
-            sep = ",";
+        List<String> posts = new ArrayList<>();
+        while (result.next()) {
+            posts.add(result.getString(1));
         }
-        return posts.toString();
+        return posts.toArray(new String[0]);
     }
 }

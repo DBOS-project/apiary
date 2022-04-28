@@ -15,9 +15,9 @@ import org.slf4j.LoggerFactory;
 import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
+import java.util.Arrays;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class BenchmarkTests {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkTests.class);
@@ -50,6 +50,10 @@ public class BenchmarkTests {
         resInt = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 1).getInt();
         assertEquals(1, resInt);
 
+        int[] followees = client.executeFunction("localhost", "RetwisGetFollowees", "defaultService", 1).getIntArray();
+        assertEquals(2, followees.length);
+        assertTrue(followees[0] == 0 && followees[1] == 1 || followees[0] == 1 && followees[1] == 0);
+
         String resString;
         resString = client.executeFunction("localhost", "RetwisGetPosts", "defaultService", 0).getString();
         assertEquals("hello0,hello1", resString);
@@ -58,6 +62,7 @@ public class BenchmarkTests {
         assertTrue(resString.contains("hello0"));
         assertTrue(resString.contains("hello1"));
         assertTrue(resString.contains("hello2"));
+
         worker.shutdown();
     }
 
@@ -85,12 +90,7 @@ public class BenchmarkTests {
         resInt = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 1).getInt();
         assertEquals(1, resInt);
 
-        String res;
-        res = client.executeFunction("localhost", "RetwisGetFollowees", "defaultService", 1).getString();
-        assertEquals(2, res.split(",").length);
-        assertTrue(res.contains("0"));
-        assertTrue(res.contains("1"));
-        res = client.executeFunction("localhost", "RetwisStatelessGetTimeline", "defaultService",1).getString();
+        String res = client.executeFunction("localhost", "RetwisStatelessGetTimeline", "defaultService",1).getString();
         assertEquals(3, res.split(",").length);
         assertTrue(res.contains("hello0"));
         assertTrue(res.contains("hello1"));

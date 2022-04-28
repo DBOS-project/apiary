@@ -27,9 +27,10 @@ import java.util.stream.Collectors;
 public class ApiaryWorker {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorker.class);
 
-    public static int stringType = 0;
-    public static int stringArrayType = 1;
-    public static int intType = 2;
+    public static int stringType = 1;
+    public static int stringArrayType = 2;
+    public static int intType = 3;
+    public static int intArrayType = 4;
 
     private final AtomicLong callerIDs = new AtomicLong(0);
     // Store the call stack for each caller.
@@ -143,6 +144,12 @@ public class ApiaryWorker {
             } else if (output instanceof Integer) {
                 b.setReplyType(intType);
                 b.setReplyInt((int) output);
+            } else if (output instanceof String[]) {
+                b.setReplyType(stringArrayType);
+                b.setReplyArray(ByteString.copyFrom(Utilities.stringArraytoByteArray((String[]) output)));
+            } else if (output instanceof int[]) {
+                b.setReplyType(intArrayType);
+                b.setReplyArray(ByteString.copyFrom(Utilities.intArrayToByteArray((int[]) output)));
             }
             outgoingReplyMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, b.build().toByteArray()));
 
@@ -196,6 +203,12 @@ public class ApiaryWorker {
             } else if (output instanceof Integer) {
                 b.setReplyType(intType);
                 b.setReplyInt((int) output);
+            } else if (output instanceof String[]) {
+                b.setReplyType(stringArrayType);
+                b.setReplyArray(ByteString.copyFrom(Utilities.stringArraytoByteArray((String[]) output)));
+            } else if (output instanceof int[]) {
+                b.setReplyType(intArrayType);
+                b.setReplyArray(ByteString.copyFrom(Utilities.intArrayToByteArray((int[]) output)));
             }
             outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
         }
@@ -242,9 +255,10 @@ public class ApiaryWorker {
                         arguments[i] = new String(byteArray);
                     } else if (argumentTypes.get(i) == intType) {
                         arguments[i] = Utilities.fromByteArray(byteArray);
-                    } else {
-                        assert (argumentTypes.get(i) == stringArrayType);
+                    } else if (argumentTypes.get(i) == stringArrayType) {
                         arguments[i] = Utilities.byteArrayToStringArray(byteArray);
+                    }  else if (argumentTypes.get(i) == intArrayType) {
+                        arguments[i] = Utilities.byteArrayToIntArray(byteArray);
                     }
                 }
                 executeFunction(req.getName(), req.getService(), execID, callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
@@ -271,7 +285,16 @@ public class ApiaryWorker {
             // Handle the reply.
             try {
                 ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
-                Object output = reply.getReplyType() == stringType ? reply.getReplyString() : reply.getReplyInt();
+                Object output = null;
+                if (reply.getReplyType() == ApiaryWorker.stringType) {
+                    output = reply.getReplyString();
+                } else if (reply.getReplyType() == ApiaryWorker.intType) {
+                    output = reply.getReplyInt();
+                } else if (reply.getReplyType() == ApiaryWorker.stringArrayType) {
+                    output = Utilities.byteArrayToStringArray(reply.getReplyArray().toByteArray());
+                } else if (reply.getReplyType() == ApiaryWorker.intArrayType) {
+                    output = Utilities.byteArrayToIntArray(reply.getReplyArray().toByteArray());
+                }
                 long callerID = reply.getCallerId();
                 int taskID = reply.getTaskId();
                 // Resume execution.

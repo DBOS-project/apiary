@@ -12,8 +12,8 @@ public class AdditionFunction extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(ApiaryStatefulFunctionContext context, Integer one, String two, String[] strings) {
-        long sum = one + Integer.parseInt(two);
+    public String runFunction(ApiaryStatefulFunctionContext context, Integer one, String two, String[] strings, int[] ints) {
+        long sum = one + Integer.parseInt(two) + ints[0] + ints[1];
         StringBuilder sb = new StringBuilder(Long.toString(sum));
         for (String s: strings) {
             sb.append(s);

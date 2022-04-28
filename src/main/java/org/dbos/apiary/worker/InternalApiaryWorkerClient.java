@@ -58,11 +58,16 @@ public class InternalApiaryWorkerClient {
                 Integer i = (Integer) o;
                 byteArguments.add(ByteString.copyFrom(Utilities.toByteArray(i)));
                 argumentTypes.add(ApiaryWorker.intType);
-            } else {
-                assert(o instanceof String[]);
+            }  else if (o instanceof String[]) {
                 String[] s = (String[]) o;
                 byteArguments.add(ByteString.copyFrom(Utilities.stringArraytoByteArray(s)));
                 argumentTypes.add(ApiaryWorker.stringArrayType);
+            } else if (o instanceof int[]) {
+                int[] i = (int[]) o;
+                byteArguments.add(ByteString.copyFrom(Utilities.intArrayToByteArray(i)));
+                argumentTypes.add(ApiaryWorker.intArrayType);
+            } else {
+                logger.info("Unrecognized type {}: {}", o.getClass().getName(), o);
             }
         }
         long sendTime = System.nanoTime();
@@ -85,7 +90,17 @@ public class InternalApiaryWorkerClient {
         socket.send(reqBytes, 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
-        return new FunctionOutput(rep.getReplyType() == ApiaryWorker.stringType ? rep.getReplyString() : rep.getReplyInt(), null);
+        Object output = null;
+        if (rep.getReplyType() == ApiaryWorker.stringType) {
+            output = rep.getReplyString();
+        } else if (rep.getReplyType() == ApiaryWorker.intType) {
+            output = rep.getReplyInt();
+        } else if (rep.getReplyType() == ApiaryWorker.stringArrayType) {
+            output = Utilities.byteArrayToStringArray(rep.getReplyArray().toByteArray());
+        } else if (rep.getReplyType() == ApiaryWorker.intArrayType) {
+            output = Utilities.byteArrayToIntArray(rep.getReplyArray().toByteArray());
+        }
+        return new FunctionOutput(output, null);
     }
 
 }

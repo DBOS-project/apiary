@@ -24,6 +24,7 @@ message ExecuteFunctionRequest {
 message ExecuteFunctionReply {
   string replyString = 1;
   int32 replyInt = 2;
+  bytes replyArray = 7;
   int64 callerId = 3;
   int32 taskId = 4;
   int64 senderTimestampNano = 5;

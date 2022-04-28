@@ -53,8 +53,8 @@ public class VoltDBConnection implements ApiaryConnection {
                 row[i] = Utilities.stringArraytoByteArray((String[]) input);
             } else if (input instanceof Integer) {
                 row[i] = input;
-            } else if (input instanceof Double) {
-                row[i] = input;
+            } else if (input instanceof int[]) {
+                row[i] = Utilities.intArrayToByteArray((int[]) input);
             } else if (input instanceof String) {
                 row[i] = input;
             } else {
@@ -82,6 +82,8 @@ public class VoltDBConnection implements ApiaryConnection {
                 input[objIndex] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
             } else if (name.startsWith("IntegerT")) {
                 input[objIndex] = (int) inputRow.getLong(i);
+            } else if (name.startsWith("IntegerArrayT")) {
+                input[objIndex] = Utilities.byteArrayToIntArray(inputRow.getVarbinary(i));
             } else if (name.startsWith("FutureT")) {
                 int futureID = (int) inputRow.getLong(i);
                 input[objIndex] = new ApiaryFuture(futureID);

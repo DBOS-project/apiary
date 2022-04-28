@@ -58,11 +58,16 @@ public class InternalApiaryWorkerClient {
                 Integer i = (Integer) o;
                 byteArguments.add(ByteString.copyFrom(Utilities.toByteArray(i)));
                 argumentTypes.add(ApiaryWorker.intType);
-            } else {
-                assert(o instanceof String[]);
+            }  else if (o instanceof String[]) {
                 String[] s = (String[]) o;
                 byteArguments.add(ByteString.copyFrom(Utilities.stringArraytoByteArray(s)));
                 argumentTypes.add(ApiaryWorker.stringArrayType);
+            } else if (o instanceof int[]) {
+                int[] i = (int[]) o;
+                byteArguments.add(ByteString.copyFrom(Utilities.intArrayToByteArray(i)));
+                argumentTypes.add(ApiaryWorker.intArrayType);
+            } else {
+                logger.info("Unrecognized type {}: {}", o.getClass().getName(), o);
             }
         }
         long sendTime = System.nanoTime();

@@ -243,9 +243,10 @@ public class ApiaryWorker {
                         arguments[i] = new String(byteArray);
                     } else if (argumentTypes.get(i) == intType) {
                         arguments[i] = Utilities.fromByteArray(byteArray);
-                    } else {
-                        assert (argumentTypes.get(i) == stringArrayType);
+                    } else if (argumentTypes.get(i) == stringArrayType) {
                         arguments[i] = Utilities.byteArrayToStringArray(byteArray);
+                    }  else if (argumentTypes.get(i) == intArrayType) {
+                        arguments[i] = Utilities.byteArrayToIntArray(byteArray);
                     }
                 }
                 executeFunction(req.getName(), req.getService(), execID, callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);

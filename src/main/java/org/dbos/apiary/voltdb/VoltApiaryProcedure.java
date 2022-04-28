@@ -27,15 +27,15 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
         Object[] input = new Object[voltInput.getColumnCount()];
         VoltTableRow inputRow = voltInput.fetchRow(0);
         for (int i = 0; i < voltInput.getColumnCount(); i++) {
-            VoltType t = inputRow.getColumnType(i);
-            if (t.equals(VoltType.STRING)) {
+            String name = voltInput.getColumnName(i);
+            if (name.startsWith("StringT")) {
                 input[i] = inputRow.getString(i);
-            } else if (t.equals(VoltType.VARBINARY)) {
+            } else if (name.startsWith("StringArrayT")) {
                 input[i] = Utilities.byteArrayToStringArray(inputRow.getVarbinary(i));
-            } else if (t.equals(VoltType.INTEGER)) {
+            } else if (name.startsWith("IntegerT")) {
                 input[i] = (int) inputRow.getLong(i);
-            } else {
-                System.out.println("Error: Unrecognized input type: " + t.getName());
+            } else if (name.startsWith("IntegerArrayT")) {
+                input[i] = Utilities.byteArrayToIntArray(inputRow.getVarbinary(i));
             }
         }
         return input;
@@ -86,7 +86,9 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
                 row[i + offset] = Utilities.stringArraytoByteArray((String[]) input);
             } else if (input instanceof Integer) {
                 row[i + offset] = input;
-            } else if (input instanceof ApiaryFuture) {
+            } else if (input instanceof int[]) {
+                row[i + offset] = Utilities.intArrayToByteArray((int[]) input);
+            }  else if (input instanceof ApiaryFuture) {
                 row[i + offset] = ((ApiaryFuture) input).futureID;
             } else if (input instanceof ApiaryFuture[]) {
                 ApiaryFuture[] futures = (ApiaryFuture[]) input;

@@ -83,8 +83,8 @@ public class WorkerTests {
 
         ApiaryWorkerClient client = new ApiaryWorkerClient();
 
-        String res = client.executeFunction("localhost", "AdditionFunction", "defaultService", 1, "2", new String[]{"matei", "zaharia"}).getString();
-        assertEquals("3mateizaharia", res);
+        String res = client.executeFunction("localhost", "AdditionFunction", "defaultService", 1, "2", new String[]{"matei", "zaharia"}, new int[]{2, 3}).getString();
+        assertEquals("8mateizaharia", res);
 
         worker.shutdown();
     }
@@ -105,7 +105,7 @@ public class WorkerTests {
 
         // Non-blocking send. Then get result and calculate latency.
         long actualSendTime = System.nanoTime();
-        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("AdditionFunction", "defaultService", 1, "2", new String[]{"matei", "zaharia"});
+        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("AdditionFunction", "defaultService", 1, "2", new String[]{"matei", "zaharia"}, new int[]{2, 3});
         for (int i = 0; i < 5; i++) {
             socket.send(reqBytes, 0);
         }
@@ -124,7 +124,7 @@ public class WorkerTests {
 
                 ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
                 String res = reply.getReplyString();
-                assertEquals("3mateizaharia", res);
+                assertEquals("8mateizaharia", res);
                 long senderTs = reply.getSenderTimestampNano();
                 long recvTs = System.nanoTime();
                 long elapse = (recvTs - senderTs) / 1000;

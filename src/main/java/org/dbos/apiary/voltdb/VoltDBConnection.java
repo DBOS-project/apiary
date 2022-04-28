@@ -110,15 +110,20 @@ public class VoltDBConnection implements ApiaryConnection {
         VoltTable[] res = client.callProcedure(funcName, keyInput, voltInput).getResults();
         VoltTable retVal = res[0];
         assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);
-        Object output;
-        if (retVal.getColumnType(0).equals(VoltType.STRING)) { // Handle a string output.
+        Object output = null;
+        if (retVal.getColumnName(0).equals("stringOutput")) {
             output = retVal.fetchRow(0).getString(0);
-        } else if (retVal.getColumnType(0).equals(VoltType.INTEGER)) { // Handle an int output;
+        } else if (retVal.getColumnName(0).equals("intOutput")) {
             output = (int) retVal.fetchRow(0).getLong(0);
-        } else { // Handle a future output.
-            assert (retVal.getColumnType(0).equals(VoltType.SMALLINT));
+        } else if (retVal.getColumnName(0).equals("stringArrayOutput")) {
+            output = Utilities.byteArrayToStringArray(retVal.fetchRow(0).getVarbinary(0));
+        } else if (retVal.getColumnName(0).equals("intArrayOutput")) {
+            output = Utilities.byteArrayToIntArray(retVal.fetchRow(0).getVarbinary(0));
+        } else if (retVal.getColumnName(0).equals("futureOutput")) {
             int futureID = (int) retVal.fetchRow(0).getLong(0);
             output = new ApiaryFuture(futureID);
+        } else {
+            logger.info("Invalid output {}", retVal);
         }
         List<Task> calledFunctions = new ArrayList<>();
         for (int i = 1; i < res.length; i++) {

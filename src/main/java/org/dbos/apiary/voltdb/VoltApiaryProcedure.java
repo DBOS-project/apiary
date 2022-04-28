@@ -50,9 +50,15 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
         } else if (output.output instanceof Integer || output.output instanceof Long) {
             voltOutput = new VoltTable(new VoltTable.ColumnInfo("intOutput", VoltType.INTEGER));
             voltOutput.addRow(output.output);
+        } else if (output.output instanceof String[]) {
+            voltOutput = new VoltTable(new VoltTable.ColumnInfo("stringArrayOutput", VoltType.VARBINARY));
+            voltOutput.addRow((Object) Utilities.stringArraytoByteArray((String[]) output.output));
+        } else if (output.output instanceof int[]) {
+            voltOutput = new VoltTable(new VoltTable.ColumnInfo("intArrayOutput", VoltType.VARBINARY));
+            voltOutput.addRow((Object) Utilities.intArrayToByteArray((int[]) output.output));
         } else if (output.output instanceof ApiaryFuture) {
             ApiaryFuture futureOutput = (ApiaryFuture) output.output;
-            voltOutput = new VoltTable(new VoltTable.ColumnInfo("future", VoltType.SMALLINT));
+            voltOutput = new VoltTable(new VoltTable.ColumnInfo("futureOutput", VoltType.SMALLINT));
             voltOutput.addRow(futureOutput.futureID);
         } else {
             throw new RuntimeException();

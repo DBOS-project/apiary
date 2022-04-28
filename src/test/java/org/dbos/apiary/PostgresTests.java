@@ -110,10 +110,11 @@ public class PostgresTests {
 
         String[] postResult = client.executeFunction("localhost", "RetwisGetPosts", "defaultService", 0).getStringArray();
         assertArrayEquals(new String[]{"hello0", "hello1"}, postResult);
-        int[] resArray;
-        resArray = client.executeFunction("localhost", "RetwisGetFollowees", "defaultService", 1).getIntArray();
-        assertEquals(2, resArray.length);
-        assertTrue(resArray[0] == 0 && resArray[1] == 1 || resArray[0] == 1 && resArray[1] == 0);
+
+        int[] followees = client.executeFunction("localhost", "RetwisGetFollowees", "defaultService", 1).getIntArray();
+        assertEquals(2, followees.length);
+        assertTrue(followees[0] == 0 && followees[1] == 1 || followees[0] == 1 && followees[1] == 0);
+
         String[] timeline = client.executeFunction("localhost", "RetwisGetTimeline", "defaultService", 1).getStringArray();
         assertTrue(Arrays.asList(timeline).contains("hello0"));
         assertTrue(Arrays.asList(timeline).contains("hello1"));

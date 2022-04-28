@@ -15,7 +15,7 @@ public class RetwisGetFollowees extends PostgresFunction {
         ResultSet result = (ResultSet) ctxt.apiaryExecuteQuery(getFollowees, userID);
         List<Integer> followees = new ArrayList<>();
         while (result.next()) {
-            followees.add((int) result.getLong(1));
+            followees.add(result.getInt(1));
         }
         return followees.stream().mapToInt(i -> i).toArray();
     }

@@ -35,24 +35,47 @@ public class Task {
                 }
             } else if (o instanceof ApiaryFuture[]) {
                 ApiaryFuture[] futureArray = (ApiaryFuture[]) o;
-                String[] stringArray = new String[futureArray.length];
-                for (int j = 0; j < futureArray.length; j++) {
-                    int futureID = futureArray[j].futureID;
-                    if(!taskIDtoValue.containsKey(futureID)) {
+                for (ApiaryFuture apiaryFuture : futureArray) {
+                    int futureID = apiaryFuture.futureID;
+                    if (!taskIDtoValue.containsKey(futureID)) {
                         allResolved = false;
                         break;
                     }
                 }
-                // TODO: further optimize this part?  Also support int arrays later.
                 if (!allResolved) {
                     // Skip populating this input.
                     continue;
                 }
-                for (int j = 0; j < futureArray.length; j++) {
-                    int futureID = futureArray[j].futureID;
-                    stringArray[j] = (String) taskIDtoValue.get(futureID);
+                Object typeObject = taskIDtoValue.get(futureArray[0].futureID);
+                if (typeObject instanceof String) {
+                    String[] array = new String[futureArray.length];
+                    for (int j = 0; j < futureArray.length; j++) {
+                        int futureID = futureArray[j].futureID;
+                        array[j] = (String) taskIDtoValue.get(futureID);
+                        input[i] = array;
+                    }
+                } else if (typeObject instanceof Integer) {
+                    int[] array = new int[futureArray.length];
+                    for (int j = 0; j < futureArray.length; j++) {
+                        int futureID = futureArray[j].futureID;
+                        array[j] = (int) taskIDtoValue.get(futureID);
+                        input[i] = array;
+                    }
+                } else if (typeObject instanceof String[]) {
+                    String[][] array = new String[futureArray.length][];
+                    for (int j = 0; j < futureArray.length; j++) {
+                        int futureID = futureArray[j].futureID;
+                        array[j] = (String[]) taskIDtoValue.get(futureID);
+                        input[i] = array;
+                    }
+                } else if (typeObject instanceof int[]) {
+                    int[][] array = new int[futureArray.length][];
+                    for (int j = 0; j < futureArray.length; j++) {
+                        int futureID = futureArray[j].futureID;
+                        array[j] = (int[]) taskIDtoValue.get(futureID);
+                        input[i] = array;
+                    }
                 }
-                input[i] = stringArray;
             }
         }
         return allResolved;

@@ -285,7 +285,16 @@ public class ApiaryWorker {
             // Handle the reply.
             try {
                 ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
-                Object output = reply.getReplyType() == stringType ? reply.getReplyString() : reply.getReplyInt();
+                Object output = null;
+                if (reply.getReplyType() == ApiaryWorker.stringType) {
+                    output = reply.getReplyString();
+                } else if (reply.getReplyType() == ApiaryWorker.intType) {
+                    output = reply.getReplyInt();
+                } else if (reply.getReplyType() == ApiaryWorker.stringArrayType) {
+                    output = Utilities.byteArrayToStringArray(reply.getReplyArray().toByteArray());
+                } else if (reply.getReplyType() == ApiaryWorker.intArrayType) {
+                    output = Utilities.byteArrayToIntArray(reply.getReplyArray().toByteArray());
+                }
                 long callerID = reply.getCallerId();
                 int taskID = reply.getTaskId();
                 // Resume execution.

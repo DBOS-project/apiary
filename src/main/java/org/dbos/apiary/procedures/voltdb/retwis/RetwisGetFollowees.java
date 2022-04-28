@@ -6,6 +6,8 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RetwisGetFollowees extends VoltApiaryProcedure {
     public final SQLStmt getFollowees = new SQLStmt(
@@ -16,16 +18,12 @@ public class RetwisGetFollowees extends VoltApiaryProcedure {
         return super.run(voltInput);
     }
 
-    public String runFunction(ApiaryStatefulFunctionContext context, int userID) {
+    public int[] runFunction(ApiaryStatefulFunctionContext context, int userID) {
         VoltTable followeesTable = ((VoltTable[]) context.apiaryExecuteQuery(getFollowees, userID))[0];
-        StringBuilder followees = new StringBuilder();
-        String sep = "";
-        while(followeesTable.advanceRow()) {
-            long followee = followeesTable.getLong(0);
-            followees.append(sep);
-            followees.append(followee);
-            sep = ",";
+        List<Integer> followees = new ArrayList<>();
+        while (followeesTable.advanceRow()) {
+            followees.add((int) followeesTable.getLong(0));
         }
-        return followees.toString();
+        return followees.stream().mapToInt(i -> i).toArray();
     }
 }

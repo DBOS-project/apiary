@@ -7,11 +7,10 @@ import org.dbos.apiary.interposition.StatelessFunction;
 public class RetwisStatelessGetTimeline extends StatelessFunction {
 
     public static ApiaryFuture runFunction(ApiaryFunctionContext ctxt, int userID) {
-        String followees = ctxt.apiaryCallFunction(ctxt, "RetwisGetFollowees", userID).getString();
-        String[] followeesList = followees.split(",");
-        ApiaryFuture[] futures = new ApiaryFuture[followeesList.length];
-        for (int i = 0; i < followeesList.length; i++) {
-            futures[i] = ctxt.apiaryQueueFunction("RetwisGetPosts", Integer.valueOf(followeesList[i]));
+        int[] followees = ctxt.apiaryCallFunction(ctxt, "RetwisGetFollowees", userID).getIntArray();
+        ApiaryFuture[] futures = new ApiaryFuture[followees.length];
+        for (int i = 0; i < followees.length; i++) {
+            futures[i] = ctxt.apiaryQueueFunction("RetwisGetPosts", followees[i]);
         }
         return ctxt.apiaryQueueFunction("RetwisMerge", (Object) futures);
     }

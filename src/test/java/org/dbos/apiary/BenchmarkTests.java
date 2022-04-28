@@ -90,11 +90,11 @@ public class BenchmarkTests {
         assertEquals(1, resInt);
 
         String res;
-        res = client.executeFunction("localhost", "RetwisGetFollowees", "defaultService", 1).getString();
+        res = client.executeFunction("localhost", "RetwisGetFollowees", "defaultService", 6l, 1).getString();
         assertEquals(2, res.split(",").length);
         assertTrue(res.contains("0"));
         assertTrue(res.contains("1"));
-        res = client.executeFunction("localhost", "RetwisStatelessGetTimeline", "defaultService", 8l, 1).getString();
+        res = client.executeFunction("localhost", "RetwisStatelessGetTimeline", "defaultService", 7l, 1).getString();
         assertEquals(3, res.split(",").length);
         assertTrue(res.contains("hello0"));
         assertTrue(res.contains("hello1"));

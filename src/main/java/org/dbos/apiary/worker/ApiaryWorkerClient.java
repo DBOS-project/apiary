@@ -30,15 +30,11 @@ public class ApiaryWorkerClient {
     // A map that stores unique execution ID for each service.
     private final static Map<String, AtomicLong> serviceExecutionIdMap = new ConcurrentHashMap<>();
 
-    private final ZContext zContext;
-
     public ApiaryWorkerClient() {
-        this.zContext = new ZContext();
-        internalClient = new InternalApiaryWorkerClient(zContext);
+        internalClient = new InternalApiaryWorkerClient(new ZContext());
     }
 
     public ApiaryWorkerClient(ZContext zContext) {
-        this.zContext = zContext;
         internalClient = new InternalApiaryWorkerClient(zContext);
     }
     

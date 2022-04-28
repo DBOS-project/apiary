@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 // Note: ZMQ.Socket is not thread-safe, so this class is not thread-safe either.
-public class InternalApiaryWorkerClient extends ApiaryWorkerClient {
+public class InternalApiaryWorkerClient {
     private static final Logger logger = LoggerFactory.getLogger(InternalApiaryWorkerClient.class);
 
     protected final ZContext zContext;

@@ -55,7 +55,7 @@ public class PostgresConnection implements ApiaryConnection {
     public void dropTable(String tableName) throws SQLException {
         Connection conn = ds.getConnection();
         Statement truncateTable = conn.createStatement();
-        truncateTable.execute(String.format("DROP TABLE %s;", tableName));
+        truncateTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
         truncateTable.close();
         conn.close();
     }

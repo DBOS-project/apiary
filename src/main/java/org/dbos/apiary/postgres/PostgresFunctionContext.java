@@ -14,7 +14,7 @@ import java.util.Locale;
 public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     // This connection ties to all prepared statements in one transaction.
     private final Connection conn;
-    private long transactionId;  // This is the transaction ID of the outmost transaction.
+    private long transactionId;  // This is the transaction ID of the main transaction. Postgres subtransaction IDs are invisible.
 
     public PostgresFunctionContext(Connection c, ProvenanceBuffer provBuff, String service, long execID) {
         super(provBuff, service, execID);
@@ -34,24 +34,20 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
         assert(clazz instanceof ApiaryFunction);
         ApiaryFunction f = (ApiaryFunction) clazz;
         // Remember current txid.
-        long currTxid = this.transactionId;
         try {
             Savepoint s = conn.setSavepoint();
             try {
                 FunctionOutput o = f.apiaryRunFunction(ctxt, inputs);
                 conn.releaseSavepoint(s);
-                this.transactionId = currTxid;
                 return o;
             } catch (Exception e) {
                 e.printStackTrace();
                 conn.rollback(s);
                 conn.releaseSavepoint(s);
-                this.transactionId = currTxid;
                 return null;
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            this.transactionId = currTxid;
             return null;
         }
     }
@@ -163,20 +159,22 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
 
     @Override
     public long internalGetTransactionId() {
-        long txid = 0l;
+        if (this.transactionId >= 0) {
+            return this.transactionId;
+        }
+
         try {
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("select txid_current();");
             while (rs.next()) {
-                txid = rs.getLong(1);
+                this.transactionId = rs.getLong(1);
                 break;
             }
         } catch (SQLException e) {
             e.printStackTrace();
             return 0l;
         }
-        this.transactionId = txid;
-        return txid;
+        return this.transactionId;
     }
 
     /* --------------- For internal use ----------------- */

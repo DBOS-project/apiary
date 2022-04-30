@@ -183,7 +183,7 @@ public class PostgresTests {
         assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
 
         // Inner transaction should have larger ID.
-        assertTrue(txid1 < txid2);
+        assertEquals(txid1, txid2);
         assertTrue(!rs.next());
 
         // Check KVTable.

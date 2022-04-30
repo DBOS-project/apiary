@@ -3,9 +3,10 @@ package org.dbos.apiary;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.interposition.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.PostgresFibSumFunction;
-import org.dbos.apiary.procedures.postgres.PostgresFibonacciFunction;
+import org.dbos.apiary.procedures.postgres.tests.PostgresFibSumFunction;
+import org.dbos.apiary.procedures.postgres.tests.PostgresFibonacciFunction;
 import org.dbos.apiary.procedures.postgres.retwis.*;
+import org.dbos.apiary.procedures.postgres.tests.ProvenanceTestFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -16,6 +17,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,7 +44,7 @@ public class PostgresTests {
     }
 
     @Test
-    public void testFibPostgres() throws InvalidProtocolBufferException, InterruptedException {
+    public void testFibPostgres() throws InvalidProtocolBufferException {
         logger.info("testFibPostgres");
 
         PostgresConnection conn;
@@ -67,10 +72,7 @@ public class PostgresTests {
         res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 10).getInt();
         assertEquals(55, res);
 
-        // Should be able to see provenance data if Vertica is running.
-        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
         worker.shutdown();
-
     }
 
     @Test
@@ -122,6 +124,107 @@ public class PostgresTests {
 
         clientContext.close();
         worker.shutdown();
+    }
 
+    @Test
+    public void testPostgresProvenance() throws InvalidProtocolBufferException, SQLException {
+        logger.info("testPostgresProvenance");
+
+        PostgresConnection conn;
+        try {
+            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+        } catch (Exception e) {
+            logger.info("No Postgres instance!");
+            return;
+        }
+        conn.registerFunction("ProvenanceTestFunction", ProvenanceTestFunction::new);
+
+        ApiaryWorker worker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 1);
+        worker.startServing();
+
+        ProvenanceBuffer provBuff = worker.provenanceBuffer;
+        if (provBuff.conn.get() == null) {
+            logger.info("Provenance buffer (Vertica) not available.");
+            return;
+        }
+
+        Connection verticaConn = provBuff.conn.get();
+        Statement stmt = verticaConn.createStatement();
+        String[] tables = {"FUNCINVOCATIONS", "KVTABLE"};
+        for (String table : tables) {
+            stmt.execute(String.format("TRUNCATE TABLE %s;", table));
+        }
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient();
+
+        int res;
+        int key = 10, value = 100;
+        res = client.executeFunction("localhost", "ProvenanceTestFunction", "testProvService", key, value).getInt();
+        assertEquals(101, res);
+
+        // Check provenance tables.
+        // Check function invocation table.
+        String table = "FUNCINVOCATIONS";
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TRANSACTION_ID;", table));
+        while (rs.next()) {
+            long resExecId = rs.getLong(3);
+            String resService = rs.getString(4);
+            String resFuncName = rs.getString(5);
+            assertEquals(0l, resExecId);
+            assertEquals(resService, "testProvService");
+            assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
+        }
+        assertEquals(1, rs.getRow());
+
+        // Check KVTable.
+        table = "KVTABLE";
+        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
+        rs.next();
+
+        // Should be an insert.
+        int resExportOp = rs.getInt(3);
+        int resKey = rs.getInt(4);
+        int resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
+        assertEquals(key, resKey);
+        assertEquals(value, resValue);
+
+        // Should be a read.
+        rs.next();
+        resExportOp = rs.getInt(3);
+        resKey = rs.getInt(4);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
+        assertEquals(key, resKey);
+        assertEquals(0, resValue);
+
+        // Should be an update.
+        rs.next();
+        resExportOp = rs.getInt(3);
+        resKey = rs.getInt(4);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.UPDATE.getValue(), resExportOp);
+        assertEquals(key, resKey);
+        assertEquals(value+1, resValue);
+
+        // Should be a read again.
+        rs.next();
+        resExportOp = rs.getInt(3);
+        resKey = rs.getInt(4);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
+        assertEquals(key, resKey);
+        assertEquals(value+1, resValue);
+
+        // Should be a delete.
+        rs.next();
+        resExportOp = rs.getInt(3);
+        resKey = rs.getInt(4);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.DELETE.getValue(), resExportOp);
+        assertEquals(key, resKey);
+        assertEquals(value+1, resValue);
+
+        worker.shutdown();
     }
 }

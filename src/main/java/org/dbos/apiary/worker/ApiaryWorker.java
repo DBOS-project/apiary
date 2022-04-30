@@ -60,7 +60,7 @@ public class ApiaryWorker {
         return new InternalApiaryWorkerClient(context);
     });
 
-    private final ProvenanceBuffer provenanceBuffer;
+    public final ProvenanceBuffer provenanceBuffer;
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads) {
         this(c, scheduler, numWorkerThreads, "localhost");

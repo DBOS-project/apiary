@@ -56,6 +56,11 @@ public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
+    protected void internalExecuteUpdateCaptured(Object procedure, Object... input) {
+        internalExecuteUpdate(procedure, input);
+    }
+
+    @Override
     protected Object internalExecuteQuery(Object procedure, Object... input) {
         try {
             PreparedStatement ps = (PreparedStatement) procedure;
@@ -65,6 +70,11 @@ public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
             e.printStackTrace();
             return null;
         }
+    }
+
+    @Override
+    protected Object internalExecuteQueryCaptured(Object procedure, int[] primaryKeyCols, Object... input) {
+        return internalExecuteQuery(procedure, input);
     }
 
     @Override

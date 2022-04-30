@@ -68,6 +68,7 @@ public class ProvenanceTests {
             cnt++;
         }
         assertEquals(2, cnt);
+        buf.close();
     }
 
 }

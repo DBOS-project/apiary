@@ -131,7 +131,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
         int exportOperation = getQueryType(interceptedQuery);
         try {
             // First, prepare statement. Then, execute.
-            PreparedStatement pstmt = conn.prepareStatement(interceptedQuery);
+            PreparedStatement pstmt = conn.prepareStatement(interceptedQuery, ResultSet.TYPE_SCROLL_INSENSITIVE);
             prepareStatement(pstmt, input);
             rs = pstmt.executeQuery();
             rsmd = rs.getMetaData();

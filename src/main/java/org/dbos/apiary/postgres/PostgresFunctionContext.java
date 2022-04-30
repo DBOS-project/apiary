@@ -5,7 +5,6 @@ import org.dbos.apiary.interposition.ApiaryFunction;
 import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.dbos.apiary.interposition.ProvenanceBuffer;
-import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 
 import java.lang.reflect.InvocationTargetException;
@@ -67,45 +66,46 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
 
     @Override
     protected void internalExecuteUpdate(Object procedure, Object... input) {
-        if (ApiaryConfig.captureUpdates) {
-            // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
-            String interceptedQuery = interceptUpdate((String) procedure);
-            ResultSet rs;
-            ResultSetMetaData rsmd;
-            String tableName;
-            int exportOperation = getQueryType(interceptedQuery);
-            try {
-                // First, prepare statement. Then, execute.
-                PreparedStatement pstmt = conn.prepareStatement(interceptedQuery);
-                prepareStatement(pstmt, input);
-                rs = pstmt.executeQuery();
-                rsmd = rs.getMetaData();
-                tableName = rsmd.getTableName(1);
-                long timestamp = Utilities.getMicroTimestamp();
-                int numCol = rsmd.getColumnCount();
-                // Record provenance data.
-                Object[] rowData = new Object[numCol+3];
-                rowData[0] = this.transactionId;
-                rowData[1] = timestamp;
-                rowData[2] = exportOperation;
-                while (rs.next()) {
-                    for (int i = 1; i <= numCol; i++) {
-                        rowData[i+2] = rs.getObject(i);
-                    }
-                    provBuff.addEntry(tableName, rowData);
+        try {
+            // First, prepare statement. Then, execute.
+            PreparedStatement pstmt = conn.prepareStatement((String) procedure);
+            prepareStatement(pstmt, input);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void internalExecuteUpdateCaptured(Object procedure, Object... input) {
+        // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
+        String interceptedQuery = interceptUpdate((String) procedure);
+        ResultSet rs;
+        ResultSetMetaData rsmd;
+        String tableName;
+        int exportOperation = getQueryType(interceptedQuery);
+        try {
+            // First, prepare statement. Then, execute.
+            PreparedStatement pstmt = conn.prepareStatement(interceptedQuery);
+            prepareStatement(pstmt, input);
+            rs = pstmt.executeQuery();
+            rsmd = rs.getMetaData();
+            tableName = rsmd.getTableName(1);
+            long timestamp = Utilities.getMicroTimestamp();
+            int numCol = rsmd.getColumnCount();
+            // Record provenance data.
+            Object[] rowData = new Object[numCol+3];
+            rowData[0] = this.transactionId;
+            rowData[1] = timestamp;
+            rowData[2] = exportOperation;
+            while (rs.next()) {
+                for (int i = 1; i <= numCol; i++) {
+                    rowData[i+2] = rs.getObject(i);
                 }
-            } catch (SQLException e) {
-                e.printStackTrace();
+                provBuff.addEntry(tableName, rowData);
             }
-        } else {
-            try {
-                // First, prepare statement. Then, execute.
-                PreparedStatement pstmt = conn.prepareStatement((String) procedure);
-                prepareStatement(pstmt, input);
-                pstmt.executeUpdate();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 
@@ -120,6 +120,40 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
             e.printStackTrace();
             return null;
         }
+    }
+
+    @Override
+    protected Object internalExecuteQueryCaptured(Object procedure, int[] primaryKeyCols, Object... input) {
+        ResultSet rs = null;
+        ResultSetMetaData rsmd;
+        String tableName;
+        String interceptedQuery = (String) procedure;
+        int exportOperation = getQueryType(interceptedQuery);
+        try {
+            // First, prepare statement. Then, execute.
+            PreparedStatement pstmt = conn.prepareStatement(interceptedQuery);
+            prepareStatement(pstmt, input);
+            rs = pstmt.executeQuery();
+            rsmd = rs.getMetaData();
+            tableName = rsmd.getTableName(1);
+            long timestamp = Utilities.getMicroTimestamp();
+            // Record provenance data.
+            Object[] rowData = new Object[primaryKeyCols.length+3];
+            rowData[0] = this.transactionId;
+            rowData[1] = timestamp;
+            rowData[2] = exportOperation;
+            while (rs.next()) {
+                int colidx = 3;
+                for (int i = 0; i < primaryKeyCols.length; i++) {
+                    rowData[colidx++] = rs.getObject(primaryKeyCols[i]);
+                }
+                provBuff.addEntry(tableName, rowData);
+            }
+            rs.beforeFirst();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return rs;
     }
 
     @Override

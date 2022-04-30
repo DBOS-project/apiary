@@ -9,4 +9,5 @@ public class ApiaryConfig {
     public static final String tableFuncInvocations = "FUNCINVOCATIONS";
 
     public static final Boolean captureUpdates = true;
+    public static final Boolean captureReads = true;
 }

@@ -9,7 +9,7 @@ import java.sql.SQLException;
 
 public class PostgresFibonacciFunction extends PostgresFunction {
     private static final String addResult = "INSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?) ON CONFLICT (KVKey) DO NOTHING;";
-    private static final String getValue = "SELECT KVValue FROM KVTable WHERE KVKey=?;";
+    private static final String getValue = "SELECT KVValue, KVKEY FROM KVTable WHERE KVKey=?;";
 
     public static Object runFunction(ApiaryStatefulFunctionContext ctxt, int key) throws SQLException {
         if (key < 0) {
@@ -24,7 +24,7 @@ public class PostgresFibonacciFunction extends PostgresFunction {
             return 1;
         }
         // Check if the number has been calculated before.
-        ResultSet r = (ResultSet) ctxt.apiaryExecuteQuery(getValue, key);
+        ResultSet r = (ResultSet) ctxt.apiaryExecuteQueryCaptured(getValue, new int[] {2, 1}, key);
         if (r.next()) {
             return r.getInt(1);
         }

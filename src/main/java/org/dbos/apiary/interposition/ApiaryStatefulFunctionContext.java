@@ -1,6 +1,7 @@
 package org.dbos.apiary.interposition;
 
 import org.dbos.apiary.executor.FunctionOutput;
+import org.dbos.apiary.utilities.ApiaryConfig;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -15,13 +16,24 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
 
     // Execute an update in the database.
     public void apiaryExecuteUpdate(Object procedure, Object... input) {
-        // TODO: Provenance capture.
-        internalExecuteUpdate(procedure, input);
+        if (ApiaryConfig.captureUpdates) {
+            internalExecuteUpdateCaptured(procedure, input);
+        } else {
+            internalExecuteUpdate(procedure, input);
+        }
     }
 
     // Execute a database query.
     public Object apiaryExecuteQuery(Object procedure, Object... input) {
-        // TODO: Provenance capture.
+        return internalExecuteQuery(procedure, input);
+    }
+
+    // TODO: a more elegant way to handle read capture?
+    public Object apiaryExecuteQueryCaptured(Object procedure, int[] primaryKeyCols, Object... input) {
+        if (ApiaryConfig.captureReads) {
+            return internalExecuteQueryCaptured(procedure, primaryKeyCols, input);
+        }
+        // Do not capture if configured to not capture reads.
         return internalExecuteQuery(procedure, input);
     }
 
@@ -32,7 +44,9 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
 
     /** Abstract and require implementation. **/
     protected abstract void internalExecuteUpdate(Object procedure, Object... input);
+    protected abstract void internalExecuteUpdateCaptured(Object procedure, Object... input);
     protected abstract Object internalExecuteQuery(Object procedure, Object... input);
+    protected abstract Object internalExecuteQueryCaptured(Object procedure, int[] primaryKeyCols, Object... input);
 
     protected abstract long internalGetTransactionId();
 

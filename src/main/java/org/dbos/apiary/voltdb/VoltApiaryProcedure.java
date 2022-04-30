@@ -2,9 +2,8 @@ package org.dbos.apiary.voltdb;
 
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.interposition.ApiaryFunction;
-import org.dbos.apiary.interposition.ApiaryFunctionContext;
-import org.dbos.apiary.interposition.ApiaryFuture;
+import org.dbos.apiary.interposition.*;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
@@ -14,10 +13,30 @@ import org.voltdb.VoltType;
 import java.lang.reflect.InvocationTargetException;
 
 public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction {
+    public static final ProvenanceBuffer provBuff;
+
+    static {
+        ProvenanceBuffer tempBuffer;
+        try {
+            tempBuffer = new ProvenanceBuffer(ApiaryConfig.olapDefaultAddress);
+            if (!tempBuffer.hasConnection) {
+                // No vertica connection.
+                tempBuffer = null;
+            }
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+            tempBuffer = null;
+        }
+        provBuff = tempBuffer;
+    }
 
     public VoltTable[] run(VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
         Object[] parsedInput = parseInput(voltInput);
-        FunctionOutput output = apiaryRunFunction(new VoltFunctionContext(this), parsedInput);
+        String service = parsedInput[0].toString();
+        long execID = (Long) parsedInput[1];
+        Object[] funcInput = new Object[parsedInput.length - 2];
+        System.arraycopy(parsedInput, 2, funcInput, 0, funcInput.length);
+        FunctionOutput output = apiaryRunFunction(new VoltFunctionContext(this, provBuff, service, execID), funcInput);
         return serializeOutput(output);
     }
 
@@ -36,6 +55,10 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
                 input[i] = (int) inputRow.getLong(i);
             } else if (name.startsWith("IntegerArrayT")) {
                 input[i] = Utilities.byteArrayToIntArray(inputRow.getVarbinary(i));
+            } else if (name.startsWith("service")) {
+                input[i] = inputRow.getString(i);
+            } else if (name.startsWith("execID")) {
+                input[i] = inputRow.getLong(i);
             }
         }
         return input;
@@ -111,6 +134,12 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
 
     @Override
     public void recordInvocation(ApiaryFunctionContext ctxt, String funcName) {
-        // TODO: implement this.
+        if (ctxt.provBuff == null) {
+            // If no OLAP DB available.
+            return;
+        }
+        long timestamp = Utilities.getMicroTimestamp();
+        long txid = ((ApiaryStatefulFunctionContext) ctxt).apiaryGetTransactionId();
+        ctxt.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txid, timestamp, ctxt.execID, ctxt.service, funcName);
     }
 }

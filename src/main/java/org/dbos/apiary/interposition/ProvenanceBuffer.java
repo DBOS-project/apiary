@@ -36,6 +36,7 @@ public class ProvenanceBuffer {
         }
     }
 
+    // TODO: need a better way to auto-reconnect to Vertica, during transient failures.
     public final ThreadLocal<Connection> conn;
 
     public final Boolean hasConnection;
@@ -146,6 +147,10 @@ public class ProvenanceBuffer {
 
     private void exportTableBuffer(String table) throws SQLException {
         Connection connection = this.conn.get();
+        if (connection == null) {
+            logger.error("Failed to get connection.");
+            return;
+        }
         TableBuffer tableBuffer = tableBufferMap.get(table);
         PreparedStatement pstmt = connection.prepareStatement(tableBuffer.preparedQuery);
         int numEntries = tableBuffer.bufferEntryQueue.size();

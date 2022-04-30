@@ -63,7 +63,7 @@ public class ApiaryWorker {
     public final ProvenanceBuffer provenanceBuffer;
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads) {
-        this(c, scheduler, numWorkerThreads, "localhost");
+        this(c, scheduler, numWorkerThreads, ApiaryConfig.olapDefaultAddress);
     }
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads, String olapAddress) {

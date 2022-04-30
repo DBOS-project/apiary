@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 

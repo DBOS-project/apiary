@@ -469,7 +469,9 @@ public class ApiaryWorker {
             serverThread.interrupt();
             zContext.close();
             serverThread.join();
-            provenanceBuffer.close();
+            if (provenanceBuffer != null) {
+                provenanceBuffer.close();
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

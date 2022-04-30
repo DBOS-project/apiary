@@ -13,6 +13,13 @@ public class ProvenanceTestFunction extends PostgresFunction {
     private static final String deleteEntry = "DELETE FROM KVTable WHERE KVKey=?;";
 
     public static int runFunction(ApiaryStatefulFunctionContext ctxt, int key, int baseValue) throws SQLException {
+        if (key == 1) {
+            ctxt.apiaryExecuteUpdate(addEntry, key, baseValue);
+            return baseValue+1;
+        } else {
+            // Synchronously call.
+            ctxt.apiaryCallFunction(ctxt, "org.dbos.apiary.procedures.postgres.tests.ProvenanceTestFunction", 1, baseValue);
+        }
         // Add an entry at a given key and set to base value, get value, then increase the value by 1, get value again, and finally delete.
         // Return the increased value.
         ctxt.apiaryExecuteUpdate(addEntry, key, baseValue);

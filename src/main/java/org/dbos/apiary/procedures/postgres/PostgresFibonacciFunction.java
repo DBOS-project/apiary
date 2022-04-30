@@ -24,7 +24,7 @@ public class PostgresFibonacciFunction extends PostgresFunction {
             return 1;
         }
         // Check if the number has been calculated before.
-        ResultSet r = (ResultSet) ctxt.apiaryExecuteQueryCaptured(getValue, new int[] {2, 1}, key);
+        ResultSet r = (ResultSet) ctxt.apiaryExecuteQueryCaptured(getValue, new int[] {2}, key);
         if (r.next()) {
             return r.getInt(1);
         }

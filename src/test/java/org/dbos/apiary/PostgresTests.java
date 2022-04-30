@@ -138,7 +138,7 @@ public class PostgresTests {
         worker.startServing();
 
         ProvenanceBuffer provBuff = worker.provenanceBuffer;
-        if (provBuff.conn.get() == null) {
+        if (provBuff == null) {
             logger.info("Provenance buffer (Vertica) not available.");
             return;
         }

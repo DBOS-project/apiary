@@ -21,6 +21,22 @@ public class ProvenanceBuffer {
     public static final int commitSize = 1000000;  // TODO: configurable?
     public static final String padding = "0";
     public static final int exportInterval = 1000;
+    public enum ExportOperation {
+        INSERT(1),
+        DELETE(2),
+        UPDATE(3),
+        READ(4);
+
+        private int value;
+
+        private ExportOperation(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return this.value;
+        }
+    }
 
     public final ThreadLocal<Connection> conn;
 
@@ -80,16 +96,28 @@ public class ProvenanceBuffer {
     private final Map<String, TableBuffer> tableBufferMap = new ConcurrentHashMap<>();
 
     public void addEntry(String table, Object... objects) {
+        Boolean capture = true;
         if (!tableBufferMap.containsKey(table)) {
             Map<Integer, Integer> colTypeMap = getColTypeMap(table);
-            String preparedQuery= getPreparedQuery(table, colTypeMap.size());
-            tableBufferMap.put(table, new TableBuffer(preparedQuery, colTypeMap));
+            if (colTypeMap == null) {
+                // Do not capture provenance.
+                tableBufferMap.put(table, null);
+                capture = false;
+            } else {
+                String preparedQuery = getPreparedQuery(table, colTypeMap.size());
+                tableBufferMap.put(table, new TableBuffer(preparedQuery, colTypeMap));
+            }
         }
-        tableBufferMap.get(table).bufferEntryQueue.add(objects);
+        if (capture) {
+            tableBufferMap.get(table).bufferEntryQueue.add(objects);
+        }
     }
 
     private void exportBuffer() {
         for (String table : tableBufferMap.keySet()) {
+            if (tableBufferMap.get(table) == null) {
+                continue;
+            }
             try {
                 if (!tableBufferMap.get(table).bufferEntryQueue.isEmpty()) {
                     exportTableBuffer(table);

@@ -44,7 +44,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     @Override
     protected void internalExecuteUpdateCaptured(Object procedure, Object... input) {
         // TODO: implement provenance capture.
-        internalExecuteQuery(internalExecuteQuery(procedure, input));
+        internalExecuteUpdate(procedure, input);
     }
 
     @Override

@@ -166,15 +166,13 @@ public class PostgresTests {
         // Check function invocation table.
         String table = "FUNCINVOCATIONS";
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TRANSACTION_ID;", table));
-        while (rs.next()) {
-            long resExecId = rs.getLong(3);
-            String resService = rs.getString(4);
-            String resFuncName = rs.getString(5);
-            assertEquals(0l, resExecId);
-            assertEquals(resService, "testProvService");
-            assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
-        }
-        assertEquals(1, rs.getRow());
+        rs.next();
+        long resExecId = rs.getLong(3);
+        String resService = rs.getString(4);
+        String resFuncName = rs.getString(5);
+        assertEquals(0l, resExecId);
+        assertEquals(resService, "testProvService");
+        assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
 
         // Check KVTable.
         table = "KVTABLE";
@@ -214,7 +212,7 @@ public class PostgresTests {
         resValue = rs.getInt(5);
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key, resKey);
-        assertEquals(value+1, resValue);
+        assertEquals(0, resValue);
 
         // Should be a delete.
         rs.next();

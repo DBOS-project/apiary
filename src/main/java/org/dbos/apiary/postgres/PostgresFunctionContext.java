@@ -33,20 +33,25 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
         }
         assert(clazz instanceof ApiaryFunction);
         ApiaryFunction f = (ApiaryFunction) clazz;
+        // Remember current txid.
+        long currTxid = this.transactionId;
         try {
             Savepoint s = conn.setSavepoint();
             try {
                 FunctionOutput o = f.apiaryRunFunction(ctxt, inputs);
                 conn.releaseSavepoint(s);
+                this.transactionId = currTxid;
                 return o;
             } catch (Exception e) {
                 e.printStackTrace();
                 conn.rollback(s);
                 conn.releaseSavepoint(s);
+                this.transactionId = currTxid;
                 return null;
             }
         } catch (SQLException e) {
             e.printStackTrace();
+            this.transactionId = currTxid;
             return null;
         }
     }
@@ -170,9 +175,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
             e.printStackTrace();
             return 0l;
         }
-        if (this.transactionId == -1) {
-            this.transactionId = txid;
-        }
+        this.transactionId = txid;
         return txid;
     }
 

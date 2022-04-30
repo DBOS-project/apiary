@@ -183,11 +183,11 @@ public class PostgresTests {
         resExecId = rs.getLong(3);
         resService = rs.getString(4);
         resFuncName = rs.getString(5);
-        assertEquals(1l, resExecId);
+        assertEquals(0l, resExecId);
         assertEquals(resService, "testProvService");
         assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
 
-        // Inner transaction should have larger ID.
+        // Inner transaction should have the same transaction ID.
         assertEquals(txid1, txid2);
         assertTrue(!rs.next());
 

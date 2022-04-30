@@ -39,24 +39,29 @@ public class VoltDBConnection implements ApiaryConnection {
         updatePartitionInfo();
     }
 
-    private static VoltTable inputToVoltTable(Object... inputs) {
-        VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[inputs.length];
+    private static VoltTable inputToVoltTable(String service, long execID, Object... inputs) {
+        int offset = 2;
+        VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[inputs.length+2];
+        columns[0] = new VoltTable.ColumnInfo("service", VoltType.STRING);
+        columns[1] = new VoltTable.ColumnInfo("execID", VoltType.BIGINT);
         for (int i = 0; i < inputs.length; i++) {
             Object input = inputs[i];
-            columns[i] = VoltUtilities.objectToColumnInfo(i, input);
+            columns[i+offset] = VoltUtilities.objectToColumnInfo(i, input);
         }
         VoltTable v = new VoltTable(columns);
         Object[] row = new Object[v.getColumnCount()];
+        row[0] = service;
+        row[1] = execID;
         for (int i = 0; i < inputs.length; i++) {
             Object input = inputs[i];
             if (input instanceof String[]) {
-                row[i] = Utilities.stringArraytoByteArray((String[]) input);
+                row[i+offset] = Utilities.stringArraytoByteArray((String[]) input);
             } else if (input instanceof Integer) {
-                row[i] = input;
+                row[i+offset] = input;
             } else if (input instanceof int[]) {
-                row[i] = Utilities.intArrayToByteArray((int[]) input);
+                row[i+offset] = Utilities.intArrayToByteArray((int[]) input);
             } else if (input instanceof String) {
-                row[i] = input;
+                row[i+offset] = input;
             } else {
                 logger.error("Do not support input type: {}, in parameter index {}", input.getClass().getName(), i);
                 return null;
@@ -104,7 +109,7 @@ public class VoltDBConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, String funcName, Object... inputs) throws IOException, ProcCallException {
-        VoltTable voltInput = inputToVoltTable(inputs);
+        VoltTable voltInput = inputToVoltTable(service, execID, inputs);
         assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
         Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];
         VoltTable[] res = client.callProcedure(funcName, keyInput, voltInput).getResults();

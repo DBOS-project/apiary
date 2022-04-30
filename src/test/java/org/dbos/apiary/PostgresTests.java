@@ -41,6 +41,7 @@ public class PostgresTests {
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
         }
+        apiaryWorker = null;
     }
 
     @AfterEach
@@ -160,7 +161,7 @@ public class PostgresTests {
 
         int res;
         int key = 10, value = 100;
-        res = client.executeFunction("localhost", "ProvenanceTestFunction", "testProvService", key, value).getInt();
+        res = client.executeFunction("localhost", "ProvenanceTestFunction", "testPostgresProvService", key, value).getInt();
         assertEquals(101, res);
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
@@ -168,14 +169,14 @@ public class PostgresTests {
         // Check provenance tables.
         // Check function invocation table.
         String table = "FUNCINVOCATIONS";
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP DESC;", table));
         rs.next();
         long txid1 = rs.getLong(1);
         long resExecId = rs.getLong(3);
         String resService = rs.getString(4);
         String resFuncName = rs.getString(5);
         assertEquals(0l, resExecId);
-        assertEquals(resService, "testProvService");
+        assertEquals(resService, "testPostgresProvService");
         assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
 
         rs.next();
@@ -184,7 +185,7 @@ public class PostgresTests {
         resService = rs.getString(4);
         resFuncName = rs.getString(5);
         assertEquals(0l, resExecId);
-        assertEquals(resService, "testProvService");
+        assertEquals(resService, "testPostgresProvService");
         assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
 
         // Inner transaction should have the same transaction ID.

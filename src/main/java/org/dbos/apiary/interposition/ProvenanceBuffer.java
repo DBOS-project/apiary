@@ -96,19 +96,17 @@ public class ProvenanceBuffer {
     private final Map<String, TableBuffer> tableBufferMap = new ConcurrentHashMap<>();
 
     public void addEntry(String table, Object... objects) {
-        Boolean capture = true;
         if (!tableBufferMap.containsKey(table)) {
             Map<Integer, Integer> colTypeMap = getColTypeMap(table);
-            if (colTypeMap == null) {
+            if ((colTypeMap == null) || colTypeMap.isEmpty()) {
                 // Do not capture provenance.
-                tableBufferMap.put(table, null);
-                capture = false;
+                tableBufferMap.put(table, new TableBuffer(null, null));
             } else {
                 String preparedQuery = getPreparedQuery(table, colTypeMap.size());
                 tableBufferMap.put(table, new TableBuffer(preparedQuery, colTypeMap));
             }
         }
-        if (capture) {
+        if (tableBufferMap.get(table).bufferEntryQueue != null) {
             tableBufferMap.get(table).bufferEntryQueue.add(objects);
         }
     }

@@ -16,7 +16,7 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
 
     // Execute an update in the database.
     public void apiaryExecuteUpdate(Object procedure, Object... input) {
-        if (ApiaryConfig.captureUpdates) {
+        if (ApiaryConfig.captureUpdates && (this.provBuff != null)) {
             internalExecuteUpdateCaptured(procedure, input);
         } else {
             internalExecuteUpdate(procedure, input);
@@ -30,7 +30,7 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
 
     // TODO: a more elegant way to handle read capture?
     public Object apiaryExecuteQueryCaptured(Object procedure, int[] primaryKeyCols, Object... input) {
-        if (ApiaryConfig.captureReads) {
+        if (ApiaryConfig.captureReads && (this.provBuff != null)) {
             return internalExecuteQueryCaptured(procedure, primaryKeyCols, input);
         }
         // Do not capture if configured to not capture reads.

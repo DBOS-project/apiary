@@ -38,6 +38,8 @@ public class ProvenanceBuffer {
 
     public final ThreadLocal<Connection> conn;
 
+    public final Boolean hasConnection;
+
     private Thread exportThread;
 
     public ProvenanceBuffer(String olapDBaddr) throws ClassNotFoundException {
@@ -65,6 +67,7 @@ public class ProvenanceBuffer {
 
         if (conn.get() == null) {
             logger.info("No Vertica instance!");
+            this.hasConnection = false;
             return;
         }
 
@@ -80,10 +83,14 @@ public class ProvenanceBuffer {
         };
         exportThread = new Thread(r);
         exportThread.start();
+        this.hasConnection = true;
     }
 
     public void close() {
         // Close the buffer.
+        if (exportThread == null) {
+            return;
+        }
         try {
             exportThread.interrupt();
             exportThread.join();

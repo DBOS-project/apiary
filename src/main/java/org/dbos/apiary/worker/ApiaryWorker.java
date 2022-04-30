@@ -79,7 +79,7 @@ public class ApiaryWorker {
         ProvenanceBuffer tempBuffer = null;
         try {
             tempBuffer = new ProvenanceBuffer(olapAddress);
-            if (tempBuffer.conn.get() == null) {
+            if (!tempBuffer.hasConnection) {
                 // No vertica connection.
                 tempBuffer = null;
             }

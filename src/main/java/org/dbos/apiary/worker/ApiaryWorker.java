@@ -323,9 +323,13 @@ public class ApiaryWorker {
         // The backend worker is always the first poller socket.
         poller.register(frontend, ZMQ.Poller.POLLIN);
         // Populate sockets for all remote workers in the cluster.
-        for (String hostname : distinctHosts) {
-            ZMQ.Socket socket = client.getSocket(hostname);
-            poller.register(socket, ZMQ.Poller.POLLIN);
+        try {
+            for (String hostname : distinctHosts) {
+                ZMQ.Socket socket = client.getSocket(hostname);
+                poller.register(socket, ZMQ.Poller.POLLIN);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         while (!Thread.currentThread().isInterrupted()) {

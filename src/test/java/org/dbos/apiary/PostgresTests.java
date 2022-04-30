@@ -9,6 +9,7 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -25,6 +26,8 @@ import static org.junit.jupiter.api.Assertions.*;
 public class PostgresTests {
     private static final Logger logger = LoggerFactory.getLogger(PostgresTests.class);
 
+    private ApiaryWorker apiaryWorker;
+
     @BeforeEach
     public void resetTables() {
         try {
@@ -37,6 +40,13 @@ public class PostgresTests {
             ctxt.createTable("RetwisFollowees", "(UserID integer NOT NULL, FolloweeID integer NOT NULL)");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
+        }
+    }
+
+    @AfterEach
+    public void cleanupWorker() {
+        if (apiaryWorker != null) {
+            apiaryWorker.shutdown();
         }
     }
 
@@ -54,8 +64,8 @@ public class PostgresTests {
         conn.registerFunction("PostgresFibonacciFunction", PostgresFibonacciFunction::new);
         conn.registerFunction("PostgresFibSumFunction", PostgresFibSumFunction::new);
 
-        ApiaryWorker worker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
-        worker.startServing();
+        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient();
 
@@ -68,8 +78,6 @@ public class PostgresTests {
 
         res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 10).getInt();
         assertEquals(55, res);
-
-        worker.shutdown();
     }
 
     @Test
@@ -89,8 +97,8 @@ public class PostgresTests {
         conn.registerFunction("RetwisGetFollowees", RetwisGetFollowees::new);
         conn.registerFunction("RetwisGetTimeline", RetwisGetTimeline::new);
 
-        ApiaryWorker worker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
-        worker.startServing();
+        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient();
 
@@ -117,8 +125,6 @@ public class PostgresTests {
         assertTrue(Arrays.asList(timeline).contains("hello0"));
         assertTrue(Arrays.asList(timeline).contains("hello1"));
         assertTrue(Arrays.asList(timeline).contains("hello2"));
-
-        worker.shutdown();
     }
 
     @Test
@@ -134,13 +140,12 @@ public class PostgresTests {
         }
         conn.registerFunction("ProvenanceTestFunction", ProvenanceTestFunction::new);
 
-        ApiaryWorker worker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 1);
-        worker.startServing();
+        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 1);
+        apiaryWorker.startServing();
 
-        ProvenanceBuffer provBuff = worker.provenanceBuffer;
+        ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;
         if (provBuff == null) {
             logger.info("Provenance buffer (Vertica) not available.");
-            worker.shutdown();
             return;
         }
 
@@ -255,7 +260,5 @@ public class PostgresTests {
         assertEquals(ProvenanceBuffer.ExportOperation.DELETE.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(value+1, resValue);
-
-        worker.shutdown();
     }
 }

@@ -140,12 +140,7 @@ public class PostgresTests {
         ProvenanceBuffer provBuff = worker.provenanceBuffer;
         if (provBuff == null) {
             logger.info("Provenance buffer (Vertica) not available.");
-            try {
-                Thread.sleep(100);  // TODO: a more elegant way to stop worker. Now it has to wait until worker initilized.
-                worker.shutdown();
-            } catch (Exception e) {
-                // ignore.
-            }
+            worker.shutdown();
             return;
         }
 

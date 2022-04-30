@@ -460,6 +460,8 @@ public class ApiaryWorker {
 
     public void shutdown() {
         try {
+            // TODO: a more elegant way to stop worker. Now it has to wait until worker initilized. Otherwise, those threads would throw ZMQ exceptions.
+            Thread.sleep(100);
             reqThreadPool.shutdown();
             reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             repThreadPool.shutdown();

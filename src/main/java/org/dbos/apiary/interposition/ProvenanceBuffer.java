@@ -2,9 +2,7 @@ package org.dbos.apiary.interposition;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.voltdb.catalog.Table;
 
-import java.io.IOException;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,6 +37,8 @@ public class ProvenanceBuffer {
     }
 
     public final ThreadLocal<Connection> conn;
+
+    private Thread exportThread;
 
     public ProvenanceBuffer(String olapDBaddr) throws ClassNotFoundException {
         Class.forName("com.vertica.jdbc.Driver");
@@ -78,8 +78,18 @@ public class ProvenanceBuffer {
                 }
             }
         };
-        Thread exportThread = new Thread(r);
+        exportThread = new Thread(r);
         exportThread.start();
+    }
+
+    public void close() {
+        // Close the buffer.
+        try {
+            exportThread.interrupt();
+            exportThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     private static class TableBuffer {

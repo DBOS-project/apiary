@@ -165,6 +165,7 @@ public class PostgresTests {
         String table = "FUNCINVOCATIONS";
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
         rs.next();
+        long txid1 = rs.getLong(1);
         long resExecId = rs.getLong(3);
         String resService = rs.getString(4);
         String resFuncName = rs.getString(5);
@@ -173,13 +174,16 @@ public class PostgresTests {
         assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
 
         rs.next();
+        long txid2 = rs.getLong(1);
         resExecId = rs.getLong(3);
         resService = rs.getString(4);
         resFuncName = rs.getString(5);
-        assertEquals(0l, resExecId);
+        assertEquals(1l, resExecId);
         assertEquals(resService, "testProvService");
         assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
 
+        // Inner transaction should have larger ID.
+        assertTrue(txid1 < txid2);
         assertTrue(!rs.next());
 
         // Check KVTable.
@@ -188,15 +192,19 @@ public class PostgresTests {
         rs.next();
 
         // Should be an insert for key=1.
+        long resTxid = rs.getLong(1);
         int resExportOp = rs.getInt(3);
         int resKey = rs.getInt(4);
         int resValue = rs.getInt(5);
+        assertEquals(txid2, resTxid);
         assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
         assertEquals(1, resKey);
         assertEquals(value, resValue);
 
         // Should be an insert for the key value.
         rs.next();
+        resTxid = rs.getLong(1);
+        assertEquals(txid1, resTxid);
         resExportOp = rs.getInt(3);
         resKey = rs.getInt(4);
         resValue = rs.getInt(5);
@@ -206,6 +214,8 @@ public class PostgresTests {
 
         // Should be a read.
         rs.next();
+        resTxid = rs.getLong(1);
+        assertEquals(txid1, resTxid);
         resExportOp = rs.getInt(3);
         resKey = rs.getInt(4);
         resValue = rs.getInt(5);
@@ -215,6 +225,8 @@ public class PostgresTests {
 
         // Should be an update.
         rs.next();
+        resTxid = rs.getLong(1);
+        assertEquals(txid1, resTxid);
         resExportOp = rs.getInt(3);
         resKey = rs.getInt(4);
         resValue = rs.getInt(5);
@@ -224,6 +236,8 @@ public class PostgresTests {
 
         // Should be a read again.
         rs.next();
+        resTxid = rs.getLong(1);
+        assertEquals(txid1, resTxid);
         resExportOp = rs.getInt(3);
         resKey = rs.getInt(4);
         resValue = rs.getInt(5);
@@ -233,6 +247,8 @@ public class PostgresTests {
 
         // Should be a delete.
         rs.next();
+        resTxid = rs.getLong(1);
+        assertEquals(txid1, resTxid);
         resExportOp = rs.getInt(3);
         resKey = rs.getInt(4);
         resValue = rs.getInt(5);

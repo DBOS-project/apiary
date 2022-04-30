@@ -74,7 +74,7 @@ public class ProvenanceBuffer {
                     exportBuffer();
                     Thread.sleep(exportInterval);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    Thread.currentThread().interrupt();
                 }
             }
         };

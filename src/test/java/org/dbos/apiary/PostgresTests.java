@@ -95,8 +95,7 @@ public class PostgresTests {
         ApiaryWorker worker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
         worker.startServing();
 
-        ZContext clientContext = new ZContext();
-        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+        ApiaryWorkerClient client = new ApiaryWorkerClient();
 
         int resInt;
         resInt = client.executeFunction("localhost", "RetwisPost", "defaultService", 0, 0, 0, "hello0").getInt();
@@ -122,12 +121,11 @@ public class PostgresTests {
         assertTrue(Arrays.asList(timeline).contains("hello1"));
         assertTrue(Arrays.asList(timeline).contains("hello2"));
 
-        clientContext.close();
         worker.shutdown();
     }
 
     @Test
-    public void testPostgresProvenance() throws InvalidProtocolBufferException, SQLException {
+    public void testPostgresProvenance() throws InvalidProtocolBufferException, SQLException, InterruptedException {
         logger.info("testPostgresProvenance");
 
         PostgresConnection conn;
@@ -161,6 +159,8 @@ public class PostgresTests {
         int key = 10, value = 100;
         res = client.executeFunction("localhost", "ProvenanceTestFunction", "testProvService", key, value).getInt();
         assertEquals(101, res);
+
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         // Check provenance tables.
         // Check function invocation table.

@@ -106,14 +106,14 @@ public class ProvenanceBuffer {
                 tableBufferMap.put(table, new TableBuffer(preparedQuery, colTypeMap));
             }
         }
-        if (tableBufferMap.get(table).bufferEntryQueue != null) {
+        if (tableBufferMap.get(table).preparedQuery != null) {
             tableBufferMap.get(table).bufferEntryQueue.add(objects);
         }
     }
 
     private void exportBuffer() {
         for (String table : tableBufferMap.keySet()) {
-            if (tableBufferMap.get(table) == null) {
+            if (tableBufferMap.get(table).preparedQuery == null) {
                 continue;
             }
             try {
@@ -220,7 +220,7 @@ public class ProvenanceBuffer {
                 colTypeMap.put(i, rsmd.getColumnType(i));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.info("Cannot get table info from Vertica: {}", table);
             return null;
         }
         return colTypeMap;

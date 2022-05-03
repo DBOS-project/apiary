@@ -190,7 +190,6 @@ public class PostgresTests {
 
         // Inner transaction should have the same transaction ID.
         assertEquals(txid1, txid2);
-        assertTrue(!rs.next());
 
         // Check KVTable.
         table = "KVTABLE";

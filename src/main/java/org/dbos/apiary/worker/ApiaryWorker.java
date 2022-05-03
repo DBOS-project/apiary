@@ -60,10 +60,10 @@ public class ApiaryWorker {
         return new InternalApiaryWorkerClient(context);
     });
 
-    private final ProvenanceBuffer provenanceBuffer;
+    public final ProvenanceBuffer provenanceBuffer;
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads) {
-        this(c, scheduler, numWorkerThreads, "localhost");
+        this(c, scheduler, numWorkerThreads, ApiaryConfig.olapDefaultAddress);
     }
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads, String olapAddress) {
@@ -79,7 +79,7 @@ public class ApiaryWorker {
         ProvenanceBuffer tempBuffer = null;
         try {
             tempBuffer = new ProvenanceBuffer(olapAddress);
-            if (tempBuffer.conn.get() == null) {
+            if (!tempBuffer.hasConnection) {
                 // No vertica connection.
                 tempBuffer = null;
             }
@@ -323,6 +323,7 @@ public class ApiaryWorker {
         // The backend worker is always the first poller socket.
         poller.register(frontend, ZMQ.Poller.POLLIN);
         // Populate sockets for all remote workers in the cluster.
+
         for (String hostname : distinctHosts) {
             ZMQ.Socket socket = client.getSocket(hostname);
             poller.register(socket, ZMQ.Poller.POLLIN);
@@ -459,6 +460,8 @@ public class ApiaryWorker {
 
     public void shutdown() {
         try {
+            // TODO: a more elegant way to stop worker. Now it has to wait until worker initilized. Otherwise, those threads would throw ZMQ exceptions.
+            Thread.sleep(100);
             reqThreadPool.shutdown();
             reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             repThreadPool.shutdown();
@@ -469,6 +472,9 @@ public class ApiaryWorker {
             serverThread.interrupt();
             zContext.close();
             serverThread.join();
+            if (provenanceBuffer != null) {
+                provenanceBuffer.close();
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

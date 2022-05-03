@@ -2,9 +2,7 @@ package org.dbos.apiary.interposition;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.voltdb.catalog.Table;
 
-import java.io.IOException;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,8 +19,29 @@ public class ProvenanceBuffer {
     public static final int commitSize = 1000000;  // TODO: configurable?
     public static final String padding = "0";
     public static final int exportInterval = 1000;
+    public enum ExportOperation {
+        INSERT(1),
+        DELETE(2),
+        UPDATE(3),
+        READ(4);
 
+        private int value;
+
+        private ExportOperation(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return this.value;
+        }
+    }
+
+    // TODO: need a better way to auto-reconnect to Vertica, during transient failures.
     public final ThreadLocal<Connection> conn;
+
+    public final Boolean hasConnection;
+
+    private Thread exportThread;
 
     public ProvenanceBuffer(String olapDBaddr) throws ClassNotFoundException {
         Class.forName("com.vertica.jdbc.Driver");
@@ -49,6 +68,7 @@ public class ProvenanceBuffer {
 
         if (conn.get() == null) {
             logger.info("No Vertica instance!");
+            this.hasConnection = false;
             return;
         }
 
@@ -58,12 +78,26 @@ public class ProvenanceBuffer {
                     exportBuffer();
                     Thread.sleep(exportInterval);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    Thread.currentThread().interrupt();
                 }
             }
         };
-        Thread exportThread = new Thread(r);
+        exportThread = new Thread(r);
         exportThread.start();
+        this.hasConnection = true;
+    }
+
+    public void close() {
+        // Close the buffer.
+        if (exportThread == null) {
+            return;
+        }
+        try {
+            exportThread.interrupt();
+            exportThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     private static class TableBuffer {
@@ -82,14 +116,24 @@ public class ProvenanceBuffer {
     public void addEntry(String table, Object... objects) {
         if (!tableBufferMap.containsKey(table)) {
             Map<Integer, Integer> colTypeMap = getColTypeMap(table);
-            String preparedQuery= getPreparedQuery(table, colTypeMap.size());
-            tableBufferMap.put(table, new TableBuffer(preparedQuery, colTypeMap));
+            if ((colTypeMap == null) || colTypeMap.isEmpty()) {
+                // Do not capture provenance.
+                tableBufferMap.put(table, new TableBuffer(null, null));
+            } else {
+                String preparedQuery = getPreparedQuery(table, colTypeMap.size());
+                tableBufferMap.put(table, new TableBuffer(preparedQuery, colTypeMap));
+            }
         }
-        tableBufferMap.get(table).bufferEntryQueue.add(objects);
+        if (tableBufferMap.get(table).preparedQuery != null) {
+            tableBufferMap.get(table).bufferEntryQueue.add(objects);
+        }
     }
 
     private void exportBuffer() {
         for (String table : tableBufferMap.keySet()) {
+            if (tableBufferMap.get(table).preparedQuery == null) {
+                continue;
+            }
             try {
                 if (!tableBufferMap.get(table).bufferEntryQueue.isEmpty()) {
                     exportTableBuffer(table);
@@ -103,6 +147,10 @@ public class ProvenanceBuffer {
 
     private void exportTableBuffer(String table) throws SQLException {
         Connection connection = this.conn.get();
+        if (connection == null) {
+            logger.error("Failed to get connection.");
+            return;
+        }
         TableBuffer tableBuffer = tableBufferMap.get(table);
         PreparedStatement pstmt = connection.prepareStatement(tableBuffer.preparedQuery);
         int numEntries = tableBuffer.bufferEntryQueue.size();
@@ -194,7 +242,7 @@ public class ProvenanceBuffer {
                 colTypeMap.put(i, rsmd.getColumnType(i));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.info("Cannot get table info from Vertica: {}", table);
             return null;
         }
         return colTypeMap;

@@ -146,7 +146,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
                 for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
                     assert(rs.getMetaData().getTableName(colNum).equals(tableName)); // TODO: Support multiple tables.
                     int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
-                    rowData[index] = rs.getObject(colNum);
+                    rowData[3 + index] = rs.getObject(colNum);
                 }
                 provBuff.addEntry(tableName, rowData);
             }

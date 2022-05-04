@@ -288,7 +288,7 @@ public class PostgresTests {
 
         Connection verticaConn = provBuff.conn.get();
         Statement stmt = verticaConn.createStatement();
-        String[] tables = {"FUNCINVOCATIONS", "KVTABLE"};
+        String[] tables = {"FUNCINVOCATIONS", "KVTABLE", "KVTABLETWO"};
         for (String table : tables) {
             stmt.execute(String.format("TRUNCATE TABLE %s;", table));
         }

@@ -43,7 +43,7 @@ public class ProvenanceBuffer {
 
     private Thread exportThread;
 
-    public ProvenanceBuffer(String olapDBaddr) throws ClassNotFoundException {
+    public ProvenanceBuffer(String verticaAddress) throws ClassNotFoundException {
         Class.forName("com.vertica.jdbc.Driver");
         this.conn = ThreadLocal.withInitial(() -> {
             // Connect to Vertica.
@@ -55,7 +55,7 @@ public class ProvenanceBuffer {
             verticaProp.put("ConnectionLoadBalance", "1"); // Enable load balancing.
             try {
                 Connection c = DriverManager.getConnection(
-                        String.format("jdbc:vertica://%s/apiary_provenance", olapDBaddr),
+                        String.format("jdbc:vertica://%s/apiary_provenance", verticaAddress),
                         verticaProp
                 );
                 c.setAutoCommit(false);

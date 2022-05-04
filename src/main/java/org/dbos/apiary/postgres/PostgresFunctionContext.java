@@ -145,8 +145,8 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
             rowData[2] = exportOperation;
             while (rs.next()) {
                 int colidx = 3;
-                for (int i = 0; i < primaryKeyCols.length; i++) {
-                    rowData[colidx++] = rs.getObject(primaryKeyCols[i]);
+                for (int primaryKeyCol : primaryKeyCols) {
+                    rowData[colidx++] = rs.getObject(primaryKeyCol);
                 }
                 provBuff.addEntry(tableName, rowData);
             }
@@ -162,17 +162,14 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
         if (this.transactionId >= 0) {
             return this.transactionId;
         }
-
         try {
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("select txid_current();");
-            while (rs.next()) {
-                this.transactionId = rs.getLong(1);
-                break;
-            }
+            rs.next();
+            this.transactionId = rs.getLong(1);
         } catch (SQLException e) {
             e.printStackTrace();
-            return 0l;
+            return 0L;
         }
         return this.transactionId;
     }

@@ -323,7 +323,7 @@ public class PostgresTests {
         assertEquals(2, resValue);
 
         // Check KVTable.
-        table = "KVTABLE2";
+        table = "KVTABLETWO";
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
         rs.next();
 

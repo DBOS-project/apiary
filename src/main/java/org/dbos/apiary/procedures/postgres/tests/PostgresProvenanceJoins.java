@@ -13,7 +13,7 @@ public class PostgresProvenanceJoins extends PostgresFunction {
 
     public static int runFunction(ApiaryStatefulFunctionContext ctxt, int key, int value, int valueTwo) throws SQLException {
         ctxt.apiaryExecuteUpdate(addEntry, key, value);
-        ctxt.apiaryExecuteQuery(addEntryTwo, key, valueTwo);
+        ctxt.apiaryExecuteUpdate(addEntryTwo, key, valueTwo);
         ResultSet rs = (ResultSet) ctxt.apiaryExecuteQuery(getValue, key);
         rs.next();
         return rs.getInt(1) + rs.getInt(2);

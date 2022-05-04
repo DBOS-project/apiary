@@ -6,7 +6,7 @@ import org.dbos.apiary.postgres.PostgresFunction;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class ProvenanceTestFunction extends PostgresFunction {
+public class PostgresProvenanceBasic extends PostgresFunction {
     private static final String addEntry = "INSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?) ON CONFLICT (KVKey) DO NOTHING;";
     private static final String getValue = "SELECT KVValue, KVKEY FROM KVTable WHERE KVKey=?;";
     private static final String updateEntry = "UPDATE KVTABLE SET KVvalue=? WHERE KVKEY=?";
@@ -18,7 +18,7 @@ public class ProvenanceTestFunction extends PostgresFunction {
             return baseValue+1;
         } else {
             // Synchronously call.
-            ctxt.apiaryCallFunction(ctxt, "org.dbos.apiary.procedures.postgres.tests.ProvenanceTestFunction", 1, baseValue);
+            ctxt.apiaryCallFunction(ctxt, "org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceBasic", 1, baseValue);
         }
         // Add an entry at a given key and set to base value, get value, then increase the value by 1, get value again, and finally delete.
         // Return the increased value.

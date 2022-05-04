@@ -129,7 +129,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
-    protected Object internalExecuteQueryCaptured(Object procedure, int[] primaryKeyCols, Object... input) {
+    protected Object internalExecuteQueryCaptured(Object procedure, Object... input) {
         ResultSet rs = null;
         String query = (String) procedure;
         try {

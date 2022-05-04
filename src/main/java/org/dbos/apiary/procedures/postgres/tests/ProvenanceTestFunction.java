@@ -23,12 +23,12 @@ public class ProvenanceTestFunction extends PostgresFunction {
         // Add an entry at a given key and set to base value, get value, then increase the value by 1, get value again, and finally delete.
         // Return the increased value.
         ctxt.apiaryExecuteUpdate(addEntry, key, baseValue);
-        ResultSet r = (ResultSet) ctxt.apiaryExecuteQueryCaptured(getValue, new int[]{2}, key);
+        ResultSet r = (ResultSet) ctxt.apiaryExecuteQuery(getValue, key);
         r.next();
         assert (r.getInt(1) == baseValue);
 
         ctxt.apiaryExecuteUpdate(updateEntry, baseValue+1, key);
-        r = (ResultSet) ctxt.apiaryExecuteQueryCaptured(getValue, new int[]{2}, key);
+        r = (ResultSet) ctxt.apiaryExecuteQuery(getValue, key);
         r.next();
         int res = r.getInt(1);
         assert (res == (baseValue+1));

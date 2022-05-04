@@ -25,16 +25,11 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
 
     // Execute a database query.
     public Object apiaryExecuteQuery(Object procedure, Object... input) {
-        return internalExecuteQuery(procedure, input);
-    }
-
-    // TODO: a more elegant way to handle read capture?
-    public Object apiaryExecuteQueryCaptured(Object procedure, int[] primaryKeyCols, Object... input) {
         if (ApiaryConfig.captureReads && (this.provBuff != null)) {
-            return internalExecuteQueryCaptured(procedure, primaryKeyCols, input);
+            return internalExecuteQueryCaptured(procedure, input);
+        } else {
+            return internalExecuteQuery(procedure, input);
         }
-        // Do not capture if configured to not capture reads.
-        return internalExecuteQuery(procedure, input);
     }
 
     // Get the current transaction ID.
@@ -46,7 +41,7 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
     protected abstract void internalExecuteUpdate(Object procedure, Object... input);
     protected abstract void internalExecuteUpdateCaptured(Object procedure, Object... input);
     protected abstract Object internalExecuteQuery(Object procedure, Object... input);
-    protected abstract Object internalExecuteQueryCaptured(Object procedure, int[] primaryKeyCols, Object... input);
+    protected abstract Object internalExecuteQueryCaptured(Object procedure, Object... input);
 
     protected abstract long internalGetTransactionId();
 

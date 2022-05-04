@@ -134,21 +134,30 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
         String query = (String) procedure;
         try {
             rs = (ResultSet) internalExecuteQuery(procedure, input);
-            String tableName = rs.getMetaData().getTableName(1);
-            Map<String, Integer> schemaMap = getSchemaMap(tableName);
             long timestamp = Utilities.getMicroTimestamp();
             // Record provenance data.
-            Object[] rowData = new Object[3 + schemaMap.size()];
-            rowData[0] = this.transactionId;
-            rowData[1] = timestamp;
-            rowData[2] = getQueryType(query);
+            Map<String, Object[]> tableToRowData = new HashMap<>();
             while (rs.next()) {
                 for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
-                    assert(rs.getMetaData().getTableName(colNum).equals(tableName)); // TODO: Support multiple tables.
-                    int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
-                    rowData[3 + index] = rs.getObject(colNum);
+                    String tableName = rs.getMetaData().getTableName(colNum);
+                    Map<String, Integer> schemaMap = getSchemaMap(tableName);
+                    if (!tableToRowData.containsKey(tableName)) {
+                        Object[] rowData = new Object[3 + schemaMap.size()];
+                        rowData[0] = this.transactionId;
+                        rowData[1] = timestamp;
+                        rowData[2] = getQueryType(query);
+                        tableToRowData.put(tableName, rowData);
+                    }
+                    Object[] rowData = tableToRowData.get(tableName);
+                    String columnName = rs.getMetaData().getColumnName(colNum);
+                    if (schemaMap.containsKey(columnName)) {
+                        int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
+                        rowData[3 + index] = rs.getObject(colNum);
+                    }
                 }
-                provBuff.addEntry(tableName, rowData);
+                for (String tableName: tableToRowData.keySet()) {
+                    provBuff.addEntry(tableName, tableToRowData.get(tableName));
+                }
             }
             rs.beforeFirst();
         } catch (SQLException e) {

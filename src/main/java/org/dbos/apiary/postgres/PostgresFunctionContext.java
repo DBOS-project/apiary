@@ -138,14 +138,15 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
             Map<String, Integer> schemaMap = getSchemaMap(tableName);
             long timestamp = Utilities.getMicroTimestamp();
             // Record provenance data.
-            Object[] rowData = new Object[primaryKeyCols.length+3];
+            Object[] rowData = new Object[3 + schemaMap.size()];
             rowData[0] = this.transactionId;
             rowData[1] = timestamp;
             rowData[2] = getQueryType(query);
             while (rs.next()) {
-                int colidx = 3;
-                for (int primaryKeyCol : primaryKeyCols) {
-                    rowData[colidx++] = rs.getObject(primaryKeyCol);
+                for (int colNum = 0; colNum < rs.getMetaData().getColumnCount(); colNum++) {
+                    assert(rs.getMetaData().getTableName(colNum).equals(tableName)); // TODO: Support multiple tables.
+                    int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
+                    rowData[index] = rs.getObject(colNum);
                 }
                 provBuff.addEntry(tableName, rowData);
             }

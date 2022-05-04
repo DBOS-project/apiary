@@ -175,7 +175,7 @@ public class PostgresTests {
         long resExecId = rs.getLong(3);
         String resService = rs.getString(4);
         String resFuncName = rs.getString(5);
-        assertEquals(0l, resExecId);
+        assertEquals(0L, resExecId);
         assertEquals(resService, "testPostgresProvService");
         assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
 
@@ -226,7 +226,7 @@ public class PostgresTests {
         resValue = rs.getInt(5);
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key, resKey);
-        assertEquals(0, resValue);
+        assertEquals(100, resValue);
 
         // Should be an update.
         rs.next();
@@ -248,7 +248,7 @@ public class PostgresTests {
         resValue = rs.getInt(5);
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key, resKey);
-        assertEquals(0, resValue);
+        assertEquals(101, resValue);
 
         // Should be a delete.
         rs.next();

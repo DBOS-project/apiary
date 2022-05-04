@@ -143,7 +143,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
             rowData[1] = timestamp;
             rowData[2] = getQueryType(query);
             while (rs.next()) {
-                for (int colNum = 0; colNum < rs.getMetaData().getColumnCount(); colNum++) {
+                for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
                     assert(rs.getMetaData().getTableName(colNum).equals(tableName)); // TODO: Support multiple tables.
                     int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
                     rowData[index] = rs.getObject(colNum);

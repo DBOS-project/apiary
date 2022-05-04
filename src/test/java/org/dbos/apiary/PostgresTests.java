@@ -34,6 +34,8 @@ public class PostgresTests {
             PostgresConnection ctxt = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
             ctxt.dropTable("KVTable");
             ctxt.createTable("KVTable", "(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL)");
+            ctxt.dropTable("KVTableTwo");
+            ctxt.createTable("KVTableTwo", "(KVKeyTwo integer PRIMARY KEY NOT NULL, KVValueTwo integer NOT NULL)");
             ctxt.dropTable("RetwisPosts");
             ctxt.createTable("RetwisPosts", "(UserID integer NOT NULL, PostID integer NOT NULL, Timestamp integer NOT NULL, Post varchar(1000) NOT NULL)");
             ctxt.dropTable("RetwisFollowees");

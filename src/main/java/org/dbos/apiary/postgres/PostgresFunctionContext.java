@@ -205,14 +205,18 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
         return res;
     }
 
+    private static final Map<String, Map<String, Integer>> schemaMapCache = new HashMap<>();
     private Map<String, Integer> getSchemaMap(String tableName) throws SQLException {
-        Map<String, Integer> schemaMap = new HashMap<>();
-        ResultSet columns = conn.getMetaData().getColumns(null, null, tableName, null);
-        int index = 0;
-        while (columns.next()) {
-            schemaMap.put(columns.getString("COLUMN_NAME"), index);
-            index++;
+        if (!schemaMapCache.containsKey(tableName)) {
+            Map<String, Integer> schemaMap = new HashMap<>();
+            ResultSet columns = conn.getMetaData().getColumns(null, null, tableName, null);
+            int index = 0;
+            while (columns.next()) {
+                schemaMap.put(columns.getString("COLUMN_NAME"), index);
+                index++;
+            }
+            schemaMapCache.put(tableName, schemaMap);
         }
-        return schemaMap;
+        return schemaMapCache.get(tableName);
     }
 }

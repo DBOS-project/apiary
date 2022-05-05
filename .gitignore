@@ -2,6 +2,8 @@
 *.class
 .idea
 target
+*.iml
+postgres-demo/target
 
 # Log file
 *.log

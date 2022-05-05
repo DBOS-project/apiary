@@ -197,6 +197,11 @@ public class ProvenanceBuffer {
     private static void setColumn(PreparedStatement pstmt, int colIndex, int colType, Object val) throws SQLException {
         // Convert value to the target type.
         // TODO: support more types. Vertica treats all integer as BIGINT.
+        if (val == null) {
+            // The column must be nullable.
+            pstmt.setNull(colIndex, colType);
+            return;
+        }
         if (colType == Types.BIGINT) {
             long longval = 0l;
             if (val instanceof Long) {

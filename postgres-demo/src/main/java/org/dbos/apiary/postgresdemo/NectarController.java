@@ -2,6 +2,8 @@ package org.dbos.apiary.postgresdemo;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.postgresdemo.functions.NectarAddPost;
+import org.dbos.apiary.postgresdemo.functions.NectarGetPosts;
 import org.dbos.apiary.postgresdemo.functions.NectarLogin;
 import org.dbos.apiary.postgresdemo.functions.NectarRegister;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -36,8 +38,12 @@ public class NectarController {
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
         conn.dropTable("WebsiteLogins");
         conn.createTable("WebsiteLogins", "(Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL)");
+        conn.dropTable("WebsitePosts");
+        conn.createTable("WebsitePosts", "(Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL)");
         conn.registerFunction("NectarRegister", NectarRegister::new);
         conn.registerFunction("NectarLogin", NectarLogin::new);
+        conn.registerFunction("NectarAddPost", NectarAddPost::new);
+        conn.registerFunction("NectarGetPosts", NectarGetPosts::new);
 
         ApiaryWorker apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
         apiaryWorker.startServing();
@@ -99,13 +105,20 @@ public class NectarController {
         return "redirect:/home";
     }
 
-    private List<WebPost> findUserPosts(String username) {
-        List<WebPost> postlist = new ArrayList<>();
-        return postlist;
+    private List<WebPost> findUserPosts(String username) throws InvalidProtocolBufferException {
+        List<WebPost> postList = new ArrayList<>();
+        String[] posts = client.executeFunction("localhost", "NectarGetPosts", "nectarNetwork", username).getStringArray();
+        for (int i = 0; i < posts.length; i += 2) {
+            WebPost post = new WebPost();
+            post.setSender(posts[i]);
+            post.setPostText(posts[i + 1]);
+            postList.add(post);
+        }
+        return postList;
     }
 
     @GetMapping("/timeline")
-    public String timeline(Model model, @ModelAttribute("logincredentials") Credentials logincredentials) {
+    public String timeline(Model model, @ModelAttribute("logincredentials") Credentials logincredentials) throws InvalidProtocolBufferException {
         if (logincredentials.getUsername() != null) {
             model.addAttribute("login", logincredentials);
             List<WebPost> postlist = findUserPosts(logincredentials.getUsername());
@@ -118,11 +131,11 @@ public class NectarController {
     }
 
     @PostMapping("/timeline")
-    public RedirectView timelinePostSubmit(@ModelAttribute WebPost webPost, @ModelAttribute("logincredentials") Credentials logincredentials, RedirectAttributes attributes) {
+    public RedirectView timelinePostSubmit(@ModelAttribute WebPost webPost, @ModelAttribute("logincredentials") Credentials logincredentials, RedirectAttributes attributes) throws InvalidProtocolBufferException {
         if (logincredentials.getUsername() == null) {
             return new RedirectView("/home");
         }
-        // TODO: better error handling?
+        client.executeFunction("localhost", "NectarAddPost", "nectarNetwork", logincredentials.getUsername(), webPost.getReceiver(), webPost.getPostText());
         return new RedirectView("/timeline");
     }
 

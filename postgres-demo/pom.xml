@@ -33,20 +33,38 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.voltdb</groupId>
-			<artifactId>voltdbclient</artifactId>
-			<version>9.3.2</version>
-		</dependency>
-		<dependency>
-			<groupId>org.voltdb</groupId>
-			<artifactId>voltdb</artifactId>
-			<version>9.3.2</version>
+			<groupId>org.dbos.apiary</groupId>
+			<artifactId>dynamic-apiary</artifactId>
+			<version>0.1-SNAPSHOT</version>
+			<scope>compile</scope>
 		</dependency>
 
 		<dependency>
-			<groupId>org.dbos</groupId>
-			<artifactId>DBOS</artifactId>
-			<version>0.1-SNAPSHOT</version>
+			<groupId>org.zeromq</groupId>
+			<artifactId>jeromq</artifactId>
+			<version>0.5.2</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.protobuf</groupId>
+			<artifactId>protobuf-java</artifactId>
+			<version>3.19.4</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.protobuf</groupId>
+			<artifactId>protobuf-java-util</artifactId>
+			<version>3.19.4</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>42.3.3</version>
+		</dependency>
+		<dependency>
+			<groupId>com.vertica.jdbc</groupId>
+			<artifactId>vertica-jdbc</artifactId>
+			<version>10.1.1-0</version>
 		</dependency>
 	</dependencies>
 
@@ -56,8 +74,6 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-
-
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-install-plugin</artifactId>

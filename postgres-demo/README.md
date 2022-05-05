@@ -12,7 +12,7 @@ scripts/initialize_postgres_docker.sh
 
 To compile and test:
 
-    mvn clean package
+    mvn clean && mvn package
 
 To host the website locally:
 

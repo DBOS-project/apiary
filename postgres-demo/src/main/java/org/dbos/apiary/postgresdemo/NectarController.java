@@ -1,6 +1,8 @@
 package org.dbos.apiary.postgresdemo;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.postgresdemo.functions.NectarLogin;
 import org.dbos.apiary.postgresdemo.functions.NectarRegister;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
@@ -35,6 +37,7 @@ public class NectarController {
         conn.dropTable("WebsiteLogins");
         conn.createTable("WebsiteLogins", "(Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL)");
         conn.registerFunction("NectarRegister", NectarRegister::new);
+        conn.registerFunction("NectarLogin", NectarLogin::new);
 
         ApiaryWorker apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
         apiaryWorker.startServing();
@@ -75,9 +78,9 @@ public class NectarController {
     }
 
     @PostMapping("/login")
-    public RedirectView loginSubmit(@ModelAttribute Credentials credentials, @ModelAttribute("logincredentials") Credentials logincredentials, RedirectAttributes attributes) {
-        boolean success = false;
-        if (success) {
+    public RedirectView loginSubmit(@ModelAttribute Credentials credentials, @ModelAttribute("logincredentials") Credentials logincredentials, RedirectAttributes attributes) throws InvalidProtocolBufferException {
+        int success = client.executeFunction("localhost", "NectarLogin", "nectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
+        if (success == 0) {
             logincredentials.setUsername(credentials.getUsername());
             logincredentials.setPassword(credentials.getPassword());
             // make sure the credential can be saved across page reload.

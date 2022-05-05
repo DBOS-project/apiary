@@ -10,6 +10,8 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -102,11 +104,12 @@ public class NectarController {
     private List<WebPost> findUserPosts(String username) throws InvalidProtocolBufferException {
         List<WebPost> postList = new ArrayList<>();
         String[] posts = client.executeFunction("localhost", "NectarGetPosts", "nectarNetwork", username).getStringArray();
-        for (int i = 0; i < posts.length; i += 2) {
-            WebPost post = new WebPost();
-            post.setSender(posts[i]);
-            post.setPostText(posts[i + 1]);
-            postList.add(post);
+        for (String post: posts) {
+            WebPost webPost = new WebPost();
+            JSONObject obj = (JSONObject) JSONValue.parse(post);
+            webPost.setSender((String) obj.get("Sender"));
+            webPost.setPostText((String) obj.get("PostText"));
+            postList.add(webPost);
         }
         return postList;
     }

@@ -2,6 +2,7 @@ package org.dbos.apiary.postgresdemo.functions;
 
 import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.dbos.apiary.postgres.PostgresFunction;
+import org.json.simple.JSONObject;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -16,8 +17,10 @@ public class NectarGetPosts extends PostgresFunction {
         ResultSet rs = (ResultSet) ctxt.apiaryExecuteQuery(getPosts, username);
         List<String> results = new ArrayList<>();
         while (rs.next()) {
-            results.add(rs.getString(1));
-            results.add(rs.getString(2));
+            JSONObject obj = new JSONObject();
+            obj.put("Sender", rs.getString(1));
+            obj.put("PostText", rs.getString(2));
+            results.add(obj.toJSONString());
         }
         return results.toArray(new String[0]);
     }

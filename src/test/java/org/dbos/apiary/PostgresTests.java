@@ -34,6 +34,8 @@ public class PostgresTests {
             PostgresConnection ctxt = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
             ctxt.dropTable("KVTable");
             ctxt.createTable("KVTable", "(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL)");
+            ctxt.dropTable("KVTableTwo");
+            ctxt.createTable("KVTableTwo", "(KVKeyTwo integer PRIMARY KEY NOT NULL, KVValueTwo integer NOT NULL)");
             ctxt.dropTable("RetwisPosts");
             ctxt.createTable("RetwisPosts", "(UserID integer NOT NULL, PostID integer NOT NULL, Timestamp integer NOT NULL, Post varchar(1000) NOT NULL)");
             ctxt.dropTable("RetwisFollowees");
@@ -139,7 +141,7 @@ public class PostgresTests {
             logger.info("No Postgres instance!");
             return;
         }
-        conn.registerFunction("ProvenanceTestFunction", ProvenanceTestFunction::new);
+        conn.registerFunction("PostgresProvenanceBasic", PostgresProvenanceBasic::new);
 
         apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 1);
         apiaryWorker.startServing();
@@ -161,7 +163,7 @@ public class PostgresTests {
 
         int res;
         int key = 10, value = 100;
-        res = client.executeFunction("localhost", "ProvenanceTestFunction", "testPostgresProvService", key, value).getInt();
+        res = client.executeFunction("localhost", "PostgresProvenanceBasic", "testPostgresProvService", key, value).getInt();
         assertEquals(101, res);
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
@@ -175,9 +177,9 @@ public class PostgresTests {
         long resExecId = rs.getLong(3);
         String resService = rs.getString(4);
         String resFuncName = rs.getString(5);
-        assertEquals(0l, resExecId);
+        assertEquals(0L, resExecId);
         assertEquals(resService, "testPostgresProvService");
-        assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
+        assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
 
         rs.next();
         long txid2 = rs.getLong(1);
@@ -186,7 +188,7 @@ public class PostgresTests {
         resFuncName = rs.getString(5);
         assertEquals(0l, resExecId);
         assertEquals(resService, "testPostgresProvService");
-        assertEquals(ProvenanceTestFunction.class.getName(), resFuncName);
+        assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
 
         // Inner transaction should have the same transaction ID.
         assertEquals(txid1, txid2);
@@ -226,7 +228,7 @@ public class PostgresTests {
         resValue = rs.getInt(5);
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key, resKey);
-        assertEquals(0, resValue);
+        assertEquals(100, resValue);
 
         // Should be an update.
         rs.next();
@@ -248,7 +250,7 @@ public class PostgresTests {
         resValue = rs.getInt(5);
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key, resKey);
-        assertEquals(0, resValue);
+        assertEquals(101, resValue);
 
         // Should be a delete.
         rs.next();
@@ -260,5 +262,85 @@ public class PostgresTests {
         assertEquals(ProvenanceBuffer.ExportOperation.DELETE.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(value+1, resValue);
+    }
+
+    @Test
+    public void testPostgresProvenanceJoins() throws InvalidProtocolBufferException, SQLException, InterruptedException {
+        logger.info("testPostgresProvenanceJoins");
+
+        PostgresConnection conn;
+        try {
+            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+        } catch (Exception e) {
+            logger.info("No Postgres instance!");
+            return;
+        }
+        conn.registerFunction("PostgresProvenanceJoins", PostgresProvenanceJoins::new);
+
+        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 1);
+        apiaryWorker.startServing();
+
+        ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;
+        if (provBuff == null) {
+            logger.info("Provenance buffer (Vertica) not available.");
+            return;
+        }
+
+        Connection verticaConn = provBuff.conn.get();
+        Statement stmt = verticaConn.createStatement();
+        String[] tables = {"FUNCINVOCATIONS", "KVTABLE", "KVTABLETWO"};
+        for (String table : tables) {
+            stmt.execute(String.format("TRUNCATE TABLE %s;", table));
+        }
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient();
+
+        int res;
+        res = client.executeFunction("localhost", "PostgresProvenanceJoins", "testPostgresProvService", 1, 2, 3).getInt();
+        assertEquals(5, res);
+
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
+        // Check KVTable.
+        String table = "KVTABLE";
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
+        rs.next();
+
+        // Should be an insert for key=1.
+        int resExportOp = rs.getInt(3);
+        int resKey = rs.getInt(4);
+        int resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
+        assertEquals(1, resKey);
+        assertEquals(2, resValue);
+
+        // Should be a read.
+        rs.next();
+        resExportOp = rs.getInt(3);
+        resKey = rs.getInt(4);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
+        assertEquals(2, resValue);
+
+        // Check KVTable.
+        table = "KVTABLETWO";
+        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
+        rs.next();
+
+        // Should be an insert for key=1.
+        resExportOp = rs.getInt(3);
+        resKey = rs.getInt(4);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
+        assertEquals(1, resKey);
+        assertEquals(3, resValue);
+
+        // Should be a read.
+        rs.next();
+        resExportOp = rs.getInt(3);
+        resKey = rs.getInt(4);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
+        assertEquals(3, resValue);
     }
 }

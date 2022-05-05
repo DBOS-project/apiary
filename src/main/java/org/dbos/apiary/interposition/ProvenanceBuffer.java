@@ -43,7 +43,7 @@ public class ProvenanceBuffer {
 
     private Thread exportThread;
 
-    public ProvenanceBuffer(String olapDBaddr) throws ClassNotFoundException {
+    public ProvenanceBuffer(String verticaAddress) throws ClassNotFoundException {
         Class.forName("com.vertica.jdbc.Driver");
         this.conn = ThreadLocal.withInitial(() -> {
             // Connect to Vertica.
@@ -55,7 +55,7 @@ public class ProvenanceBuffer {
             verticaProp.put("ConnectionLoadBalance", "1"); // Enable load balancing.
             try {
                 Connection c = DriverManager.getConnection(
-                        String.format("jdbc:vertica://%s/apiary_provenance", olapDBaddr),
+                        String.format("jdbc:vertica://%s/apiary_provenance", verticaAddress),
                         verticaProp
                 );
                 c.setAutoCommit(false);
@@ -197,6 +197,11 @@ public class ProvenanceBuffer {
     private static void setColumn(PreparedStatement pstmt, int colIndex, int colType, Object val) throws SQLException {
         // Convert value to the target type.
         // TODO: support more types. Vertica treats all integer as BIGINT.
+        if (val == null) {
+            // The column must be nullable.
+            pstmt.setNull(colIndex, colType);
+            return;
+        }
         if (colType == Types.BIGINT) {
             long longval = 0l;
             if (val instanceof Long) {

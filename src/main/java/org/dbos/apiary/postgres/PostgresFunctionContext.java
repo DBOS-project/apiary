@@ -6,12 +6,17 @@ import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.dbos.apiary.interposition.ProvenanceBuffer;
 import org.dbos.apiary.utilities.Utilities;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
+    private static final Logger logger = LoggerFactory.getLogger(PostgresFunctionContext.class);
     // This connection ties to all prepared statements in one transaction.
     private final Connection conn;
     private long transactionId;  // This is the transaction ID of the main transaction. Postgres subtransaction IDs are invisible.
@@ -114,7 +119,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     protected Object internalExecuteQuery(Object procedure, Object... input) {
         try {
             // First, prepare statement. Then, execute.
-            PreparedStatement pstmt = conn.prepareStatement((String) procedure);
+            PreparedStatement pstmt = conn.prepareStatement((String) procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             prepareStatement(pstmt, input);
             return pstmt.executeQuery();
         } catch (SQLException e) {
@@ -124,31 +129,35 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
-    protected Object internalExecuteQueryCaptured(Object procedure, int[] primaryKeyCols, Object... input) {
+    protected Object internalExecuteQueryCaptured(Object procedure, Object... input) {
         ResultSet rs = null;
-        ResultSetMetaData rsmd;
-        String tableName;
-        String interceptedQuery = (String) procedure;
-        int exportOperation = getQueryType(interceptedQuery);
+        String query = (String) procedure;
         try {
-            // First, prepare statement. Then, execute.
-            PreparedStatement pstmt = conn.prepareStatement(interceptedQuery, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-            prepareStatement(pstmt, input);
-            rs = pstmt.executeQuery();
-            rsmd = rs.getMetaData();
-            tableName = rsmd.getTableName(1);
+            rs = (ResultSet) internalExecuteQuery(procedure, input);
             long timestamp = Utilities.getMicroTimestamp();
             // Record provenance data.
-            Object[] rowData = new Object[primaryKeyCols.length+3];
-            rowData[0] = this.transactionId;
-            rowData[1] = timestamp;
-            rowData[2] = exportOperation;
+            Map<String, Object[]> tableToRowData = new HashMap<>();
             while (rs.next()) {
-                int colidx = 3;
-                for (int i = 0; i < primaryKeyCols.length; i++) {
-                    rowData[colidx++] = rs.getObject(primaryKeyCols[i]);
+                for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
+                    String tableName = rs.getMetaData().getTableName(colNum);
+                    Map<String, Integer> schemaMap = getSchemaMap(tableName);
+                    if (!tableToRowData.containsKey(tableName)) {
+                        Object[] rowData = new Object[3 + schemaMap.size()];
+                        rowData[0] = this.transactionId;
+                        rowData[1] = timestamp;
+                        rowData[2] = getQueryType(query);
+                        tableToRowData.put(tableName, rowData);
+                    }
+                    Object[] rowData = tableToRowData.get(tableName);
+                    String columnName = rs.getMetaData().getColumnName(colNum);
+                    if (schemaMap.containsKey(columnName)) {
+                        int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
+                        rowData[3 + index] = rs.getObject(colNum);
+                    }
                 }
-                provBuff.addEntry(tableName, rowData);
+                for (String tableName: tableToRowData.keySet()) {
+                    provBuff.addEntry(tableName, tableToRowData.get(tableName));
+                }
             }
             rs.beforeFirst();
         } catch (SQLException e) {
@@ -162,17 +171,14 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
         if (this.transactionId >= 0) {
             return this.transactionId;
         }
-
         try {
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("select txid_current();");
-            while (rs.next()) {
-                this.transactionId = rs.getLong(1);
-                break;
-            }
+            rs.next();
+            this.transactionId = rs.getLong(1);
         } catch (SQLException e) {
             e.printStackTrace();
-            return 0l;
+            return 0L;
         }
         return this.transactionId;
     }
@@ -197,5 +203,20 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
             res = ProvenanceBuffer.ExportOperation.READ.getValue();
         }
         return res;
+    }
+
+    private static final Map<String, Map<String, Integer>> schemaMapCache = new HashMap<>();
+    private Map<String, Integer> getSchemaMap(String tableName) throws SQLException {
+        if (!schemaMapCache.containsKey(tableName)) {
+            Map<String, Integer> schemaMap = new HashMap<>();
+            ResultSet columns = conn.getMetaData().getColumns(null, null, tableName, null);
+            int index = 0;
+            while (columns.next()) {
+                schemaMap.put(columns.getString("COLUMN_NAME"), index);
+                index++;
+            }
+            schemaMapCache.put(tableName, schemaMap);
+        }
+        return schemaMapCache.get(tableName);
     }
 }

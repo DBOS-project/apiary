@@ -22,16 +22,10 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Controller
 @SessionAttributes("logincredentials")
 public class NectarController {
-
-    AtomicInteger execID = new AtomicInteger(0);
-    AtomicInteger postID = new AtomicInteger(0);
-    public static final int PKEY = 0;
-
     ApiaryWorkerClient client;
 
     public NectarController() throws SQLException {
@@ -131,7 +125,7 @@ public class NectarController {
     }
 
     @PostMapping("/timeline")
-    public RedirectView timelinePostSubmit(@ModelAttribute WebPost webPost, @ModelAttribute("logincredentials") Credentials logincredentials, RedirectAttributes attributes) throws InvalidProtocolBufferException {
+    public RedirectView timelinePostSubmit(@ModelAttribute WebPost webPost, @ModelAttribute("logincredentials") Credentials logincredentials) throws InvalidProtocolBufferException {
         if (logincredentials.getUsername() == null) {
             return new RedirectView("/home");
         }

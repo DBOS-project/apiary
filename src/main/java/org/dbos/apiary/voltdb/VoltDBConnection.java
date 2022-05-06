@@ -74,7 +74,7 @@ public class VoltDBConnection implements ApiaryConnection {
     private static Task voltOutputToTask(VoltTable voltInput) {
         VoltTableRow inputRow = voltInput.fetchRow(0);
         String funcName = inputRow.getString(0);
-        int taskID = (int) inputRow.getLong(1);
+        int functionID = (int) inputRow.getLong(1);
         int offset = 2;
         Object[] input = new Object[voltInput.getColumnCount() - offset];
 
@@ -104,7 +104,7 @@ public class VoltDBConnection implements ApiaryConnection {
                 throw new IllegalArgumentException();
             }
         }
-        return new Task(taskID, funcName, input);
+        return new Task(functionID, funcName, input);
     }
 
     @Override

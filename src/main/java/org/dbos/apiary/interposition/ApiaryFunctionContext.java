@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class ApiaryFunctionContext {
 
-    private final AtomicInteger calledTaskID = new AtomicInteger(0);
+    private final AtomicInteger calledFunctionID = new AtomicInteger(0);
     private final List<Task> queuedTasks = new ArrayList<>();
 
     public final ProvenanceBuffer provBuff;
@@ -28,10 +28,10 @@ public abstract class ApiaryFunctionContext {
 
     // Asynchronously queue another function for asynchronous execution.
     public ApiaryFuture apiaryQueueFunction(String name, Object... inputs) {
-        long taskID = functionID * 20 + calledTaskID.incrementAndGet();
-        Task futureTask = new Task(taskID, name, inputs);
+        long functionID = this.functionID * 20 + calledFunctionID.incrementAndGet();
+        Task futureTask = new Task(functionID, name, inputs);
         queuedTasks.add(futureTask);
-        return new ApiaryFuture(taskID);
+        return new ApiaryFuture(functionID);
     }
 
     public abstract FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs);

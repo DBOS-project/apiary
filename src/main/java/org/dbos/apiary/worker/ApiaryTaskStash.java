@@ -13,9 +13,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 // This class is used to store the current execution progress of a called function.
 public class ApiaryTaskStash {
     public final long callerId;
-    public final long currTaskId;  // Task ID for itself.
+    public final long functionID;  // Task ID for itself.
     public final ZFrame replyAddr;
-    public final Map<Long, Object> taskIDtoValue;
+    public final Map<Long, Object> functionIDToValue;
     public final Queue<Task> queuedTasks;
     public final AtomicInteger numFinishedTasks = new AtomicInteger(0);
     public final long senderTimestampNano;
@@ -25,14 +25,14 @@ public class ApiaryTaskStash {
     public int totalQueuedTasks;
     public Object output;
 
-    public ApiaryTaskStash(String service, long execId, long callerId, long currTaskId, ZFrame replyAddr, long senderTimestampNano) {
+    public ApiaryTaskStash(String service, long execId, long callerId, long functionID, ZFrame replyAddr, long senderTimestampNano) {
         this.service = service;
         this.execId = execId;
         this.callerId = callerId;
-        this.currTaskId = currTaskId;
+        this.functionID = functionID;
         this.replyAddr = replyAddr;
         this.senderTimestampNano = senderTimestampNano;
-        taskIDtoValue = new ConcurrentHashMap<>();
+        functionIDToValue = new ConcurrentHashMap<>();
         queuedTasks = new ConcurrentLinkedQueue<>();
         totalQueuedTasks = 0;
     }
@@ -43,8 +43,8 @@ public class ApiaryTaskStash {
         if (numFinishedTasks.get() == totalQueuedTasks) {
             if (output instanceof ApiaryFuture) {
                 ApiaryFuture futureOutput = (ApiaryFuture) output;
-                assert (taskIDtoValue.containsKey(futureOutput.futureID));
-                return taskIDtoValue.get(futureOutput.futureID);
+                assert (functionIDToValue.containsKey(futureOutput.futureID));
+                return functionIDToValue.get(futureOutput.futureID);
             } else {
                 return output;
             }

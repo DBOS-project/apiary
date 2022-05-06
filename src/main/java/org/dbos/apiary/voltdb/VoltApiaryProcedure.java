@@ -106,7 +106,7 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
         VoltTable v = new VoltTable(columns);
         Object[] row = new Object[v.getColumnCount()];
         row[0] = task.funcName;
-        row[1] = task.taskID;
+        row[1] = task.functionID;
         for (int i = 0; i < task.input.length; i++) {
             Object input = task.input[i];
             if (input instanceof String) {

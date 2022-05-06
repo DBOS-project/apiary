@@ -143,20 +143,12 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
     // Used below, to define SELECT_TABLE_NAMES
     private static final String TABLE_REFERENCE = "(?<table1>\\w+)(\\s+(AS\\s+)?\\w+)?";
-    private static final String COMMA_OR_JOIN_CLAUSE = "(,|\\s+((INNER|CROSS|((LEFT|RIGHT|FULL)\\s+)?OUTER)\\s+)?JOIN\\s)\\s*";
-    private static final String COMPARISON_OP = "\\s*(=|!=|<>|<|>|<=|>=|IS\\s+(NOT\\s+)?DISTINCT\\s+FROM)\\s+";
-    private static final String ON_OR_USING_CLAUSE = "\\s+((ON\\s+(\\w+\\.)?\\w+"+COMPARISON_OP+"(\\w+\\.)?\\w+"
-            + "|USING\\s+\\(\\w+(,\\s*\\w+\\s*)*\\)))?\\s*";
 
     /** Pattern used to recognize the table names in a SELECT statement; will
      *  recognize up to 4 table names. */
     private static final Pattern SELECT_TABLE_NAMES = Pattern.compile(
-            "(?<!DISTINCT)\\s+FROM\\s+"+TABLE_REFERENCE+"\\s*"
-                    + "(" + COMMA_OR_JOIN_CLAUSE + TABLE_REFERENCE.replace('1', '2') + ON_OR_USING_CLAUSE + ")?"
-                    + "(" + COMMA_OR_JOIN_CLAUSE + TABLE_REFERENCE.replace('1', '3') + ON_OR_USING_CLAUSE + ")?"
-                    + "(" + COMMA_OR_JOIN_CLAUSE + TABLE_REFERENCE.replace('1', '4') + ON_OR_USING_CLAUSE + ")?",
+            "(?<!DISTINCT)\\s+FROM\\s+"+TABLE_REFERENCE+"\\s*",
             Pattern.CASE_INSENSITIVE);
-    private static final int MAX_NUM_TABLE_NAMES = 4;
 
     private String getUpdateTableName(String sqlStr) {
         String result = null;
@@ -179,18 +171,17 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     private List<String> getSelectTableNames(String sqlStr) {
         List<String> result = new ArrayList<>();
         Matcher matcher = SELECT_TABLE_NAMES.matcher(sqlStr);
+        System.out.println(matcher.toString());
         if (matcher.find()) {
-            for (int i=1; i <= MAX_NUM_TABLE_NAMES; i++) {
-                String group = null;
-                try {
-                    group = matcher.group("table"+i);
-                } catch (IllegalArgumentException e) {
-                    break;
-                }
-                if (group != null) {
-                    result.add(group);
-                }
+            // TODO: capture Join tables as well.
+            String group = null;
+            try {
+                group = matcher.group("table1");
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
             }
+            assert (group != null);
+            result.add(group);
         }
         System.out.println(sqlStr);
         for (String r : result) {

@@ -145,8 +145,9 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     /** Pattern used to recognize the table names in a SELECT statement; will
      *  recognize up to 4 table names. */
     private static final Pattern SELECT_TABLE_NAMES = Pattern.compile(
-            "(?<!DISTINCT)\\s+FROM\\s+"+TABLE_REFERENCE+"\\s*",
+            "(?<!DISTINCT)\\s+FROM\\s+(?<table1>\\w+)?\\s+(JOIN\\s+(?<table2>\\w+)?\\s+)?",
             Pattern.CASE_INSENSITIVE);
+    private static final int MAX_NUM_TABLES = 2;
 
     private String getUpdateTableName(String sqlStr) {
         String result = null;
@@ -168,15 +169,18 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         List<String> result = new ArrayList<>();
         Matcher matcher = SELECT_TABLE_NAMES.matcher(sqlStr);
         if (matcher.find()) {
-            // TODO: capture Join tables as well.
-            String group = null;
-            try {
-                group = matcher.group("table1");
-            } catch (IllegalArgumentException e) {
-                e.printStackTrace();
+            // TODO: capture all Join tables.
+            String group;
+            for (int i = 1; i <= MAX_NUM_TABLES; i++) {
+                try {
+                    group = matcher.group("table"+i);
+                } catch (IllegalArgumentException e) {
+                    break;
+                }
+                if (group != null) {
+                    result.add(group);
+                }
             }
-            assert (group != null);
-            result.add(group);
         }
         return result;
     }

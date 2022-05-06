@@ -201,7 +201,11 @@ public class VoltDBTests {
         assertEquals(1, resKey);
         assertEquals(3, resValue);
 
-        // TODO: the current implementation cannot capture the second joined table.
-        // Will support that later.
+        // Should be a read
+        rs.next();
+        resExportOp = rs.getInt(3);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
+        assertEquals(3, resValue);
     }
 }

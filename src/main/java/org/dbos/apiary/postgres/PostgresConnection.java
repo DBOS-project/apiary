@@ -49,7 +49,7 @@ public class PostgresConnection implements ApiaryConnection {
             logger.info("Failed to connect to Postgres");
             throw new RuntimeException("Failed to connect to Postgres");
         }
-        createTable("RecordedOutputs", "(ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput integer, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID))");
+        createTable("RecordedOutputs", "(ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID))");
     }
 
     public void registerFunction(String name, Callable<PostgresFunction> function) { functions.put(name, function); }

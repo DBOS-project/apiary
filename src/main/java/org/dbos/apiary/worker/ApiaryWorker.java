@@ -121,7 +121,7 @@ public class ApiaryWorker {
     }
 
     // Resume the execution of the caller function, then send back a reply if everything is finished.
-    private void resumeExecution(long callerID, int taskID, Object output) throws InterruptedException {
+    private void resumeExecution(long callerID, long taskID, Object output) throws InterruptedException {
         ApiaryTaskStash callerTask = callerStashMap.get(callerID);
         assert (callerTask != null);
         callerTask.taskIDtoValue.put(taskID, output);
@@ -159,12 +159,12 @@ public class ApiaryWorker {
     }
 
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
-    private void executeFunction(String name, String service, long execID, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
+    private void executeFunction(String name, String service, long execID, long callerID, long currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {
             if (!statelessFunctions.containsKey(name)) {
-                o = c.callFunction(provenanceBuffer, service, execID, name, arguments);
+                o = c.callFunction(provenanceBuffer, service, execID, currTaskID, name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();
                 ApiaryFunctionContext ctxt = new ApiaryStatelessFunctionContext(c, localClients.get(), provenanceBuffer, service, execID, statelessFunctions);
@@ -246,7 +246,7 @@ public class ApiaryWorker {
                 List<ByteString> byteArguments = req.getArgumentsList();
                 List<Integer> argumentTypes = req.getArgumentTypesList();
                 long callerID = req.getCallerId();
-                int currTaskID = req.getTaskId();
+                long currTaskID = req.getTaskId();
                 long execID = req.getExecutionId();
                 Object[] arguments = new Object[byteArguments.size()];
                 for (int i = 0; i < arguments.length; i++) {
@@ -296,7 +296,7 @@ public class ApiaryWorker {
                     output = Utilities.byteArrayToIntArray(reply.getReplyArray().toByteArray());
                 }
                 long callerID = reply.getCallerId();
-                int taskID = reply.getTaskId();
+                long taskID = reply.getTaskId();
                 // Resume execution.
                 resumeExecution(callerID, taskID, output);
             } catch (InvalidProtocolBufferException | InterruptedException e) {

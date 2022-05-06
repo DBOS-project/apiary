@@ -112,7 +112,7 @@ public class CockroachDBConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, String name, Object... inputs) throws Exception {
+    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String name, Object... inputs) throws Exception {
         CockroachDBFunction function = functions.get(name).call();
         FunctionOutput f = null;
         try {

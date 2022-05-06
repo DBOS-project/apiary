@@ -3,12 +3,10 @@ package org.dbos.apiary.interposition;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.utilities.ApiaryConfig;
 
-import java.lang.reflect.InvocationTargetException;
-
 public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContext {
 
-    public ApiaryStatefulFunctionContext(ProvenanceBuffer provBuff, String service, long execID) {
-        super(provBuff, service, execID);
+    public ApiaryStatefulFunctionContext(ProvenanceBuffer provBuff, String service, long execID, long functionID) {
+        super(provBuff, service, execID, functionID);
     }
     /** Public Interface for functions. **/
 

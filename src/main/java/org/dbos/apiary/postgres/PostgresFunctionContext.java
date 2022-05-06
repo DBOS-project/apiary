@@ -1,6 +1,7 @@
 package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.executor.FunctionOutput;
+import org.dbos.apiary.executor.Task;
 import org.dbos.apiary.interposition.ApiaryFunction;
 import org.dbos.apiary.interposition.ApiaryFunctionContext;
 import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
@@ -15,15 +16,18 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresFunctionContext.class);
     // This connection ties to all prepared statements in one transaction.
     private final Connection conn;
     private long transactionId;  // This is the transaction ID of the main transaction. Postgres subtransaction IDs are invisible.
+    private AtomicLong functionIDCounter = new AtomicLong(0);
+    private long currentID = functionID;
 
-    public PostgresFunctionContext(Connection c, ProvenanceBuffer provBuff, String service, long execID) {
-        super(provBuff, service, execID);
+    public PostgresFunctionContext(Connection c, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
+        super(provBuff, service, execID, functionID);
         this.conn= c;
         this.transactionId = -1;
     }
@@ -42,12 +46,16 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
         // Remember current txid.
         try {
             Savepoint s = conn.setSavepoint();
+            long oldID = currentID;
             try {
+                this.currentID = functionID + functionIDCounter.incrementAndGet();
                 FunctionOutput o = f.apiaryRunFunction(ctxt, inputs);
+                this.currentID = oldID;
                 conn.releaseSavepoint(s);
                 return o;
             } catch (Exception e) {
                 e.printStackTrace();
+                this.currentID = oldID;
                 conn.rollback(s);
                 conn.releaseSavepoint(s);
                 return null;
@@ -55,6 +63,56 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
         } catch (SQLException e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    @Override
+    public FunctionOutput checkPreviousExecution() {
+        return null;
+    }
+
+    @Override
+    public void recordExecution(FunctionOutput output) {
+        try {
+            PreparedStatement s = conn.prepareStatement("INSERT INTO RecordedOutputs(ExecID, FunctionID, StringOutput, IntOutput, StringArrayOutput, IntArrayOutput, FutureOutput, QueuedTasks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            s.setLong(1, execID);
+            s.setLong(2, currentID);
+            if (output.getString() != null) {
+                s.setString(3, output.getString());
+                s.setNull(4, Types.INTEGER);
+                s.setNull(5, Types.VARBINARY);
+                s.setNull(6, Types.VARBINARY);
+                s.setNull(7, Types.INTEGER);
+            } else if (output.getInt() != null) {
+                s.setNull(3, Types.VARCHAR);
+                s.setInt(4, output.getInt());
+                s.setNull(5, Types.VARBINARY);
+                s.setNull(6, Types.VARBINARY);
+                s.setNull(7, Types.INTEGER);
+            } else if (output.getStringArray() != null) {
+                s.setNull(3, Types.VARCHAR);
+                s.setNull(4, Types.INTEGER);
+                s.setBytes(5, Utilities.stringArraytoByteArray(output.getStringArray()));
+                s.setNull(6, Types.VARBINARY);
+                s.setNull(7, Types.INTEGER);
+            } else if (output.getIntArray() != null) {
+                s.setNull(3, Types.VARCHAR);
+                s.setNull(4, Types.INTEGER);
+                s.setNull(5, Types.VARBINARY);
+                s.setBytes(6, Utilities.intArrayToByteArray(output.getIntArray()));
+                s.setNull(7, Types.INTEGER);
+            }else if (output.getFuture() != null) {
+                s.setNull(3, Types.VARCHAR);
+                s.setNull(4, Types.INTEGER);
+                s.setNull(5, Types.VARBINARY);
+                s.setNull(6, Types.VARBINARY);
+                s.setLong(7, output.getFuture().futureID);
+            }
+            s.setBytes(8, Utilities.objectToByteArray(output.queuedTasks.toArray(new Task[0])));
+            s.executeUpdate();
+            s.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 

@@ -23,7 +23,7 @@ public class PostgresConnection implements ApiaryConnection {
 
     private final Map<String, Callable<PostgresFunction>> functions = new HashMap<>();
 
-    public PostgresConnection(String hostname, Integer port) {
+    public PostgresConnection(String hostname, Integer port) throws SQLException {
         this.ds = new PGSimpleDataSource();
         this.ds.setServerNames(new String[] {hostname});
         this.ds.setPortNumbers(new int[] {port});
@@ -49,6 +49,7 @@ public class PostgresConnection implements ApiaryConnection {
             logger.info("Failed to connect to Postgres");
             throw new RuntimeException("Failed to connect to Postgres");
         }
+        createTable("RecordedOutputs", "(ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput integer, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID))");
     }
 
     public void registerFunction(String name, Callable<PostgresFunction> function) { functions.put(name, function); }
@@ -70,9 +71,9 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, String name, Object... inputs) throws Exception {
+    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String name, Object... inputs) throws Exception {
         PostgresFunction function = functions.get(name).call();
-        ApiaryFunctionContext ctxt = new PostgresFunctionContext(connection.get(), provBuff, service, execID);
+        ApiaryFunctionContext ctxt = new PostgresFunctionContext(connection.get(), provBuff, service, execID, functionID);
         FunctionOutput f = null;
         try {
             f = function.apiaryRunFunction(ctxt, inputs);

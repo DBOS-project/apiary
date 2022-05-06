@@ -29,7 +29,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
     public VoltFunctionContext(VoltApiaryProcedure p, ProvenanceBuffer provBuff, String service, long execID) {
         // TODO: add actual provenance buffer, service name, and execution ID.
-        super(provBuff, service, execID);
+        super(provBuff, service, execID, 0);
         this.p = p;
         this.transactionID = internalGetTransactionId();
     }
@@ -46,6 +46,16 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         assert(clazz instanceof ApiaryFunction);
         ApiaryFunction f = (ApiaryFunction) clazz;
         return f.apiaryRunFunction(ctxt, inputs);
+    }
+
+    @Override
+    public FunctionOutput checkPreviousExecution() {
+        return null;
+    }
+
+    @Override
+    public void recordExecution(FunctionOutput output) {
+
     }
 
     @Override

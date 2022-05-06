@@ -123,7 +123,7 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
                 ApiaryFuture[] futures = (ApiaryFuture[]) input;
                 int[] futureIDs = new int[futures.length];
                 for (int j = 0; j < futures.length; j++) {
-                    futureIDs[j] = futures[j].futureID;
+                    futureIDs[j] = (int) futures[j].futureID; //TODO: Long.
                 }
                 row[i + offset] = Utilities.intArrayToByteArray(futureIDs);
             }

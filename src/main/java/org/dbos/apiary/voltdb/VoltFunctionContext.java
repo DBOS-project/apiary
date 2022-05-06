@@ -98,7 +98,6 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         while (v.advanceRow()) {
             for (int colNum = 0; colNum < v.getColumnCount(); colNum++) {
                 String columnName = v.getColumnName(colNum);
-                System.out.println(columnName);
                 // Check which table has this column name.
                 Map<String, Integer> currSchemaMap = null;
                 String currTable = null;
@@ -106,7 +105,6 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
                     if (localSchemaMap.get(table).containsKey(columnName)) {
                         currSchemaMap = localSchemaMap.get(table);
                         currTable = table;
-                        System.out.println(currTable);
                     }
                 }
                 if (currSchemaMap != null) {
@@ -163,15 +161,12 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
             assert (group != null);
             result = group;
         }
-        System.out.println(sqlStr);
-        System.out.println(result);
         return result;
     }
 
     private List<String> getSelectTableNames(String sqlStr) {
         List<String> result = new ArrayList<>();
         Matcher matcher = SELECT_TABLE_NAMES.matcher(sqlStr);
-        System.out.println(matcher.toString());
         if (matcher.find()) {
             // TODO: capture Join tables as well.
             String group = null;
@@ -183,11 +178,6 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
             assert (group != null);
             result.add(group);
         }
-        System.out.println(sqlStr);
-        for (String r : result) {
-            System.out.println(r);
-        }
-        System.out.println("\n");
         return result;
     }
 
@@ -215,10 +205,8 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
                 e.printStackTrace();
                 return null;
             }
-            System.out.println(voltMap.toFormattedString());
             while (voltMap.advanceRow()) {
                 String table = voltMap.getString("TABLE_NAME");
-                System.out.println(String.format("Table %s", table));
                 if (!table.equals(tableName)) {
                     continue;
                 }
@@ -226,7 +214,6 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
                 // Index starts from 1.
                 int colIdx = (int) voltMap.getLong("ORDINAL_POSITION") - 1;
                 schemaMap.put(colName, colIdx);
-                System.out.println(String.format("Table %s: column: %s, index %d", table, colName, colIdx));
             }
             schemaMapCache.put(tableName, schemaMap);
         }

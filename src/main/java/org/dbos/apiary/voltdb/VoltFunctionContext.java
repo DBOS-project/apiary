@@ -100,6 +100,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         while (v.advanceRow()) {
             for (int colNum = 0; colNum < v.getColumnCount(); colNum++) {
                 String columnName = v.getColumnName(colNum);
+                System.out.println(columnName);
                 // Check which table has this column name.
                 Map<String, Integer> currSchemaMap = null;
                 String currTable = null;
@@ -107,6 +108,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
                     if (localSchemaMap.get(table).containsKey(columnName)) {
                         currSchemaMap = localSchemaMap.get(table);
                         currTable = table;
+                        System.out.println(currTable);
                     }
                 }
                 if (currSchemaMap != null) {

@@ -99,14 +99,14 @@ public class ApiaryWorker {
                     break;
                 }
                 // Run all tasks that have no dependencies.
-                if (subtask.dereferenceFutures(currTask.taskIDtoValue)) {
+                if (subtask.dereferenceFutures(currTask.functionIDToValue)) {
                     boolean removed = currTask.queuedTasks.remove(subtask);
                     if (!removed) {
                         continue;
                     }
                     String address = statelessFunctions.containsKey(subtask.funcName) ? c.getPartitionHostMap().get(0) : c.getHostname(subtask.input); // TODO: Fix hack, use local hostname.
                     // Push to the outgoing queue.
-                    byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currCallerID, subtask.taskID, subtask.input);
+                    byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currCallerID, subtask.functionID, subtask.input);
                     outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
                 }
                 numTraversed++;
@@ -121,10 +121,10 @@ public class ApiaryWorker {
     }
 
     // Resume the execution of the caller function, then send back a reply if everything is finished.
-    private void resumeExecution(long callerID, int taskID, Object output) throws InterruptedException {
+    private void resumeExecution(long callerID, long functionID, Object output) throws InterruptedException {
         ApiaryTaskStash callerTask = callerStashMap.get(callerID);
         assert (callerTask != null);
-        callerTask.taskIDtoValue.put(taskID, output);
+        callerTask.functionIDToValue.put(functionID, output);
         processQueuedTasks(callerTask, callerID);
 
         int finishedTasks = callerTask.numFinishedTasks.incrementAndGet();
@@ -136,7 +136,7 @@ public class ApiaryWorker {
             // Send back the response only once.
             ExecuteFunctionReply.Builder b = ExecuteFunctionReply.newBuilder()
                     .setCallerId(callerTask.callerId)
-                    .setTaskId(callerTask.currTaskId)
+                    .setFunctionId(callerTask.functionID)
                     .setSenderTimestampNano(callerTask.senderTimestampNano);
             if (output instanceof String) {
                 b.setReplyType(stringType);
@@ -159,15 +159,15 @@ public class ApiaryWorker {
     }
 
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
-    private void executeFunction(String name, String service, long execID, long callerID, int currTaskID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
+    private void executeFunction(String name, String service, long execID, long callerID, long functionID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {
             if (!statelessFunctions.containsKey(name)) {
-                o = c.callFunction(provenanceBuffer, service, execID, name, arguments);
+                o = c.callFunction(provenanceBuffer, service, execID, functionID, name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();
-                ApiaryFunctionContext ctxt = new ApiaryStatelessFunctionContext(c, localClients.get(), provenanceBuffer, service, execID, statelessFunctions);
+                ApiaryFunctionContext ctxt = new ApiaryStatelessFunctionContext(c, localClients.get(), provenanceBuffer, service, execID, functionID, statelessFunctions);
                 o = f.apiaryRunFunction(ctxt, arguments);
             }
         } catch (Exception e) {
@@ -175,7 +175,7 @@ public class ApiaryWorker {
         }
         long runtime = System.nanoTime() - tStart;
         assert (o != null);
-        ApiaryTaskStash currTask = new ApiaryTaskStash(service, execID, callerID, currTaskID, replyAddr, senderTimestampNano);
+        ApiaryTaskStash currTask = new ApiaryTaskStash(service, execID, callerID, functionID, replyAddr, senderTimestampNano);
         currTask.output = o.output;
 
         // Store tasks in the list and async invoke all sub-tasks that are ready.
@@ -195,7 +195,7 @@ public class ApiaryWorker {
         if (output != null) {
             ExecuteFunctionReply.Builder b = ExecuteFunctionReply.newBuilder()
                     .setCallerId(callerID)
-                    .setTaskId(currTaskID)
+                    .setFunctionId(functionID)
                     .setSenderTimestampNano(senderTimestampNano);
             if (output instanceof String) {
                 b.setReplyType(stringType);
@@ -246,7 +246,7 @@ public class ApiaryWorker {
                 List<ByteString> byteArguments = req.getArgumentsList();
                 List<Integer> argumentTypes = req.getArgumentTypesList();
                 long callerID = req.getCallerId();
-                int currTaskID = req.getTaskId();
+                long functionID = req.getFunctionId();
                 long execID = req.getExecutionId();
                 Object[] arguments = new Object[byteArguments.size()];
                 for (int i = 0; i < arguments.length; i++) {
@@ -261,7 +261,7 @@ public class ApiaryWorker {
                         arguments[i] = Utilities.byteArrayToIntArray(byteArray);
                     }
                 }
-                executeFunction(req.getName(), req.getService(), execID, callerID, currTaskID, address, req.getSenderTimestampNano(), arguments);
+                executeFunction(req.getName(), req.getService(), execID, callerID, functionID, address, req.getSenderTimestampNano(), arguments);
             } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }
@@ -296,9 +296,9 @@ public class ApiaryWorker {
                     output = Utilities.byteArrayToIntArray(reply.getReplyArray().toByteArray());
                 }
                 long callerID = reply.getCallerId();
-                int taskID = reply.getTaskId();
+                long functionID = reply.getFunctionId();
                 // Resume execution.
-                resumeExecution(callerID, taskID, output);
+                resumeExecution(callerID, functionID, output);
             } catch (InvalidProtocolBufferException | InterruptedException e) {
                 e.printStackTrace();
             }

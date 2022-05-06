@@ -74,7 +74,7 @@ public class VoltDBConnection implements ApiaryConnection {
     private static Task voltOutputToTask(VoltTable voltInput) {
         VoltTableRow inputRow = voltInput.fetchRow(0);
         String funcName = inputRow.getString(0);
-        int taskID = (int) inputRow.getLong(1);
+        int functionID = (int) inputRow.getLong(1);
         int offset = 2;
         Object[] input = new Object[voltInput.getColumnCount() - offset];
 
@@ -104,11 +104,11 @@ public class VoltDBConnection implements ApiaryConnection {
                 throw new IllegalArgumentException();
             }
         }
-        return new Task(taskID, funcName, input);
+        return new Task(functionID, funcName, input);
     }
 
     @Override
-    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, String funcName, Object... inputs) throws IOException, ProcCallException {
+    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String funcName, Object... inputs) throws IOException, ProcCallException {
         VoltTable voltInput = inputToVoltTable(service, execID, inputs);
         assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
         Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];

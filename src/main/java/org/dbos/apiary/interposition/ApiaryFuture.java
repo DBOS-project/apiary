@@ -1,9 +1,11 @@
 package org.dbos.apiary.interposition;
 
-public class ApiaryFuture {
-    public final Integer futureID;
+import java.io.Serializable;
 
-    public ApiaryFuture(Integer futureID) {
+public class ApiaryFuture implements Serializable {
+    public final long futureID;
+
+    public ApiaryFuture(long futureID) {
         this.futureID = futureID;
     }
 }

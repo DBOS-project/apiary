@@ -9,11 +9,13 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
+import org.dbos.apiary.worker.InternalApiaryWorkerClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zeromq.ZContext;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -31,15 +33,16 @@ public class PostgresTests {
     @BeforeEach
     public void resetTables() {
         try {
-            PostgresConnection ctxt = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
-            ctxt.dropTable("KVTable");
-            ctxt.createTable("KVTable", "(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL)");
-            ctxt.dropTable("KVTableTwo");
-            ctxt.createTable("KVTableTwo", "(KVKeyTwo integer PRIMARY KEY NOT NULL, KVValueTwo integer NOT NULL)");
-            ctxt.dropTable("RetwisPosts");
-            ctxt.createTable("RetwisPosts", "(UserID integer NOT NULL, PostID integer NOT NULL, Timestamp integer NOT NULL, Post varchar(1000) NOT NULL)");
-            ctxt.dropTable("RetwisFollowees");
-            ctxt.createTable("RetwisFollowees", "(UserID integer NOT NULL, FolloweeID integer NOT NULL)");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+            conn.dropTable("RecordedOutputs");
+            conn.dropTable("KVTable");
+            conn.createTable("KVTable", "(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL)");
+            conn.dropTable("KVTableTwo");
+            conn.createTable("KVTableTwo", "(KVKeyTwo integer PRIMARY KEY NOT NULL, KVValueTwo integer NOT NULL)");
+            conn.dropTable("RetwisPosts");
+            conn.createTable("RetwisPosts", "(UserID integer NOT NULL, PostID integer NOT NULL, Timestamp integer NOT NULL, Post varchar(1000) NOT NULL)");
+            conn.dropTable("RetwisFollowees");
+            conn.createTable("RetwisFollowees", "(UserID integer NOT NULL, FolloweeID integer NOT NULL)");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
         }
@@ -81,6 +84,74 @@ public class PostgresTests {
 
         res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 10).getInt();
         assertEquals(55, res);
+    }
+
+    @Test
+    public void testExactlyOncePostgres() throws InvalidProtocolBufferException {
+        logger.info("testExactlyOncePostgres");
+
+        PostgresConnection conn;
+        try {
+            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+        } catch (Exception e) {
+            logger.info("No Postgres instance!");
+            return;
+        }
+        conn.registerFunction("PostgresFibonacciFunction", PostgresFibonacciFunction::new);
+        conn.registerFunction("PostgresFibSumFunction", PostgresFibSumFunction::new);
+
+        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.startServing();
+
+        InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());
+
+        int res;
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 0, 1).getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 1, 6).getInt();
+        assertEquals(8, res);
+
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 2, 10).getInt();
+        assertEquals(55, res);
+
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 2, 10).getInt();
+        assertEquals(55, res);
+
+        res = client.executeFunction("localhost", "PostgresFibonacciFunction", "defaultService", 2, 10).getInt();
+        assertEquals(55, res);
+    }
+
+    @Test
+    public void testExactlyOncePostgresIncrement() throws InvalidProtocolBufferException {
+        logger.info("testExactlyOncePostgresIncrement");
+
+        PostgresConnection conn;
+        try {
+            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+        } catch (Exception e) {
+            logger.info("No Postgres instance!");
+            return;
+        }
+        conn.registerFunction("PostgresIncrementFunction", PostgresIncrementFunction::new);
+
+        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.startServing();
+
+        InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());
+
+        int res;
+        res = client.executeFunction("localhost", "PostgresIncrementFunction", "defaultService", 10, 1).getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("localhost", "PostgresIncrementFunction", "defaultService", 11, 1).getInt();
+        assertEquals(2, res);
+
+        res = client.executeFunction("localhost", "PostgresIncrementFunction", "defaultService", 12, 1).getInt();
+        assertEquals(3, res);
+
+        res = client.executeFunction("localhost", "PostgresIncrementFunction", "defaultService", 12, 1).getInt();
+        assertEquals(3, res);
     }
 
     @Test

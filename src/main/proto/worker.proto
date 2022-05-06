@@ -15,7 +15,7 @@ message ExecuteFunctionRequest {
   repeated bytes arguments = 2;
   repeated int32 argumentTypes = 3;
   int64 callerId = 4;
-  int32 taskId = 5;
+  int64 functionId = 5;
   int64 senderTimestampNano = 6;
   string service = 7;
   int64 executionId = 8;  // Unique global IDs for an entire workflow.
@@ -26,7 +26,7 @@ message ExecuteFunctionReply {
   int32 replyInt = 2;
   bytes replyArray = 7;
   int64 callerId = 3;
-  int32 taskId = 4;
+  int64 functionId = 4;
   int64 senderTimestampNano = 5;
   int64 replyType = 6;
 }

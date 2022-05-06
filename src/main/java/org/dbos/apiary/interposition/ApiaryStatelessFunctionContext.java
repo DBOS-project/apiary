@@ -14,8 +14,8 @@ public class ApiaryStatelessFunctionContext extends ApiaryFunctionContext {
     private final InternalApiaryWorkerClient client;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions;
 
-    public ApiaryStatelessFunctionContext(ApiaryConnection c, InternalApiaryWorkerClient client, ProvenanceBuffer provBuff, String service, long execID, Map<String, Callable<StatelessFunction>> statelessFunctions) {
-        super(provBuff, service, execID);
+    public ApiaryStatelessFunctionContext(ApiaryConnection c, InternalApiaryWorkerClient client, ProvenanceBuffer provBuff, String service, long execID, long functionID, Map<String, Callable<StatelessFunction>> statelessFunctions) {
+        super(provBuff, service, execID, functionID);
         this.client = client;
         this.statelessFunctions = statelessFunctions;
         this.c = c;
@@ -40,5 +40,15 @@ public class ApiaryStatelessFunctionContext extends ApiaryFunctionContext {
                 return null;
             }
         }
+    }
+
+    @Override
+    public FunctionOutput checkPreviousExecution() {
+        return null;
+    }
+
+    @Override
+    public void recordExecution(FunctionOutput output) {
+
     }
 }

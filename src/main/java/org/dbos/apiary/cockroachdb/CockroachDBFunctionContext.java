@@ -13,7 +13,7 @@ import java.sql.SQLException;
 public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
 
     public CockroachDBFunctionContext(ProvenanceBuffer provBuff, String service, long execID) {
-        super(provBuff, service, execID);
+        super(provBuff, service, execID, 0);
     }
 
     @Override
@@ -29,6 +29,16 @@ public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
         assert(clazz instanceof ApiaryFunction);
         ApiaryFunction f = (ApiaryFunction) clazz;
         return f.apiaryRunFunction(ctxt, inputs);
+    }
+
+    @Override
+    public FunctionOutput checkPreviousExecution() {
+        return null;
+    }
+
+    @Override
+    public void recordExecution(FunctionOutput output) {
+
     }
 
     private void prepareStatement(PreparedStatement ps, Object[] input) throws SQLException {

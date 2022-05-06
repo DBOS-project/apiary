@@ -46,7 +46,7 @@ public class InternalApiaryWorkerClient {
         }
     }
 
-    public static byte[] serializeExecuteRequest(String name, String service, long execID, long callerID, int taskID, Object... arguments) {
+    public static byte[] serializeExecuteRequest(String name, String service, long execID, long callerID, long functionID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
         for (Object o: arguments) {
@@ -76,7 +76,7 @@ public class InternalApiaryWorkerClient {
                 .addAllArguments(byteArguments)
                 .addAllArgumentTypes(argumentTypes)
                 .setCallerId(callerID)
-                .setTaskId(taskID)
+                .setFunctionId(functionID)
                 .setService(service)
                 .setExecutionId(execID)
                 .setSenderTimestampNano(sendTime)

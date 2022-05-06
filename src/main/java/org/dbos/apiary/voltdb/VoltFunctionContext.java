@@ -145,7 +145,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     /** Pattern used to recognize the table names in a SELECT statement; will
      *  recognize up to 2 table names. */
     private static final Pattern SELECT_TABLE_NAMES = Pattern.compile(
-            "(?<!DISTINCT)\\s+FROM\\s+(?<table1>\\w+)?\\s+(((INNER|CROSS|((LEFT|RIGHT|FULL)\\s+)?OUTER)\\s+)?JOIN\\s+(?<table2>\\w+)?\\s+)?",
+            "(?<!DISTINCT)\\s+FROM\\s+(?<table1>\\w+)?\\s+(AS\\s+\\w+)?\\s+(((INNER|CROSS|((LEFT|RIGHT|FULL)\\s+)?OUTER)\\s+)?JOIN\\s+(?<table2>\\w+)?\\s+)?",
             Pattern.CASE_INSENSITIVE);
     private static final int MAX_NUM_TABLES = 2;
 

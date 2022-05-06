@@ -224,9 +224,11 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
                 e.printStackTrace();
                 return null;
             }
+            System.out.println(voltMap.toFormattedString());
             while (voltMap.advanceRow()) {
                 String table = voltMap.getString("TABLE_NAME");
-                if (table != tableName) {
+                System.out.println(String.format("Table %s", table));
+                if (!table.equals(tableName)) {
                     continue;
                 }
                 String colName = voltMap.getString("COLUMN_NAME");

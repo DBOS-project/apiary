@@ -60,6 +60,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         // TODO: currently only captures "INSERT INTO <table> VALUES (?,...)". Support more patterns later.
         long timestamp = Utilities.getMicroTimestamp();
         String tableName = getUpdateTableName(sqlStr);
+        String upperName = tableName.toUpperCase();
         Object[] rowData = new Object[input.length+3];
         rowData[0] = this.transactionID;
         rowData[1] = timestamp;
@@ -67,7 +68,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         System.arraycopy(input, 0, rowData, 3, input.length);
         p.voltQueueSQL((SQLStmt) procedure, input);
         p.voltExecuteSQL();
-        provBuff.addEntry(tableName, rowData);
+        provBuff.addEntry(upperName, rowData);
     }
 
     @Override
@@ -80,49 +81,31 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     protected VoltTable[] internalExecuteQueryCaptured(Object procedure, Object... input) {
         // TODO: Volt doesn't differentiate columns returned from different tables. This capture won't capture the record if a query assigns aliases for columns.
         String sqlStr = ((SQLStmt) procedure).getText();
-        List<String> tableNames = getSelectTableNames(sqlStr);
+        String tableName = getSelectTableNames(sqlStr);
         p.voltQueueSQL((SQLStmt) procedure, input);
         VoltTable[] vs = p.voltExecuteSQL();
         VoltTable v = vs[0];
         long timestamp = Utilities.getMicroTimestamp();
         int queryType = ProvenanceBuffer.ExportOperation.READ.getValue();
 
-        Map<String, Map<String, Integer>> localSchemaMap = new HashMap<>();
-        for (String table : tableNames) {
-            String upperTable = table.toUpperCase(Locale.ROOT);
-            localSchemaMap.put(upperTable, getSchemaMap(upperTable));
-        }
+        String upperTable = tableName.toUpperCase(Locale.ROOT);
+        Map<String, Integer> localSchemaMap = getSchemaMap(upperTable);
 
         // Record provenance data.
-        Map<String, Object[]> tableToRowData = new HashMap<>();
         while (v.advanceRow()) {
+            Object[] rowData = new Object[3 + localSchemaMap.size()];
+            rowData[0] = this.transactionID;
+            rowData[1] = timestamp;
+            rowData[2] = queryType;
             for (int colNum = 0; colNum < v.getColumnCount(); colNum++) {
                 String columnName = v.getColumnName(colNum);
-                // Check which table has this column name.
-                Map<String, Integer> currSchemaMap = null;
-                String currTable = null;
-                for (String table : localSchemaMap.keySet()) {
-                    if (localSchemaMap.get(table).containsKey(columnName)) {
-                        currSchemaMap = localSchemaMap.get(table);
-                        currTable = table;
-                    }
-                }
-                if (currSchemaMap != null) {
-                    if (!tableToRowData.containsKey(currTable)) {
-                        Object[] rowData = new Object[3 + currSchemaMap.size()];
-                        rowData[0] = this.transactionID;
-                        rowData[1] = timestamp;
-                        rowData[2] = queryType;
-                        tableToRowData.put(currTable, rowData);
-                    }
-                    Object[] rowData = tableToRowData.get(currTable);
-                    int colIndex = currSchemaMap.get(columnName);
+                // Check if the table has this column name.
+                if (localSchemaMap.containsKey(columnName)) {
+                    int colIndex = localSchemaMap.get(columnName);
                     rowData[3 + colIndex] = v.get(colNum, v.getColumnType(colNum));
                 }
             }
-            for (String tableName: tableToRowData.keySet()) {
-                provBuff.addEntry(tableName, tableToRowData.get(tableName));
-            }
+            provBuff.addEntry(tableName, rowData);
         }
 
         v.resetRowPosition();
@@ -143,11 +126,10 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     private static final String TABLE_REFERENCE = "(?<table1>\\w+)(\\s+(AS\\s+)?\\w+)?";
 
     /** Pattern used to recognize the table names in a SELECT statement; will
-     *  recognize up to 2 table names. */
+     *  recognize up to 1 table names. */
     private static final Pattern SELECT_TABLE_NAMES = Pattern.compile(
-            "(?<!DISTINCT)\\s+FROM\\s+(?<table1>\\w+)?\\s+(AS\\s+\\w+\\s+)?\\s*(((INNER|CROSS|((LEFT|RIGHT|FULL)\\s+)?OUTER)\\s+)?JOIN\\s+(?<table2>\\w+)?\\s+)?",
+            "(?<!DISTINCT)\\s+FROM\\s+(?<table1>\\w+)?\\s+",
             Pattern.CASE_INSENSITIVE);
-    private static final int MAX_NUM_TABLES = 2;
 
     private String getUpdateTableName(String sqlStr) {
         String result = null;
@@ -165,22 +147,19 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         return result;
     }
 
-    private List<String> getSelectTableNames(String sqlStr) {
-        List<String> result = new ArrayList<>();
+    private String getSelectTableNames(String sqlStr) {
+        String result = null;
         Matcher matcher = SELECT_TABLE_NAMES.matcher(sqlStr);
         if (matcher.find()) {
             // TODO: capture all Join tables.
-            String group;
-            for (int i = 1; i <= MAX_NUM_TABLES; i++) {
-                try {
-                    group = matcher.group("table"+i);
-                } catch (IllegalArgumentException e) {
-                    break;
-                }
-                if (group != null) {
-                    result.add(group);
-                }
+            String group = null;
+            try {
+                group = matcher.group("table1");
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
             }
+            assert (group != null);
+            result = group;
         }
         return result;
     }

@@ -17,10 +17,7 @@ import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -92,7 +89,8 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
         Map<String, Map<String, Integer>> localSchemaMap = new HashMap<>();
         for (String table : tableNames) {
-            localSchemaMap.put(table, getSchemaMap(table));
+            String upperTable = table.toUpperCase(Locale.ROOT);
+            localSchemaMap.put(upperTable, getSchemaMap(upperTable));
         }
 
         // Record provenance data.
@@ -235,6 +233,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
                 // Index starts from 1.
                 int colIdx = (int) voltMap.getLong("ORDINAL_POSITION") - 1;
                 schemaMap.put(colName, colIdx);
+                System.out.println(String.format("Table %s: column: %s, index %d", table, colName, colIdx));
             }
             schemaMapCache.put(tableName, schemaMap);
         }

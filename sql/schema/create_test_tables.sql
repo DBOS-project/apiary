@@ -5,6 +5,13 @@ CREATE TABLE KVTable (
 );
 PARTITION TABLE KVTable ON COLUMN KVKey;
 
+CREATE TABLE KVTableTWO (
+                         KVKeyTwo INTEGER NOT NULL,
+                         KVValueTwo INTEGER NOT NULL,
+                         PRIMARY KEY (KVKeyTwo)
+);
+PARTITION TABLE KVTableTWO ON COLUMN KVKeyTwo;
+
 CREATE TABLE PartitionInfo (
                                PartitionId INTEGER NOT NULL,
                                Pkey INTEGER DEFAULT -1,

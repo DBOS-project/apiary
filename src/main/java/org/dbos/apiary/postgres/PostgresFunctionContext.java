@@ -14,6 +14,7 @@ import java.sql.*;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresFunctionContext.class);
@@ -89,7 +90,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
         ResultSet rs;
         ResultSetMetaData rsmd;
         String tableName;
-        int exportOperation = getQueryType(interceptedQuery);
+        int exportOperation = Utilities.getQueryType(interceptedQuery);
         try {
             // First, prepare statement. Then, execute.
             PreparedStatement pstmt = conn.prepareStatement(interceptedQuery);
@@ -145,7 +146,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
                         Object[] rowData = new Object[3 + schemaMap.size()];
                         rowData[0] = this.transactionId;
                         rowData[1] = timestamp;
-                        rowData[2] = getQueryType(query);
+                        rowData[2] = Utilities.getQueryType(query);
                         tableToRowData.put(tableName, rowData);
                     }
                     Object[] rowData = tableToRowData.get(tableName);
@@ -191,21 +192,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
         return res;
     }
 
-    private int getQueryType(String query) {
-        int res;
-        if (query.contains("INSERT")) {
-            res = ProvenanceBuffer.ExportOperation.INSERT.getValue();
-        } else if (query.contains("DELETE")) {
-            res = ProvenanceBuffer.ExportOperation.DELETE.getValue();
-        } else if (query.contains("UPDATE")) {
-            res = ProvenanceBuffer.ExportOperation.UPDATE.getValue();
-        } else {
-            res = ProvenanceBuffer.ExportOperation.READ.getValue();
-        }
-        return res;
-    }
-
-    private static final Map<String, Map<String, Integer>> schemaMapCache = new HashMap<>();
+    private static final Map<String, Map<String, Integer>> schemaMapCache = new ConcurrentHashMap<>();
     private Map<String, Integer> getSchemaMap(String tableName) throws SQLException {
         if (!schemaMapCache.containsKey(tableName)) {
             Map<String, Integer> schemaMap = new HashMap<>();

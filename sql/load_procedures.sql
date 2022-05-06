@@ -38,3 +38,6 @@ CREATE PROCEDURE PARTITION ON TABLE RetwisFollowees COLUMN UserID PARAMETER 0 FR
 
 DROP PROCEDURE IncrementProcedure IF EXISTS;
 CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN KVKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.increment.IncrementProcedure;
+
+DROP PROCEDURE VoltProvenanceBasic IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN KVKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.VoltProvenanceBasic;

@@ -152,6 +152,8 @@ public class PostgresTests {
             return;
         }
 
+        // Wait a bit so previous provenance capture data would be flushed out.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 4);
         Connection verticaConn = provBuff.conn.get();
         Statement stmt = verticaConn.createStatement();
         String[] tables = {"FUNCINVOCATIONS", "KVTABLE"};
@@ -286,6 +288,7 @@ public class PostgresTests {
             return;
         }
 
+        Thread.sleep(ProvenanceBuffer.exportInterval * 4);
         Connection verticaConn = provBuff.conn.get();
         Statement stmt = verticaConn.createStatement();
         String[] tables = {"FUNCINVOCATIONS", "KVTABLE", "KVTABLETWO"};

@@ -1,5 +1,6 @@
 package org.dbos.apiary.utilities;
 
+import org.dbos.apiary.interposition.ProvenanceBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -129,5 +130,19 @@ public class Utilities {
 
     public static long getMicroTimestamp() {
         return ChronoUnit.MICROS.between(Instant.EPOCH, Instant.now());
+    }
+
+    public static int getQueryType(String query) {
+        int res;
+        if (query.contains("INSERT") || query.contains("UPSERT")) {
+            res = ProvenanceBuffer.ExportOperation.INSERT.getValue();
+        } else if (query.contains("DELETE")) {
+            res = ProvenanceBuffer.ExportOperation.DELETE.getValue();
+        } else if (query.contains("UPDATE")) {
+            res = ProvenanceBuffer.ExportOperation.UPDATE.getValue();
+        } else {
+            res = ProvenanceBuffer.ExportOperation.READ.getValue();
+        }
+        return res;
     }
 }

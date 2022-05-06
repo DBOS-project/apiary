@@ -5,7 +5,7 @@ import org.dbos.apiary.interposition.ProvenanceBuffer;
 import java.util.Map;
 
 public interface ApiaryConnection {
-    FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, String name, Object... inputs) throws Exception;
+    FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String name, Object... inputs) throws Exception;
 
     // For partition mapping information.
     void updatePartitionInfo();

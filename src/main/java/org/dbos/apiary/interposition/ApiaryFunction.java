@@ -9,6 +9,11 @@ public interface ApiaryFunction {
     void recordInvocation(ApiaryFunctionContext ctxt, String funcName);
 
     default FunctionOutput apiaryRunFunction(ApiaryFunctionContext ctxt, Object... input) {
+        // Check if execution has already occured.
+        FunctionOutput prev = ctxt.checkPreviousExecution();
+        if (prev != null) {
+            return prev;
+        }
         // Use reflection to find internal runFunction.
         Method functionMethod = Utilities.getFunctionMethod(this, "runFunction");
         assert functionMethod != null;
@@ -26,6 +31,8 @@ public interface ApiaryFunction {
             e.printStackTrace();
             return null;
         }
-        return ctxt.getFunctionOutput(output);
+        FunctionOutput fo = ctxt.getFunctionOutput(output);
+        ctxt.recordExecution(fo);
+        return fo;
     }
 }

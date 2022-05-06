@@ -108,7 +108,7 @@ public class VoltDBConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, String funcName, Object... inputs) throws IOException, ProcCallException {
+    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String funcName, Object... inputs) throws IOException, ProcCallException {
         VoltTable voltInput = inputToVoltTable(service, execID, inputs);
         assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
         Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];

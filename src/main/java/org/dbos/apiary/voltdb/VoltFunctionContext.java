@@ -143,7 +143,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     private static final String TABLE_REFERENCE = "(?<table1>\\w+)(\\s+(AS\\s+)?\\w+)?";
 
     /** Pattern used to recognize the table names in a SELECT statement; will
-     *  recognize up to 4 table names. */
+     *  recognize up to 2 table names. */
     private static final Pattern SELECT_TABLE_NAMES = Pattern.compile(
             "(?<!DISTINCT)\\s+FROM\\s+(?<table1>\\w+)?\\s+(JOIN\\s+(?<table2>\\w+)?\\s+)?",
             Pattern.CASE_INSENSITIVE);

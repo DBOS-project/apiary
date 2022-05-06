@@ -192,6 +192,11 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
                 }
             }
         }
+        System.out.println(sqlStr);
+        for (String r : result) {
+            System.out.println(r);
+        }
+        System.out.println("\n");
         return result;
     }
 

@@ -105,15 +105,15 @@ public class VoltDBTests {
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
         rs.next();
 
-        // Should be an insert for key=1.
+        // Should be an insert for basevalue=1.
         long resTxid = rs.getLong(1);
         int resExportOp = rs.getInt(3);
         int resKey = rs.getInt(4);
         int resValue = rs.getInt(5);
         assertEquals(txid2, resTxid);
         assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
-        assertEquals(1, resKey);
-        assertEquals(value, resValue);
+        assertEquals(key, resKey);
+        assertEquals(1, resValue);
 
         // Should be an insert for the key value.
         rs.next();

@@ -12,12 +12,13 @@ public class VoltProvenanceBasic extends VoltProcedureContainer {
     }
 
     public int runFunction(ApiaryStatefulFunctionContext ctxt, int key, int baseValue) {
-        if (key == 1) {
+        if (baseValue == 1) {
             ctxt.apiaryExecuteUpdate(addResult, key, baseValue);
             return baseValue+1;
         } else {
             // Synchronously call.
-            ctxt.apiaryCallFunction(ctxt, "org.dbos.apiary.procedures.voltdb.tests.VoltProvenanceBasic", 1, baseValue);
+            int res = ctxt.apiaryCallFunction(ctxt, "org.dbos.apiary.procedures.voltdb.tests.VoltProvenanceBasic", key, 1).getInt();
+            assert (res == 2);
         }
         // Add an entry at a given key and set to base value, get value, then increase the value by 1.
         // Return the increased value.

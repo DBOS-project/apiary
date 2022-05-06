@@ -138,7 +138,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
     // Borrow the idea from https://github.com/VoltDB/voltdb/blob/57bb02c61db33959efaefdc5f510ef44b170cad9/src/frontend/org/voltdb/NonVoltDBBackend.java#L628
     private static final Pattern UPDATE_TABLE_NAME = Pattern.compile(
-            "\\s*((IN|UP)SERT\\s+INTO\\s+)\\s+(?<table1>\\w+)",
+            "\\*((IN|UP)SERT\\s+INTO\\s+)\\s+(?<table1>\\w+)",
             Pattern.CASE_INSENSITIVE);
 
     // Used below, to define SELECT_TABLE_NAMES
@@ -171,6 +171,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
             assert (group != null);
             result = group;
         }
+        System.out.println(result);
         return result;
     }
 

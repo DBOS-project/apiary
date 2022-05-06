@@ -9,6 +9,7 @@ public class FunctionOutput {
     public final List<Task> queuedTasks;
 
     public FunctionOutput(Object output, List<Task> queuedTasks) {
+        assert(output != null);
         this.output = output;
         this.queuedTasks = queuedTasks;
     }

@@ -2,10 +2,7 @@ package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.interposition.ApiaryFunction;
-import org.dbos.apiary.interposition.ApiaryFunctionContext;
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.interposition.*;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -67,7 +65,39 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
 
     @Override
     public FunctionOutput checkPreviousExecution() {
-        return null;
+        try {
+            Statement s = conn.createStatement();
+            ResultSet r = s.executeQuery(String.format("SELECT * FROM RecordedOutputs WHERE ExecID=%d AND FunctionID=%d", execID, functionID));
+            if (r.next()) {
+                List<Task> queuedTasks = List.of((Task[]) Utilities.byteArrayToObject(r.getBytes(8)));
+                Object o;
+                o = r.getString(3);
+                if (!r.wasNull()) {
+                    return new FunctionOutput(o, queuedTasks);
+                }
+                o = r.getInt(4);
+                if (!r.wasNull()) {
+                    return new FunctionOutput(o, queuedTasks);
+                }
+                o = r.getBytes(5);
+                if (!r.wasNull()) {
+                    return new FunctionOutput(Utilities.byteArrayToStringArray((byte[]) o), queuedTasks);
+                }
+                o = r.getBytes(6);
+                if (!r.wasNull()) {
+                    return new FunctionOutput(Utilities.byteArrayToIntArray((byte[]) o), queuedTasks);
+                }
+                o = r.getLong(7);
+                if (!r.wasNull()) {
+                    return new FunctionOutput(new ApiaryFuture((long) o), queuedTasks);
+                }
+                assert(false);
+            }
+            return null;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     @Override

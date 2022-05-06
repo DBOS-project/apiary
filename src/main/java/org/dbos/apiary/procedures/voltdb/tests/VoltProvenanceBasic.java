@@ -21,7 +21,7 @@ public class VoltProvenanceBasic extends VoltProcedureContainer {
         }
         // Add an entry at a given key and set to base value, get value, then increase the value by 1.
         // Return the increased value.
-        ctxt.apiaryExecuteUpdate(key, baseValue);
+        ctxt.apiaryExecuteUpdate(addResult, key, baseValue);
         VoltTable[] vs = (VoltTable[]) ctxt.apiaryExecuteQuery(getValue, key);
         VoltTable v = vs[0];
         assert ((int) v.fetchRow(0).getLong(0) == baseValue);

@@ -122,9 +122,6 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
             "(IN|UP)SERT\\s+INTO\\s+(?<table1>\\w+)",
             Pattern.CASE_INSENSITIVE);
 
-    // Used below, to define SELECT_TABLE_NAMES
-    private static final String TABLE_REFERENCE = "(?<table1>\\w+)(\\s+(AS\\s+)?\\w+)?";
-
     /** Pattern used to recognize the table names in a SELECT statement; will
      *  recognize up to 1 table names. */
     private static final Pattern SELECT_TABLE_NAMES = Pattern.compile(

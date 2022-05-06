@@ -11,6 +11,6 @@ public class VoltProcedureContainer extends VoltApiaryProcedure {
     );
 
     public static final SQLStmt getValue = new SQLStmt(
-            "SELECT KVValue FROM KVTable WHERE KVKey=?;"
+            "SELECT KVValue, KVKey FROM KVTable WHERE KVKey=?;"
     );
 }

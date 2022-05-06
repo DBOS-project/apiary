@@ -3,6 +3,7 @@ package org.dbos.apiary;
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.interposition.ProvenanceBuffer;
 import org.dbos.apiary.procedures.voltdb.tests.AdditionFunction;
+import org.dbos.apiary.procedures.voltdb.tests.VoltProvenanceBasic;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
@@ -44,7 +45,6 @@ public class VoltDBTests {
 
     @Test
     public void testVoltProvenance() throws IOException, SQLException, InterruptedException {
-        // TODO: implement more tests as we have read/write provenance capture.
         logger.info("testVoltProvenance");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         apiaryWorker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
@@ -60,29 +60,152 @@ public class VoltDBTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 4);
         Connection verticaConn = provBuff.conn.get();
         Statement stmt = verticaConn.createStatement();
-        String[] tables = {"FUNCINVOCATIONS"};
+        String[] tables = {"FUNCINVOCATIONS", "KVTABLE"};
         for (String table : tables) {
             stmt.execute(String.format("TRUNCATE TABLE %s;", table));
         }
 
         ApiaryWorkerClient client = new ApiaryWorkerClient();
 
-        String res = client.executeFunction("localhost", "AdditionFunction", "testVoltProvService", 1, "2", new String[]{"aaa", "bbb"}, new int[]{2, 3}).getString();
-        assertEquals("8aaabbb", res);
+        int res;
+        int key = 10, value = 100;
+
+        res = client.executeFunction("localhost", "VoltProvenanceBasic", "testVoltProvService", key, value).getInt();
+        assertEquals(101, res);
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         // Check function invocation table.
         String table = "FUNCINVOCATIONS";
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP DESC;", table));
         rs.next();
-        long txid = rs.getLong(1);
+        long txid1 = rs.getLong(1);
         long resExecId = rs.getLong(3);
         String resService = rs.getString(4);
         String resFuncName = rs.getString(5);
-        assertTrue(txid > 0l);
-        assertEquals(0l, resExecId);
+        assertEquals(0L, resExecId);
         assertEquals(resService, "testVoltProvService");
-        assertEquals(AdditionFunction.class.getName(), resFuncName);
+        assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);
+
+        rs.next();
+        long txid2 = rs.getLong(1);
+        resExecId = rs.getLong(3);
+        resService = rs.getString(4);
+        resFuncName = rs.getString(5);
+        assertEquals(0L, resExecId);
+        assertEquals(resService, "testVoltProvService");
+        assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);
+
+        // Inner transaction should have the same transaction ID.
+        assertTrue(txid1 > 0L);
+        assertEquals(txid1, txid2);
+
+        // Check KVTable.
+        table = "KVTABLE";
+        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
+        rs.next();
+
+        // Should be an insert for key=1.
+        long resTxid = rs.getLong(1);
+        int resExportOp = rs.getInt(3);
+        int resKey = rs.getInt(4);
+        int resValue = rs.getInt(5);
+        assertEquals(txid2, resTxid);
+        assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
+        assertEquals(1, resKey);
+        assertEquals(value, resValue);
+
+        // Should be an insert for the key value.
+        rs.next();
+        resTxid = rs.getLong(1);
+        assertEquals(txid1, resTxid);
+        resExportOp = rs.getInt(3);
+        resKey = rs.getInt(4);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
+        assertEquals(key, resKey);
+        assertEquals(value, resValue);
+
+        // Should be a read.
+        rs.next();
+        resTxid = rs.getLong(1);
+        assertEquals(txid1, resTxid);
+        resExportOp = rs.getInt(3);
+        resKey = rs.getInt(4);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
+        assertEquals(key, resKey);
+        assertEquals(100, resValue);
+    }
+
+    @Test
+    public void testVoltProvenanceJoins() throws IOException, InterruptedException, SQLException {
+        logger.info("testVoltProvenanceJoins");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        apiaryWorker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.startServing();
+
+        ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;
+        if (provBuff == null) {
+            logger.info("Provenance buffer (Vertica) not available.");
+            return;
+        }
+
+        // Wait a bit so previous provenance capture data would be flushed out.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 4);
+        Connection verticaConn = provBuff.conn.get();
+        Statement stmt = verticaConn.createStatement();
+        String[] tables = {"FUNCINVOCATIONS", "KVTABLE", "KVTABLETWO"};
+        for (String table : tables) {
+            stmt.execute(String.format("TRUNCATE TABLE %s;", table));
+        }
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient();
+
+        int res;
+        res = client.executeFunction("localhost", "VoltProvenanceJoins", "testVoltProvService", 1, 2, 3).getInt();
+        assertEquals(5, res);
+
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
+        // Check KVTable.
+        String table = "KVTABLE";
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
+        rs.next();
+
+        // Should be an insert for key=1.
+        int resExportOp = rs.getInt(3);
+        int resKey = rs.getInt(4);
+        int resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
+        assertEquals(1, resKey);
+        assertEquals(2, resValue);
+
+        // Should be a read.
+        rs.next();
+        resExportOp = rs.getInt(3);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
+        assertEquals(2, resValue);
+
+        // Check KVTable.
+        table = "KVTABLETWO";
+        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
+        rs.next();
+
+        // Should be an insert for key=1.
+        resExportOp = rs.getInt(3);
+        resKey = rs.getInt(4);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
+        assertEquals(1, resKey);
+        assertEquals(3, resValue);
+
+        // Should be a read.
+        rs.next();
+        resExportOp = rs.getInt(3);
+        resValue = rs.getInt(5);
+        assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
+        assertEquals(3, resValue);
     }
 }

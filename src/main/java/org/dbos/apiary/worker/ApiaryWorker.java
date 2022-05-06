@@ -167,7 +167,7 @@ public class ApiaryWorker {
                 o = c.callFunction(provenanceBuffer, service, execID, currTaskID, name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();
-                ApiaryFunctionContext ctxt = new ApiaryStatelessFunctionContext(c, localClients.get(), provenanceBuffer, service, execID, statelessFunctions);
+                ApiaryFunctionContext ctxt = new ApiaryStatelessFunctionContext(c, localClients.get(), provenanceBuffer, service, execID, currTaskID, statelessFunctions);
                 o = f.apiaryRunFunction(ctxt, arguments);
             }
         } catch (Exception e) {

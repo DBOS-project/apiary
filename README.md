@@ -1,7 +1,7 @@
 # Dynamic Apiary
 Requires Java 11 and maven:
 
-    apt install openjdk-11-jdk maven
+    sudo apt install openjdk-11-jdk maven libatomic1
 
 Also requires VoltDB; set the following environment variables:
 

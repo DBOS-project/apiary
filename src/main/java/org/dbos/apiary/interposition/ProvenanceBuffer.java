@@ -261,6 +261,7 @@ public class ProvenanceBuffer {
                 preparedQuery.append("?");
             }
         } else {
+            assert(databaseName.equals("postgres"));
             preparedQuery = new StringBuilder("INSERT INTO " + table + " (");
             List<String> columnNames = getColNames(table);
             for (int i = 0; i < numColumns; i++) {

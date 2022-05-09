@@ -14,6 +14,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction {
     public static final ProvenanceBuffer provBuff;
+    public int pkey;
 
     static {
         ProvenanceBuffer tempBuffer;
@@ -30,7 +31,8 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
         provBuff = tempBuffer;
     }
 
-    public VoltTable[] run(VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+        this.pkey = pkey;
         Object[] parsedInput = parseInput(voltInput);
         String service = parsedInput[0].toString();
         long execID = (Long) parsedInput[1];

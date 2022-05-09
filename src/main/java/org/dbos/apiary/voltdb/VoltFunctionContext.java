@@ -1,10 +1,8 @@
 package org.dbos.apiary.voltdb;
 
 import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.interposition.ApiaryFunction;
-import org.dbos.apiary.interposition.ApiaryFunctionContext;
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.executor.Task;
+import org.dbos.apiary.interposition.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.DeprecatedProcedureAPIAccess;
@@ -26,6 +24,16 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
     private final VoltApiaryProcedure p;
     private long transactionID;
+
+    public static final SQLStmt getRecordedOutput = new SQLStmt(
+            "SELECT * FROM RecordedOutputs WHERE ExecID=? AND FunctionID=?;"
+    );
+
+    public static final SQLStmt recordOutput = new SQLStmt(
+            "INSERT INTO RecordedOutputs " +
+                    "(PKEY, ExecID, FunctionID, StringOutput, IntOutput, StringArrayOutput, IntArrayOutput, FutureOutput, QueuedTasks) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    );
 
     public VoltFunctionContext(VoltApiaryProcedure p, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
         super(provBuff, service, execID, functionID);
@@ -49,12 +57,61 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
     @Override
     public FunctionOutput checkPreviousExecution() {
+        p.voltQueueSQL(getRecordedOutput, this.execID, this.functionID);
+        VoltTable v = p.voltExecuteSQL()[0];
+        if (v.getRowCount() > 0) {
+            v.advanceRow();
+            List<Task> queuedTasks = List.of((Task[])Utilities.byteArrayToObject(v.getVarbinary(8)));
+            Object o;
+            o = v.getString(3);
+            if (!v.wasNull()) {
+                return new FunctionOutput(o, queuedTasks);
+            }
+            o = (int) v.getLong(4);
+            if (!v.wasNull()) {
+                return new FunctionOutput(o, queuedTasks);
+            }
+            o = v.getVarbinary(5);
+            if (!v.wasNull()) {
+                return new FunctionOutput(Utilities.byteArrayToStringArray((byte[]) o), queuedTasks);
+            }
+            o = v.getVarbinary(6);
+            if (!v.wasNull()) {
+                return new FunctionOutput(Utilities.byteArrayToIntArray((byte[]) o), queuedTasks);
+            }
+            o = v.getLong(7);
+            if (!v.wasNull()) {
+                return new FunctionOutput(new ApiaryFuture((long) o), queuedTasks);
+            }
+            assert (false);
+        }
         return null;
     }
 
     @Override
     public void recordExecution(FunctionOutput output) {
-
+        int pkey = this.p.pkey;
+        long execID = this.execID;
+        long functionID = this.functionID;
+        String stringOutput = null;
+        Integer intOutput = null;
+        byte[] stringArrayOutput = null;
+        byte[] intArrayOutput = null;
+        Long futureOutput = null;
+        byte[] queueuedTasks;
+        if (output.getString() != null) {
+            stringOutput = output.getString();
+        } else if (output.getInt() != null) {
+            intOutput = output.getInt();
+        } else if (output.getStringArray() != null) {
+            stringArrayOutput = Utilities.stringArraytoByteArray(output.getStringArray());
+        } else if (output.getIntArray() != null) {
+            intArrayOutput = Utilities.intArrayToByteArray(output.getIntArray());
+        } else if (output.getFuture() != null) {
+            futureOutput = output.getFuture().futureID;
+        }
+        queueuedTasks = Utilities.objectToByteArray(output.queuedTasks.toArray(new Task[0]));
+        p.voltQueueSQL(recordOutput, pkey, execID, functionID, stringOutput, intOutput, stringArrayOutput, intArrayOutput, futureOutput, queueuedTasks);
     }
 
     @Override

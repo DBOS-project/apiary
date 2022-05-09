@@ -20,7 +20,7 @@ public class FibonacciFunction extends VoltApiaryProcedure {
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
-        return super.run(voltInput);
+        return super.run(pkey, voltInput);
     }
 
     public Object runFunction(ApiaryStatefulFunctionContext context, int key) {

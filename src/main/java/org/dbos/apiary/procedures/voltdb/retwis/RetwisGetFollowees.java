@@ -15,7 +15,7 @@ public class RetwisGetFollowees extends VoltApiaryProcedure {
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
-        return super.run(voltInput);
+        return super.run(pkey, voltInput);
     }
 
     public int[] runFunction(ApiaryStatefulFunctionContext context, int userID) {

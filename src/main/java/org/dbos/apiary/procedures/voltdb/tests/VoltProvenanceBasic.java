@@ -8,7 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 public class VoltProvenanceBasic extends VoltProcedureContainer {
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
-        return super.run(voltInput);
+        return super.run(pkey, voltInput);
     }
 
     public int runFunction(ApiaryStatefulFunctionContext ctxt, int key, int baseValue) {

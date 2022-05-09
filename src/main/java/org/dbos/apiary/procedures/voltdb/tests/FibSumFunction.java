@@ -14,7 +14,7 @@ public class FibSumFunction extends VoltApiaryProcedure {
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
-        return super.run(voltInput);
+        return super.run(pkey, voltInput);
     }
 
     public int runFunction(ApiaryStatefulFunctionContext context, int key, int num1, int num2) {

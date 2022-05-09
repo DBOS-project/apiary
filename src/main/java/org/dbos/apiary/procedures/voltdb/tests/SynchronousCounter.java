@@ -8,7 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 public class SynchronousCounter extends VoltProcedureContainer {
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
-        return super.run(voltInput);
+        return super.run(pkey, voltInput);
     }
 
     public String runFunction(ApiaryStatefulFunctionContext context, String keyString) {

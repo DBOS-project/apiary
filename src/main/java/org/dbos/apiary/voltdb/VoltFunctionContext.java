@@ -20,20 +20,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.dbos.apiary.voltdb.VoltApiaryProcedure.getRecordedOutput;
+import static org.dbos.apiary.voltdb.VoltApiaryProcedure.recordOutput;
+
 public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
     private final VoltApiaryProcedure p;
     private long transactionID;
-
-    public static final SQLStmt getRecordedOutput = new SQLStmt(
-            "SELECT * FROM RecordedOutputs WHERE ExecID=? AND FunctionID=?;"
-    );
-
-    public static final SQLStmt recordOutput = new SQLStmt(
-            "INSERT INTO RecordedOutputs " +
-                    "(PKEY, ExecID, FunctionID, StringOutput, IntOutput, StringArrayOutput, IntArrayOutput, FutureOutput, QueuedTasks) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    );
 
     public VoltFunctionContext(VoltApiaryProcedure p, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
         super(provBuff, service, execID, functionID);

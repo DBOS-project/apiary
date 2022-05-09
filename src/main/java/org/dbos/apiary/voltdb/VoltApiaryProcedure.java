@@ -5,16 +5,23 @@ import org.dbos.apiary.executor.Task;
 import org.dbos.apiary.interposition.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
-import org.voltdb.VoltProcedure;
-import org.voltdb.VoltTable;
-import org.voltdb.VoltTableRow;
-import org.voltdb.VoltType;
+import org.voltdb.*;
 
 import java.lang.reflect.InvocationTargetException;
 
 public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction {
     public static final ProvenanceBuffer provBuff;
     public int pkey;
+
+    public static final SQLStmt getRecordedOutput = new SQLStmt(
+            "SELECT * FROM RecordedOutputs WHERE ExecID=? AND FunctionID=?;"
+    );
+
+    public static final SQLStmt recordOutput = new SQLStmt(
+            "INSERT INTO RecordedOutputs " +
+                    "(PKEY, ExecID, FunctionID, StringOutput, IntOutput, StringArrayOutput, IntArrayOutput, FutureOutput, QueuedTasks) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    );
 
     static {
         ProvenanceBuffer tempBuffer;

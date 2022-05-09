@@ -146,7 +146,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         System.arraycopy(input, 0, rowData, 3, input.length);
         p.voltQueueSQL((SQLStmt) procedure, input);
         p.voltExecuteSQL();
-        provBuff.addEntry(upperName, rowData);
+        provBuff.addEntry(upperName + "PROV", rowData);
     }
 
     @Override
@@ -183,7 +183,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
                     rowData[3 + colIndex] = v.get(colNum, v.getColumnType(colNum));
                 }
             }
-            provBuff.addEntry(tableName, rowData);
+            provBuff.addEntry(tableName + "PROV", rowData);
         }
 
         v.resetRowPosition();

@@ -140,8 +140,8 @@ public class VoltDBTests {
     }
 
     @Test
-    public void testExactlyOnceVoltCounter() throws IOException {
-        logger.info("testExactlyOnceVoltCounter");
+    public void testExactlyOnceVoltSyncCounter() throws IOException {
+        logger.info("testExactlyOnceVoltSyncCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
         worker.startServing();
@@ -159,6 +159,31 @@ public class VoltDBTests {
         assertEquals("1", res);
 
         res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", 12, "1").getString();
+        assertEquals("1", res);
+
+        worker.shutdown();
+    }
+
+    @Test
+    public void testExactlyOnceVoltStatelessCounter() throws IOException {
+        logger.info("testExactlyOnceVoltStatelessCounter");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
+        worker.startServing();
+
+        InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());
+
+        String res;
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", 20, "0").getString();
+        assertEquals("1", res);
+
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", 21, "0").getString();
+        assertEquals("2", res);
+
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", 22, "1").getString();
+        assertEquals("1", res);
+
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", 22, "1").getString();
         assertEquals("1", res);
 
         worker.shutdown();

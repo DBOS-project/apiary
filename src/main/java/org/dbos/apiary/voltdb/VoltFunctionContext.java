@@ -113,6 +113,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         }
         queueuedTasks = Utilities.objectToByteArray(output.queuedTasks.toArray(new Task[0]));
         p.voltQueueSQL(recordOutput, pkey, execID, functionID, stringOutput, intOutput, stringArrayOutput, intArrayOutput, futureOutput, queueuedTasks);
+        p.voltExecuteSQL();
     }
 
     @Override

@@ -68,7 +68,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     public FunctionOutput checkPreviousExecution() {
         try {
             Statement s = conn.createStatement();
-            ResultSet r = s.executeQuery(String.format("SELECT * FROM RecordedOutputs WHERE ExecID=%d AND FunctionID=%d", execID, functionID));
+            ResultSet r = s.executeQuery(String.format("SELECT * FROM RecordedOutputs WHERE ExecID=%d AND FunctionID=%d", execID, currentID));
             if (r.next()) {
                 List<Task> queuedTasks = List.of((Task[]) Utilities.byteArrayToObject(r.getBytes(8)));
                 Object o;

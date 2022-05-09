@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.procedures.voltdb.tests.StatelessIncrement;
 import org.dbos.apiary.procedures.voltdb.tests.VoltProvenanceBasic;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
@@ -169,6 +170,7 @@ public class VoltDBTests {
         logger.info("testExactlyOnceVoltStatelessCounter");
         ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
+        worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
         worker.startServing();
 
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());

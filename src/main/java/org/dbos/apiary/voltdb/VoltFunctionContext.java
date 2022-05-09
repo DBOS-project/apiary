@@ -15,6 +15,7 @@ import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.sql.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -61,8 +62,16 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         VoltTable v = p.voltExecuteSQL()[0];
         if (v.getRowCount() > 0) {
             v.advanceRow();
-            List<Task> queuedTasks = List.of((Task[])Utilities.byteArrayToObject(v.getVarbinary(8)));
             Object o;
+            List<Task> queuedTasks;
+
+            o = v.getVarbinary(8);
+            if (!v.wasNull()) {
+                queuedTasks = List.of((Task[])Utilities.byteArrayToObject((byte[]) o));
+            } else {
+                queuedTasks = new ArrayList<>();
+            }
+
             o = v.getString(3);
             if (!v.wasNull()) {
                 return new FunctionOutput(o, queuedTasks);
@@ -98,7 +107,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         byte[] stringArrayOutput = null;
         byte[] intArrayOutput = null;
         Long futureOutput = null;
-        byte[] queueuedTasks;
+        byte[] queueuedTasks = null;
         if (output.getString() != null) {
             stringOutput = output.getString();
         } else if (output.getInt() != null) {
@@ -110,7 +119,9 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         } else if (output.getFuture() != null) {
             futureOutput = output.getFuture().futureID;
         }
-        queueuedTasks = Utilities.objectToByteArray(output.queuedTasks.toArray(new Task[0]));
+        if (!output.queuedTasks.isEmpty()) {
+            queueuedTasks = Utilities.objectToByteArray(output.queuedTasks.toArray(new Task[0]));
+        }
         p.voltQueueSQL(recordOutput, pkey, execID, functionID, stringOutput, intOutput, stringArrayOutput, intArrayOutput, futureOutput, queueuedTasks);
         p.voltExecuteSQL();
     }

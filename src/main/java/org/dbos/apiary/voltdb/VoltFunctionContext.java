@@ -27,9 +27,8 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     private final VoltApiaryProcedure p;
     private long transactionID;
 
-    public VoltFunctionContext(VoltApiaryProcedure p, ProvenanceBuffer provBuff, String service, long execID) {
-        // TODO: add actual provenance buffer, service name, and execution ID.
-        super(provBuff, service, execID, 0);
+    public VoltFunctionContext(VoltApiaryProcedure p, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
+        super(provBuff, service, execID, functionID);
         this.p = p;
         this.transactionID = internalGetTransactionId();
     }

@@ -15,7 +15,7 @@ public class VoltUtilities {
         } else if (input instanceof int[]) {
             return new VoltTable.ColumnInfo("IntegerArrayT" + index, VoltType.VARBINARY);
         } else if (input instanceof ApiaryFuture) {
-            return new VoltTable.ColumnInfo("FutureT" + index, VoltType.SMALLINT);
+            return new VoltTable.ColumnInfo("FutureT" + index, VoltType.BIGINT);
         } else if (input instanceof ApiaryFuture[]) {
             return new VoltTable.ColumnInfo("FutureArrayT" + index, VoltType.VARBINARY);
         }

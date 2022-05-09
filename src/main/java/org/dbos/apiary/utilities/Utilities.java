@@ -58,6 +58,23 @@ public class Utilities {
         return bytes;
     }
 
+    public static byte[] longArrayToByteArray(long[] longs) {
+        byte[] bytes = new byte[longs.length * 8];
+        for (int i = 0; i < longs.length; i++) {
+            long value = longs[i];
+            int bi = i * 8;
+            bytes[bi] = (byte) (value >> 56);
+            bytes[bi + 1] = (byte) (value >> 48);
+            bytes[bi + 2] = (byte) (value >> 40);
+            bytes[bi + 3] = (byte) (value >> 32);
+            bytes[bi + 4] = (byte) (value >> 24);
+            bytes[bi + 5] = (byte) (value >> 16);
+            bytes[bi + 6] = (byte) (value >> 8);
+            bytes[bi + 7] = (byte) (value);
+        }
+        return bytes;
+    }
+
     public static int[] byteArrayToIntArray(byte[] bytes) {
         assert(bytes.length % 4 == 0);
         int[] ints = new int[bytes.length / 4];
@@ -69,6 +86,23 @@ public class Utilities {
                     ((bytes[bi + 3] & 0xFF));
         }
         return ints;
+    }
+
+    public static long[] byteArrayToLongArray(byte[] bytes) {
+        assert(bytes.length % 8 == 0);
+        long[] longs = new long[bytes.length / 8];
+        for (int i = 0; i < longs.length; i++) {
+            int bi = i * 8;
+            longs[i] = ((long)(bytes[bi] & 0xFF) << 56) |
+                    ((long)(bytes[bi + 1] & 0xFF) << 48) |
+                    ((long)(bytes[bi + 2] & 0xFF) << 40) |
+                    ((long)(bytes[bi + 3] & 0xFF) << 32) |
+                    ((long)(bytes[bi + 4] & 0xFF) << 24) |
+                    ((long)(bytes[bi + 5] & 0xFF) << 16) |
+                    ((long)(bytes[bi + 6] & 0xFF) << 8 ) |
+                    ((long)(bytes[bi + 7] & 0xFF));
+        }
+        return longs;
     }
 
     public static byte[] toByteArray(int value) {

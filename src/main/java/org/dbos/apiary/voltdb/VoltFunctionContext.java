@@ -60,7 +60,6 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         p.voltQueueSQL(getRecordedOutput, this.execID, this.currentID);
         VoltTable v = p.voltExecuteSQL()[0];
         if (v.getRowCount() > 0) {
-            System.out.println(v.toFormattedString());
             v.advanceRow();
             List<Task> queuedTasks = List.of((Task[])Utilities.byteArrayToObject(v.getVarbinary(8)));
             Object o;

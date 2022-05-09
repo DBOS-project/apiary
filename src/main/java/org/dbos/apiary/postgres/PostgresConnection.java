@@ -8,9 +8,7 @@ import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -49,7 +47,8 @@ public class PostgresConnection implements ApiaryConnection {
             logger.info("Failed to connect to Postgres");
             throw new RuntimeException("Failed to connect to Postgres");
         }
-        createTable("RecordedOutputs", "(ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID))");
+        createTable("RecordedOutputs", "ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID)");
+        createTable("FuncInvocations", "APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_EXPORT_TIMESTAMP BIGINT NOT NULL, EXECUTIONID BIGINT NOT NULL, SERVICE VARCHAR(1024) NOT NULL, PROCEDURENAME VARCHAR(1024) NOT NULL");
     }
 
     public void registerFunction(String name, Callable<PostgresFunction> function) { functions.put(name, function); }
@@ -58,15 +57,29 @@ public class PostgresConnection implements ApiaryConnection {
         Connection conn = ds.getConnection();
         Statement truncateTable = conn.createStatement();
         truncateTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
+        truncateTable.execute(String.format("DROP TABLE IF EXISTS %sPROV;", tableName));
         truncateTable.close();
         conn.close();
     }
 
     public void createTable(String tableName, String specStr) throws SQLException {
         Connection conn = ds.getConnection();
-        Statement createTable = conn.createStatement();
-        createTable.execute(String.format("CREATE TABLE IF NOT EXISTS %s %s;", tableName, specStr));
-        createTable.close();
+        Statement s = conn.createStatement();
+        s.execute(String.format("CREATE TABLE IF NOT EXISTS %s (%s);", tableName, specStr));
+        if (!specStr.contains("APIARY_TRANSACTION_ID")) {
+            ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
+            ResultSetMetaData rsmd = r.getMetaData();
+            StringBuilder provTable = new StringBuilder(String.format("CREATE TABLE IF NOT EXISTS %sprov (APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_EXPORT_TIMESTAMP BIGINT NOT NULL, APIARY_EXPORT_OPERATION BIGINT NOT NULL", tableName));
+            for (int i = 0; i < rsmd.getColumnCount(); i++) {
+                provTable.append(",");
+                provTable.append(rsmd.getColumnLabel(i + 1));
+                provTable.append(" ");
+                provTable.append(rsmd.getColumnTypeName(i + 1));
+            }
+            provTable.append(");");
+            s.execute(provTable.toString());
+        }
+        s.close();
         conn.close();
     }
 

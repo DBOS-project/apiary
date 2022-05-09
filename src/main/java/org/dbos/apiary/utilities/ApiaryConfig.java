@@ -10,5 +10,5 @@ public class ApiaryConfig {
 
     public static final Boolean captureUpdates = true;
     public static final Boolean captureReads = true;
-    public static final String olapDefaultAddress = "localhost";
+    public static final String provenanceDefaultAddress = "localhost";
 }

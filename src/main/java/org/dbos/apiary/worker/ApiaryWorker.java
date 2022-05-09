@@ -63,10 +63,10 @@ public class ApiaryWorker {
     public final ProvenanceBuffer provenanceBuffer;
 
     public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads) {
-        this(c, scheduler, numWorkerThreads, ApiaryConfig.olapDefaultAddress);
+        this(c, scheduler, numWorkerThreads, "vertica", ApiaryConfig.provenanceDefaultAddress);
     }
 
-    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads, String olapAddress) {
+    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads, String provenanceDatabase, String provenanceAddress) {
         this.c = c;
         this.scheduler = scheduler;
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
@@ -78,7 +78,7 @@ public class ApiaryWorker {
 
         ProvenanceBuffer tempBuffer = null;
         try {
-            tempBuffer = new ProvenanceBuffer(olapAddress);
+            tempBuffer = new ProvenanceBuffer(provenanceDatabase, provenanceAddress);
             if (!tempBuffer.hasConnection) {
                 // No vertica connection.
                 tempBuffer = null;

@@ -197,7 +197,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
                 for (int i = 1; i <= numCol; i++) {
                     rowData[i+2] = rs.getObject(i);
                 }
-                provBuff.addEntry(tableName, rowData);
+                provBuff.addEntry(tableName + "prov", rowData);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -245,7 +245,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
                     }
                 }
                 for (String tableName: tableToRowData.keySet()) {
-                    provBuff.addEntry(tableName, tableToRowData.get(tableName));
+                    provBuff.addEntry(tableName + "prov", tableToRowData.get(tableName));
                 }
             }
             rs.beforeFirst();

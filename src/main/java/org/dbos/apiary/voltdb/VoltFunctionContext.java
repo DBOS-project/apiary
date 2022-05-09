@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,6 +28,8 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
     private final VoltApiaryProcedure p;
     private long transactionID;
+    private AtomicLong functionIDCounter = new AtomicLong(0);
+    private long currentID = functionID;
 
     public VoltFunctionContext(VoltApiaryProcedure p, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
         super(provBuff, service, execID, functionID);
@@ -45,7 +48,11 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         }
         assert(clazz instanceof ApiaryFunction);
         ApiaryFunction f = (ApiaryFunction) clazz;
-        return f.apiaryRunFunction(ctxt, inputs);
+        long oldID = currentID;
+        this.currentID = functionID + functionIDCounter.incrementAndGet();
+        FunctionOutput fo = f.apiaryRunFunction(ctxt, inputs);
+        this.currentID = oldID;
+        return fo;
     }
 
     @Override
@@ -85,7 +92,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     public void recordExecution(FunctionOutput output) {
         int pkey = this.p.pkey;
         long execID = this.execID;
-        long functionID = this.functionID;
+        long functionID = this.currentID;
         String stringOutput = null;
         Integer intOutput = null;
         byte[] stringArrayOutput = null;

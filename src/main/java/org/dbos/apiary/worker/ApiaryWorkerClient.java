@@ -34,7 +34,7 @@ public class ApiaryWorkerClient {
     }
 
     public static byte[] serializeExecuteRequest(String name, String service, Object... arguments) {
-        return InternalApiaryWorkerClient.serializeExecuteRequest(name, service, getExecutionId(service), 0l, 0, arguments);
+        return InternalApiaryWorkerClient.serializeExecuteRequest(name, service, getExecutionId(service), 0l, 0l, arguments);
     }
 
 

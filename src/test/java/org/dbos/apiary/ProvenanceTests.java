@@ -19,7 +19,7 @@ public class ProvenanceTests {
     @Test
     public void testProvenanceBuffer() throws InterruptedException, ClassNotFoundException, SQLException {
         logger.info("testProvenanceBuffer");
-        ProvenanceBuffer buf = new ProvenanceBuffer("localhost");
+        ProvenanceBuffer buf = new ProvenanceBuffer("vertica", "localhost");
         if (buf.conn.get() == null) {
             logger.info("Provenance buffer (Vertica) not available.");
             return;

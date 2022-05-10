@@ -35,15 +35,17 @@ public class PostgresTests {
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
             conn.dropTable("RecordedOutputs");
+            conn.dropTable("FuncInvocations");
             conn.dropTable("KVTable");
-            conn.createTable("KVTable", "(KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL)");
+            conn.createTable("KVTable", "KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL");
             conn.dropTable("KVTableTwo");
-            conn.createTable("KVTableTwo", "(KVKeyTwo integer PRIMARY KEY NOT NULL, KVValueTwo integer NOT NULL)");
+            conn.createTable("KVTableTwo", "KVKeyTwo integer PRIMARY KEY NOT NULL, KVValueTwo integer NOT NULL");
             conn.dropTable("RetwisPosts");
-            conn.createTable("RetwisPosts", "(UserID integer NOT NULL, PostID integer NOT NULL, Timestamp integer NOT NULL, Post varchar(1000) NOT NULL)");
+            conn.createTable("RetwisPosts", "UserID integer NOT NULL, PostID integer NOT NULL, Timestamp integer NOT NULL, Post varchar(1000) NOT NULL");
             conn.dropTable("RetwisFollowees");
-            conn.createTable("RetwisFollowees", "(UserID integer NOT NULL, FolloweeID integer NOT NULL)");
+            conn.createTable("RetwisFollowees", "UserID integer NOT NULL, FolloweeID integer NOT NULL");
         } catch (Exception e) {
+            e.printStackTrace();
             logger.info("Failed to connect to Postgres.");
         }
         apiaryWorker = null;
@@ -214,20 +216,17 @@ public class PostgresTests {
         }
         conn.registerFunction("PostgresProvenanceBasic", PostgresProvenanceBasic::new);
 
-        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 1);
+        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 1, "postgres", ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;
-        if (provBuff == null) {
-            logger.info("Provenance buffer (Vertica) not available.");
-            return;
-        }
+        assert(provBuff != null);
 
         // Wait a bit so previous provenance capture data would be flushed out.
         Thread.sleep(ProvenanceBuffer.exportInterval * 4);
-        Connection verticaConn = provBuff.conn.get();
-        Statement stmt = verticaConn.createStatement();
-        String[] tables = {"FUNCINVOCATIONS", "KVTABLE"};
+        Connection provConn = provBuff.conn.get();
+        Statement stmt = provConn.createStatement();
+        String[] tables = {"FUNCINVOCATIONS", "KVTABLEPROV"};
         for (String table : tables) {
             stmt.execute(String.format("TRUNCATE TABLE %s;", table));
         }
@@ -267,7 +266,7 @@ public class PostgresTests {
         assertEquals(txid1, txid2);
 
         // Check KVTable.
-        table = "KVTABLE";
+        table = "KVTABLEPROV";
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
         rs.next();
 
@@ -350,19 +349,16 @@ public class PostgresTests {
         }
         conn.registerFunction("PostgresProvenanceJoins", PostgresProvenanceJoins::new);
 
-        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 1);
+        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 1, "postgres", ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;
-        if (provBuff == null) {
-            logger.info("Provenance buffer (Vertica) not available.");
-            return;
-        }
+        assert(provBuff != null);
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 4);
-        Connection verticaConn = provBuff.conn.get();
-        Statement stmt = verticaConn.createStatement();
-        String[] tables = {"FUNCINVOCATIONS", "KVTABLE", "KVTABLETWO"};
+        Connection provConn = provBuff.conn.get();
+        Statement stmt = provConn.createStatement();
+        String[] tables = {"FUNCINVOCATIONS", "KVTABLEPROV", "KVTABLETWOPROV"};
         for (String table : tables) {
             stmt.execute(String.format("TRUNCATE TABLE %s;", table));
         }
@@ -376,7 +372,7 @@ public class PostgresTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         // Check KVTable.
-        String table = "KVTABLE";
+        String table = "KVTABLEPROV";
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
         rs.next();
 
@@ -397,7 +393,7 @@ public class PostgresTests {
         assertEquals(2, resValue);
 
         // Check KVTable.
-        table = "KVTABLETWO";
+        table = "KVTABLETWOPROV";
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
         rs.next();
 

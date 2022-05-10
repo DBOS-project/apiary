@@ -28,7 +28,7 @@ public abstract class ApiaryFunctionContext {
 
     // Asynchronously queue another function for asynchronous execution.
     public ApiaryFuture apiaryQueueFunction(String name, Object... inputs) {
-        long functionID = this.functionID * 20 + calledFunctionID.incrementAndGet();
+        long functionID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
         Task futureTask = new Task(functionID, name, inputs);
         queuedTasks.add(futureTask);
         return new ApiaryFuture(functionID);

@@ -5,15 +5,23 @@ import org.dbos.apiary.executor.Task;
 import org.dbos.apiary.interposition.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
-import org.voltdb.VoltProcedure;
-import org.voltdb.VoltTable;
-import org.voltdb.VoltTableRow;
-import org.voltdb.VoltType;
+import org.voltdb.*;
 
 import java.lang.reflect.InvocationTargetException;
 
 public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction {
     public static final ProvenanceBuffer provBuff;
+    public int pkey;
+
+    public static final SQLStmt getRecordedOutput = new SQLStmt(
+            "SELECT * FROM RecordedOutputs WHERE ExecID=? AND FunctionID=?;"
+    );
+
+    public static final SQLStmt recordOutput = new SQLStmt(
+            "INSERT INTO RecordedOutputs " +
+                    "(PKEY, ExecID, FunctionID, StringOutput, IntOutput, StringArrayOutput, IntArrayOutput, FutureOutput, QueuedTasks) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    );
 
     static {
         ProvenanceBuffer tempBuffer;
@@ -30,13 +38,15 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
         provBuff = tempBuffer;
     }
 
-    public VoltTable[] run(VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+        this.pkey = pkey;
         Object[] parsedInput = parseInput(voltInput);
         String service = parsedInput[0].toString();
         long execID = (Long) parsedInput[1];
-        Object[] funcInput = new Object[parsedInput.length - 2];
-        System.arraycopy(parsedInput, 2, funcInput, 0, funcInput.length);
-        FunctionOutput output = apiaryRunFunction(new VoltFunctionContext(this, provBuff, service, execID), funcInput);
+        long functionID = (Long) parsedInput[2];
+        Object[] funcInput = new Object[parsedInput.length - 3];
+        System.arraycopy(parsedInput, 3, funcInput, 0, funcInput.length);
+        FunctionOutput output = apiaryRunFunction(new VoltFunctionContext(this, provBuff, service, execID, functionID), funcInput);
         return serializeOutput(output);
     }
 
@@ -58,6 +68,8 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
             } else if (name.startsWith("service")) {
                 input[i] = inputRow.getString(i);
             } else if (name.startsWith("execID")) {
+                input[i] = inputRow.getLong(i);
+            } else if (name.startsWith("functionID")) {
                 input[i] = inputRow.getLong(i);
             }
         }
@@ -81,7 +93,7 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
             voltOutput.addRow((Object) Utilities.intArrayToByteArray((int[]) output.output));
         } else if (output.output instanceof ApiaryFuture) {
             ApiaryFuture futureOutput = (ApiaryFuture) output.output;
-            voltOutput = new VoltTable(new VoltTable.ColumnInfo("futureOutput", VoltType.SMALLINT));
+            voltOutput = new VoltTable(new VoltTable.ColumnInfo("futureOutput", VoltType.BIGINT));
             voltOutput.addRow(futureOutput.futureID);
         } else {
             throw new RuntimeException();
@@ -121,11 +133,11 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
                 row[i + offset] = ((ApiaryFuture) input).futureID;
             } else if (input instanceof ApiaryFuture[]) {
                 ApiaryFuture[] futures = (ApiaryFuture[]) input;
-                int[] futureIDs = new int[futures.length];
+                long[] futureIDs = new long[futures.length];
                 for (int j = 0; j < futures.length; j++) {
-                    futureIDs[j] = (int) futures[j].futureID; //TODO: Long.
+                    futureIDs[j] = futures[j].futureID;
                 }
-                row[i + offset] = Utilities.intArrayToByteArray(futureIDs);
+                row[i + offset] = Utilities.longArrayToByteArray(futureIDs);
             }
         }
         v.addRow(row);

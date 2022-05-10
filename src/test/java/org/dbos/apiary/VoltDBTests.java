@@ -2,19 +2,21 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.executor.ApiaryConnection;
 import org.dbos.apiary.interposition.ProvenanceBuffer;
-import org.dbos.apiary.procedures.voltdb.tests.AdditionFunction;
+import org.dbos.apiary.procedures.voltdb.tests.StatelessIncrement;
 import org.dbos.apiary.procedures.voltdb.tests.VoltProvenanceBasic;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltDBConnection;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
+import org.dbos.apiary.worker.InternalApiaryWorkerClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.voltdb.client.ProcCallException;
+import org.zeromq.ZContext;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -136,5 +138,56 @@ public class VoltDBTests {
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(100, resValue);
+    }
+
+    @Test
+    public void testExactlyOnceVoltSyncCounter() throws IOException {
+        logger.info("testExactlyOnceVoltSyncCounter");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
+        worker.startServing();
+
+        InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());
+
+        String res;
+        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", 10, "0").getString();
+        assertEquals("1", res);
+
+        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", 11, "0").getString();
+        assertEquals("2", res);
+
+        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", 12, "1").getString();
+        assertEquals("1", res);
+
+        res = client.executeFunction("localhost", "SynchronousCounter", "defaultService", 12, "1").getString();
+        assertEquals("1", res);
+
+        worker.shutdown();
+    }
+
+    @Test
+    public void testExactlyOnceVoltStatelessCounter() throws IOException {
+        logger.info("testExactlyOnceVoltStatelessCounter");
+        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
+        worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
+        worker.startServing();
+
+        InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());
+
+        String res;
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", 20, "0").getString();
+        assertEquals("1", res);
+
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", 21, "0").getString();
+        assertEquals("2", res);
+
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", 22, "1").getString();
+        assertEquals("1", res);
+
+        res = client.executeFunction("localhost", "CounterFunction", "defaultService", 22, "1").getString();
+        assertEquals("1", res);
+
+        worker.shutdown();
     }
 }

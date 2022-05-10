@@ -39,11 +39,12 @@ public class VoltDBConnection implements ApiaryConnection {
         updatePartitionInfo();
     }
 
-    private static VoltTable inputToVoltTable(String service, long execID, Object... inputs) {
-        int offset = 2;
-        VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[inputs.length+2];
+    private static VoltTable inputToVoltTable(String service, long execID, long functionID, Object... inputs) {
+        int offset = 3;
+        VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[inputs.length+offset];
         columns[0] = new VoltTable.ColumnInfo("service", VoltType.STRING);
         columns[1] = new VoltTable.ColumnInfo("execID", VoltType.BIGINT);
+        columns[2] = new VoltTable.ColumnInfo("functionID", VoltType.BIGINT);
         for (int i = 0; i < inputs.length; i++) {
             Object input = inputs[i];
             columns[i+offset] = VoltUtilities.objectToColumnInfo(i, input);
@@ -52,6 +53,7 @@ public class VoltDBConnection implements ApiaryConnection {
         Object[] row = new Object[v.getColumnCount()];
         row[0] = service;
         row[1] = execID;
+        row[2] = functionID;
         for (int i = 0; i < inputs.length; i++) {
             Object input = inputs[i];
             if (input instanceof String[]) {
@@ -74,7 +76,7 @@ public class VoltDBConnection implements ApiaryConnection {
     private static Task voltOutputToTask(VoltTable voltInput) {
         VoltTableRow inputRow = voltInput.fetchRow(0);
         String funcName = inputRow.getString(0);
-        int functionID = (int) inputRow.getLong(1);
+        long functionID = inputRow.getLong(1);
         int offset = 2;
         Object[] input = new Object[voltInput.getColumnCount() - offset];
 
@@ -90,10 +92,10 @@ public class VoltDBConnection implements ApiaryConnection {
             } else if (name.startsWith("IntegerArrayT")) {
                 input[objIndex] = Utilities.byteArrayToIntArray(inputRow.getVarbinary(i));
             } else if (name.startsWith("FutureT")) {
-                int futureID = (int) inputRow.getLong(i);
+                long futureID = inputRow.getLong(i);
                 input[objIndex] = new ApiaryFuture(futureID);
             } else if (name.startsWith("FutureArrayT")) {
-                int[] futureIDs = Utilities.byteArrayToIntArray(inputRow.getVarbinary(i));
+                long[] futureIDs = Utilities.byteArrayToLongArray(inputRow.getVarbinary(i));
                 ApiaryFuture[] futures = new ApiaryFuture[futureIDs.length];
                 for (int j = 0; j < futures.length; j++) {
                     futures[j] = new ApiaryFuture(futureIDs[j]);
@@ -109,7 +111,7 @@ public class VoltDBConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String funcName, Object... inputs) throws IOException, ProcCallException {
-        VoltTable voltInput = inputToVoltTable(service, execID, inputs);
+        VoltTable voltInput = inputToVoltTable(service, execID, functionID, inputs);
         assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
         Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];
         VoltTable[] res = client.callProcedure(funcName, keyInput, voltInput).getResults();
@@ -125,7 +127,7 @@ public class VoltDBConnection implements ApiaryConnection {
         } else if (retVal.getColumnName(0).equals("intArrayOutput")) {
             output = Utilities.byteArrayToIntArray(retVal.fetchRow(0).getVarbinary(0));
         } else if (retVal.getColumnName(0).equals("futureOutput")) {
-            int futureID = (int) retVal.fetchRow(0).getLong(0);
+            long futureID = retVal.fetchRow(0).getLong(0);
             output = new ApiaryFuture(futureID);
         } else {
             logger.info("Invalid output {}", retVal);

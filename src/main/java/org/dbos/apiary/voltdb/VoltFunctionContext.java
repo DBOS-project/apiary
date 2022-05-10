@@ -1,10 +1,8 @@
 package org.dbos.apiary.voltdb;
 
 import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.interposition.ApiaryFunction;
-import org.dbos.apiary.interposition.ApiaryFunctionContext;
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.executor.Task;
+import org.dbos.apiary.interposition.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.DeprecatedProcedureAPIAccess;
@@ -17,19 +15,25 @@ import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.sql.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static org.dbos.apiary.voltdb.VoltApiaryProcedure.getRecordedOutput;
+import static org.dbos.apiary.voltdb.VoltApiaryProcedure.recordOutput;
 
 public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
     private final VoltApiaryProcedure p;
     private long transactionID;
+    private AtomicLong functionIDCounter = new AtomicLong(0);
+    private long currentID = functionID;
 
-    public VoltFunctionContext(VoltApiaryProcedure p, ProvenanceBuffer provBuff, String service, long execID) {
-        // TODO: add actual provenance buffer, service name, and execution ID.
-        super(provBuff, service, execID, 0);
+    public VoltFunctionContext(VoltApiaryProcedure p, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
+        super(provBuff, service, execID, functionID);
         this.p = p;
         this.transactionID = internalGetTransactionId();
     }
@@ -45,17 +49,81 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         }
         assert(clazz instanceof ApiaryFunction);
         ApiaryFunction f = (ApiaryFunction) clazz;
-        return f.apiaryRunFunction(ctxt, inputs);
+        long oldID = currentID;
+        this.currentID = functionID + functionIDCounter.incrementAndGet();
+        FunctionOutput fo = f.apiaryRunFunction(ctxt, inputs);
+        this.currentID = oldID;
+        return fo;
     }
 
     @Override
     public FunctionOutput checkPreviousExecution() {
+        p.voltQueueSQL(getRecordedOutput, this.execID, this.currentID);
+        VoltTable v = p.voltExecuteSQL()[0];
+        if (v.getRowCount() > 0) {
+            v.advanceRow();
+            Object o;
+            List<Task> queuedTasks;
+
+            o = v.getVarbinary(8);
+            if (!v.wasNull()) {
+                queuedTasks = List.of((Task[])Utilities.byteArrayToObject((byte[]) o));
+            } else {
+                queuedTasks = new ArrayList<>();
+            }
+
+            o = v.getString(3);
+            if (!v.wasNull()) {
+                return new FunctionOutput(o, queuedTasks);
+            }
+            o = (int) v.getLong(4);
+            if (!v.wasNull()) {
+                return new FunctionOutput(o, queuedTasks);
+            }
+            o = v.getVarbinary(5);
+            if (!v.wasNull()) {
+                return new FunctionOutput(Utilities.byteArrayToStringArray((byte[]) o), queuedTasks);
+            }
+            o = v.getVarbinary(6);
+            if (!v.wasNull()) {
+                return new FunctionOutput(Utilities.byteArrayToIntArray((byte[]) o), queuedTasks);
+            }
+            o = v.getLong(7);
+            if (!v.wasNull()) {
+                return new FunctionOutput(new ApiaryFuture((long) o), queuedTasks);
+            }
+            assert (false);
+        }
         return null;
     }
 
     @Override
     public void recordExecution(FunctionOutput output) {
-
+        int pkey = this.p.pkey;
+        long execID = this.execID;
+        long functionID = this.currentID;
+        String stringOutput = null;
+        Integer intOutput = null;
+        byte[] stringArrayOutput = null;
+        byte[] intArrayOutput = null;
+        Long futureOutput = null;
+        byte[] queueuedTasks = null;
+        if (output.getString() != null) {
+            stringOutput = output.getString();
+        } else if (output.getInt() != null) {
+            intOutput = output.getInt();
+        } else if (output.getStringArray() != null) {
+            stringArrayOutput = Utilities.stringArraytoByteArray(output.getStringArray());
+        } else if (output.getIntArray() != null) {
+            intArrayOutput = Utilities.intArrayToByteArray(output.getIntArray());
+        } else if (output.getFuture() != null) {
+            futureOutput = output.getFuture().futureID;
+        }
+        if (!output.queuedTasks.isEmpty()) {
+            queueuedTasks = Utilities.objectToByteArray(output.queuedTasks.toArray(new Task[0]));
+        }
+        p.voltQueueSQL(recordOutput, pkey, execID, functionID, stringOutput, intOutput, stringArrayOutput, intArrayOutput, futureOutput, queueuedTasks);
+        p.voltExecuteSQL();
     }
 
     @Override

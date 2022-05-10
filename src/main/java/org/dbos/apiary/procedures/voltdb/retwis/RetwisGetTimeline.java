@@ -16,7 +16,7 @@ public class RetwisGetTimeline extends VoltApiaryProcedure {
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
-        return super.run(voltInput);
+        return super.run(pkey, voltInput);
     }
 
     public ApiaryFuture runFunction(ApiaryStatefulFunctionContext context, int userID) {

@@ -10,7 +10,10 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-// Buffer provenance/log messages and export to a remote OLAP database.
+/**
+ * For internal use only.
+ * Buffer provenance/log messages and export to an OLAP database.
+ */
 public class ProvenanceBuffer {
     private static final Logger logger = LoggerFactory.getLogger(ProvenanceBuffer.class);
 

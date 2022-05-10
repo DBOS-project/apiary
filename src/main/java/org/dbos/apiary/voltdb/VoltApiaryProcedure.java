@@ -9,6 +9,9 @@ import org.voltdb.*;
 
 import java.lang.reflect.InvocationTargetException;
 
+/**
+ * All VoltDB functions should extend this class and implement <code>runFunction</code>.
+ */
 public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction {
     public static final ProvenanceBuffer provBuff;
     public int pkey;

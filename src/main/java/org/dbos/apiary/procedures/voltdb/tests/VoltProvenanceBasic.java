@@ -17,7 +17,7 @@ public class VoltProvenanceBasic extends VoltProcedureContainer {
             return baseValue+1;
         } else {
             // Synchronously call.
-            int res = ctxt.apiaryCallFunction(ctxt, "org.dbos.apiary.procedures.voltdb.tests.VoltProvenanceBasic", key, 1).getInt();
+            int res = ctxt.apiaryCallFunction("org.dbos.apiary.procedures.voltdb.tests.VoltProvenanceBasic", key, 1).getInt();
             assert (res == 2);
         }
         // Add an entry at a given key and set to base value, get value, then increase the value by 1.

@@ -16,6 +16,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * For internal use only.
+ */
 public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresFunctionContext.class);
     // This connection ties to all prepared statements in one transaction.
@@ -31,7 +34,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
-    public FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
+    public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
         Object clazz;
         try {
             clazz = Class.forName(name).getDeclaredConstructor().newInstance();
@@ -47,7 +50,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
             long oldID = currentID;
             try {
                 this.currentID = functionID + functionIDCounter.incrementAndGet();
-                FunctionOutput o = f.apiaryRunFunction(ctxt, inputs);
+                FunctionOutput o = f.apiaryRunFunction(this, inputs);
                 this.currentID = oldID;
                 conn.releaseSavepoint(s);
                 return o;

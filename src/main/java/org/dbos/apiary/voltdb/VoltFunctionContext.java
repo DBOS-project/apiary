@@ -15,7 +15,6 @@ import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.sql.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -25,6 +24,9 @@ import java.util.regex.Pattern;
 import static org.dbos.apiary.voltdb.VoltApiaryProcedure.getRecordedOutput;
 import static org.dbos.apiary.voltdb.VoltApiaryProcedure.recordOutput;
 
+/**
+ * For internal use only.
+ */
 public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
     private final VoltApiaryProcedure p;
@@ -39,7 +41,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
-    public FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
+    public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
         Object clazz;
         try {
             clazz = Class.forName(name).getDeclaredConstructor().newInstance();
@@ -51,7 +53,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         ApiaryFunction f = (ApiaryFunction) clazz;
         long oldID = currentID;
         this.currentID = functionID + functionIDCounter.incrementAndGet();
-        FunctionOutput fo = f.apiaryRunFunction(ctxt, inputs);
+        FunctionOutput fo = f.apiaryRunFunction(this, inputs);
         this.currentID = oldID;
         return fo;
     }

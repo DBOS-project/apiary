@@ -4,7 +4,7 @@ import org.dbos.apiary.interposition.ApiaryFuture;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 
-public class VoltUtilities {
+class VoltUtilities {
     public static VoltTable.ColumnInfo objectToColumnInfo(int index, Object input) {
         if (input instanceof String) {
             return new VoltTable.ColumnInfo("StringT" + index, VoltType.STRING);

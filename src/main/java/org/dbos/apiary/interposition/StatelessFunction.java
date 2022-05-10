@@ -6,6 +6,9 @@ import org.dbos.apiary.utilities.Utilities;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+/**
+ * For internal use only.
+ */
 public class StatelessFunction implements ApiaryFunction {
 
     @Override

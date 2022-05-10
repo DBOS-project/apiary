@@ -3,6 +3,10 @@ package org.dbos.apiary.interposition;
 import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.utilities.ApiaryConfig;
 
+/**
+ * ApiaryStatefulFunctionContext is for functions that interact with databases.
+ * It provides additional APIs to execute database updates and queries.
+ */
 public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContext {
 
     public ApiaryStatefulFunctionContext(ProvenanceBuffer provBuff, String service, long execID, long functionID) {
@@ -10,9 +14,13 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
     }
     /** Public Interface for functions. **/
 
-    public abstract FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs);
+    public abstract FunctionOutput apiaryCallFunction(String name, Object... inputs);
 
-    // Execute an update in the database.
+    /**
+     * Execute an update query in the database backend.
+     * @param procedure SQL statement.
+     * @param input     input parameters for the SQL statement.
+     */
     public void apiaryExecuteUpdate(Object procedure, Object... input) {
         if (ApiaryConfig.captureUpdates && (this.provBuff != null)) {
             internalExecuteUpdateCaptured(procedure, input);
@@ -21,7 +29,11 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
         }
     }
 
-    // Execute a database query.
+    /**
+     * Execute a read-only query in the database backend.
+     * @param procedure SQL statement (read-only).
+     * @param input     input parameters for the SQL statement.
+     */
     public Object apiaryExecuteQuery(Object procedure, Object... input) {
         if (ApiaryConfig.captureReads && (this.provBuff != null)) {
             return internalExecuteQueryCaptured(procedure, input);
@@ -30,7 +42,10 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
         }
     }
 
-    // Get the current transaction ID.
+    /**
+     * Get the current transaction ID.
+     * @return transaction ID.
+     */
     public long apiaryGetTransactionId() {
         return internalGetTransactionId();
     }

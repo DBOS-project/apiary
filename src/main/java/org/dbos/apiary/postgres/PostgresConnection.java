@@ -13,6 +13,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+/**
+ * For internal use only.
+ */
 public class PostgresConnection implements ApiaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(PostgresConnection.class);
 

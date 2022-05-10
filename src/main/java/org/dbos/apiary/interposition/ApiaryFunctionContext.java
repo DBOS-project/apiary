@@ -38,7 +38,7 @@ public abstract class ApiaryFunctionContext {
 
     /**
      * Queue a function for asynchronous execution.
-     * This function would synchronously queue the invoked function, but will execute the function asynchronously.
+     * This function synchronously queues the invoked function for later asynchronous execution.
      *
      * @param name      the name of the invoked function.
      * @param inputs    the list of arguments provided to the invoked function.

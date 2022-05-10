@@ -6,7 +6,7 @@ import org.dbos.apiary.utilities.Utilities;
 import java.lang.reflect.Method;
 
 /**
- * For internal use only.
+ * The base for all Apiary functions. Functions usually inherit as subclasses of it.
  */
 public interface ApiaryFunction {
     void recordInvocation(ApiaryFunctionContext ctxt, String funcName);

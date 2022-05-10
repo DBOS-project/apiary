@@ -16,14 +16,13 @@ then we run every function in your application as a database transaction.
 You write your functions in regular Java, using SQL to talk to the database,
 and we schedule and run these functions, providing three exciting features:
 
-* Advanced observability capabilities by combining data provenance information recorded in the database with control flow information captured by functions--we automatically record anything your application ever does in an easy-to-query tabular format.
+* Advanced observability capabilities by combining data provenance information recorded in the database with control flow information captured by functions--we automatically record anything your application ever does in easy-to-query database tables.
 * Improved performance in a distributed setting through aggressive co-location of compute and data.
 * Strong consistency for programs, including easy cross-function and even cross-application transactional guarantees.
 
 Apiary currently supports two database backends, Postgres and VoltDB, although we're open to
 supporting more in the future.
 
-To get started, we've written a tutorial showing you how to build a simple social network
-application with Apiary and Spring Boot:
-[https://github.com/DBOS-project/dynamic-apiary/tree/main/postgres-demo](https://github.com/DBOS-project/dynamic-apiary/tree/main/postgres-demo)
-
+To get you started, we've written 
+[a tutorial](https://github.com/DBOS-project/dynamic-apiary/tree/main/postgres-demo) showing you how to build a simple social network
+application with Apiary and Spring Boot.

@@ -5,6 +5,9 @@ import org.dbos.apiary.utilities.Utilities;
 
 import java.lang.reflect.Method;
 
+/**
+ * For internal use only.
+ */
 public interface ApiaryFunction {
     void recordInvocation(ApiaryFunctionContext ctxt, String funcName);
 

@@ -4,6 +4,9 @@ import org.dbos.apiary.interposition.ProvenanceBuffer;
 
 import java.util.Map;
 
+/**
+ * For internal use only.
+ */
 public interface ApiaryConnection {
     FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String name, Object... inputs) throws Exception;
 

@@ -5,6 +5,9 @@ import org.dbos.apiary.interposition.ApiaryFuture;
 import java.io.Serializable;
 import java.util.Map;
 
+/**
+ * For internal use only.
+ */
 public class Task implements Serializable  {
 
     public long functionID;  // Unique ID of this function.

@@ -14,10 +14,18 @@ public abstract class ApiaryFunctionContext {
 
     private final AtomicInteger calledFunctionID = new AtomicInteger(0);
     private final List<Task> queuedTasks = new ArrayList<>();
+    /**
+     * Only for internal use. Do not use in public functions!
+     */
     public final ProvenanceBuffer provBuff;
+    /**
+     * Only for internal use. Do not use in public functions!
+     */
     public final String service;
-    public final long execID;
-    public final long functionID;
+    /**
+     * Only for internal use. Do not use in public functions!
+     */
+    public final long execID, functionID;
 
     public ApiaryFunctionContext(ProvenanceBuffer provBuff, String service, long execID, long functionID) {
         this.provBuff = provBuff;
@@ -54,10 +62,23 @@ public abstract class ApiaryFunctionContext {
 
     /** Apiary-private **/
 
+    /**
+     * Only for internal use. Do not use in public functions!
+     * @return {@link FunctionOutput}
+     */
     public abstract FunctionOutput checkPreviousExecution();
 
+    /**
+     * Only for internal use. Do not use in public functions!
+     * @param output    the finalized output of a function.
+     */
     public abstract void recordExecution(FunctionOutput output);
 
+    /**
+     * Only for internal use. Do not use in public functions!
+     * @param output    the original output of a function.
+     * @return          the finalized output of a function.
+     */
     public FunctionOutput getFunctionOutput(Object output) {
         return new FunctionOutput(output, queuedTasks);
     }

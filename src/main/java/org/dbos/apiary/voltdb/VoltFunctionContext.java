@@ -15,7 +15,6 @@ import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.sql.Array;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -25,6 +24,9 @@ import java.util.regex.Pattern;
 import static org.dbos.apiary.voltdb.VoltApiaryProcedure.getRecordedOutput;
 import static org.dbos.apiary.voltdb.VoltApiaryProcedure.recordOutput;
 
+/**
+ * For internal use only.
+ */
 public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
 
     private final VoltApiaryProcedure p;

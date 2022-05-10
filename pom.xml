@@ -21,6 +21,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.4.0</version>
+                <configuration>
+                    <show>public</show>
+                    <doctitle>Apiary Public API</doctitle>
+                    <subpackages>org.dbos.apiary.interposition:org.dbos.apiary.executor:org.dbos.apiary.worker:org.dbos.apiary.postgres:org.dbos.apiary.voltdb</subpackages>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

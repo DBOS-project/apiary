@@ -16,6 +16,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * For internal use only.
+ */
 public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresFunctionContext.class);
     // This connection ties to all prepared statements in one transaction.

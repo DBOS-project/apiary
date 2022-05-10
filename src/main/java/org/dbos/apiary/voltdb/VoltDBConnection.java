@@ -24,6 +24,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * For internal use only.
+ */
 public class VoltDBConnection implements ApiaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(VoltDBConnection.class);
     public final Client client;

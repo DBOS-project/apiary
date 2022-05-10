@@ -6,6 +6,9 @@ import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 
+/**
+ * All Postgres functions should extend this class and implement <code>runFunction</code>.
+ */
 public class PostgresFunction implements ApiaryFunction {
     @Override
     public void recordInvocation(ApiaryFunctionContext ctxt, String funcName) {

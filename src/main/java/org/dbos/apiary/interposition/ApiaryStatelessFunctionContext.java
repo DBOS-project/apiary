@@ -8,6 +8,9 @@ import org.dbos.apiary.worker.InternalApiaryWorkerClient;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+/**
+ * ApiaryStatelessFunctionContext is for functions that are stateless and have no access to databases.
+ */
 public class ApiaryStatelessFunctionContext extends ApiaryFunctionContext {
 
     private final ApiaryConnection c;

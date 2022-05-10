@@ -31,7 +31,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
-    public FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
+    public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
         Object clazz;
         try {
             clazz = Class.forName(name).getDeclaredConstructor().newInstance();
@@ -47,7 +47,7 @@ public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
             long oldID = currentID;
             try {
                 this.currentID = functionID + functionIDCounter.incrementAndGet();
-                FunctionOutput o = f.apiaryRunFunction(ctxt, inputs);
+                FunctionOutput o = f.apiaryRunFunction(this, inputs);
                 this.currentID = oldID;
                 conn.releaseSavepoint(s);
                 return o;

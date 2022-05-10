@@ -39,7 +39,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
-    public FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
+    public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
         Object clazz;
         try {
             clazz = Class.forName(name).getDeclaredConstructor().newInstance();
@@ -51,7 +51,7 @@ public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
         ApiaryFunction f = (ApiaryFunction) clazz;
         long oldID = currentID;
         this.currentID = functionID + functionIDCounter.incrementAndGet();
-        FunctionOutput fo = f.apiaryRunFunction(ctxt, inputs);
+        FunctionOutput fo = f.apiaryRunFunction(this, inputs);
         this.currentID = oldID;
         return fo;
     }

@@ -10,7 +10,7 @@ public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContex
     }
     /** Public Interface for functions. **/
 
-    public abstract FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs);
+    public abstract FunctionOutput apiaryCallFunction(String name, Object... inputs);
 
     // Execute an update in the database.
     public void apiaryExecuteUpdate(Object procedure, Object... input) {

@@ -17,7 +17,7 @@ public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
     }
 
     @Override
-    public FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs) {
+    public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
         // TODO: Logging?
         Object clazz;
         try {
@@ -28,7 +28,7 @@ public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
         }
         assert(clazz instanceof ApiaryFunction);
         ApiaryFunction f = (ApiaryFunction) clazz;
-        return f.apiaryRunFunction(ctxt, inputs);
+        return f.apiaryRunFunction(this, inputs);
     }
 
     @Override

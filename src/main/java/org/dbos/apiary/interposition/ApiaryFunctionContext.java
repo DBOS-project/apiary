@@ -7,11 +7,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * ApiaryFunctionContext provides APIs to invoke other functions and run queries.
+ */
 public abstract class ApiaryFunctionContext {
 
     private final AtomicInteger calledFunctionID = new AtomicInteger(0);
     private final List<Task> queuedTasks = new ArrayList<>();
-
     public final ProvenanceBuffer provBuff;
     public final String service;
     public final long execID;
@@ -26,7 +28,14 @@ public abstract class ApiaryFunctionContext {
 
     /** Public Interface for functions. **/
 
-    // Asynchronously queue another function for asynchronous execution.
+    /**
+     * Queue a function for asynchronous execution.
+     * This function would synchronously queue the invoked function, but will execute the function asynchronously.
+     *
+     * @param name      the name of the invoked function.
+     * @param inputs    the list of arguments provided to the invoked function.
+     * @return          an {@link ApiaryFuture} object that holds the future ID.
+     */
     public ApiaryFuture apiaryQueueFunction(String name, Object... inputs) {
         long functionID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
         Task futureTask = new Task(functionID, name, inputs);
@@ -34,7 +43,14 @@ public abstract class ApiaryFunctionContext {
         return new ApiaryFuture(functionID);
     }
 
-    public abstract FunctionOutput apiaryCallFunction(ApiaryFunctionContext ctxt, String name, Object... inputs);
+    /**
+     * Invoke a function synchronously and block waiting for the result.
+     *
+     * @param name      the name of the invoked function.
+     * @param inputs    the list of arguments provided to the invoked function.
+     * @return          an {@link FunctionOutput} object that stores the output from a function.
+     */
+    public abstract FunctionOutput apiaryCallFunction(String name, Object... inputs);
 
     /** Apiary-private **/
 

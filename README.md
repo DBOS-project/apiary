@@ -24,5 +24,5 @@ Apiary currently supports two database backends, Postgres and VoltDB, although w
 supporting more in the future.
 
 To get you started, we've written 
-[a tutorial](https://github.com/DBOS-project/dynamic-apiary/tree/main/postgres-demo) showing you how to build a simple social network
-application with Apiary and Spring Boot.
+[a tutorial](https://github.com/DBOS-project/apiary/tree/main/postgres-demo) showing you how to build a simple social network
+application with Apiary and [Spring Boot](https://spring.io/projects/spring-boot).

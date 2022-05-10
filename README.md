@@ -1,48 +1,29 @@
-# Dynamic Apiary
-Requires Java 11 and maven:
+# Apiary
 
-    sudo apt install openjdk-11-jdk maven libatomic1
+Welcome to Apiary!  Apiary is a transactional function-as-a-service (FaaS) framework for building
+database-oriented applications such as microservices and web service backends.
+Apiary provides an easy-to-use Java interface that supports general computation
+and offers good performance, strong consistency guarantees,
+and powerful new observability features such as automatic data provenance tracking.
+Apiary is an ongoing research project within the larger MIT-Stanford 
+[DBOS](https://dbos-project.github.io/) collaboration;
+we are interested in any feedback you can provide to improve the project
+so it better meets developers' needs.
 
-Also requires VoltDB; set the following environment variables:
+The idea behind Apiary is that you store all your application's long-lived state in a database
+(which you were likely already doing),
+then we run every function in your application as a database transaction.
+You write your functions in regular Java, using SQL to talk to the database,
+and we schedule and run these functions, providing three exciting features:
 
-    export VOLT_HOME=/path/to/voltdb
-    export PATH="$VOLT_HOME/bin:$PATH"
+* Advanced observability capabilities by combining data provenance information recorded in the database with control flow information captured by functions--we automatically record anything your application ever does in an easy-to-query tabular format.
+* Improved performance in a distributed setting through aggressive co-location of compute and data.
+* Strong consistency for programs, including easy cross-function and even cross-application transactional guarantees.
 
-To initialize VoltDB, run its startup script:
+Apiary currently supports two database backends, Postgres and VoltDB, although we're open to
+supporting more in the future.
 
-    scripts/initialize_voltdb.sh
+To get started, we've written a tutorial showing you how to build a simple social network
+application with Apiary and Spring Boot:
+[https://github.com/DBOS-project/dynamic-apiary/tree/main/postgres-demo](https://github.com/DBOS-project/dynamic-apiary/tree/main/postgres-demo)
 
-To compile and run unit tests:
-
-    mvn package
-
-## Quick Test with Docker
-You could use Docker containers to deploy database servers and quickly test Apiary.
-
-Install Docker:
-```
-sudo apt install docker.io
-```
-
-After installation, if you want to run `docker` command without sudo, please follow the instructions [here](https://docs.docker.com/engine/install/linux-postinstall/).
-
-Start a VoltDB instance with Docker:
-```
-scripts/initialize_voltdb_docker.sh
-```
-
-Start a Postgres instance with Docker:
-```
-scripts/initialize_postgres_docker.sh
-```
-
-Start a Vertica instance with Docker:
-```
-scripts/initialize_vertica_docker.sh
-```
-
-Now you could run some Apiary unit tests!
-```
-mvn test
-```
-All should pass.

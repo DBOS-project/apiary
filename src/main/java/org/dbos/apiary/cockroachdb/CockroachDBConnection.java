@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.dbos.apiary.utilities.ApiaryConfig.getApiaryClientID;
+
 public class CockroachDBConnection implements ApiaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(CockroachDBConnection.class);
 
@@ -114,7 +116,7 @@ public class CockroachDBConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String name, Object... inputs) throws Exception {
-        if (name.startsWith("GetApiaryClientID")) {
+        if (name.startsWith(getApiaryClientID)) {
             // TODO: implement the actual one.
             return new FunctionOutput(0, List.of());
         }

@@ -8,6 +8,8 @@ import org.zeromq.*;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.dbos.apiary.utilities.ApiaryConfig.getApiaryClientID;
+
 /**
  * ApiaryWorkerClient provides interface for invoking Apiary functions from a remote client.
  * Note that this class is not thread-safe (due to ZMQ.Socket), thus cannot be shared between threads.
@@ -31,7 +33,7 @@ public class ApiaryWorkerClient {
         this.internalClient = new InternalApiaryWorkerClient(zContext);
         int tmpID = 0;
         try {
-            tmpID = internalClient.executeFunction(this.apiaryWorkerAddress, "GetApiaryClientID", "ApiarySystem", 0l).getInt();
+            tmpID = internalClient.executeFunction(this.apiaryWorkerAddress, getApiaryClientID, "ApiarySystem", 0l).getInt();
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }

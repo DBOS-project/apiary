@@ -40,7 +40,6 @@ public class ApiaryWorker {
     private final ZContext zContext = new ZContext(2);  // TODO: How many IO threads?
     private Thread serverThread;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
-    private final Set<String> systemFunctions = new HashSet<>(List.of("GetApiaryClientID"));
     private final ExecutorService reqThreadPool;
     private final ExecutorService statelessReqThreadPool;
     private final ExecutorService repThreadPool;

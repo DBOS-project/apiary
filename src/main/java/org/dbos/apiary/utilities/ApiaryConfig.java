@@ -11,4 +11,7 @@ public class ApiaryConfig {
     public static final Boolean captureUpdates = true;
     public static final Boolean captureReads = true;
     public static final String provenanceDefaultAddress = "localhost";
+
+    // For system functions.
+    public static final String getApiaryClientID = "GetApiaryClientID";
 }

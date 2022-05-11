@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.dbos.apiary.utilities.ApiaryConfig.getApiaryClientID;
+
 /**
  * For internal use only.
  */
@@ -114,7 +116,7 @@ public class VoltConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String funcName, Object... inputs) throws IOException, ProcCallException {
-        if (funcName.startsWith("GetApiaryClientID")) {
+        if (funcName.startsWith(getApiaryClientID)) {
             // TODO: implement the actual one.
             return new FunctionOutput(0, List.of());
         }

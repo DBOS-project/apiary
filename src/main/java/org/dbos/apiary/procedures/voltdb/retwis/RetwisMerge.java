@@ -1,11 +1,11 @@
 package org.dbos.apiary.procedures.voltdb.retwis;
 
-import org.dbos.apiary.interposition.ApiaryFunctionContext;
-import org.dbos.apiary.interposition.StatelessFunction;
+import org.dbos.apiary.function.ApiaryContext;
+import org.dbos.apiary.function.StatelessFunction;
 
 public class RetwisMerge extends StatelessFunction {
 
-    public static String runFunction(ApiaryFunctionContext context, String[] inputs) {
+    public static String runFunction(ApiaryContext context, String[] inputs) {
         StringBuilder ret = new StringBuilder();
         String sep = "";
         for (String input: inputs) {

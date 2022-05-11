@@ -1,9 +1,8 @@
 package org.dbos.apiary.procedures.cockroachdb;
 
 import org.dbos.apiary.cockroachdb.CockroachDBFunction;
-import org.dbos.apiary.interposition.ApiaryFuture;
-import org.dbos.apiary.cockroachdb.CockroachDBFunctionContext;
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
+import org.dbos.apiary.function.ApiaryFuture;
+import org.dbos.apiary.function.ApiaryTransactionalContext;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -20,7 +19,7 @@ public class CockroachDBFibonacciFunction extends CockroachDBFunction {
         this.getValue = c.prepareStatement("SELECT KVValue FROM KVTable WHERE KVKey=?;");
     }
 
-    public Object runFunction(ApiaryStatefulFunctionContext ctxt, String strKey) throws SQLException {
+    public Object runFunction(ApiaryTransactionalContext ctxt, String strKey) throws SQLException {
         int key = Integer.parseInt(strKey);
         if (key < 0) {
             return "";

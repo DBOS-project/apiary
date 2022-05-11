@@ -20,6 +20,6 @@ cd ${SCRIPT_DIR}/../
 mvn -DskipTests package
 
 javac -cp "$VOLT_HOME/voltdb/*:$PWD/target/*:$PWD/target/vertica/*" -d obj/sql $(find src/main/java/org/dbos/apiary/procedures/voltdb -type f -name *.java)
-jar cvf target/DBOSProcedures.jar -C obj/sql . -C target/classes org/dbos/apiary/interposition -C target/classes org/dbos/apiary/voltdb -C target/classes org/dbos/apiary/executor -C target/classes org/dbos/apiary/utilities  -C  target/vertica .
+jar cvf target/DBOSProcedures.jar -C obj/sql . -C target/classes org/dbos/apiary/function -C target/classes org/dbos/apiary/connection -C target/classes org/dbos/apiary/voltdb -C target/classes org/dbos/apiary/utilities  -C  target/vertica .
 
 ${VOLTDB_BIN}/sqlcmd < sql/load_procedures.sql

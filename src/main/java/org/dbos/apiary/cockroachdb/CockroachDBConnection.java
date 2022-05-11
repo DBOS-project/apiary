@@ -1,8 +1,8 @@
 package org.dbos.apiary.cockroachdb;
 
-import org.dbos.apiary.executor.ApiaryConnection;
-import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.connection.ApiaryConnection;
+import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.ProvenanceBuffer;
 import org.postgresql.ds.PGSimpleDataSource;
 
 import java.sql.Connection;

@@ -33,9 +33,9 @@ public class NectarController {
     public NectarController() throws SQLException {
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
         conn.dropTable("WebsiteLogins");
-        conn.createTable("WebsiteLogins", "(Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL)");
+        conn.createTable("WebsiteLogins", "Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL");
         conn.dropTable("WebsitePosts");
-        conn.createTable("WebsitePosts", "(Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL)");
+        conn.createTable("WebsitePosts", "Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL");
         conn.registerFunction("NectarRegister", NectarRegister::new);
         conn.registerFunction("NectarLogin", NectarLogin::new);
         conn.registerFunction("NectarAddPost", NectarAddPost::new);

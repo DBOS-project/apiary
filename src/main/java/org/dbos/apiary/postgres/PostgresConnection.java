@@ -1,9 +1,9 @@
 package org.dbos.apiary.postgres;
 
-import org.dbos.apiary.executor.ApiaryConnection;
-import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.interposition.ApiaryFunctionContext;
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.connection.ApiaryConnection;
+import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.ApiaryContext;
+import org.dbos.apiary.function.ProvenanceBuffer;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,7 +89,7 @@ public class PostgresConnection implements ApiaryConnection {
     @Override
     public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String name, Object... inputs) throws Exception {
         PostgresFunction function = functions.get(name).call();
-        ApiaryFunctionContext ctxt = new PostgresFunctionContext(connection.get(), provBuff, service, execID, functionID);
+        ApiaryContext ctxt = new PostgresContext(connection.get(), provBuff, service, execID, functionID);
         FunctionOutput f = null;
         try {
             f = function.apiaryRunFunction(ctxt, inputs);

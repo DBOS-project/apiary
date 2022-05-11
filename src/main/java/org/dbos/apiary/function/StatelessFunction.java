@@ -1,10 +1,7 @@
-package org.dbos.apiary.interposition;
+package org.dbos.apiary.function;
 
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 
 /**
  * For internal use only.
@@ -12,7 +9,7 @@ import java.time.temporal.ChronoUnit;
 public class StatelessFunction implements ApiaryFunction {
 
     @Override
-    public void recordInvocation(ApiaryFunctionContext ctxt, String funcName) {
+    public void recordInvocation(ApiaryContext ctxt, String funcName) {
         if (ctxt.provBuff == null) {
             // If no OLAP DB available.
             return;

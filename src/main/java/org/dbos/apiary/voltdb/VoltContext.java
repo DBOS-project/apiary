@@ -1,8 +1,8 @@
 package org.dbos.apiary.voltdb;
 
-import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.interposition.*;
+import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.Task;
+import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.DeprecatedProcedureAPIAccess;
@@ -21,20 +21,20 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.dbos.apiary.voltdb.VoltApiaryProcedure.getRecordedOutput;
-import static org.dbos.apiary.voltdb.VoltApiaryProcedure.recordOutput;
+import static org.dbos.apiary.voltdb.VoltFunction.getRecordedOutput;
+import static org.dbos.apiary.voltdb.VoltFunction.recordOutput;
 
 /**
  * For internal use only.
  */
-public class VoltFunctionContext extends ApiaryStatefulFunctionContext {
+public class VoltContext extends ApiaryTransactionalContext {
 
-    private final VoltApiaryProcedure p;
+    private final VoltFunction p;
     private long transactionID;
     private AtomicLong functionIDCounter = new AtomicLong(0);
     private long currentID = functionID;
 
-    public VoltFunctionContext(VoltApiaryProcedure p, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
+    public VoltContext(VoltFunction p, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
         super(provBuff, service, execID, functionID);
         this.p = p;
         this.transactionID = internalGetTransactionId();

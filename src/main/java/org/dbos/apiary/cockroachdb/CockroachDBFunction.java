@@ -1,12 +1,11 @@
 package org.dbos.apiary.cockroachdb;
 
-import org.dbos.apiary.interposition.ApiaryFunction;
-import org.dbos.apiary.interposition.ApiaryFunctionContext;
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
+import org.dbos.apiary.function.ApiaryFunction;
+import org.dbos.apiary.function.ApiaryContext;
 
 public class CockroachDBFunction implements ApiaryFunction {
     @Override
-    public void recordInvocation(ApiaryFunctionContext ctxt, String funcName) {
+    public void recordInvocation(ApiaryContext ctxt, String funcName) {
         // TODO: implement the logging.
     }
 }

@@ -1,8 +1,8 @@
 package org.dbos.apiary;
 
-import org.dbos.apiary.executor.ApiaryConnection;
+import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.voltdb.VoltDBConnection;
+import org.dbos.apiary.voltdb.VoltConnection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -22,14 +22,14 @@ public class IntrospectTests {
 
     @BeforeEach
     public void truncateTables() throws IOException, ProcCallException {
-        VoltDBConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ctxt.client.callProcedure("TruncateTables");
     }
 
     @Test
     public void testVoltPartitionInfo() throws IOException {
         logger.info("testVoltPartitionInfo");
-        ApiaryConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         int numPartitions = ctxt.getNumPartitions();
         logger.info("Detected {} partitions.", numPartitions);
         assertTrue(numPartitions > 0);

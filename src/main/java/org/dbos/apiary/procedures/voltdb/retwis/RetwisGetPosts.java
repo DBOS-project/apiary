@@ -1,13 +1,13 @@
 package org.dbos.apiary.procedures.voltdb.retwis;
 
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
-import org.dbos.apiary.voltdb.VoltApiaryProcedure;
+import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.voltdb.VoltFunction;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class RetwisGetPosts extends VoltApiaryProcedure {
+public class RetwisGetPosts extends VoltFunction {
     public final SQLStmt getPosts = new SQLStmt(
             "SELECT Post FROM RetwisPosts WHERE UserID=? ORDER BY Timestamp LIMIT 10;"
     );
@@ -16,7 +16,7 @@ public class RetwisGetPosts extends VoltApiaryProcedure {
         return super.run(pkey, voltInput);
     }
 
-    public String runFunction(ApiaryStatefulFunctionContext context, int userID) {
+    public String runFunction(ApiaryTransactionalContext context, int userID) {
         VoltTable result = ((VoltTable[]) context.apiaryExecuteQuery(getPosts, userID))[0];
         StringBuilder posts = new StringBuilder();
         String sep = "";

@@ -1,11 +1,11 @@
 package org.dbos.apiary.procedures.voltdb.increment;
 
-import org.dbos.apiary.interposition.ApiaryFunctionContext;
-import org.dbos.apiary.interposition.StatelessFunction;
+import org.dbos.apiary.function.ApiaryContext;
+import org.dbos.apiary.function.StatelessFunction;
 
 public class IncrementStatelessDriver extends StatelessFunction {
 
-    public static int runFunction(ApiaryFunctionContext context, Integer key) {
+    public static int runFunction(ApiaryContext context, Integer key) {
         return context.apiaryCallFunction("IncrementProcedure", key).getInt();
     }
 }

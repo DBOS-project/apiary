@@ -1,9 +1,9 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
-import org.dbos.apiary.voltdb.VoltApiaryProcedure;
+import org.dbos.apiary.voltdb.VoltFunction;
 import org.voltdb.SQLStmt;
 
-public class VoltProcedureContainer extends VoltApiaryProcedure {
+public class VoltProcedureContainer extends VoltFunction {
 
     public static final SQLStmt addResult = new SQLStmt(
             // KEY, VALUE

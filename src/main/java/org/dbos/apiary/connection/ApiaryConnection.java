@@ -1,6 +1,7 @@
-package org.dbos.apiary.executor;
+package org.dbos.apiary.connection;
 
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.ProvenanceBuffer;
 
 import java.util.Map;
 

@@ -1,16 +1,13 @@
-package org.dbos.apiary.interposition;
-
-import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.executor.Task;
+package org.dbos.apiary.function;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * ApiaryFunctionContext provides APIs to invoke other functions and run queries.
+ * ApiaryContext provides APIs to invoke other functions and run queries.
  */
-public abstract class ApiaryFunctionContext {
+public abstract class ApiaryContext {
 
     private final AtomicInteger calledFunctionID = new AtomicInteger(0);
     private final List<Task> queuedTasks = new ArrayList<>();
@@ -27,7 +24,7 @@ public abstract class ApiaryFunctionContext {
      */
     public final long execID, functionID;
 
-    public ApiaryFunctionContext(ProvenanceBuffer provBuff, String service, long execID, long functionID) {
+    public ApiaryContext(ProvenanceBuffer provBuff, String service, long execID, long functionID) {
         this.provBuff = provBuff;
         this.service = service;
         this.execID = execID;

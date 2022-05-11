@@ -1,7 +1,7 @@
 package org.dbos.apiary.worker;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.dbos.apiary.executor.FunctionOutput;
+import org.dbos.apiary.function.FunctionOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.*;

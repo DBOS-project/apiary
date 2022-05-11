@@ -3,7 +3,7 @@ package org.dbos.apiary.benchmarks;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.voltdb.VoltDBConnection;
+import org.dbos.apiary.voltdb.VoltConnection;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class IncrementBenchmark {
@@ -27,7 +26,7 @@ public class IncrementBenchmark {
     private static final Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
 
     public static void benchmark(String voltAddr, String service, Integer interval, Integer duration, boolean stateless) throws IOException, InterruptedException, ProcCallException {
-        VoltDBConnection conn = new VoltDBConnection(voltAddr, ApiaryConfig.voltdbPort);
+        VoltConnection conn = new VoltConnection(voltAddr, ApiaryConfig.voltdbPort);
         conn.client.callProcedure("TruncateTables");
 
         final int numKeys = 100000;

@@ -1,6 +1,6 @@
 package org.dbos.apiary.voltdb;
 
-import org.dbos.apiary.interposition.ApiaryFuture;
+import org.dbos.apiary.function.ApiaryFuture;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 

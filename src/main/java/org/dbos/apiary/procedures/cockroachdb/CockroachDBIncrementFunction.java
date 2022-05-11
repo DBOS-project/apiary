@@ -1,7 +1,7 @@
 package org.dbos.apiary.procedures.cockroachdb;
 
 import org.dbos.apiary.cockroachdb.CockroachDBFunction;
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
+import org.dbos.apiary.function.ApiaryTransactionalContext;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -18,7 +18,7 @@ public class CockroachDBIncrementFunction extends CockroachDBFunction {
         this.updateValue = c.prepareStatement("UPSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?);");
     }
 
-    public String runFunction(ApiaryStatefulFunctionContext ctxt, String keyString1, String keyString2) {
+    public String runFunction(ApiaryTransactionalContext ctxt, String keyString1, String keyString2) {
         int key1 = Integer.parseInt(keyString1);
         int key2 = Integer.parseInt(keyString2);
         ResultSet r1 = (ResultSet) ctxt.apiaryExecuteQuery(getValue, key1);

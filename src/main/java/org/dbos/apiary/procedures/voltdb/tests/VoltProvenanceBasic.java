@@ -1,6 +1,6 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
+import org.dbos.apiary.function.ApiaryTransactionalContext;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
@@ -11,7 +11,7 @@ public class VoltProvenanceBasic extends VoltProcedureContainer {
         return super.run(pkey, voltInput);
     }
 
-    public int runFunction(ApiaryStatefulFunctionContext ctxt, int key, int baseValue) {
+    public int runFunction(ApiaryTransactionalContext ctxt, int key, int baseValue) {
         if (baseValue == 1) {
             ctxt.apiaryExecuteUpdate(addResult, key, baseValue);
             return baseValue+1;

@@ -1,10 +1,10 @@
 package org.dbos.apiary;
 
-import org.dbos.apiary.executor.ApiaryConnection;
+import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.procedures.voltdb.retwis.RetwisStatelessGetTimeline;
 import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.voltdb.VoltDBConnection;
+import org.dbos.apiary.voltdb.VoltConnection;
 import org.dbos.apiary.worker.ApiaryWFQScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
@@ -22,14 +22,14 @@ public class BenchmarkTests {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkTests.class);
     @BeforeEach
     public void truncateTables() throws IOException, ProcCallException {
-        VoltDBConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ctxt.client.callProcedure("TruncateTables");
     }
 
     @Test
     public void testRetwis() throws IOException, InterruptedException {
         logger.info("testRetwis");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(c, scheduler, 128);
         worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
@@ -68,7 +68,7 @@ public class BenchmarkTests {
     @Test
     public void testStatelessRetwis() throws IOException {
         logger.info("testStatelessRetwis");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(c, scheduler, 128);
         worker.registerStatelessFunction("RetwisStatelessGetTimeline", RetwisStatelessGetTimeline::new);
@@ -100,7 +100,7 @@ public class BenchmarkTests {
     @Test
     public void testIncrement() throws IOException, InterruptedException {
         logger.info("testIncrement");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(c, scheduler, 128);
         worker.startServing();

@@ -1,7 +1,7 @@
 package org.dbos.apiary.procedures.postgres.tests;
 
-import org.dbos.apiary.interposition.ApiaryFuture;
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
+import org.dbos.apiary.function.ApiaryFuture;
+import org.dbos.apiary.function.ApiaryTransactionalContext;
 import org.dbos.apiary.postgres.PostgresFunction;
 
 import java.sql.ResultSet;
@@ -11,7 +11,7 @@ public class PostgresFibonacciFunction extends PostgresFunction {
     private static final String addResult = "INSERT INTO KVTable(KVKey, KVValue) VALUES (?, ?) ON CONFLICT (KVKey) DO NOTHING;";
     private static final String getValue = "SELECT KVValue FROM KVTable WHERE KVKey=?;";
 
-    public static Object runFunction(ApiaryStatefulFunctionContext ctxt, int key) throws SQLException {
+    public static Object runFunction(ApiaryTransactionalContext ctxt, int key) throws SQLException {
         if (key < 0) {
             return -1;
         }

@@ -1,7 +1,7 @@
 package org.dbos.apiary.worker;
 
-import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.interposition.ApiaryFuture;
+import org.dbos.apiary.function.ApiaryFuture;
+import org.dbos.apiary.function.Task;
 import org.zeromq.ZFrame;
 
 import java.util.Map;

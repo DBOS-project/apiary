@@ -1,6 +1,6 @@
-package org.dbos.apiary.executor;
+package org.dbos.apiary.function;
 
-import org.dbos.apiary.interposition.ApiaryFuture;
+import org.dbos.apiary.function.ApiaryFuture;
 
 import java.io.Serializable;
 import java.util.Map;

@@ -145,6 +145,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
             s.executeUpdate();
             s.close();
         } catch (SQLException e) {
+            logger.info("Execution record failed: {}", e.getSQLState());
             e.printStackTrace();
         }
     }

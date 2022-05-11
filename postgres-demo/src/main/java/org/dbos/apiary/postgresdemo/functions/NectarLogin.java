@@ -15,7 +15,7 @@ public class NectarLogin extends PostgresFunction {
         if (pwdCheck.next() && pwdCheck.getString(1).equals(password)) {
             return 0; // Success!
         } else {
-            return 1; // Failed login, user does not exist or password wrong.
+            return 1; // Failed login: the user does not exist or the password is wrong.
         }
     }
 }

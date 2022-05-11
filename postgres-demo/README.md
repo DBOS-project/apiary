@@ -17,18 +17,20 @@ Then, let's start Postgres from a Docker image:
 Now, it's time to build a website!
 We want to build a simple social network application where you can
 register, log in, send posts to your friends, and read
-posts your friends sent you.  We'll call this site the Nectar Network.
+posts your friends sent you.  Let's call this site the Nectar Network.
 We'll build the site using [Spring Boot](https://spring.io/projects/spring-boot),
 but call Apiary functions to handle operations on website data,
 like registering users or adding new posts.
-We'll show how Apiary makes it easier to observe website activity
-and how it provides cool features like easily rolling back
+Then, once the website is running,
+we'll show how Apiary's new data provenance features make it easy
+to monitor website activity and provide
+cool features like easily rolling back
 your database and application to any previous point in time.
 
 
 The first thing we need to do is  create some database tables in Postgres
 to store the information our site needs: logins and posts.
-We automatically create these tables inside the Spring Boot controller
+We create these tables inside the Spring Boot controller
 when our web server starts;
 the full code for it is [here](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/NectarController.java).
 We provide an API for creating tables in Apiary, which uses
@@ -56,7 +58,7 @@ public class NectarRegister extends PostgresFunction {
     private static final String checkExists = "SELECT * FROM WebsiteLogins WHERE Username=?";
     private static final String register = "INSERT INTO WebsiteLogins(Username, Password) VALUES (?, ?);";
 
-    public static int runFunction(ApiaryStatefulFunctionContext ctxt, String username, String password) throws SQLException {
+    public static int runFunction(ApiaryTransactionalContext ctxt, String username, String password) throws SQLException {
         ResultSet exists = (ResultSet) ctxt.apiaryExecuteQuery(checkExists, username);
         if (exists.next()) {
             return 1;  // Failed registration, username already exists.
@@ -65,22 +67,26 @@ public class NectarRegister extends PostgresFunction {
         return 0;
     }
 }
+
 ```
 
 Every function has a context, which exposes the
 Apiary API.  You'll use the context to talk to the database
 and to call other functions.  Here, we use the context to execute
-a couple of SQL queries, first checking if the username already exists,
-failing if it does, and otherwise registering a new user.
+a couple of SQL queries: we first check if the username already exists,
+fail if it does, and otherwise register a new user.
+Every Apiary function runs as an ACID database transaction,
+so once we've checked that a name isn't taken, it's impossible
+for another function to take the name before our function completes.
 Because this is a demo, we store passwords in plain text,
 but please please please do not do this in production.
 
-Back in Spring, we can call the `register` function
+Back in Spring, we call the `register` function
 whenever we get a registration request to our site:
 ```java
 @PostMapping("/registration")
 public String registrationSubmit(@ModelAttribute Credentials credentials, Model model) throws IOException {
-    int success = client.executeFunction("localhost", "NectarRegister", "nectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
+    int success = client.executeFunction("localhost", "NectarRegister", "NectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
     if (success != 0) {
         return "redirect:/home";
     }
@@ -97,12 +103,12 @@ public class NectarLogin extends PostgresFunction {
 
     private static final String checkPassword = "SELECT Password FROM WebsiteLogins WHERE Username=?";
 
-    public static int runFunction(ApiaryStatefulFunctionContext ctxt, String username, String password) throws SQLException {
+    public static int runFunction(ApiaryTransactionalContext ctxt, String username, String password) throws SQLException {
         ResultSet pwdCheck = (ResultSet) ctxt.apiaryExecuteQuery(checkPassword, username);
         if (pwdCheck.next() && pwdCheck.getString(1).equals(password)) {
             return 0; // Success!
         } else {
-            return 1; // Failed login, user does not exist or password wrong.
+            return 1; // Failed login: the user does not exist or the password is wrong.
         }
     }
 }
@@ -111,19 +117,19 @@ public class NectarLogin extends PostgresFunction {
 In Spring, we call this function whenever a user tries to log in:
 
 ```java
-    @PostMapping("/login")
-    public RedirectView loginSubmit(@ModelAttribute Credentials credentials, @ModelAttribute("logincredentials") Credentials logincredentials, RedirectAttributes attributes) throws InvalidProtocolBufferException {
-        int success = client.executeFunction("localhost", "NectarLogin", "nectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
-        if (success == 0) {
-            logincredentials.setUsername(credentials.getUsername());
-            logincredentials.setPassword(credentials.getPassword());
-            // make sure the credential can be saved across page reload.
-            attributes.addFlashAttribute("logincredentials", logincredentials);
-            return new RedirectView("/timeline");
-        } else {
-            return new RedirectView("/home");
-        }
+@PostMapping("/login")
+public RedirectView loginSubmit(@ModelAttribute Credentials credentials, @ModelAttribute("logincredentials") Credentials logincredentials, RedirectAttributes attributes) throws InvalidProtocolBufferException {
+    int success = client.executeFunction("localhost", "NectarLogin", "NectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
+    if (success == 0) { // Login successful.
+        logincredentials.setUsername(credentials.getUsername());
+        logincredentials.setPassword(credentials.getPassword());
+        // Ensure credentials are saved across page reloads.
+        attributes.addFlashAttribute("logincredentials", logincredentials);
+        return new RedirectView("/timeline");
+    } else { // Login failed.
+        return new RedirectView("/home");
     }
+}
 ```
 
 We similarly write [AddPosts](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/functions/NectarAddPost.java)
@@ -133,7 +139,7 @@ you can see code for all four functions [here](https://github.com/DBOS-project/a
 
 With our functions written, it's almost time to launch our site.
 We'll now tell the [Spring controller](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/NectarController.java)
-to launch an Apiary worker on startup to receive all the Apiary function requests,
+to launch an Apiary worker on startup to manage all the Apiary function requests,
 then register all our functions with the worker:
 
 ```java

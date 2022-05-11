@@ -249,7 +249,6 @@ public class PostgresTests {
         long resExecId = rs.getLong(3);
         String resService = rs.getString(4);
         String resFuncName = rs.getString(5);
-        assertEquals(0L, resExecId);
         assertEquals(resService, "testPostgresProvService");
         assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
 
@@ -258,7 +257,6 @@ public class PostgresTests {
         resExecId = rs.getLong(3);
         resService = rs.getString(4);
         resFuncName = rs.getString(5);
-        assertEquals(0l, resExecId);
         assertEquals(resService, "testPostgresProvService");
         assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
 

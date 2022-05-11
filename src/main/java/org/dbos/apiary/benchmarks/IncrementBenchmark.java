@@ -42,7 +42,7 @@ public class IncrementBenchmark {
         for (int threadNum = 0; threadNum < numThreads; threadNum++) {
             Runnable threadRunnable = () -> {
                 ZContext clientContext = new ZContext();
-                ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+                ApiaryWorkerClient client = new ApiaryWorkerClient("localhost", clientContext);
                 ZMQ.Poller poller = clientContext.createPoller(distinctHosts.size());
                 for (String hostname : distinctHosts) {
                     ZMQ.Socket socket = client.getSocket(hostname);

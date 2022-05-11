@@ -34,7 +34,7 @@ public class RetwisBenchmark {
         conn.client.callProcedure("TruncateTables");
 
         ZContext loadClientContext = new ZContext();
-        ThreadLocal<ApiaryWorkerClient> loadClient = ThreadLocal.withInitial(() -> new ApiaryWorkerClient(ZContext.shadow(loadClientContext)));
+        ThreadLocal<ApiaryWorkerClient> loadClient = ThreadLocal.withInitial(() -> new ApiaryWorkerClient(voltAddr, ZContext.shadow(loadClientContext)));
         Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
 
         AtomicInteger timestamp = new AtomicInteger(0);
@@ -48,7 +48,7 @@ public class RetwisBenchmark {
                     int postID = postIDs.incrementAndGet();
                     int ts = timestamp.incrementAndGet();
                     String postString = String.format("matei%d", postID);
-                    loadClient.get().executeFunction(conn.getHostname(userID), "RetwisPost", "defaultService", userID, postID, ts, postString);
+                    loadClient.get().executeFunction("RetwisPost", "defaultService", userID, postID, ts, postString);
                     latch.countDown();
                 } catch (InvalidProtocolBufferException e) {
                     e.printStackTrace();
@@ -64,7 +64,7 @@ public class RetwisBenchmark {
                 Runnable r = () ->  {
                     try {
                         int followeeID = (firstFollowee + finalI) % numUsers;
-                        loadClient.get().executeFunction(conn.getHostname(finalUserID), "RetwisFollow", "defaultService", finalUserID, followeeID);
+                        loadClient.get().executeFunction("RetwisFollow", "defaultService", finalUserID, followeeID);
                         latch.countDown();
                     } catch (InvalidProtocolBufferException e) {
                         e.printStackTrace();
@@ -90,7 +90,7 @@ public class RetwisBenchmark {
         for (int threadNum = 0; threadNum < numThreads; threadNum++) {
             Runnable threadRunnable = () -> {
                 ZContext clientContext = new ZContext();
-                ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+                ApiaryWorkerClient client = new ApiaryWorkerClient(voltAddr, clientContext);
                 ZMQ.Poller poller = clientContext.createPoller(distinctHosts.size());
                 for (String hostname : distinctHosts) {
                     ZMQ.Socket socket = client.getSocket(hostname);

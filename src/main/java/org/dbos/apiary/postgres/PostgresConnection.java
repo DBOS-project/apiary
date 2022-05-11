@@ -122,4 +122,9 @@ public class PostgresConnection implements ApiaryConnection {
     public Map<Integer, String> getPartitionHostMap() {
         return Map.of(0, "localhost");
     }
+
+    @Override
+    public int getClientID() {
+        return 0;
+    }
 }

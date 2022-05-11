@@ -18,16 +18,26 @@ public class ApiaryWorkerClient {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorkerClient.class);
 
     private final InternalApiaryWorkerClient internalClient;
+    private final String apiaryWorkerAddress;
+    private final int clientID;
 
     // A map that stores unique execution ID for each service.
     private final static AtomicLong execIDGenerator = new AtomicLong(0);
 
-    public ApiaryWorkerClient() {
-        internalClient = new InternalApiaryWorkerClient(new ZContext());
+    public ApiaryWorkerClient(String apiaryWorkerAddress) {
+        this(apiaryWorkerAddress, new ZContext());
     }
 
-    public ApiaryWorkerClient(ZContext zContext) {
-        internalClient = new InternalApiaryWorkerClient(zContext);
+    public ApiaryWorkerClient(String apiaryWorkerAddress, ZContext zContext) {
+        this.apiaryWorkerAddress = apiaryWorkerAddress;
+        this.internalClient = new InternalApiaryWorkerClient(zContext);
+        int tmpID = 0;
+        try {
+            tmpID = internalClient.executeFunction(this.apiaryWorkerAddress, "GetApiaryClientID", "ApiarySystem", 0l).getInt();
+        } catch (InvalidProtocolBufferException e) {
+            e.printStackTrace();
+        }
+        this.clientID = tmpID;
     }
     
     // This can be used by asynchronous client.
@@ -41,8 +51,8 @@ public class ApiaryWorkerClient {
 
 
     // Synchronous blocking invocation, supposed to be used by client/loadgen.
-    public FunctionOutput executeFunction(String address, String name, String service, Object... arguments) throws InvalidProtocolBufferException {
-        return internalClient.executeFunction(address, name, service, getExecutionId(),  arguments);
+    public FunctionOutput executeFunction(String name, String service, Object... arguments) throws InvalidProtocolBufferException {
+        return internalClient.executeFunction(this.apiaryWorkerAddress, name, service, getExecutionId(), arguments);
     }
 
     /* --------------------------- Internal functions ------------------------------- */

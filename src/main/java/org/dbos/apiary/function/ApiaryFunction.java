@@ -16,6 +16,7 @@ public interface ApiaryFunction {
         if (prev != null) {
             return prev;
         }
+
         // Use reflection to find internal runFunction.
         Method functionMethod = Utilities.getFunctionMethod(this, "runFunction");
         assert functionMethod != null;

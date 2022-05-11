@@ -40,6 +40,7 @@ public class ApiaryWorker {
     private final ZContext zContext = new ZContext(2);  // TODO: How many IO threads?
     private Thread serverThread;
     private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
+    private final Set<String> systemFunctions = new HashSet<>(List.of("GetApiaryClientID"));
     private final ExecutorService reqThreadPool;
     private final ExecutorService statelessReqThreadPool;
     private final ExecutorService repThreadPool;
@@ -83,6 +84,14 @@ public class ApiaryWorker {
             e.printStackTrace();
         }
         provenanceBuffer = tempBuffer;
+    }
+
+    private FunctionOutput runSystemFunction(String name) {
+        if (name.startsWith("GetApiaryClientID")) {
+            int clientID = c.getClientID();
+            return new FunctionOutput(clientID, List.of());
+        }
+        return null;
     }
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
@@ -159,7 +168,9 @@ public class ApiaryWorker {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {
-            if (!statelessFunctions.containsKey(name)) {
+            if (systemFunctions.contains(name)) {
+                o = runSystemFunction(name);
+            } else if (!statelessFunctions.containsKey(name)) {
                 o = c.callFunction(provenanceBuffer, service, execID, functionID, name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();

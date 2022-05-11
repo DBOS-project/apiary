@@ -190,6 +190,11 @@ public class VoltConnection implements ApiaryConnection {
     }
 
     @Override
+    public int getClientID() {
+        return 0;
+    }
+
+    @Override
     public int getNumPartitions() {
         return this.numPartitions;
     }

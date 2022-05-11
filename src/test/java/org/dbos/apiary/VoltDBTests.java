@@ -67,12 +67,12 @@ public class VoltDBTests {
             stmt.execute(String.format("TRUNCATE TABLE %s;", table));
         }
 
-        ApiaryWorkerClient client = new ApiaryWorkerClient();
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int res;
         int key = 10, value = 100;
 
-        res = client.executeFunction("localhost", "VoltProvenanceBasic", "testVoltProvService", key, value).getInt();
+        res = client.executeFunction("VoltProvenanceBasic", "testVoltProvService", key, value).getInt();
         assertEquals(101, res);
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);

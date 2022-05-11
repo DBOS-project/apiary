@@ -192,4 +192,9 @@ public class CockroachDBConnection implements ApiaryConnection {
         return partitionHostMap;
     }
 
+    @Override
+    public int getClientID() {
+        return 0;
+    }
+
 }

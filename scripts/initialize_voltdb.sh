@@ -8,6 +8,11 @@ SCRIPT_DIR=$(dirname $(readlink -f $0))
 # Enter the root dir of the repo.
 cd ${SCRIPT_DIR}/../
 
+# Remove previous compilation files.
+if [[ -d obj/ ]]; then
+    rm -r obj/
+fi
+
 VOLTDB_BIN="${VOLT_HOME}/bin"
 
 voltdb init -f --dir=/var/tmp --config ${SCRIPT_DIR}/local_config.xml

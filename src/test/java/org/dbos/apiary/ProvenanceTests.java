@@ -26,6 +26,8 @@ public class ProvenanceTests {
         }
         String table = "FUNCINVOCATIONS";
 
+        // Wait until previous exporter finished.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
         Connection conn = buf.conn.get();
         Statement stmt = conn.createStatement();
         stmt.execute(String.format("TRUNCATE TABLE %s;", table));

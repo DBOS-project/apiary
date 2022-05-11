@@ -86,14 +86,6 @@ public class ApiaryWorker {
         provenanceBuffer = tempBuffer;
     }
 
-    private FunctionOutput runSystemFunction(String name) {
-        if (name.startsWith("GetApiaryClientID")) {
-            int clientID = c.getClientID();
-            return new FunctionOutput(clientID, List.of());
-        }
-        return null;
-    }
-
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
         int numTraversed = 0;
         int totalTasks = currTask.queuedTasks.size();
@@ -168,9 +160,7 @@ public class ApiaryWorker {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {
-            if (systemFunctions.contains(name)) {
-                o = runSystemFunction(name);
-            } else if (!statelessFunctions.containsKey(name)) {
+            if (!statelessFunctions.containsKey(name)) {
                 o = c.callFunction(provenanceBuffer, service, execID, functionID, name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();

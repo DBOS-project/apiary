@@ -52,7 +52,8 @@ public class PostgresConnection implements ApiaryConnection {
         }
         dropTable("RecordedOutputs"); // TODO: Unique client IDs.
         createTable("RecordedOutputs", "ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID)");
-        createTable("FuncInvocations", "APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_TIMESTAMP BIGINT NOT NULL, EXECUTIONID BIGINT NOT NULL, SERVICE VARCHAR(1024) NOT NULL, PROCEDURENAME VARCHAR(1024) NOT NULL");
+        createTable("FuncInvocations", "APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_EXPORT_TIMESTAMP BIGINT NOT NULL, EXECUTIONID BIGINT NOT NULL, SERVICE VARCHAR(1024) NOT NULL, PROCEDURENAME VARCHAR(1024) NOT NULL");
+        createTable("ApiaryMetadata", "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
     }
 
     public void registerFunction(String name, Callable<PostgresFunction> function) { functions.put(name, function); }
@@ -123,8 +124,4 @@ public class PostgresConnection implements ApiaryConnection {
         return Map.of(0, "localhost");
     }
 
-    @Override
-    public int getClientID() {
-        return 0;
-    }
 }

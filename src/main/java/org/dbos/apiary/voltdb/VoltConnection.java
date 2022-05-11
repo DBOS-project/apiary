@@ -114,6 +114,10 @@ public class VoltConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String funcName, Object... inputs) throws IOException, ProcCallException {
+        if (funcName.startsWith("GetApiaryClientID")) {
+            // TODO: implement the actual one.
+            return new FunctionOutput(0, List.of());
+        }
         VoltTable voltInput = inputToVoltTable(service, execID, functionID, inputs);
         assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
         Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];
@@ -187,11 +191,6 @@ public class VoltConnection implements ApiaryConnection {
     @Override
     public Map<Integer, String> getPartitionHostMap() {
         return this.partitionHostMap;
-    }
-
-    @Override
-    public int getClientID() {
-        return 0;
     }
 
     @Override

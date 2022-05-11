@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
@@ -113,6 +114,10 @@ public class CockroachDBConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String name, Object... inputs) throws Exception {
+        if (name.startsWith("GetApiaryClientID")) {
+            // TODO: implement the actual one.
+            return new FunctionOutput(0, List.of());
+        }
         CockroachDBFunction function = functions.get(name).call();
         FunctionOutput f = null;
         try {
@@ -190,11 +195,6 @@ public class CockroachDBConnection implements ApiaryConnection {
     @Override
     public Map<Integer, String> getPartitionHostMap() {
         return partitionHostMap;
-    }
-
-    @Override
-    public int getClientID() {
-        return 0;
     }
 
 }

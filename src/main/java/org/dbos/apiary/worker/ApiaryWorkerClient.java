@@ -20,7 +20,7 @@ public class ApiaryWorkerClient {
     private final InternalApiaryWorkerClient internalClient;
 
     // A map that stores unique execution ID for each service.
-    private final static Map<String, AtomicLong> serviceExecutionIdMap = new ConcurrentHashMap<>();
+    private final static AtomicLong execIDGenerator = new AtomicLong(0);
 
     public ApiaryWorkerClient() {
         internalClient = new InternalApiaryWorkerClient(new ZContext());
@@ -36,20 +36,17 @@ public class ApiaryWorkerClient {
     }
 
     public static byte[] serializeExecuteRequest(String name, String service, Object... arguments) {
-        return InternalApiaryWorkerClient.serializeExecuteRequest(name, service, getExecutionId(service), 0l, 0l, arguments);
+        return InternalApiaryWorkerClient.serializeExecuteRequest(name, service, getExecutionId(), 0L, 0L, arguments);
     }
 
 
     // Synchronous blocking invocation, supposed to be used by client/loadgen.
     public FunctionOutput executeFunction(String address, String name, String service, Object... arguments) throws InvalidProtocolBufferException {
-        return internalClient.executeFunction(address, name, service, getExecutionId(service),  arguments);
+        return internalClient.executeFunction(address, name, service, getExecutionId(),  arguments);
     }
 
     /* --------------------------- Internal functions ------------------------------- */
-    private static long getExecutionId(String service) {
-        if (!serviceExecutionIdMap.containsKey(service)) {
-            serviceExecutionIdMap.put(service, new AtomicLong(0));
-        }
-        return serviceExecutionIdMap.get(service).getAndIncrement();
+    private static long getExecutionId() {
+        return execIDGenerator.incrementAndGet();
     }
 }

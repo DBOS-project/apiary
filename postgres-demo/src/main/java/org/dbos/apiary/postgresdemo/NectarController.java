@@ -32,16 +32,16 @@ public class NectarController {
 
     public NectarController() throws SQLException {
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
-        conn.dropTable("WebsiteLogins");
+        conn.dropTable("WebsiteLogins"); // For testing.
+        conn.dropTable("WebsitePosts"); // For testing.
         conn.createTable("WebsiteLogins", "Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL");
-        conn.dropTable("WebsitePosts");
         conn.createTable("WebsitePosts", "Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL");
         conn.registerFunction("NectarRegister", NectarRegister::new);
         conn.registerFunction("NectarLogin", NectarLogin::new);
         conn.registerFunction("NectarAddPost", NectarAddPost::new);
         conn.registerFunction("NectarGetPosts", NectarGetPosts::new);
 
-        ApiaryWorker apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+        ApiaryWorker apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4, "postgres", ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.startServing();
 
         this.client = new ApiaryWorkerClient();
@@ -65,7 +65,7 @@ public class NectarController {
 
     @PostMapping("/registration")
     public String registrationSubmit(@ModelAttribute Credentials credentials, Model model) throws IOException {
-        int success = client.executeFunction("localhost", "NectarRegister", "nectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
+        int success = client.executeFunction("localhost", "NectarRegister", "NectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
         if (success != 0) {
             return "redirect:/home";
         }
@@ -81,14 +81,14 @@ public class NectarController {
 
     @PostMapping("/login")
     public RedirectView loginSubmit(@ModelAttribute Credentials credentials, @ModelAttribute("logincredentials") Credentials logincredentials, RedirectAttributes attributes) throws InvalidProtocolBufferException {
-        int success = client.executeFunction("localhost", "NectarLogin", "nectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
-        if (success == 0) {
+        int success = client.executeFunction("localhost", "NectarLogin", "NectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
+        if (success == 0) { // Login successful.
             logincredentials.setUsername(credentials.getUsername());
             logincredentials.setPassword(credentials.getPassword());
-            // make sure the credential can be saved across page reload.
+            // Ensure credentials are saved across page reloads.
             attributes.addFlashAttribute("logincredentials", logincredentials);
             return new RedirectView("/timeline");
-        } else {
+        } else { // Login failed.
             return new RedirectView("/home");
         }
     }
@@ -103,7 +103,7 @@ public class NectarController {
 
     private List<WebPost> findUserPosts(String username) throws InvalidProtocolBufferException {
         List<WebPost> postList = new ArrayList<>();
-        String[] posts = client.executeFunction("localhost", "NectarGetPosts", "nectarNetwork", username).getStringArray();
+        String[] posts = client.executeFunction("localhost", "NectarGetPosts", "NectarNetwork", username).getStringArray();
         for (String post: posts) {
             WebPost webPost = new WebPost();
             JSONObject obj = (JSONObject) JSONValue.parse(post);
@@ -132,7 +132,7 @@ public class NectarController {
         if (logincredentials.getUsername() == null) {
             return new RedirectView("/home");
         }
-        client.executeFunction("localhost", "NectarAddPost", "nectarNetwork", logincredentials.getUsername(), webPost.getReceiver(), webPost.getPostText());
+        client.executeFunction("localhost", "NectarAddPost", "NectarNetwork", logincredentials.getUsername(), webPost.getReceiver(), webPost.getPostText());
         return new RedirectView("/timeline");
     }
 

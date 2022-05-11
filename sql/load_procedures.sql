@@ -3,6 +3,9 @@ load classes target/DBOSProcedures.jar;
 DROP PROCEDURE TruncateTables IF EXISTS;
 CREATE PROCEDURE FROM CLASS org.dbos.apiary.procedures.voltdb.TruncateTables;
 
+DROP PROCEDURE GetApiaryClientID IF EXISTS;
+CREATE PROCEDURE PARTITION ON TABLE MetadataTable COLUMN MetadataKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.GetApiaryClientID;
+
 DROP PROCEDURE AdditionFunction IF EXISTS;
 CREATE PROCEDURE PARTITION ON TABLE KVTable COLUMN KVKey PARAMETER 0 FROM CLASS org.dbos.apiary.procedures.voltdb.tests.AdditionFunction;
 

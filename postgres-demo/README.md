@@ -165,3 +165,38 @@ Then, navigate to `localhost:8081` to view this new social network!
 
 ### Provenance
 
+One of the most interesting features of Apiary is _data provenance capture_.
+Apiary automatically records the provenance of each record,
+the set of all operations (read or write) that ever occured on it.
+For example, the provenance of a record in our `WebsiteLogins` table
+would be the original registration operation that created it
+as well as all the login attempts ever made to that username.
+Apiary stores this information in database tables so it can easily
+be queried in SQL; for example, we automatically create and populate
+a `WebsiteLoginsProvenance` table containing provenance information
+for `WebsiteLogins`.
+
+As a simple application of provenance, we might imagine querying
+how many login attempts have occured for a particular account in the last
+five minutes,  for example to send an alert in case of a large
+number of failed attempts:
+
+```postgresql
+>> psql
+postgres=# SELECT COUNT(*) FROM WebsiteLoginsProvenance WHERE username='peter' AND apiary_timestamp / 1000000 > (select extract(epoch from now()) - 300);
+count
+-------
+    5123
+(1 row)
+```
+We write the query like this because Apiary records timestamps in
+microseconds using Unix time, but Postgres reports timestamps in seconds.
+
+Another application of Apiary provenance is rollback.  Because we
+record all operations on data, we can easily roll back the database
+(and therefore all application state) to a previous time,
+in case of corruption or attack.  For example, using our rollback
+script (source here), you can roll back Nectar Network to
+any previous timestamp:
+
+    scripts/rollback.sh TIMESTAMP

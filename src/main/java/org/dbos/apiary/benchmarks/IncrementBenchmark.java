@@ -94,9 +94,9 @@ public class IncrementBenchmark {
                         Integer key = ThreadLocalRandom.current().nextInt(numKeys);
                         byte[] reqBytes;
                         if (stateless) {
-                            reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementStatelessDriver", service,   key);
+                            reqBytes = client.serializeExecuteRequest("IncrementStatelessDriver", service,   key);
                         } else {
-                            reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementProcedure", service, key);
+                            reqBytes = client.serializeExecuteRequest("IncrementProcedure", service, key);
                         }
                         ZMQ.Socket socket = client.getSocket(conn.getHostname(new Object[]{key}));
                         socket.send(reqBytes, 0);

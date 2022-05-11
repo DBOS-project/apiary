@@ -146,7 +146,7 @@ public class RetwisBenchmark {
                         // Send out a request.
                         lastSentTime = System.nanoTime();
                         int userID = ThreadLocalRandom.current().nextInt(numUsers);
-                        byte[] reqBytes = ApiaryWorkerClient.serializeExecuteRequest("RetwisGetTimeline", service, userID);
+                        byte[] reqBytes = client.serializeExecuteRequest("RetwisGetTimeline", service, userID);
                         ZMQ.Socket socket = client.getSocket(conn.getHostname(String.valueOf(userID)));
                         socket.send(reqBytes, 0);
                         messagesSent++;

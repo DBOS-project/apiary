@@ -6,8 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.*;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -22,7 +20,7 @@ public class ApiaryWorkerClient {
     private final int clientID;
 
     // A map that stores unique execution ID for each service.
-    private final static AtomicLong execIDGenerator = new AtomicLong(0);
+    private final AtomicLong execIDGenerator = new AtomicLong(0);
 
     public ApiaryWorkerClient(String apiaryWorkerAddress) {
         this(apiaryWorkerAddress, new ZContext());
@@ -45,7 +43,7 @@ public class ApiaryWorkerClient {
         return internalClient.getSocket(address);
     }
 
-    public static byte[] serializeExecuteRequest(String name, String service, Object... arguments) {
+    public byte[] serializeExecuteRequest(String name, String service, Object... arguments) {
         return InternalApiaryWorkerClient.serializeExecuteRequest(name, service, getExecutionId(), 0L, 0L, arguments);
     }
 
@@ -56,7 +54,7 @@ public class ApiaryWorkerClient {
     }
 
     /* --------------------------- Internal functions ------------------------------- */
-    private static long getExecutionId() {
-        return execIDGenerator.incrementAndGet();
+    private long getExecutionId() {
+        return ((long)this.clientID << 48) + execIDGenerator.incrementAndGet();
     }
 }

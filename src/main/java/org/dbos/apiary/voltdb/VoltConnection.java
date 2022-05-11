@@ -118,7 +118,10 @@ public class VoltConnection implements ApiaryConnection {
     public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String funcName, Object... inputs) throws IOException, ProcCallException {
         VoltTable voltInput = inputToVoltTable(service, execID, functionID, inputs);
         assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
-        Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];
+        Integer keyInput = 0;
+        if (!funcName.startsWith(getApiaryClientID)) {
+            keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];
+        }
         VoltTable[] res = client.callProcedure(funcName, keyInput, voltInput).getResults();
         VoltTable retVal = res[0];
         assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);

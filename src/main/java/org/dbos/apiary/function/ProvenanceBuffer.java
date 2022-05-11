@@ -20,6 +20,10 @@ public class ProvenanceBuffer {
     public static final int batchSize = 100000;  // TODO: configurable?
     public static final String padding = "0";
     public static final int exportInterval = 1000;
+
+    /**
+     * Enum class for provenance operations.
+     */
     public enum ExportOperation {
         INSERT(1),
         DELETE(2),

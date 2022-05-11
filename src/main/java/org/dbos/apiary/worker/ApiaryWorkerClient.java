@@ -10,8 +10,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-
-// Note: ZMQ.Socket is not thread-safe, so this class is not thread-safe either.
+/**
+ * ApiaryWorkerClient provides interface for invoking Apiary functions from a remote client.
+ * Note that this class is not thread-safe (due to ZMQ.Socket), thus cannot be shared between threads.
+ */
 public class ApiaryWorkerClient {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorkerClient.class);
 

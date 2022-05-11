@@ -24,7 +24,7 @@
                 <configuration>
                     <show>public</show>
                     <doctitle>Apiary Public API</doctitle>
-                    <subpackages>org.dbos.apiary.interposition:org.dbos.apiary.executor:org.dbos.apiary.worker:org.dbos.apiary.postgres:org.dbos.apiary.voltdb</subpackages>
+                    <subpackages>org.dbos.apiary.function:org.dbos.apiary.worker:org.dbos.apiary.postgres:org.dbos.apiary.voltdb</subpackages>
                 </configuration>
             </plugin>
             <plugin>

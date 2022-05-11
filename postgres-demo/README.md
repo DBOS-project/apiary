@@ -27,7 +27,7 @@ to monitor website activity and provide
 cool features like easily rolling back
 your database and application to any previous point in time.
 
-
+### Tables 
 The first thing we need to do is  create some database tables in Postgres
 to store the information our site needs: logins and posts.
 We create these tables inside the Spring Boot controller
@@ -41,6 +41,8 @@ PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postg
 conn.createTable("WebsiteLogins", "Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL");
 conn.createTable("WebsitePosts", "Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL");
 ```
+
+### Functions
 
 Now, let's write some functions.
 We'll start with a simple register function that registers new users.
@@ -137,6 +139,8 @@ and [GetPosts](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/sr
 functions in Apiary and call them in Spring;
 you can see code for all four functions [here](https://github.com/DBOS-project/apiary/tree/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/functions).
 
+### Tying it Together
+
 With our functions written, it's almost time to launch our site.
 We'll now tell the [Spring controller](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/NectarController.java)
 to launch an Apiary worker on startup to manage all the Apiary function requests,
@@ -158,3 +162,6 @@ Everything's ready!  To start the site, run in the `postgres-demo` root director
     mvn clean && mvn package && mvn spring-boot:run
 
 Then, navigate to `localhost:8081` to view this new social network!
+
+### Provenance
+

@@ -1,6 +1,6 @@
 package org.dbos.apiary.procedures.postgres.retwis;
 
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
+import org.dbos.apiary.function.ApiaryTransactionalContext;
 import org.dbos.apiary.postgres.PostgresFunction;
 
 import java.sql.ResultSet;
@@ -11,7 +11,7 @@ import java.util.List;
 public class RetwisGetPosts extends PostgresFunction {
     private static final String getPosts = "SELECT Post FROM RetwisPosts WHERE UserID=? ORDER BY Timestamp LIMIT 10;";
 
-    public static String[] runFunction(ApiaryStatefulFunctionContext ctxt, int userID) throws SQLException {
+    public static String[] runFunction(ApiaryTransactionalContext ctxt, int userID) throws SQLException {
         ResultSet result = (ResultSet) ctxt.apiaryExecuteQuery(getPosts, userID);
         List<String> posts = new ArrayList<>();
         while (result.next()) {

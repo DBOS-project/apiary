@@ -1,11 +1,11 @@
 package org.dbos.apiary;
 
-import org.dbos.apiary.executor.ApiaryConnection;
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.connection.ApiaryConnection;
+import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.procedures.voltdb.tests.StatelessIncrement;
 import org.dbos.apiary.procedures.voltdb.tests.VoltProvenanceBasic;
 import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.voltdb.VoltDBConnection;
+import org.dbos.apiary.voltdb.VoltConnection;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
@@ -33,7 +33,7 @@ public class VoltDBTests {
 
     @BeforeEach
     public void reset() throws IOException, ProcCallException {
-        VoltDBConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ctxt.client.callProcedure("TruncateTables");
         apiaryWorker = null;
     }
@@ -48,7 +48,7 @@ public class VoltDBTests {
     @Test
     public void testVoltProvenance() throws IOException, SQLException, InterruptedException {
         logger.info("testVoltProvenance");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         apiaryWorker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
         apiaryWorker.startServing();
 
@@ -143,7 +143,7 @@ public class VoltDBTests {
     @Test
     public void testExactlyOnceVoltSyncCounter() throws IOException {
         logger.info("testExactlyOnceVoltSyncCounter");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
         worker.startServing();
 
@@ -168,7 +168,7 @@ public class VoltDBTests {
     @Test
     public void testExactlyOnceVoltStatelessCounter() throws IOException {
         logger.info("testExactlyOnceVoltStatelessCounter");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
         worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
         worker.startServing();

@@ -1,15 +1,14 @@
-package org.dbos.apiary.interposition;
+package org.dbos.apiary.function;
 
-import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.utilities.ApiaryConfig;
 
 /**
- * ApiaryStatefulFunctionContext is for functions that interact with databases.
+ * ApiaryTransactionalContext is for functions that interact with databases.
  * It provides additional APIs to execute database updates and queries.
  */
-public abstract class ApiaryStatefulFunctionContext extends ApiaryFunctionContext {
+public abstract class ApiaryTransactionalContext extends ApiaryContext {
 
-    public ApiaryStatefulFunctionContext(ProvenanceBuffer provBuff, String service, long execID, long functionID) {
+    public ApiaryTransactionalContext(ProvenanceBuffer provBuff, String service, long execID, long functionID) {
         super(provBuff, service, execID, functionID);
     }
     /** Public Interface for functions. **/

@@ -1,14 +1,14 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
-import org.dbos.apiary.interposition.ApiaryFuture;
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
-import org.dbos.apiary.voltdb.VoltApiaryProcedure;
+import org.dbos.apiary.function.ApiaryFuture;
+import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.voltdb.VoltFunction;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class CounterFunction extends VoltApiaryProcedure {
+public class CounterFunction extends VoltFunction {
 
     public final SQLStmt getValue = new SQLStmt(
             "SELECT KVValue FROM KVTable WHERE KVKey=?;"
@@ -18,7 +18,7 @@ public class CounterFunction extends VoltApiaryProcedure {
         return super.run(pkey, voltInput);
     }
 
-    public ApiaryFuture runFunction(ApiaryStatefulFunctionContext context, String keyString) {
+    public ApiaryFuture runFunction(ApiaryTransactionalContext context, String keyString) {
         int key = Integer.parseInt(keyString);
 
         VoltTable res = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];

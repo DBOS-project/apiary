@@ -1,8 +1,8 @@
 package org.dbos.apiary.voltdb;
 
-import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.interposition.*;
+import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.Task;
+import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.*;
@@ -12,7 +12,7 @@ import java.lang.reflect.InvocationTargetException;
 /**
  * All VoltDB functions should extend this class and implement <code>runFunction</code>.
  */
-public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction {
+public class VoltFunction extends VoltProcedure implements ApiaryFunction {
     public static final ProvenanceBuffer provBuff;
     public int pkey;
 
@@ -49,7 +49,7 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
         long functionID = (Long) parsedInput[2];
         Object[] funcInput = new Object[parsedInput.length - 3];
         System.arraycopy(parsedInput, 3, funcInput, 0, funcInput.length);
-        FunctionOutput output = apiaryRunFunction(new VoltFunctionContext(this, provBuff, service, execID, functionID), funcInput);
+        FunctionOutput output = apiaryRunFunction(new VoltContext(this, provBuff, service, execID, functionID), funcInput);
         return serializeOutput(output);
     }
 
@@ -148,13 +148,13 @@ public class VoltApiaryProcedure extends VoltProcedure implements ApiaryFunction
     }
 
     @Override
-    public void recordInvocation(ApiaryFunctionContext ctxt, String funcName) {
+    public void recordInvocation(ApiaryContext ctxt, String funcName) {
         if (ctxt.provBuff == null) {
             // If no OLAP DB available.
             return;
         }
         long timestamp = Utilities.getMicroTimestamp();
-        long txid = ((ApiaryStatefulFunctionContext) ctxt).apiaryGetTransactionId();
+        long txid = ((ApiaryTransactionalContext) ctxt).apiaryGetTransactionId();
         ctxt.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txid, timestamp, ctxt.execID, ctxt.service, funcName);
     }
 }

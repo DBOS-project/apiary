@@ -1,4 +1,4 @@
-package org.dbos.apiary.interposition;
+package org.dbos.apiary.function;
 
 import java.io.Serializable;
 

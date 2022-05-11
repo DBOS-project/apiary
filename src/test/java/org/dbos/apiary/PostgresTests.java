@@ -1,7 +1,7 @@
 package org.dbos.apiary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.tests.*;
 import org.dbos.apiary.procedures.postgres.retwis.*;

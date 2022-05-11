@@ -6,11 +6,11 @@ import org.apache.commons_voltpatches.cli.CommandLine;
 import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
 import org.apache.commons_voltpatches.cli.Options;
-import org.dbos.apiary.executor.ApiaryConnection;
+import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.increment.IncrementStatelessDriver;
 import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.voltdb.VoltDBConnection;
+import org.dbos.apiary.voltdb.VoltConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.dbos.apiary.procedures.cockroachdb.CockroachDBIncrementFunction;
@@ -44,7 +44,7 @@ public class ApiaryWorkerExecutable {
         ApiaryConnection c;
         if (db.equals("voltdb")) {
             // Only need to connect to localhost.
-            c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         } else if (db.equals("cockroachdb")) {
             c = getCockroachDBConnection(
                     /* cockroachdbAddr= */cmd.hasOption("cockroachdbAddr") ? cmd.getOptionValue("cockroachdbAddr")

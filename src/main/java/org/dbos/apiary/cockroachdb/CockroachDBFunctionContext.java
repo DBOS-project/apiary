@@ -1,16 +1,15 @@
 package org.dbos.apiary.cockroachdb;
 
-import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.interposition.ApiaryFunction;
-import org.dbos.apiary.interposition.ApiaryFunctionContext;
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.ApiaryFunction;
+import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.function.ProvenanceBuffer;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-public class CockroachDBFunctionContext extends ApiaryStatefulFunctionContext {
+public class CockroachDBFunctionContext extends ApiaryTransactionalContext {
 
     public CockroachDBFunctionContext(ProvenanceBuffer provBuff, String service, long execID) {
         super(provBuff, service, execID, 0);

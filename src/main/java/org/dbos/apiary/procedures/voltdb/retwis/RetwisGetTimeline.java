@@ -1,8 +1,8 @@
 package org.dbos.apiary.procedures.voltdb.retwis;
 
-import org.dbos.apiary.interposition.ApiaryFuture;
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
-import org.dbos.apiary.voltdb.VoltApiaryProcedure;
+import org.dbos.apiary.function.ApiaryFuture;
+import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.voltdb.VoltFunction;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
@@ -10,7 +10,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RetwisGetTimeline extends VoltApiaryProcedure {
+public class RetwisGetTimeline extends VoltFunction {
     public final SQLStmt getFollowees = new SQLStmt(
             "SELECT FolloweeID FROM RetwisFollowees WHERE UserID=?;"
     );
@@ -19,7 +19,7 @@ public class RetwisGetTimeline extends VoltApiaryProcedure {
         return super.run(pkey, voltInput);
     }
 
-    public ApiaryFuture runFunction(ApiaryStatefulFunctionContext context, int userID) {
+    public ApiaryFuture runFunction(ApiaryTransactionalContext context, int userID) {
         VoltTable followeesTable = ((VoltTable[]) context.apiaryExecuteQuery(getFollowees, userID))[0];
         List<Integer> followeesList = new ArrayList<>();
         while(followeesTable.advanceRow()) {

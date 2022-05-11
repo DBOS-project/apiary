@@ -1,6 +1,4 @@
-package org.dbos.apiary.executor;
-
-import org.dbos.apiary.interposition.ApiaryFuture;
+package org.dbos.apiary.function;
 
 import java.util.List;
 

@@ -1,8 +1,8 @@
 package org.dbos.apiary.postgres;
 
-import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.interposition.*;
+import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.Task;
+import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,15 +19,15 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * For internal use only.
  */
-public class PostgresFunctionContext extends ApiaryStatefulFunctionContext {
-    private static final Logger logger = LoggerFactory.getLogger(PostgresFunctionContext.class);
+public class PostgresContext extends ApiaryTransactionalContext {
+    private static final Logger logger = LoggerFactory.getLogger(PostgresContext.class);
     // This connection ties to all prepared statements in one transaction.
     private final Connection conn;
     private long transactionId;  // This is the transaction ID of the main transaction. Postgres subtransaction IDs are invisible.
     private AtomicLong functionIDCounter = new AtomicLong(0);
     private long currentID = functionID;
 
-    public PostgresFunctionContext(Connection c, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
+    public PostgresContext(Connection c, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
         super(provBuff, service, execID, functionID);
         this.conn= c;
         this.transactionId = -1;

@@ -1,6 +1,6 @@
 package org.dbos.apiary.utilities;
 
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.function.ProvenanceBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -5,13 +5,9 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
-import org.dbos.apiary.executor.ApiaryConnection;
-import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.interposition.ApiaryFunctionContext;
-import org.dbos.apiary.interposition.ApiaryStatelessFunctionContext;
-import org.dbos.apiary.interposition.ProvenanceBuffer;
-import org.dbos.apiary.interposition.StatelessFunction;
+import org.dbos.apiary.connection.ApiaryConnection;
+import org.dbos.apiary.function.Task;
+import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
@@ -167,7 +163,7 @@ public class ApiaryWorker {
                 o = c.callFunction(provenanceBuffer, service, execID, functionID, name, arguments);
             } else {
                 StatelessFunction f = statelessFunctions.get(name).call();
-                ApiaryFunctionContext ctxt = new ApiaryStatelessFunctionContext(c, localClients.get(), provenanceBuffer, service, execID, functionID, statelessFunctions);
+                ApiaryContext ctxt = new ApiaryStatelessContext(c, localClients.get(), provenanceBuffer, service, execID, functionID, statelessFunctions);
                 o = f.apiaryRunFunction(ctxt, arguments);
             }
         } catch (Exception e) {

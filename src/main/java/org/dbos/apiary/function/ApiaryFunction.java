@@ -1,6 +1,5 @@
-package org.dbos.apiary.interposition;
+package org.dbos.apiary.function;
 
-import org.dbos.apiary.executor.FunctionOutput;
 import org.dbos.apiary.utilities.Utilities;
 
 import java.lang.reflect.Method;
@@ -9,9 +8,9 @@ import java.lang.reflect.Method;
  * The base for all Apiary functions. Functions usually inherit as subclasses of it.
  */
 public interface ApiaryFunction {
-    void recordInvocation(ApiaryFunctionContext ctxt, String funcName);
+    void recordInvocation(ApiaryContext ctxt, String funcName);
 
-    default FunctionOutput apiaryRunFunction(ApiaryFunctionContext ctxt, Object... input) {
+    default FunctionOutput apiaryRunFunction(ApiaryContext ctxt, Object... input) {
         // Check if execution has already occured.
         FunctionOutput prev = ctxt.checkPreviousExecution();
         if (prev != null) {

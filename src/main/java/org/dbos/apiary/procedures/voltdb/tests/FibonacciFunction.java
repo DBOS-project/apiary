@@ -1,14 +1,14 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
-import org.dbos.apiary.interposition.ApiaryFuture;
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
-import org.dbos.apiary.voltdb.VoltApiaryProcedure;
+import org.dbos.apiary.function.ApiaryFuture;
+import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.voltdb.VoltFunction;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class FibonacciFunction extends VoltApiaryProcedure {
+public class FibonacciFunction extends VoltFunction {
 
     public final SQLStmt addResult = new SQLStmt(
             // KEY, VALUE
@@ -23,7 +23,7 @@ public class FibonacciFunction extends VoltApiaryProcedure {
         return super.run(pkey, voltInput);
     }
 
-    public Object runFunction(ApiaryStatefulFunctionContext context, int key) {
+    public Object runFunction(ApiaryTransactionalContext context, int key) {
         if (key < 0) {
             return -1;
         }

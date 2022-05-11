@@ -1,6 +1,6 @@
 package org.dbos.apiary.procedures.postgres.tests;
 
-import org.dbos.apiary.interposition.ApiaryStatefulFunctionContext;
+import org.dbos.apiary.function.ApiaryTransactionalContext;
 import org.dbos.apiary.postgres.PostgresFunction;
 
 import java.sql.ResultSet;
@@ -12,7 +12,7 @@ public class PostgresProvenanceBasic extends PostgresFunction {
     private static final String updateEntry = "UPDATE KVTABLE SET KVvalue=? WHERE KVKEY=?";
     private static final String deleteEntry = "DELETE FROM KVTable WHERE KVKey=?;";
 
-    public static int runFunction(ApiaryStatefulFunctionContext ctxt, int key, int baseValue) throws SQLException {
+    public static int runFunction(ApiaryTransactionalContext ctxt, int key, int baseValue) throws SQLException {
         if (key == 1) {
             ctxt.apiaryExecuteUpdate(addEntry, key, baseValue);
             return baseValue+1;

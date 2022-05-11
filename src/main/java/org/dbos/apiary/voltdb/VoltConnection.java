@@ -1,10 +1,10 @@
 package org.dbos.apiary.voltdb;
 
-import org.dbos.apiary.executor.ApiaryConnection;
-import org.dbos.apiary.executor.FunctionOutput;
-import org.dbos.apiary.executor.Task;
-import org.dbos.apiary.interposition.ApiaryFuture;
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.connection.ApiaryConnection;
+import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.Task;
+import org.dbos.apiary.function.ApiaryFuture;
+import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,15 +27,15 @@ import java.util.Map;
 /**
  * For internal use only.
  */
-public class VoltDBConnection implements ApiaryConnection {
-    private static final Logger logger = LoggerFactory.getLogger(VoltDBConnection.class);
+public class VoltConnection implements ApiaryConnection {
+    private static final Logger logger = LoggerFactory.getLogger(VoltConnection.class);
     public final Client client;
     public static String kPartitionInfoTableName = "PARTITIONINFO";
     private final Map<Integer, String> partitionHostMap = new HashMap<>();
     private final Map<Integer, String> hostIdNameMap = new HashMap<>();
     private int numPartitions;
 
-    public VoltDBConnection(String hostname, Integer port) throws IOException {
+    public VoltConnection(String hostname, Integer port) throws IOException {
         ClientConfig config = new ClientConfig();
         this.client = ClientFactory.createClient(config);
         client.createConnection(hostname, port);

@@ -1,12 +1,12 @@
 package org.dbos.apiary;
 
-import org.dbos.apiary.executor.ApiaryConnection;
+import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.tests.StatelessIncrement;
-import org.dbos.apiary.interposition.ProvenanceBuffer;
+import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.procedures.voltdb.tests.StatelessDriver;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
-import org.dbos.apiary.voltdb.VoltDBConnection;
+import org.dbos.apiary.voltdb.VoltConnection;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.dbos.apiary.worker.ApiaryWorkerClient;
@@ -29,7 +29,7 @@ public class WorkerTests {
     private static final Logger logger = LoggerFactory.getLogger(WorkerTests.class);
     @BeforeEach
     public void truncateTables() throws IOException, ProcCallException {
-        VoltDBConnection ctxt = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ctxt.client.callProcedure("TruncateTables");
     }
 
@@ -54,7 +54,7 @@ public class WorkerTests {
     public void testFib() throws IOException {
         logger.info("testFib");
         for (int i = 0; i < 10; i++) {
-            ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+            ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
             ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
             worker.startServing();
 
@@ -77,7 +77,7 @@ public class WorkerTests {
     @Test
     public void testAddition() throws IOException {
         logger.info("testAddition");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
         worker.startServing();
 
@@ -92,7 +92,7 @@ public class WorkerTests {
     @Test
     public void testAsyncClientAddition() throws IOException {
         logger.info("testAsyncClientAddition");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
         worker.startServing();
 
@@ -145,7 +145,7 @@ public class WorkerTests {
     @Test
     public void testStatelessCounter() throws IOException, InterruptedException {
         logger.info("testStatelessCounter");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
         worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
         worker.startServing();
@@ -171,7 +171,7 @@ public class WorkerTests {
     @Test
     public void testStatelessDriver() throws IOException {
         logger.info("testStatelessDriver");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
         worker.registerStatelessFunction("StatelessDriver", StatelessDriver::new);
         worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
@@ -191,7 +191,7 @@ public class WorkerTests {
     @Test
     public void testSynchronousCounter() throws IOException {
         logger.info("testSynchronousCounter");
-        ApiaryConnection c = new VoltDBConnection("localhost", ApiaryConfig.voltdbPort);
+        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
         worker.startServing();
 

@@ -20,11 +20,13 @@ public class GetApiaryClientID extends VoltFunction {
         return super.run(pkey, voltInput);
     }
 
-    public int runFunction(ApiaryTransactionalContext context, String key) {
-        voltQueueSQL(getValue, key);
+    private static final String clientIDName = "ClientID";
+
+    public int runFunction(ApiaryTransactionalContext context, int pkey) {
+        voltQueueSQL(getValue, clientIDName);
         VoltTable results = ((VoltTable[]) voltExecuteSQL())[0];
         int value = results.getRowCount() == 0 ? 0 : (int) results.fetchRow(0).getLong(0);
-        voltQueueSQL(updateValue, key, value + 1);
+        voltQueueSQL(updateValue, clientIDName, value + 1);
         voltExecuteSQL();
         return value + 1;
     }

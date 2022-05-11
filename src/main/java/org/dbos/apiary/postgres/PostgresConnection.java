@@ -52,7 +52,7 @@ public class PostgresConnection implements ApiaryConnection {
         }
         dropTable("RecordedOutputs"); // TODO: Unique client IDs.
         createTable("RecordedOutputs", "ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID)");
-        createTable("FuncInvocations", "APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_EXPORT_TIMESTAMP BIGINT NOT NULL, EXECUTIONID BIGINT NOT NULL, SERVICE VARCHAR(1024) NOT NULL, PROCEDURENAME VARCHAR(1024) NOT NULL");
+        createTable("FuncInvocations", "APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_TIMESTAMP BIGINT NOT NULL, EXECUTIONID BIGINT NOT NULL, SERVICE VARCHAR(1024) NOT NULL, PROCEDURENAME VARCHAR(1024) NOT NULL");
     }
 
     public void registerFunction(String name, Callable<PostgresFunction> function) { functions.put(name, function); }
@@ -73,7 +73,7 @@ public class PostgresConnection implements ApiaryConnection {
         if (!specStr.contains("APIARY_TRANSACTION_ID")) {
             ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
             ResultSetMetaData rsmd = r.getMetaData();
-            StringBuilder provTable = new StringBuilder(String.format("CREATE TABLE IF NOT EXISTS %sprov (APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_EXPORT_TIMESTAMP BIGINT NOT NULL, APIARY_EXPORT_OPERATION BIGINT NOT NULL", tableName));
+            StringBuilder provTable = new StringBuilder(String.format("CREATE TABLE IF NOT EXISTS %sprov (APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_TIMESTAMP BIGINT NOT NULL, APIARY_OPERATION_TYPE BIGINT NOT NULL", tableName));
             for (int i = 0; i < rsmd.getColumnCount(); i++) {
                 provTable.append(",");
                 provTable.append(rsmd.getColumnLabel(i + 1));

@@ -243,7 +243,7 @@ public class PostgresTests {
         // Check provenance tables.
         // Check function invocation table.
         String table = "FUNCINVOCATIONS";
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP DESC;", table));
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP DESC;", table));
         rs.next();
         long txid1 = rs.getLong(1);
         long resExecId = rs.getLong(3);
@@ -265,7 +265,7 @@ public class PostgresTests {
 
         // Check KVTable.
         table = "KVTABLEPROV";
-        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
+        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP;", table));
         rs.next();
 
         // Should be an insert for key=1.
@@ -371,7 +371,7 @@ public class PostgresTests {
 
         // Check KVTable.
         String table = "KVTABLEPROV";
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP;", table));
         rs.next();
 
         // Should be an insert for key=1.
@@ -392,7 +392,7 @@ public class PostgresTests {
 
         // Check KVTable.
         table = "KVTABLETWOPROV";
-        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
+        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP;", table));
         rs.next();
 
         // Should be an insert for key=1.

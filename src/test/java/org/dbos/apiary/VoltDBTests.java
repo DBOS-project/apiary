@@ -85,7 +85,8 @@ public class VoltDBTests {
         long resExecId = rs.getLong(3);
         String resService = rs.getString(4);
         String resFuncName = rs.getString(5);
-        assertEquals(0L, resExecId);
+        long expectedID = ((long)client.getClientID() << 48);
+        assertEquals(expectedID, resExecId);
         assertEquals(resService, "testVoltProvService");
         assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);
 
@@ -94,7 +95,6 @@ public class VoltDBTests {
         resExecId = rs.getLong(3);
         resService = rs.getString(4);
         resFuncName = rs.getString(5);
-        long expectedID = ((long)client.getClientID() << 48);
         assertEquals(expectedID, resExecId);
         assertEquals(resService, "testVoltProvService");
         assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);

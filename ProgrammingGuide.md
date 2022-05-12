@@ -1,0 +1,120 @@
+# Programming Guide
+
+This document provides a brief guide to programming in Apiary.  
+Please also see our [tutorial](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/README.md)
+and documentation.
+This document focuses on our Postgres DBMS backend, we also support VoltDB
+and will add other databases in the future.
+
+### Functions
+
+An Apiary program is made up of _functions_.
+Apiary provides two types of functions: transactional functions,
+which can access or modify data and run as DBMS transactions,
+and stateless functions, which do not access the database.
+We expect transactional functions to be used for operations on data 
+and stateless functions to be used for communicating with external services
+and for compute-intensive operations like machine learning inference.
+
+### Transactional Functions
+
+To write a transactional function, simply subclass the _PostgresFunction_
+class and implement your function in its _runFunction_ method.
+The first argument to a transactional function is always an _ApiaryTransactionalContext_ object
+automatically provided by Apiary and used to access its API.  Functions may
+have any number of additional arguments but can only take in and return
+integers, strings, arrays of integers, and arrays of strings.
+Here is an example of a transactional function that registers users in a social network
+taken from our  [tutorial](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/README.md):
+
+```java
+public class NectarRegister extends PostgresFunction {
+
+    private static final String checkExists = "SELECT * FROM WebsiteLogins WHERE Username=?";
+    private static final String register = "INSERT INTO WebsiteLogins(Username, Password) VALUES (?, ?);";
+
+    public static int runFunction(ApiaryTransactionalContext ctxt, String username, String password) throws SQLException {
+        ResultSet exists = (ResultSet) ctxt.apiaryExecuteQuery(checkExists, username);
+        if (exists.next()) {
+            return 1;  // Failed registration, username already exists.
+        }
+        ctxt.apiaryExecuteUpdate(register, username, password);
+        return 0;
+    }
+}
+```
+
+The _ApiaryTransactionalContext_ object provides methods for updating and querying the database,
+described in our documentation.  It also provides methods for calling other functions,
+described in more detail below.
+
+### Stateless Functions
+
+To write a stateless function, simply subclass the _StatelessFunction_ class
+and implement your function in its _runFunction_ method.
+The first argument to a stateless function is always an _ApiaryStatelessContext_ object
+automatically provided by Apiary and used to access its API.  Functions may
+have any number of additional arguments but can only take in and return
+integers, strings, arrays of integers, and arrays of strings.
+Here is a mockup of a stateless function that uses an external notification service
+to send a notification to a user:
+
+```java
+public class Notify extends StatelessFunction {
+
+    public static void runFunction(ApiaryStatelessContext context, String username, String message) {
+        // Use an external service to notify the user
+        // about some event, sending the input
+        // message to them.
+    }
+}
+```
+
+### Composing Functions
+
+Apiary functions can call one another
+synchronously and asynchronously.
+To call a function synchronously, use the `callFunction` method of
+the function context (`ApiaryTransactionalContext` or `ApiaryStatelessContext`).
+Synchronous calls execute and return inside the caller transaction
+(if the caller is transactional).
+Here's an example of when you might want to call a function synchronously,
+in a bank transfer where you need to validate the transfer, withdraw, and deposit,
+all in the same transaction:
+
+```java
+public class BankTransfer extends PostgresFunction {
+    public static int runFunction(ApiaryTransactionalContext context, 
+                                   int senderAccountNumber, int receiverAccountNumber, int amount) {
+        int validation = ctxt.apiaryCallFunction("org.example.bank.transfer.validate", senderAccountNumber, receiverAccountNumber, amount).getInt();
+        if (validation == 0) { // Validation succeeded.
+            ctxt.apiaryCallFunction("org.example.bank.transfer.withdraw", senderAccountNumber, receiverAccountNumber, amount);
+            ctxt.apiaryCallFunction("org.example.bank.transfer.deposit", senderAccountNumber, receiverAccountNumber, amount);
+            return 0;
+        } else { // Validation did not succeed.
+            return 1;
+        }
+    }
+}
+```
+
+To call a function asynchronously, use the `queueFunction` method of the function context.
+Asynchronous calls execute after their caller in a separate transaction.
+They return a future which can be passed to another function or returned,
+but cannot be dereferenced directly.
+Here's an example of when you might want to call a function asynchronously,
+where you want to notify a user that a message was sent to them but don't need to do it
+in the same transaction that made the post:
+
+```java
+public class SendMessage extends PostgresFunction {
+
+    private static final String addMessage = "INSERT INTO Messages(Sender, Receiver, MessageText) VALUES (?, ?, ?);";
+
+    public static ApiaryFuture runFunction(ApiaryTransactionalContext ctxt, String sender, String receiver, String message) {
+        ctxt.apiaryExecuteUpdate(addPost, sender, receiver, postText);
+        ApiaryFuture notificationSuccess = ctxt.apiaryQueueFunction("Notify", receiver, message);
+        return notificationSuccess; // This will be dereferenced upon delievery, so the caller will receieve the actual success value.
+    }
+}
+```

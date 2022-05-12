@@ -202,7 +202,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
             int numCol = rsmd.getColumnCount();
             // Record provenance data.
             Object[] rowData = new Object[numCol+3];
-            rowData[0] = this.transactionId;
+            rowData[0] = internalGetTransactionId();
             rowData[1] = timestamp;
             rowData[2] = exportOperation;
             while (rs.next()) {
@@ -244,7 +244,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
                     Map<String, Integer> schemaMap = getSchemaMap(tableName);
                     if (!tableToRowData.containsKey(tableName)) {
                         Object[] rowData = new Object[3 + schemaMap.size()];
-                        rowData[0] = this.transactionId;
+                        rowData[0] = internalGetTransactionId();
                         rowData[1] = timestamp;
                         rowData[2] = Utilities.getQueryType(query);
                         tableToRowData.put(tableName, rowData);

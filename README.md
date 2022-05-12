@@ -1,4 +1,4 @@
-# Apiary
+<img src="https://storage.googleapis.com/apiary_public/apiary_logo_timeburner.png" width="400">
 
 Welcome to Apiary!  Apiary is a transactional function-as-a-service (FaaS) framework for building
 database-oriented applications such as microservices and web service backends.

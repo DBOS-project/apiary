@@ -87,7 +87,7 @@ public class VoltDBTests {
         String resFuncName = rs.getString(5);
         long expectedID = ((long)client.getClientID() << 48);
         assertEquals(expectedID, resExecId);
-        assertEquals(resService, "testVoltProvService");
+        assertEquals("DefaultService", resService);
         assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);
 
         rs.next();
@@ -96,7 +96,7 @@ public class VoltDBTests {
         resService = rs.getString(4);
         resFuncName = rs.getString(5);
         assertEquals(expectedID, resExecId);
-        assertEquals(resService, "testVoltProvService");
+        assertEquals("DefaultService", resService);
         assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);
 
         // Inner transaction should have the same transaction ID.

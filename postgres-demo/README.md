@@ -88,7 +88,7 @@ whenever we get a registration request to our site:
 ```java
 @PostMapping("/registration")
 public String registrationSubmit(@ModelAttribute Credentials credentials, Model model) throws IOException {
-    int success = client.executeFunction("localhost", "NectarRegister", "NectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
+    int success = client.executeFunction("NectarRegister", credentials.getUsername(), credentials.getPassword()).getInt();
     if (success != 0) {
         return "redirect:/home";
     }
@@ -121,7 +121,7 @@ In Spring, we call this function whenever a user tries to log in:
 ```java
 @PostMapping("/login")
 public RedirectView loginSubmit(@ModelAttribute Credentials credentials, @ModelAttribute("logincredentials") Credentials logincredentials, RedirectAttributes attributes) throws InvalidProtocolBufferException {
-    int success = client.executeFunction("localhost", "NectarLogin", "NectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
+    int success = client.executeFunction("NectarLogin", credentials.getUsername(), credentials.getPassword()).getInt();
     if (success == 0) { // Login successful.
         logincredentials.setUsername(credentials.getUsername());
         logincredentials.setPassword(credentials.getPassword());
@@ -173,7 +173,7 @@ would be the original registration operation that created it
 as well as all the login attempts ever made to that username.
 Apiary stores this information in database tables so it can easily
 be queried in SQL; for example, we automatically create and populate
-a `WebsiteLoginsProvenance` table containing provenance information
+a `WebsiteLoginsEvents` table containing provenance information
 for `WebsiteLogins`.
 
 As a simple application of provenance, we might imagine querying
@@ -183,7 +183,7 @@ number of failed attempts:
 
 ```postgresql
 >> psql
-postgres=# SELECT COUNT(*) FROM WebsiteLoginsProvenance WHERE username='peter' AND apiary_timestamp / 1000000 > (select extract(epoch from now()) - 300);
+postgres=# SELECT COUNT(*) FROM WebsiteLoginsEvents WHERE username='peter' AND apiary_timestamp / 1000000 > (select extract(epoch from now()) - 300);
 count
 -------
     5123

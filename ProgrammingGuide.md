@@ -147,7 +147,7 @@ to retrieve all messages sent to a user:
 
 ```java
 ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
-String[] posts = client.executeFunction("GetMessages", "SocialNetwork", username).getStringArray();
+String[] posts = client.executeFunction("GetMessages", username).getStringArray();
 ```
 
 ### Provenance

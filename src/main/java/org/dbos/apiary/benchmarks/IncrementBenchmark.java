@@ -4,7 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltConnection;
-import org.dbos.apiary.worker.ApiaryWorkerClient;
+import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.voltdb.client.ProcCallException;

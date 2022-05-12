@@ -9,7 +9,7 @@ import org.dbos.apiary.postgresdemo.functions.NectarRegister;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.dbos.apiary.worker.ApiaryWorkerClient;
+import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 import org.springframework.stereotype.Controller;

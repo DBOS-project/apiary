@@ -4,7 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.cockroachdb.CockroachDBConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.worker.ApiaryWorkerClient;
+import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

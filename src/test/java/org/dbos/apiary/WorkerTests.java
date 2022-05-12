@@ -9,7 +9,7 @@ import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltConnection;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.dbos.apiary.worker.ApiaryWorkerClient;
+import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;

@@ -2,7 +2,7 @@ package org.dbos.apiary.function;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.worker.InternalApiaryWorkerClient;
+import org.dbos.apiary.client.InternalApiaryWorkerClient;
 
 import java.util.Map;
 import java.util.concurrent.Callable;

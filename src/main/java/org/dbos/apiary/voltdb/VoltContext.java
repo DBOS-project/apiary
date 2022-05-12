@@ -148,7 +148,7 @@ public class VoltContext extends ApiaryTransactionalContext {
         System.arraycopy(input, 0, rowData, 3, input.length);
         p.voltQueueSQL((SQLStmt) procedure, input);
         p.voltExecuteSQL();
-        provBuff.addEntry(upperName + "Events", rowData);
+        provBuff.addEntry(upperName + "EVENTS", rowData);
     }
 
     @Override
@@ -185,7 +185,7 @@ public class VoltContext extends ApiaryTransactionalContext {
                     rowData[3 + colIndex] = v.get(colNum, v.getColumnType(colNum));
                 }
             }
-            provBuff.addEntry(tableName + "Events", rowData);
+            provBuff.addEntry(tableName + "EVENTS", rowData);
         }
 
         v.resetRowPosition();

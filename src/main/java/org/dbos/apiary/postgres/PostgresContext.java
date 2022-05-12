@@ -9,10 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -73,8 +70,15 @@ public class PostgresContext extends ApiaryTransactionalContext {
             Statement s = conn.createStatement();
             ResultSet r = s.executeQuery(String.format("SELECT * FROM RecordedOutputs WHERE ExecID=%d AND FunctionID=%d", execID, currentID));
             if (r.next()) {
-                List<Task> queuedTasks = List.of((Task[]) Utilities.byteArrayToObject(r.getBytes(8)));
+                List<Task> queuedTasks;
                 Object o;
+                o = r.getBytes(8);
+                if (!r.wasNull()) {
+                    queuedTasks = List.of((Task[]) Utilities.byteArrayToObject((byte[]) o));
+                } else {
+                    queuedTasks = new ArrayList<>();
+                }
+
                 o = r.getString(3);
                 if (!r.wasNull()) {
                     return new FunctionOutput(o, queuedTasks);
@@ -141,7 +145,11 @@ public class PostgresContext extends ApiaryTransactionalContext {
                 s.setNull(6, Types.VARBINARY);
                 s.setLong(7, output.getFuture().futureID);
             }
-            s.setBytes(8, Utilities.objectToByteArray(output.queuedTasks.toArray(new Task[0])));
+            if (!output.queuedTasks.isEmpty()) {
+                s.setBytes(8, Utilities.objectToByteArray(output.queuedTasks.toArray(new Task[0])));
+            } else {
+                s.setNull(8, Types.VARBINARY);
+            }
             s.executeUpdate();
             s.close();
         } catch (SQLException e) {

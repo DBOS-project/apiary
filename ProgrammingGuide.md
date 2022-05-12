@@ -118,3 +118,65 @@ public class SendMessage extends PostgresFunction {
     }
 }
 ```
+
+### Running Apiary: Workers and Clients
+
+To run Apiary, you need to set up a worker that can communicate with the database
+and run functions.  To do this, create an Apiary-database connection
+(e.g., `PostgresConnection`), use it to create tables,
+and register your functions with it. Then, start a worker using that connection.
+For example, here is the code to create a connection and start a worker
+from the tutorial:
+
+```java
+PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+conn.createTable("WebsiteLogins", "Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL");
+conn.createTable("WebsitePosts", "Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL");
+conn.registerFunction("NectarRegister", NectarRegister::new);
+conn.registerFunction("NectarLogin", NectarLogin::new);
+conn.registerFunction("NectarAddPost", NectarAddPost::new);
+conn.registerFunction("NectarGetPosts", NectarGetPosts::new);
+
+ApiaryWorker apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4, "postgres", ApiaryConfig.provenanceDefaultAddress);
+apiaryWorker.startServing();
+```
+
+After a worker is running, you can launch clients to communicate with it
+and call functions.  For example, in a social network application,
+to retrieve all messages sent to a user:
+
+```java
+ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+String[] posts = client.executeFunction("GetMessages", "SocialNetwork", username).getStringArray();
+```
+
+### Provenance
+
+Apiary captures _data provenance_ information on all function executions
+and all operations functions perform on data. This information is stored
+in database tables (by default in Postgres, but we also support Vertica)
+for easy querying.  First, Apiary maintains a _FuncInvocations_
+table storing information on all function invocations.  Its schema is:
+
+| Field     | Type    | Description                           |
+|-----------|---------|---------------------------------------|
+| APIARY_TRANSACTION_ID    | BIGINT  | Postgres Transaction ID     .         |
+| APIARY_TIMESTAMP | BIGINT  | Unix epoch timestamp in microseconds. |
+| EXECUTIONID | BIGINT  | Unique ID of program execution.       |
+| SERVICE | VARCHAR | Name of program service.              |
+| PROCEDURENAME | VARCHAR | Function name.                        |
+
+Then, for each database table in an application, Apiary
+maintains an `Events` table tracking all operations that occured on the table:
+
+| Field                 | Type   | Description                                                                          |
+|-----------------------|--------|--------------------------------------------------------------------------------------|
+| APIARY_TRANSACTION_ID | BIGINT | Postgres Transaction ID     .                                                        |
+| APIARY_TIMESTAMP      | BIGINT | Unix epoch timestamp in microseconds.                                                |
+| APIARY_OPERATION_TYPE | BIGINT | The type of the operation: 1 for inserts, 2 for deletes, 3 for updates, 4 for reads. |
+| Table columns...      | Any    | The column values of the record being operated on.                                   |
+
+### Further Reading 
+
+If you haven't already, please look at the [tutorial](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/README.md)
+and documentation.  If you have any questions, feel free to contact us.

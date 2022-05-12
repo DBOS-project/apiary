@@ -62,7 +62,7 @@ public class VoltDBTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 4);
         Connection verticaConn = provBuff.conn.get();
         Statement stmt = verticaConn.createStatement();
-        String[] tables = {"FUNCINVOCATIONS", "KVTABLEPROV"};
+        String[] tables = {"FUNCINVOCATIONS", "KVTABLEEVENTS"};
         for (String table : tables) {
             stmt.execute(String.format("TRUNCATE TABLE %s;", table));
         }
@@ -104,7 +104,7 @@ public class VoltDBTests {
         assertEquals(txid1, txid2);
 
         // Check KVTable.
-        table = "KVTABLEPROV";
+        table = "KVTABLEEVENTS";
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
         rs.next();
 

@@ -226,7 +226,7 @@ public class PostgresTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 4);
         Connection provConn = provBuff.conn.get();
         Statement stmt = provConn.createStatement();
-        String[] tables = {"FUNCINVOCATIONS", "KVTABLEPROV"};
+        String[] tables = {"FUNCINVOCATIONS", "KVTableEvents"};
         for (String table : tables) {
             stmt.execute(String.format("TRUNCATE TABLE %s;", table));
         }
@@ -264,7 +264,7 @@ public class PostgresTests {
         assertEquals(txid1, txid2);
 
         // Check KVTable.
-        table = "KVTABLEPROV";
+        table = "KVTableEvents";
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP;", table));
         rs.next();
 
@@ -356,7 +356,7 @@ public class PostgresTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 4);
         Connection provConn = provBuff.conn.get();
         Statement stmt = provConn.createStatement();
-        String[] tables = {"FUNCINVOCATIONS", "KVTABLEPROV", "KVTABLETWOPROV"};
+        String[] tables = {"FUNCINVOCATIONS", "KVTableEvents", "KVTableTwoEvents"};
         for (String table : tables) {
             stmt.execute(String.format("TRUNCATE TABLE %s;", table));
         }
@@ -370,7 +370,7 @@ public class PostgresTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         // Check KVTable.
-        String table = "KVTABLEPROV";
+        String table = "KVTableEvents";
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP;", table));
         rs.next();
 
@@ -391,7 +391,7 @@ public class PostgresTests {
         assertEquals(2, resValue);
 
         // Check KVTable.
-        table = "KVTABLETWOPROV";
+        table = "KVTableTwoEvents";
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP;", table));
         rs.next();
 

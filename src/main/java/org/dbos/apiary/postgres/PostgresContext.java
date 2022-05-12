@@ -209,7 +209,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
                 for (int i = 1; i <= numCol; i++) {
                     rowData[i+2] = rs.getObject(i);
                 }
-                provBuff.addEntry(tableName + "prov", rowData);
+                provBuff.addEntry(tableName + "Events", rowData);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -257,7 +257,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
                     }
                 }
                 for (String tableName: tableToRowData.keySet()) {
-                    provBuff.addEntry(tableName + "prov", tableToRowData.get(tableName));
+                    provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
                 }
             }
             rs.beforeFirst();

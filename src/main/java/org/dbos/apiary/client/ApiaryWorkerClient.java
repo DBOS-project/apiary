@@ -72,13 +72,12 @@ public class ApiaryWorkerClient {
     /**
      * Invoke a function synchronously and block waiting for the result.
      * @param name      the name of the invoked function.
-     * @param service   the service name of this invocation.
      * @param arguments the arguments of the invoked function.
      * @return          the output of the invoked function.
      * @throws InvalidProtocolBufferException
      */
-    public FunctionOutput executeFunction(String name, String service, Object... arguments) throws InvalidProtocolBufferException {
-        return internalClient.executeFunction(this.apiaryWorkerAddress, name, service, getExecutionId(), arguments);
+    public FunctionOutput executeFunction(String name, Object... arguments) throws InvalidProtocolBufferException {
+        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", getExecutionId(), arguments);
     }
 
     /**

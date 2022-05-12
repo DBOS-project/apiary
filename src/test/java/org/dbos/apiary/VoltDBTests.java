@@ -62,7 +62,7 @@ public class VoltDBTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 4);
         Connection verticaConn = provBuff.conn.get();
         Statement stmt = verticaConn.createStatement();
-        String[] tables = {"FUNCINVOCATIONS", "KVTABLEPROV"};
+        String[] tables = {"FUNCINVOCATIONS", "KVTABLEEVENTS"};
         for (String table : tables) {
             stmt.execute(String.format("TRUNCATE TABLE %s;", table));
         }
@@ -72,7 +72,7 @@ public class VoltDBTests {
         int res;
         int key = 10, value = 100;
 
-        res = client.executeFunction("VoltProvenanceBasic", "testVoltProvService", key, value).getInt();
+        res = client.executeFunction("VoltProvenanceBasic", key, value).getInt();
         assertEquals(101, res);
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
@@ -87,7 +87,7 @@ public class VoltDBTests {
         String resFuncName = rs.getString(5);
         long expectedID = ((long)client.getClientID() << 48);
         assertEquals(expectedID, resExecId);
-        assertEquals(resService, "testVoltProvService");
+        assertEquals("DefaultService", resService);
         assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);
 
         rs.next();
@@ -96,7 +96,7 @@ public class VoltDBTests {
         resService = rs.getString(4);
         resFuncName = rs.getString(5);
         assertEquals(expectedID, resExecId);
-        assertEquals(resService, "testVoltProvService");
+        assertEquals("DefaultService", resService);
         assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);
 
         // Inner transaction should have the same transaction ID.
@@ -104,7 +104,7 @@ public class VoltDBTests {
         assertEquals(txid1, txid2);
 
         // Check KVTable.
-        table = "KVTABLEPROV";
+        table = "KVTABLEEVENTS";
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_EXPORT_TIMESTAMP;", table));
         rs.next();
 

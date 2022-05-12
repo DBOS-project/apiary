@@ -47,13 +47,13 @@ public class CockroachDBTests {
             ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
             String res;
-            res = client.executeFunction("FibonacciFunction", "defaultService", "1").getString();
+            res = client.executeFunction("FibonacciFunction", "1").getString();
             assertEquals("1", res);
 
-            res = client.executeFunction("FibonacciFunction", "defaultService", "6").getString();
+            res = client.executeFunction("FibonacciFunction", "6").getString();
             assertEquals("8", res);
 
-            res = client.executeFunction("FibonacciFunction", "defaultService", "10").getString();
+            res = client.executeFunction("FibonacciFunction", "10").getString();
 
             assertEquals("55", res);
 

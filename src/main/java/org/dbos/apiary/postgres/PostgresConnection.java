@@ -65,7 +65,7 @@ public class PostgresConnection implements ApiaryConnection {
         Connection conn = ds.getConnection();
         Statement truncateTable = conn.createStatement();
         truncateTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
-        truncateTable.execute(String.format("DROP TABLE IF EXISTS %sPROV;", tableName));
+        truncateTable.execute(String.format("DROP TABLE IF EXISTS %sEvents;", tableName));
         truncateTable.close();
         conn.close();
     }
@@ -77,7 +77,7 @@ public class PostgresConnection implements ApiaryConnection {
         if (!specStr.contains("APIARY_TRANSACTION_ID")) {
             ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
             ResultSetMetaData rsmd = r.getMetaData();
-            StringBuilder provTable = new StringBuilder(String.format("CREATE TABLE IF NOT EXISTS %sprov (APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_TIMESTAMP BIGINT NOT NULL, APIARY_OPERATION_TYPE BIGINT NOT NULL", tableName));
+            StringBuilder provTable = new StringBuilder(String.format("CREATE TABLE IF NOT EXISTS %sEvents (APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_TIMESTAMP BIGINT NOT NULL, APIARY_OPERATION_TYPE BIGINT NOT NULL", tableName));
             for (int i = 0; i < rsmd.getColumnCount(); i++) {
                 provTable.append(",");
                 provTable.append(rsmd.getColumnLabel(i + 1));

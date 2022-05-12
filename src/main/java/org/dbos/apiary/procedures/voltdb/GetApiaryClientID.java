@@ -13,7 +13,7 @@ public class GetApiaryClientID extends VoltFunction {
     );
 
     public final SQLStmt updateValue = new SQLStmt (
-            "UPSERT INTO ApiaryMetadata VALUES (0, ?, ?);"
+            "UPSERT INTO ApiaryMetadata VALUES (?, ?);"
     );
 
     public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {

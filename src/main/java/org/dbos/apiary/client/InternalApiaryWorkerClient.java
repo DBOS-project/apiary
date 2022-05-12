@@ -1,4 +1,4 @@
-package org.dbos.apiary.worker;
+package org.dbos.apiary.client;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -7,6 +7,7 @@ import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
+import org.dbos.apiary.worker.ApiaryWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.SocketType;
@@ -20,7 +21,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
-// Note: ZMQ.Socket is not thread-safe, so this class is not thread-safe either.
+/**
+ * For internal use only.
+ * Note that this class is not thread-safe (due to ZMQ.Socket), thus cannot be shared between threads.
+ */
 public class InternalApiaryWorkerClient {
     private static final Logger logger = LoggerFactory.getLogger(InternalApiaryWorkerClient.class);
 

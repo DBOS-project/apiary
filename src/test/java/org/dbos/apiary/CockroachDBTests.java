@@ -5,7 +5,7 @@ import org.dbos.apiary.procedures.cockroachdb.CockroachDBFibonacciFunction;
 import org.dbos.apiary.cockroachdb.CockroachDBConnection;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.dbos.apiary.worker.ApiaryWorkerClient;
+import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;

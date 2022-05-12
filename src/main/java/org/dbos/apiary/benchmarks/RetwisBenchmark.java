@@ -48,7 +48,7 @@ public class RetwisBenchmark {
                     int postID = postIDs.incrementAndGet();
                     int ts = timestamp.incrementAndGet();
                     String postString = String.format("matei%d", postID);
-                    loadClient.get().executeFunction("RetwisPost", "defaultService", userID, postID, ts, postString);
+                    loadClient.get().executeFunction("RetwisPost", userID, postID, ts, postString);
                     latch.countDown();
                 } catch (InvalidProtocolBufferException e) {
                     e.printStackTrace();
@@ -64,7 +64,7 @@ public class RetwisBenchmark {
                 Runnable r = () ->  {
                     try {
                         int followeeID = (firstFollowee + finalI) % numUsers;
-                        loadClient.get().executeFunction("RetwisFollow", "defaultService", finalUserID, followeeID);
+                        loadClient.get().executeFunction("RetwisFollow", finalUserID, followeeID);
                         latch.countDown();
                     } catch (InvalidProtocolBufferException e) {
                         e.printStackTrace();

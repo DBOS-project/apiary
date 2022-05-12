@@ -78,13 +78,13 @@ public class PostgresTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int res;
-        res = client.executeFunction("PostgresFibonacciFunction", "defaultService", 1).getInt();
+        res = client.executeFunction("PostgresFibonacciFunction", 1).getInt();
         assertEquals(1, res);
 
-        res = client.executeFunction("PostgresFibonacciFunction", "defaultService", 6).getInt();
+        res = client.executeFunction("PostgresFibonacciFunction", 6).getInt();
         assertEquals(8, res);
 
-        res = client.executeFunction("PostgresFibonacciFunction", "defaultService", 10).getInt();
+        res = client.executeFunction("PostgresFibonacciFunction", 10).getInt();
         assertEquals(55, res);
     }
 
@@ -179,25 +179,25 @@ public class PostgresTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int resInt;
-        resInt = client.executeFunction("RetwisPost", "defaultService", 0, 0, 0, "hello0").getInt();
+        resInt = client.executeFunction("RetwisPost", 0, 0, 0, "hello0").getInt();
         assertEquals(0, resInt);
-        resInt = client.executeFunction("RetwisPost", "defaultService", 0, 1, 1, "hello1").getInt();
+        resInt = client.executeFunction("RetwisPost", 0, 1, 1, "hello1").getInt();
         assertEquals(0, resInt);
-        resInt = client.executeFunction("RetwisPost", "defaultService", 1, 2, 0, "hello2").getInt();
+        resInt = client.executeFunction("RetwisPost", 1, 2, 0, "hello2").getInt();
         assertEquals(1, resInt);
-        resInt = client.executeFunction("RetwisFollow", "defaultService", 1, 0).getInt();
+        resInt = client.executeFunction("RetwisFollow", 1, 0).getInt();
         assertEquals(1, resInt);
-        resInt = client.executeFunction("RetwisFollow", "defaultService", 1, 1).getInt();
+        resInt = client.executeFunction("RetwisFollow", 1, 1).getInt();
         assertEquals(1, resInt);
 
-        String[] postResult = client.executeFunction("RetwisGetPosts", "defaultService", 0).getStringArray();
+        String[] postResult = client.executeFunction("RetwisGetPosts", 0).getStringArray();
         assertArrayEquals(new String[]{"hello0", "hello1"}, postResult);
 
-        int[] followees = client.executeFunction("RetwisGetFollowees", "defaultService", 1).getIntArray();
+        int[] followees = client.executeFunction("RetwisGetFollowees", 1).getIntArray();
         assertEquals(2, followees.length);
         assertTrue(followees[0] == 0 && followees[1] == 1 || followees[0] == 1 && followees[1] == 0);
 
-        String[] timeline = client.executeFunction("RetwisGetTimeline", "defaultService", 1).getStringArray();
+        String[] timeline = client.executeFunction("RetwisGetTimeline", 1).getStringArray();
         assertTrue(Arrays.asList(timeline).contains("hello0"));
         assertTrue(Arrays.asList(timeline).contains("hello1"));
         assertTrue(Arrays.asList(timeline).contains("hello2"));
@@ -235,7 +235,7 @@ public class PostgresTests {
 
         int res;
         int key = 10, value = 100;
-        res = client.executeFunction("PostgresProvenanceBasic", "testPostgresProvService", key, value).getInt();
+        res = client.executeFunction("PostgresProvenanceBasic", key, value).getInt();
         assertEquals(101, res);
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
@@ -249,7 +249,7 @@ public class PostgresTests {
         long resExecId = rs.getLong(3);
         String resService = rs.getString(4);
         String resFuncName = rs.getString(5);
-        assertEquals(resService, "testPostgresProvService");
+        assertEquals("DefaultService", resService);
         assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
 
         rs.next();
@@ -257,7 +257,7 @@ public class PostgresTests {
         resExecId = rs.getLong(3);
         resService = rs.getString(4);
         resFuncName = rs.getString(5);
-        assertEquals(resService, "testPostgresProvService");
+        assertEquals("DefaultService", resService);
         assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
 
         // Inner transaction should have the same transaction ID.
@@ -364,7 +364,7 @@ public class PostgresTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int res;
-        res = client.executeFunction("PostgresProvenanceJoins", "testPostgresProvService", 1, 2, 3).getInt();
+        res = client.executeFunction("PostgresProvenanceJoins", 1, 2, 3).getInt();
         assertEquals(5, res);
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);

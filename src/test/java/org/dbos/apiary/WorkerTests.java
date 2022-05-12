@@ -61,13 +61,13 @@ public class WorkerTests {
             ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
             int res;
-            res = client.executeFunction("FibonacciFunction", "defaultService", 1).getInt();
+            res = client.executeFunction("FibonacciFunction", 1).getInt();
             assertEquals(1, res);
 
-            res = client.executeFunction("FibonacciFunction", "defaultService", 10).getInt();
+            res = client.executeFunction("FibonacciFunction", 10).getInt();
             assertEquals(55, res);
 
-            res = client.executeFunction("FibonacciFunction", "defaultService", 30).getInt();
+            res = client.executeFunction("FibonacciFunction", 30).getInt();
             assertEquals(832040, res);
 
             worker.shutdown();
@@ -83,7 +83,7 @@ public class WorkerTests {
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
-        String res = client.executeFunction("AdditionFunction", "defaultService", 1, "2", new String[]{"matei", "zaharia"}, new int[]{2, 3}).getString();
+        String res = client.executeFunction("AdditionFunction", 1, "2", new String[]{"matei", "zaharia"}, new int[]{2, 3}).getString();
         assertEquals("8mateizaharia", res);
 
         worker.shutdown();
@@ -153,13 +153,13 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         String res;
-        res = client.executeFunction("CounterFunction", "defaultService", "0").getString();
+        res = client.executeFunction("CounterFunction", "0").getString();
         assertEquals("1", res);
 
-        res = client.executeFunction("CounterFunction", "defaultService", "0").getString();
+        res = client.executeFunction("CounterFunction", "0").getString();
         assertEquals("2", res);
 
-        res = client.executeFunction("CounterFunction", "defaultService", "1").getString();
+        res = client.executeFunction("CounterFunction", "1").getString();
         assertEquals("1", res);
 
         // Should be able to see provenance data if Vertica is running.
@@ -180,10 +180,10 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int res;
-        res = client.executeFunction("StatelessDriver", "testStatelessDriver", "0").getInt();
+        res = client.executeFunction("StatelessDriver", "0").getInt();
         assertEquals(1, res);
 
-        res = client.executeFunction("StatelessDriver", "testStatelessDriver", "8").getInt();
+        res = client.executeFunction("StatelessDriver", "8").getInt();
         assertEquals(55, res);
         worker.shutdown();
     }
@@ -198,13 +198,13 @@ public class WorkerTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         String res;
-        res = client.executeFunction("SynchronousCounter", "defaultService", "0").getString();
+        res = client.executeFunction("SynchronousCounter", "0").getString();
         assertEquals("1", res);
 
-        res = client.executeFunction("SynchronousCounter", "defaultService", "0").getString();
+        res = client.executeFunction("SynchronousCounter", "0").getString();
         assertEquals("2", res);
 
-        res = client.executeFunction("SynchronousCounter", "defaultService", "1").getString();
+        res = client.executeFunction("SynchronousCounter", "1").getString();
         assertEquals("1", res);
 
         worker.shutdown();

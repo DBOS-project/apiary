@@ -72,7 +72,7 @@ public class VoltDBTests {
         int res;
         int key = 10, value = 100;
 
-        res = client.executeFunction("VoltProvenanceBasic", "testVoltProvService", key, value).getInt();
+        res = client.executeFunction("VoltProvenanceBasic", key, value).getInt();
         assertEquals(101, res);
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);

@@ -12,12 +12,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.dbos.apiary.utilities.ApiaryConfig.getApiaryClientID;
 
 public class CockroachDBConnection implements ApiaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(CockroachDBConnection.class);
@@ -113,6 +116,10 @@ public class CockroachDBConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String name, Object... inputs) throws Exception {
+        if (name.startsWith(getApiaryClientID)) {
+            // TODO: implement the actual one.
+            return new FunctionOutput(0, List.of());
+        }
         CockroachDBFunction function = functions.get(name).call();
         FunctionOutput f = null;
         try {

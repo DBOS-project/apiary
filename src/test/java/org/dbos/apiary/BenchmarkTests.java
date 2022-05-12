@@ -35,28 +35,28 @@ public class BenchmarkTests {
         worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
         worker.startServing();
 
-        ApiaryWorkerClient client = new ApiaryWorkerClient();
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int resInt;
-        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService", 0, 0, 0, "hello0").getInt();
+        resInt = client.executeFunction("RetwisPost", "defaultService", 0, 0, 0, "hello0").getInt();
         assertEquals(0, resInt);
-        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService", 0, 1, 1, "hello1").getInt();
+        resInt = client.executeFunction("RetwisPost", "defaultService", 0, 1, 1, "hello1").getInt();
         assertEquals(0, resInt);
-        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService", 1, 2, 0, "hello2").getInt();
+        resInt = client.executeFunction("RetwisPost", "defaultService", 1, 2, 0, "hello2").getInt();
         assertEquals(1, resInt);
-        resInt = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 0).getInt();
+        resInt = client.executeFunction("RetwisFollow", "defaultService", 1, 0).getInt();
         assertEquals(1, resInt);
-        resInt = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 1).getInt();
+        resInt = client.executeFunction("RetwisFollow", "defaultService", 1, 1).getInt();
         assertEquals(1, resInt);
 
-        int[] followees = client.executeFunction("localhost", "RetwisGetFollowees", "defaultService", 1).getIntArray();
+        int[] followees = client.executeFunction("RetwisGetFollowees", "defaultService", 1).getIntArray();
         assertEquals(2, followees.length);
         assertTrue(followees[0] == 0 && followees[1] == 1 || followees[0] == 1 && followees[1] == 0);
 
         String resString;
-        resString = client.executeFunction("localhost", "RetwisGetPosts", "defaultService", 0).getString();
+        resString = client.executeFunction("RetwisGetPosts", "defaultService", 0).getString();
         assertEquals("hello0,hello1", resString);
-        resString = client.executeFunction("localhost", "RetwisGetTimeline", "defaultService", 1).getString();
+        resString = client.executeFunction("RetwisGetTimeline", "defaultService", 1).getString();
         assertEquals(3, resString.split(",").length);
         assertTrue(resString.contains("hello0"));
         assertTrue(resString.contains("hello1"));
@@ -75,21 +75,21 @@ public class BenchmarkTests {
         worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
         worker.startServing();
 
-        ApiaryWorkerClient client = new ApiaryWorkerClient();
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int resInt;
-        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService",  0, 0, 0, "hello0").getInt();
+        resInt = client.executeFunction("RetwisPost", "defaultService",  0, 0, 0, "hello0").getInt();
         assertEquals(0, resInt);
-        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService",  0, 1, 1, "hello1").getInt();
+        resInt = client.executeFunction("RetwisPost", "defaultService",  0, 1, 1, "hello1").getInt();
         assertEquals(0, resInt);
-        resInt = client.executeFunction("localhost", "RetwisPost", "defaultService", 1, 2, 0, "hello2").getInt();
+        resInt = client.executeFunction("RetwisPost", "defaultService", 1, 2, 0, "hello2").getInt();
         assertEquals(1, resInt);
-        resInt = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 0).getInt();
+        resInt = client.executeFunction("RetwisFollow", "defaultService", 1, 0).getInt();
         assertEquals(1, resInt);
-        resInt = client.executeFunction("localhost", "RetwisFollow", "defaultService", 1, 1).getInt();
+        resInt = client.executeFunction("RetwisFollow", "defaultService", 1, 1).getInt();
         assertEquals(1, resInt);
 
-        String res = client.executeFunction("localhost", "RetwisStatelessGetTimeline", "defaultService",1).getString();
+        String res = client.executeFunction("RetwisStatelessGetTimeline", "defaultService",1).getString();
         assertEquals(3, res.split(",").length);
         assertTrue(res.contains("hello0"));
         assertTrue(res.contains("hello1"));
@@ -105,16 +105,16 @@ public class BenchmarkTests {
         ApiaryWorker worker = new ApiaryWorker(c, scheduler, 128);
         worker.startServing();
 
-        ApiaryWorkerClient client = new ApiaryWorkerClient();
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int res;
-        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", 0).getInt();
+        res = client.executeFunction("IncrementProcedure", "defaultService", 0).getInt();
         assertEquals(1, res);
-        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", 0).getInt();
+        res = client.executeFunction("IncrementProcedure", "defaultService", 0).getInt();
         assertEquals(2, res);
-        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService", 0).getInt();
+        res = client.executeFunction("IncrementProcedure", "defaultService", 0).getInt();
         assertEquals(3, res);
-        res = client.executeFunction("localhost", "IncrementProcedure", "defaultService",  55).getInt();
+        res = client.executeFunction("IncrementProcedure", "defaultService",  55).getInt();
         assertEquals(1, res);
         worker.shutdown();
     }

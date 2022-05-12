@@ -44,7 +44,7 @@ public class NectarController {
         ApiaryWorker apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4, "postgres", ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.startServing();
 
-        this.client = new ApiaryWorkerClient();
+        this.client = new ApiaryWorkerClient("localhost");
     }
 
     @GetMapping("/")
@@ -65,7 +65,7 @@ public class NectarController {
 
     @PostMapping("/registration")
     public String registrationSubmit(@ModelAttribute Credentials credentials, Model model) throws IOException {
-        int success = client.executeFunction("localhost", "NectarRegister", "NectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
+        int success = client.executeFunction("NectarRegister", "NectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
         if (success != 0) {
             return "redirect:/home";
         }
@@ -81,7 +81,7 @@ public class NectarController {
 
     @PostMapping("/login")
     public RedirectView loginSubmit(@ModelAttribute Credentials credentials, @ModelAttribute("logincredentials") Credentials logincredentials, RedirectAttributes attributes) throws InvalidProtocolBufferException {
-        int success = client.executeFunction("localhost", "NectarLogin", "NectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
+        int success = client.executeFunction("NectarLogin", "NectarNetwork", credentials.getUsername(), credentials.getPassword()).getInt();
         if (success == 0) { // Login successful.
             logincredentials.setUsername(credentials.getUsername());
             logincredentials.setPassword(credentials.getPassword());
@@ -103,7 +103,7 @@ public class NectarController {
 
     private List<WebPost> findUserPosts(String username) throws InvalidProtocolBufferException {
         List<WebPost> postList = new ArrayList<>();
-        String[] posts = client.executeFunction("localhost", "NectarGetPosts", "NectarNetwork", username).getStringArray();
+        String[] posts = client.executeFunction("NectarGetPosts", "NectarNetwork", username).getStringArray();
         for (String post: posts) {
             WebPost webPost = new WebPost();
             JSONObject obj = (JSONObject) JSONValue.parse(post);
@@ -132,7 +132,7 @@ public class NectarController {
         if (logincredentials.getUsername() == null) {
             return new RedirectView("/home");
         }
-        client.executeFunction("localhost", "NectarAddPost", "NectarNetwork", logincredentials.getUsername(), webPost.getReceiver(), webPost.getPostText());
+        client.executeFunction("NectarAddPost", "NectarNetwork", logincredentials.getUsername(), webPost.getReceiver(), webPost.getPostText());
         return new RedirectView("/timeline");
     }
 

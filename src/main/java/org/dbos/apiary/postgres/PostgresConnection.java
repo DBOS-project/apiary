@@ -4,6 +4,7 @@ import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.ProvenanceBuffer;
+import org.dbos.apiary.procedures.postgres.GetApiaryClientID;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,8 @@ import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
+
+import static org.dbos.apiary.utilities.ApiaryConfig.getApiaryClientID;
 
 /**
  * For internal use only.
@@ -50,9 +53,10 @@ public class PostgresConnection implements ApiaryConnection {
             logger.info("Failed to connect to Postgres");
             throw new RuntimeException("Failed to connect to Postgres");
         }
-        dropTable("RecordedOutputs"); // TODO: Unique client IDs.
         createTable("RecordedOutputs", "ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID)");
         createTable("FuncInvocations", "APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_TIMESTAMP BIGINT NOT NULL, EXECUTIONID BIGINT NOT NULL, SERVICE VARCHAR(1024) NOT NULL, PROCEDURENAME VARCHAR(1024) NOT NULL");
+        createTable("ApiaryMetadata", "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
+        registerFunction(getApiaryClientID, GetApiaryClientID::new);
     }
 
     public void registerFunction(String name, Callable<PostgresFunction> function) { functions.put(name, function); }
@@ -122,4 +126,5 @@ public class PostgresConnection implements ApiaryConnection {
     public Map<Integer, String> getPartitionHostMap() {
         return Map.of(0, "localhost");
     }
+
 }

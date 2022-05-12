@@ -67,12 +67,12 @@ public class VoltDBTests {
             stmt.execute(String.format("TRUNCATE TABLE %s;", table));
         }
 
-        ApiaryWorkerClient client = new ApiaryWorkerClient();
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int res;
         int key = 10, value = 100;
 
-        res = client.executeFunction("localhost", "VoltProvenanceBasic", "testVoltProvService", key, value).getInt();
+        res = client.executeFunction("VoltProvenanceBasic", "testVoltProvService", key, value).getInt();
         assertEquals(101, res);
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
@@ -85,7 +85,8 @@ public class VoltDBTests {
         long resExecId = rs.getLong(3);
         String resService = rs.getString(4);
         String resFuncName = rs.getString(5);
-        assertEquals(0L, resExecId);
+        long expectedID = ((long)client.getClientID() << 48);
+        assertEquals(expectedID, resExecId);
         assertEquals(resService, "testVoltProvService");
         assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);
 
@@ -94,7 +95,7 @@ public class VoltDBTests {
         resExecId = rs.getLong(3);
         resService = rs.getString(4);
         resFuncName = rs.getString(5);
-        assertEquals(0L, resExecId);
+        assertEquals(expectedID, resExecId);
         assertEquals(resService, "testVoltProvService");
         assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);
 

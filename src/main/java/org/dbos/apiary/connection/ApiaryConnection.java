@@ -16,4 +16,5 @@ public interface ApiaryConnection {
     int getNumPartitions();
     String getHostname(Object... input);  // Return the hostname to which to send an input.
     Map<Integer, String> getPartitionHostMap();
+
 }

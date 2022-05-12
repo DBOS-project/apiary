@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zeromq.ZContext;
 
 import org.postgresql.ds.PGSimpleDataSource;
 
@@ -45,16 +44,16 @@ public class CockroachDBTests {
             ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
             worker.startServing();
 
-            ApiaryWorkerClient client = new ApiaryWorkerClient();
+            ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
             String res;
-            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "1").getString();
+            res = client.executeFunction("FibonacciFunction", "defaultService", "1").getString();
             assertEquals("1", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "6").getString();
+            res = client.executeFunction("FibonacciFunction", "defaultService", "6").getString();
             assertEquals("8", res);
 
-            res = client.executeFunction("localhost", "FibonacciFunction", "defaultService", "10").getString();
+            res = client.executeFunction("FibonacciFunction", "defaultService", "10").getString();
 
             assertEquals("55", res);
 

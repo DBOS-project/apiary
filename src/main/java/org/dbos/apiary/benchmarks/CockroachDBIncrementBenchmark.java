@@ -42,7 +42,7 @@ public class CockroachDBIncrementBenchmark {
                 .collect(Collectors.toList());
 
         ZContext clientContext = new ZContext();
-        ApiaryWorkerClient client = new ApiaryWorkerClient(clientContext);
+        ApiaryWorkerClient client = new ApiaryWorkerClient(cockroachAddr, clientContext);
         ZMQ.Poller poller = clientContext.createPoller(distinctHosts.size());
         for (String hostname : distinctHosts) {
             ZMQ.Socket socket = client.getSocket(hostname);
@@ -97,7 +97,7 @@ public class CockroachDBIncrementBenchmark {
                 String key1 = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
                 String key2 = String.valueOf(ThreadLocalRandom.current().nextInt(numKeys));
                 byte[] reqBytes;
-                reqBytes = ApiaryWorkerClient.serializeExecuteRequest("IncrementFunction", service, key1, key2);
+                reqBytes = client.serializeExecuteRequest("IncrementFunction", service, key1, key2);
                 ZMQ.Socket socket = client.getSocket(ctxt.getHostname(new Object[] { key1 }));
                 socket.send(reqBytes, 0);
                 lastSentTime = System.nanoTime();

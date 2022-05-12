@@ -3,25 +3,35 @@
 Welcome to Apiary!  Apiary is a transactional function-as-a-service (FaaS) framework for building
 database-oriented applications such as microservices and web service backends.
 Apiary provides an easy-to-use Java interface that supports general computation
-and offers good performance, strong consistency guarantees,
-and powerful new observability features such as automatic data provenance tracking.
-Apiary is an ongoing research project within the larger MIT-Stanford 
+and offers excellent performance, strong consistency guarantees,
+and powerful new observability features such as automatic data provenance capture.
+Apiary is an ongoing research project within the MIT-Stanford 
 [DBOS](https://dbos-project.github.io/) collaboration;
 we are interested in any feedback you can provide to improve the project
 so it better meets developers' needs.
 
-The idea behind Apiary is that you store all your application's long-lived state in a database
-(which you were likely already doing),
-then we run every function in your application as a database transaction.
-You write your functions in regular Java, using SQL to talk to the database,
-and we schedule and run these functions, providing three exciting features:
+Apiary is based around two ideas which we believe can radically simplify many applications:
 
-* Advanced observability capabilities by combining data provenance information recorded in the database with control flow information captured by functions--we automatically record anything your application ever does in easy-to-query database tables.
-* Improved performance in a distributed setting through aggressive co-location of compute and data.
-* Strong consistency for programs, including easy cross-function and even cross-application transactional guarantees.
+1. Store all long-lived application state in a database.
+2. Access this state only through database transactions.
 
-Apiary currently supports two database backends, Postgres and VoltDB, although we're open to
-supporting more in the future.
+An Apiary application is composed of _transactional functions_,
+which are regular Java functions that use SQL to talk to the database,
+but which execute as ACID database transactions.
+We provide interfaces to write these functions, compose them into larger programs,
+and schedule and run them.  Apiary provides three exciting features:
+
+* High performance, especially in a distributed setting,
+through aggressive co-location of compute and data.
+* Strong consistency for programs, including exactly-once semantics for program execution 
+and cross-function or even cross-application transactional guarantees.
+* Data provenance capture for observability: we automatically  record 
+every function execution and every operation functions performs on data,
+then store this information in easy-to query database tables to aid in
+debugging, monitoring, and auditing.
+
+Apiary currently supports two database backends, Postgres and VoltDB,
+although we're open to supporting more in the future.
 
 To get you started, we've written 
 [a tutorial](https://github.com/DBOS-project/apiary/tree/main/postgres-demo) showing you how to build a simple social network

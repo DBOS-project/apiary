@@ -55,8 +55,10 @@ public class ApiaryWorkerClient {
         return internalClient.executeFunction(this.apiaryWorkerAddress, name, service, getExecutionId(), arguments);
     }
 
+    public int getClientID() { return this.clientID; }
+
     /* --------------------------- Internal functions ------------------------------- */
     private long getExecutionId() {
-        return ((long)this.clientID << 48) + execIDGenerator.incrementAndGet();
+        return ((long)this.clientID << 48) + execIDGenerator.getAndIncrement();
     }
 }

@@ -2,7 +2,6 @@ package org.dbos.apiary.postgresdemo.executable;
 
 import org.apache.commons.cli.*;
 import org.dbos.apiary.function.ProvenanceBuffer;
-import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;

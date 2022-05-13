@@ -13,7 +13,7 @@ Next, let's compile Apiary. In the Apiary root directory, run:
 
 Then, let's start Postgres from a Docker image:
 
-    scripts/initialize_postgres_docker.sh
+    sudo scripts/initialize_postgres_docker.sh
 
 Now, it's time to build a website!
 We want to build a simple social network application where you can

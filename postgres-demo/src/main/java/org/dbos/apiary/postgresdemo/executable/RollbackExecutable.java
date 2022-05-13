@@ -79,7 +79,7 @@ public class RollbackExecutable {
                 o = rs.getObject(col);
                 pstmt.setObject(col - offset, o);
             }
-            pstmt.executeQuery();
+            pstmt.executeUpdate();
             cnt++;
         }
         logger.info("Deleted {} records from table {}", cnt, tableName);

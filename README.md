@@ -33,6 +33,20 @@ debugging, monitoring, and auditing.
 Apiary currently supports two database backends, Postgres and VoltDB,
 although we're open to supporting more in the future.
 
+### Getting Started
+
 To get you started, we've written 
 [a tutorial](https://github.com/DBOS-project/apiary/tree/main/postgres-demo) showing you how to build a simple social network
 application with Apiary and [Spring Boot](https://spring.io/projects/spring-boot).
+We also have a [programming guide](https://github.com/DBOS-project/apiary/blob/main/ProgrammingGuide.md)
+for Apiary as well as documentation.
+
+### Contact Us
+
+We're interested in any feedback you have to make this project better.
+Apiary is primarily developed by [Peter Kraft](http://petereliaskraft.net/)
+and [Qian Li](https://cs.stanford.edu/people/qianli/)
+as part of the [DBOS](https://dbos-project.github.io/) project.
+Contact us via email at:
+
+    apiary-group@cs.stanford.edu

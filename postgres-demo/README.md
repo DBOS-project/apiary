@@ -2,7 +2,7 @@
 
 This tutorial will show you how to build a simple social network
 web application using Apiary and [Spring Boot](https://spring.io/projects/spring-boot).
-To get started, let's first install some dependencies: 
+To get started, let's first install some dependencies:
 
     sudo apt install openjdk-11-jdk maven libatomic1
 
@@ -186,15 +186,15 @@ number of failed attempts:
 postgres=# SELECT COUNT(*) FROM WebsiteLoginsEvents WHERE username='peter' AND apiary_timestamp / 1000000 > (select extract(epoch from now()) - 300);
 count
 -------
-    5123
+    51
 (1 row)
 ```
 We write the query like this because Apiary records timestamps in
 microseconds using Unix time, but Postgres reports timestamps in seconds.
 
 Another application of Apiary provenance is rollback.  Because we
-record all operations on data, we can easily roll back the database
-(and therefore all application state) to a previous time,
+record all operations on data, we can roll back the database
+(and therefore all application state) to a previous time
 in case of corruption or attack.  For example, using our rollback
 script (source [here](src/main/java/org/dbos/apiary/postgresdemo/executable/RollbackExecutable.java)), you can roll back Nectar Network to
 any previous timestamp:

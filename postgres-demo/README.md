@@ -196,7 +196,9 @@ Another application of Apiary provenance is rollback.  Because we
 record all operations on data, we can easily roll back the database
 (and therefore all application state) to a previous time,
 in case of corruption or attack.  For example, using our rollback
-script (source here), you can roll back Nectar Network to
+script (source [here](src/main/java/org/dbos/apiary/postgresdemo/executable/RollbackExecutable.java)), you can roll back Nectar Network to
 any previous timestamp:
 
     scripts/rollback.sh TIMESTAMP
+
+It will reset all application tables to the state right before the provided timestamp.

@@ -16,10 +16,10 @@ Apiary is based around two ideas which we believe can radically simplify many ap
 2. Access this state only through database transactions.
 
 An Apiary application is composed of _transactional functions_,
-which are regular Java functions that use SQL to talk to the database,
+which are regular Java functions that use SQL to access application state in the database,
 but which execute as ACID database transactions.
 We provide interfaces to write these functions, compose them into larger programs,
-and schedule and run them.  Apiary provides three exciting features:
+then schedule and run them.  Apiary provides three exciting features:
 
 * High performance, especially in a distributed setting,
 through aggressive co-location of compute and data.
@@ -33,6 +33,20 @@ debugging, monitoring, and auditing.
 Apiary currently supports two database backends, Postgres and VoltDB,
 although we're open to supporting more in the future.
 
+### Getting Started
+
 To get you started, we've written 
-[a tutorial](https://github.com/DBOS-project/apiary/tree/main/postgres-demo) showing you how to build a simple social network
+[a tutorial](postgres-demo/) showing you how to build a simple social network
 application with Apiary and [Spring Boot](https://spring.io/projects/spring-boot).
+We also have a [programming guide](ProgrammingGuide.md)
+for Apiary as well as documentation.
+
+### Contact Us
+
+We're interested in any feedback you have to make this project better.
+Apiary is primarily developed by [Peter Kraft](http://petereliaskraft.net/)
+and [Qian Li](https://cs.stanford.edu/people/qianli/)
+as part of the [DBOS](https://dbos-project.github.io/) project.
+Contact us via email at:
+
+    apiary-group@cs.stanford.edu

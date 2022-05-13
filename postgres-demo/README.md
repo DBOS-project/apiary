@@ -2,7 +2,7 @@
 
 This tutorial will show you how to build a simple social network
 web application using Apiary and [Spring Boot](https://spring.io/projects/spring-boot).
-To get started, let's first install some dependencies: 
+To get started, let's first install some dependencies:
 
     sudo apt install openjdk-11-jdk maven libatomic1
 
@@ -32,7 +32,7 @@ The first thing we need to do is  create some database tables in Postgres
 to store the information our site needs: logins and posts.
 We create these tables inside the Spring Boot controller
 when our web server starts;
-the full code for it is [here](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/NectarController.java).
+the full code for it is [here](src/main/java/org/dbos/apiary/postgresdemo/NectarController.java).
 We provide an API for creating tables in Apiary, which uses
 conventional Postgres syntax:
 
@@ -134,20 +134,20 @@ public RedirectView loginSubmit(@ModelAttribute Credentials credentials, @ModelA
 }
 ```
 
-We similarly write [AddPosts](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/functions/NectarAddPost.java)
-and [GetPosts](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/functions/NectarGetPosts.java)
+We similarly write [AddPosts](src/main/java/org/dbos/apiary/postgresdemo/functions/NectarAddPost.java)
+and [GetPosts](src/main/java/org/dbos/apiary/postgresdemo/functions/NectarGetPosts.java)
 functions in Apiary and call them in Spring;
-you can see code for all four functions [here](https://github.com/DBOS-project/apiary/tree/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/functions).
+you can see code for all four functions [here](src/main/java/org/dbos/apiary/postgresdemo/functions).
 
 ### Tying it Together
 
 With our functions written, it's almost time to launch our site.
-We'll now tell the [Spring controller](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/NectarController.java)
+We'll now tell the [Spring controller](src/main/java/org/dbos/apiary/postgresdemo/NectarController.java)
 to launch an Apiary worker on startup to manage all the Apiary function requests,
 then register all our functions with the worker:
 
 ```java
-PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 conn.registerFunction("NectarRegister", NectarRegister::new);
 conn.registerFunction("NectarLogin", NectarLogin::new);
 conn.registerFunction("NectarAddPost", NectarAddPost::new);
@@ -161,7 +161,7 @@ Everything's ready!  To start the site, run in the `postgres-demo` root director
 
     mvn clean && mvn package && mvn spring-boot:run
 
-Then, navigate to `localhost:8081` to view this new social network!
+Then, navigate to `localhost:8081` to view this new social network! You should be able to see a webpage titled with **Nectar Home - A small social network baed on Apiary** :)
 
 ### Provenance
 
@@ -186,15 +186,15 @@ number of failed attempts:
 postgres=# SELECT COUNT(*) FROM WebsiteLoginsEvents WHERE username='peter' AND apiary_timestamp / 1000000 > (select extract(epoch from now()) - 300);
 count
 -------
-    5123
+    51
 (1 row)
 ```
 We write the query like this because Apiary records timestamps in
 microseconds using Unix time, but Postgres reports timestamps in seconds.
 
 Another application of Apiary provenance is rollback.  Because we
-record all operations on data, we can easily roll back the database
-(and therefore all application state) to a previous time,
+record all operations on data, we can roll back the database
+(and therefore all application state) to a previous time
 in case of corruption or attack.  For example, using our rollback
 script (source [here](src/main/java/org/dbos/apiary/postgresdemo/executable/RollbackExecutable.java)), you can roll back Nectar Network to
 any previous timestamp:

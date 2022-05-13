@@ -17,7 +17,7 @@ import java.util.concurrent.Callable;
 import static org.dbos.apiary.utilities.ApiaryConfig.getApiaryClientID;
 
 /**
- * For internal use only.
+ * A connection to a Postgres database.
  */
 public class PostgresConnection implements ApiaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(PostgresConnection.class);
@@ -27,13 +27,22 @@ public class PostgresConnection implements ApiaryConnection {
 
     private final Map<String, Callable<PostgresFunction>> functions = new HashMap<>();
 
-    public PostgresConnection(String hostname, Integer port) throws SQLException {
+    /**
+     * Create a connection to a Postgres database.
+     * @param hostname the Postgres database hostname.
+     * @param port the Postgres database port.
+     * @param databaseName the Postgres database name.
+     * @param databaseUsername the Postgres database username.
+     * @param databasePassword the Postgres database password.
+     * @throws SQLException
+     */
+    public PostgresConnection(String hostname, Integer port, String databaseName, String databaseUsername, String databasePassword) throws SQLException {
         this.ds = new PGSimpleDataSource();
         this.ds.setServerNames(new String[] {hostname});
         this.ds.setPortNumbers(new int[] {port});
-        this.ds.setDatabaseName("postgres");
-        this.ds.setUser("postgres");
-        this.ds.setPassword("dbos");
+        this.ds.setDatabaseName(databaseName);
+        this.ds.setUser(databaseUsername);
+        this.ds.setPassword(databasePassword);
         this.ds.setSsl(false);
 
         this.connection = ThreadLocal.withInitial(() -> {
@@ -59,8 +68,18 @@ public class PostgresConnection implements ApiaryConnection {
         registerFunction(getApiaryClientID, GetApiaryClientID::new);
     }
 
+    /**
+     * Register a PostgresFunction.
+     * @param name The name of the function.
+     * @param function The constructor of the function.
+     */
     public void registerFunction(String name, Callable<PostgresFunction> function) { functions.put(name, function); }
 
+    /**
+     * Drop a table and its corresponding events table if they exist.
+     * @param tableName the table to drop.
+     * @throws SQLException
+     */
     public void dropTable(String tableName) throws SQLException {
         Connection conn = ds.getConnection();
         Statement truncateTable = conn.createStatement();
@@ -70,6 +89,12 @@ public class PostgresConnection implements ApiaryConnection {
         conn.close();
     }
 
+    /**
+     * Create a table and a corresponding events table.
+     * @param tableName the table to create.
+     * @param specStr the schema of the table, in Postgres DDL.
+     * @throws SQLException
+     */
     public void createTable(String tableName, String specStr) throws SQLException {
         Connection conn = ds.getConnection();
         Statement s = conn.createStatement();

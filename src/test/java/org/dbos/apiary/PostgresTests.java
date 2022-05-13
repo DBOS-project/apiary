@@ -33,7 +33,7 @@ public class PostgresTests {
     @BeforeEach
     public void resetTables() {
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
             conn.dropTable("RecordedOutputs");
             conn.dropTable("FuncInvocations");
             conn.dropTable("KVTable");
@@ -64,7 +64,7 @@ public class PostgresTests {
 
         PostgresConnection conn;
         try {
-            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Postgres instance!");
             return;
@@ -94,7 +94,7 @@ public class PostgresTests {
 
         PostgresConnection conn;
         try {
-            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Postgres instance!");
             return;
@@ -130,7 +130,7 @@ public class PostgresTests {
 
         PostgresConnection conn;
         try {
-            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Postgres instance!");
             return;
@@ -162,7 +162,7 @@ public class PostgresTests {
 
         PostgresConnection conn;
         try {
-            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Postgres instance!");
             return;
@@ -209,7 +209,7 @@ public class PostgresTests {
 
         PostgresConnection conn;
         try {
-            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Postgres instance!");
             return;
@@ -340,7 +340,7 @@ public class PostgresTests {
 
         PostgresConnection conn;
         try {
-            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Postgres instance!");
             return;

@@ -3,10 +3,9 @@ package org.dbos.apiary.function;
 import java.io.Serializable;
 
 /**
- * ApiaryFuture is used for asynchronous invocations.
- * An asynchronously invoked function returns an ApiaryFuture to its caller.
- * Then the caller function can pass the ApiaryFuture object as the input to other asynchronous invocations,
- * but cannot dereference the future in place.
+ * ApiaryFuture is returned by asynchronously invoked functions.
+ * Futures can be passed as arguments to other functions or returned,
+ * but cannot be dereferenced directly.
  */
 public class ApiaryFuture implements Serializable {
     public final long futureID;

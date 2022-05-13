@@ -22,8 +22,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * For internal use only.
- * Note that this class is not thread-safe (due to ZMQ.Socket), thus cannot be shared between threads.
+ * For internal use only. This class is not thread-safe.
  */
 public class InternalApiaryWorkerClient {
     private static final Logger logger = LoggerFactory.getLogger(InternalApiaryWorkerClient.class);

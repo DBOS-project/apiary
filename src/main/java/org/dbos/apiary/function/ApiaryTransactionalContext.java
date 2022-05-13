@@ -3,8 +3,8 @@ package org.dbos.apiary.function;
 import org.dbos.apiary.utilities.ApiaryConfig;
 
 /**
- * ApiaryTransactionalContext is for functions that interact with databases.
- * It provides additional APIs to execute database updates and queries.
+ * ApiaryTransactionalContext is a context for transactional functions.
+ * It provides an interface to query and update the database.
  */
 public abstract class ApiaryTransactionalContext extends ApiaryContext {
 
@@ -16,8 +16,8 @@ public abstract class ApiaryTransactionalContext extends ApiaryContext {
     public abstract FunctionOutput apiaryCallFunction(String name, Object... inputs);
 
     /**
-     * Execute an update query in the database backend.
-     * @param procedure SQL statement.
+     * Execute a database update.
+     * @param procedure a SQL DML statement (e.g., INSERT, UPDATE, DELETE).
      * @param input     input parameters for the SQL statement.
      */
     public void apiaryExecuteUpdate(Object procedure, Object... input) {
@@ -29,8 +29,8 @@ public abstract class ApiaryTransactionalContext extends ApiaryContext {
     }
 
     /**
-     * Execute a read-only query in the database backend.
-     * @param procedure SQL statement (read-only).
+     * Execute a database query.
+     * @param procedure a SQL query.
      * @param input     input parameters for the SQL statement.
      */
     public Object apiaryExecuteQuery(Object procedure, Object... input) {

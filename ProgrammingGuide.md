@@ -1,7 +1,7 @@
 # Programming Guide
 
-This document provides a brief guide to programming in Apiary.  
-Please also see our [tutorial](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/README.md)
+This document provides a guide to programming in Apiary.  
+Please also see our [tutorial](postgres-demo/README.md)
 and documentation.
 This document focuses on our Postgres DBMS backend, we also support VoltDB
 and will add other databases in the future.
@@ -18,14 +18,14 @@ and for compute-intensive operations like machine learning inference.
 
 ### Transactional Functions
 
-To write a transactional function, simply subclass the _PostgresFunction_
-class and implement your function in its _runFunction_ method.
-The first argument to a transactional function is always an _ApiaryTransactionalContext_ object
+To write a transactional function, simply subclass the `PostgresFunction`
+class and implement your function in its `runFunction` method.
+The first argument to a transactional function is always an `ApiaryTransactionalContext` object
 automatically provided by Apiary and used to access its API.  Functions may
 have any number of additional arguments but can only take in and return
 integers, strings, arrays of integers, and arrays of strings.
 Here is an example of a transactional function that registers users in a social network
-taken from our  [tutorial](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/README.md):
+taken from our  [tutorial](postgres-demo/README.md):
 
 ```java
 public class NectarRegister extends PostgresFunction {
@@ -44,15 +44,15 @@ public class NectarRegister extends PostgresFunction {
 }
 ```
 
-The _ApiaryTransactionalContext_ object provides methods for updating and querying the database,
+The `ApiaryTransactionalContext` object provides methods for updating and querying the database,
 described in our documentation.  It also provides methods for calling other functions,
 described in more detail below.
 
 ### Stateless Functions
 
-To write a stateless function, simply subclass the _StatelessFunction_ class
-and implement your function in its _runFunction_ method.
-The first argument to a stateless function is always an _ApiaryStatelessContext_ object
+To write a stateless function, simply subclass the `StatelessFunction` class
+and implement your function in its `runFunction` method.
+The first argument to a stateless function is always an `ApiaryStatelessContext` object
 automatically provided by Apiary and used to access its API.  Functions may
 have any number of additional arguments but can only take in and return
 integers, strings, arrays of integers, and arrays of strings.
@@ -73,7 +73,7 @@ public class Notify extends StatelessFunction {
 ### Composing Functions
 
 Apiary functions can call one another
-synchronously and asynchronously.
+either synchronously or asynchronously.
 To call a function synchronously, use the `callFunction` method of
 the function context (`ApiaryTransactionalContext` or `ApiaryStatelessContext`).
 Synchronous calls execute and return inside the caller transaction
@@ -112,7 +112,7 @@ public class SendMessage extends PostgresFunction {
     private static final String addMessage = "INSERT INTO Messages(Sender, Receiver, MessageText) VALUES (?, ?, ?);";
 
     public static ApiaryFuture runFunction(ApiaryTransactionalContext ctxt, String sender, String receiver, String message) {
-        ctxt.apiaryExecuteUpdate(addPost, sender, receiver, postText);
+        ctxt.apiaryExecuteUpdate(addPost, sender, receiver, message);
         ApiaryFuture notificationSuccess = ctxt.apiaryQueueFunction("Notify", receiver, message);
         return notificationSuccess; // This will be dereferenced upon delievery, so the caller will receieve the actual success value.
     }
@@ -121,15 +121,16 @@ public class SendMessage extends PostgresFunction {
 
 ### Running Apiary: Workers and Clients
 
-To run Apiary, you need to set up a worker that can communicate with the database
-and run functions.  To do this, create an Apiary-database connection
+To run Apiary, you need to start up a worker that can communicate with the database
+and run functions.  To do this, create a database connection
 (e.g., `PostgresConnection`), use it to create tables,
 and register your functions with it. Then, start a worker using that connection.
-For example, here is the code to create a connection and start a worker
-from the tutorial:
+For example, here is the code to initialize a Postgres connection,
+create the tables and functions used in the [tutorial](postgres-demo/),
+and start a worker:
 
 ```java
-PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 conn.createTable("WebsiteLogins", "Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL");
 conn.createTable("WebsitePosts", "Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL");
 conn.registerFunction("NectarRegister", NectarRegister::new);
@@ -155,7 +156,7 @@ String[] posts = client.executeFunction("GetMessages", username).getStringArray(
 Apiary captures _data provenance_ information on all function executions
 and all operations functions perform on data. This information is stored
 in database tables (by default in Postgres, but we also support Vertica)
-for easy querying.  First, Apiary maintains a _FuncInvocations_
+for easy querying.  First, Apiary maintains a `FuncInvocations`
 table storing information on all function invocations.  Its schema is:
 
 | Field     | Type    | Description                           |
@@ -178,5 +179,5 @@ maintains an `Events` table tracking all operations that occured on the table:
 
 ### Further Reading 
 
-If you haven't already, please look at the [tutorial](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/README.md)
+If you haven't already, please look at the [tutorial](postgres-demo/README.md)
 and documentation.  If you have any questions, feel free to contact us.

@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * ApiaryStatelessContext is for functions that are stateless and have no access to databases.
+ * ApiaryStatelessContext is a context for stateless functions.
  */
 public class ApiaryStatelessContext extends ApiaryContext {
 

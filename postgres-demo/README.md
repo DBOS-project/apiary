@@ -2,6 +2,7 @@
 
 This tutorial will show you how to build a simple social network
 web application using Apiary and [Spring Boot](https://spring.io/projects/spring-boot).
+We use Apiary's Postgres backend.
 To get started, let's first install some dependencies:
 
     sudo apt install openjdk-11-jdk maven libatomic1

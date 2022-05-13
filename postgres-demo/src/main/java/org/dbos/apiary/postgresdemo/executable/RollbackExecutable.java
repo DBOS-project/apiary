@@ -72,7 +72,6 @@ public class RollbackExecutable {
         pstmt = conn.prepareStatement(preparedQuery.toString());
 
         // Delete records.
-        int cnt = 0;
         while (rs.next()) {
             for (int col = offset+1; col <= numColumns; col++) {
                 Object o;
@@ -80,8 +79,6 @@ public class RollbackExecutable {
                 pstmt.setObject(col - offset, o);
             }
             pstmt.executeUpdate();
-            cnt++;
         }
-        logger.info("Deleted {} records from table {}", cnt, tableName);
     }
 }

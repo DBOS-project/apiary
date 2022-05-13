@@ -162,13 +162,14 @@ Everything's ready!  To start the site, run in the `postgres-demo` root director
 
     mvn clean && mvn package && mvn spring-boot:run
 
-Then, navigate to `localhost:8081` to view this new social network! You should be able to see a webpage titled with **Nectar Home - A small social network baed on Apiary** :)
+Then, navigate to `localhost:8081` to view this new social network! You should see the Nectar homepage:
+<img src="https://storage.googleapis.com/apiary_public/nectar_network_homepage.png" width="600">
 
 ### Provenance
 
 One of the most interesting features of Apiary is _data provenance capture_.
 Apiary automatically records the provenance of each record,
-the set of all operations (read or write) that ever occured on it.
+the set of all operations (read or write) that ever occurred on it.
 For example, the provenance of a record in our `WebsiteLogins` table
 would be the original registration operation that created it
 as well as all the login attempts ever made to that username.
@@ -178,7 +179,7 @@ a `WebsiteLoginsEvents` table containing provenance information
 for `WebsiteLogins`.
 
 As a simple application of provenance, we might imagine querying
-how many login attempts have occured for a particular account in the last
+how many login attempts have occurred for a particular account in the last
 five minutes,  for example to send an alert in case of a large
 number of failed attempts:
 

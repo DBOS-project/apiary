@@ -10,7 +10,7 @@ Apiary is an ongoing research project within the MIT-Stanford
 we are interested in any feedback you can provide to improve the project
 so it better meets developers' needs.
 
-Apiary is based around two ideas which we believe can radically simplify many applications:
+Apiary is based on two ideas that we believe can radically simplify many applications:
 
 1. Store all long-lived application state in a database.
 2. Access this state only through database transactions.
@@ -25,8 +25,8 @@ then schedule and run them.  Apiary provides three exciting features:
 through aggressive co-location of compute and data.
 * Strong consistency for programs, including exactly-once semantics for program execution 
 and cross-function or even cross-application transactional guarantees.
-* Data provenance capture for observability: we automatically  record 
-every function execution and every operation functions performs on data,
+* Data provenance capture for observability: we automatically record 
+every function execution and every operation performed on data,
 then store this information in easy-to query database tables to aid in
 debugging, monitoring, and auditing.
 

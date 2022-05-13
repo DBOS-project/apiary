@@ -32,7 +32,7 @@ The first thing we need to do is  create some database tables in Postgres
 to store the information our site needs: logins and posts.
 We create these tables inside the Spring Boot controller
 when our web server starts;
-the full code for it is [here](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/NectarController.java).
+the full code for it is [here](src/main/java/org/dbos/apiary/postgresdemo/NectarController.java).
 We provide an API for creating tables in Apiary, which uses
 conventional Postgres syntax:
 
@@ -134,15 +134,15 @@ public RedirectView loginSubmit(@ModelAttribute Credentials credentials, @ModelA
 }
 ```
 
-We similarly write [AddPosts](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/functions/NectarAddPost.java)
-and [GetPosts](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/functions/NectarGetPosts.java)
+We similarly write [AddPosts](src/main/java/org/dbos/apiary/postgresdemo/functions/NectarAddPost.java)
+and [GetPosts](src/main/java/org/dbos/apiary/postgresdemo/functions/NectarGetPosts.java)
 functions in Apiary and call them in Spring;
-you can see code for all four functions [here](https://github.com/DBOS-project/apiary/tree/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/functions).
+you can see code for all four functions [here](src/main/java/org/dbos/apiary/postgresdemo/functions).
 
 ### Tying it Together
 
 With our functions written, it's almost time to launch our site.
-We'll now tell the [Spring controller](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/src/main/java/org/dbos/apiary/postgresdemo/NectarController.java)
+We'll now tell the [Spring controller](src/main/java/org/dbos/apiary/postgresdemo/NectarController.java)
 to launch an Apiary worker on startup to manage all the Apiary function requests,
 then register all our functions with the worker:
 
@@ -161,7 +161,7 @@ Everything's ready!  To start the site, run in the `postgres-demo` root director
 
     mvn clean && mvn package && mvn spring-boot:run
 
-Then, navigate to `localhost:8081` to view this new social network!
+Then, navigate to `localhost:8081` to view this new social network! You should be able to see a webpage titled with **Nectar Home - A small social network baed on Apiary** :)
 
 ### Provenance
 

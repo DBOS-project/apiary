@@ -1,7 +1,7 @@
 # Programming Guide
 
 This document provides a guide to programming in Apiary.  
-Please also see our [tutorial](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/README.md)
+Please also see our [tutorial](postgres-demo/README.md)
 and documentation.
 This document focuses on our Postgres DBMS backend, we also support VoltDB
 and will add other databases in the future.
@@ -25,7 +25,7 @@ automatically provided by Apiary and used to access its API.  Functions may
 have any number of additional arguments but can only take in and return
 integers, strings, arrays of integers, and arrays of strings.
 Here is an example of a transactional function that registers users in a social network
-taken from our  [tutorial](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/README.md):
+taken from our  [tutorial](postgres-demo/README.md):
 
 ```java
 public class NectarRegister extends PostgresFunction {
@@ -126,7 +126,7 @@ and run functions.  To do this, create a database connection
 (e.g., `PostgresConnection`), use it to create tables,
 and register your functions with it. Then, start a worker using that connection.
 For example, here is the code to initialize a Postgres connection,
-create the tables and functions used in the [tutorial](https://github.com/DBOS-project/apiary/tree/main/postgres-demo),
+create the tables and functions used in the [tutorial](postgres-demo/),
 and start a worker:
 
 ```java
@@ -179,5 +179,5 @@ maintains an `Events` table tracking all operations that occured on the table:
 
 ### Further Reading 
 
-If you haven't already, please look at the [tutorial](https://github.com/DBOS-project/apiary/blob/main/postgres-demo/README.md)
+If you haven't already, please look at the [tutorial](postgres-demo/README.md)
 and documentation.  If you have any questions, feel free to contact us.

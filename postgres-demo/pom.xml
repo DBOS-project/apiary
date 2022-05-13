@@ -34,8 +34,8 @@
 
 		<dependency>
 			<groupId>org.dbos.apiary</groupId>
-			<artifactId>dynamic-apiary</artifactId>
-			<version>0.1-SNAPSHOT</version>
+			<artifactId>apiary</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
 			<scope>compile</scope>
 		</dependency>
 
@@ -95,11 +95,11 @@
 						<id>install-external</id>
 						<phase>clean</phase>
 						<configuration>
-							<file>../target/dynamic-apiary-0.1-SNAPSHOT.jar</file>
+							<file>../target/apiary-0.0.1-SNAPSHOT.jar</file>
 							<repositoryLayout>default</repositoryLayout>
 							<groupId>org.dbos.apiary</groupId>
-							<artifactId>dynamic-apiary</artifactId>
-							<version>0.1-SNAPSHOT</version>
+							<artifactId>apiary</artifactId>
+							<version>0.0.1-SNAPSHOT</version>
 							<packaging>jar</packaging>
 						</configuration>
 						<goals>

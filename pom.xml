@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.dbos.apiary</groupId>
-    <artifactId>dynamic-apiary</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <artifactId>apiary</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
 
     <build>
         <extensions>

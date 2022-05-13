@@ -162,7 +162,8 @@ Everything's ready!  To start the site, run in the `postgres-demo` root director
 
     mvn clean && mvn package && mvn spring-boot:run
 
-Then, navigate to `localhost:8081` to view this new social network! You should see the Nectar homepage: **Nectar Home - A small social network based on Apiary** :)
+Then, navigate to `localhost:8081` to view this new social network! You should see the Nectar homepage:
+<img src="https://storage.googleapis.com/apiary_public/nectar_network_homepage.png" width="600">
 
 ### Provenance
 

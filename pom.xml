@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.dbos.apiary</groupId>
-    <artifactId>dynamic-apiary</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <artifactId>apiary</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
 
     <build>
         <extensions>
@@ -24,6 +24,7 @@
                 <configuration>
                     <show>public</show>
                     <doctitle>Apiary Public API</doctitle>
+                    <windowtitle>Apiary Public API</windowtitle>
                     <subpackages>org.dbos.apiary.function:org.dbos.apiary.client:org.dbos.apiary.postgres:org.dbos.apiary.voltdb:org.dbos.apiary.connection</subpackages>
                 </configuration>
             </plugin>

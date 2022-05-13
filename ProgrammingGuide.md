@@ -181,4 +181,4 @@ maintains an `Events` table tracking all operations that occured on the table:
 
 If you haven't already, please look at the [tutorial](postgres-demo/README.md)
 and [documentation](https://dbos-project.github.io/apiary-docs/).
-If you have any questions, feel free to [contact us](https://github.com/DBOS-project/apiary#contact-us).
+If you have any questions, feel free to [contact us](README.md#contact-us).

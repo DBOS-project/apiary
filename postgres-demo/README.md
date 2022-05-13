@@ -5,7 +5,7 @@ web application using Apiary and [Spring Boot](https://spring.io/projects/spring
 We use Apiary's Postgres backend.
 To get started, let's first install some dependencies:
 
-    sudo apt install openjdk-11-jdk maven libatomic1
+    sudo apt install openjdk-11-jdk maven libatomic1 postgresql-client
 
 Next, let's compile Apiary. In the Apiary root directory, run:
 
@@ -182,8 +182,9 @@ how many login attempts have occured for a particular account in the last
 five minutes,  for example to send an alert in case of a large
 number of failed attempts:
 
+
 ```postgresql
->> psql
+>> psql -h localhost -U postgres
 postgres=# SELECT COUNT(*) FROM WebsiteLoginsEvents WHERE username='peter' AND apiary_timestamp / 1000000 > (select extract(epoch from now()) - 300);
 count
 -------

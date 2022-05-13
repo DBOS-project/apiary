@@ -39,7 +39,7 @@ To get you started, we've written
 [a tutorial](postgres-demo/) showing you how to build a simple social network
 application with Apiary and [Spring Boot](https://spring.io/projects/spring-boot).
 We also have a [programming guide](ProgrammingGuide.md)
-for Apiary as well as documentation.
+for Apiary as well as [documentation](https://dbos-project.github.io/apiary-docs/).
 
 ### Contact Us
 

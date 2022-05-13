@@ -2,7 +2,7 @@
 
 This document provides a guide to programming in Apiary.  
 Please also see our [tutorial](postgres-demo/README.md)
-and documentation.
+and [documentation](https://dbos-project.github.io/apiary-docs/).
 This document focuses on our Postgres DBMS backend, we also support VoltDB
 and will add other databases in the future.
 
@@ -45,7 +45,7 @@ public class NectarRegister extends PostgresFunction {
 ```
 
 The `ApiaryTransactionalContext` object provides methods for updating and querying the database,
-described in our documentation.  It also provides methods for calling other functions,
+described in our [documentation](https://dbos-project.github.io/apiary-docs/).  It also provides methods for calling other functions,
 described in more detail below.
 
 ### Stateless Functions
@@ -180,4 +180,5 @@ maintains an `Events` table tracking all operations that occured on the table:
 ### Further Reading 
 
 If you haven't already, please look at the [tutorial](postgres-demo/README.md)
-and documentation.  If you have any questions, feel free to contact us.
+and [documentation](https://dbos-project.github.io/apiary-docs/).
+If you have any questions, feel free to [contact us](https://github.com/DBOS-project/apiary#contact-us).

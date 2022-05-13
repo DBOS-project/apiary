@@ -12,15 +12,15 @@ public abstract class ApiaryContext {
     private final AtomicInteger calledFunctionID = new AtomicInteger(0);
     private final List<Task> queuedTasks = new ArrayList<>();
     /**
-     * Only for internal use. Do not use in public functions!
+     * For internal use only.
      */
     public final ProvenanceBuffer provBuff;
     /**
-     * Only for internal use. Do not use in public functions!
+     * For internal use only.
      */
     public final String service;
     /**
-     * Only for internal use. Do not use in public functions!
+     * For internal use only.
      */
     public final long execID, functionID;
 
@@ -35,11 +35,10 @@ public abstract class ApiaryContext {
 
     /**
      * Queue a function for asynchronous execution.
-     * This function synchronously queues the invoked function for later asynchronous execution.
      *
      * @param name      the name of the invoked function.
      * @param inputs    the list of arguments provided to the invoked function.
-     * @return          an {@link ApiaryFuture} object that holds the future ID.
+     * @return          an {@link ApiaryFuture} object.
      */
     public ApiaryFuture apiaryQueueFunction(String name, Object... inputs) {
         long functionID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
@@ -49,9 +48,9 @@ public abstract class ApiaryContext {
     }
 
     /**
-     * Invoke a function synchronously and block waiting for the result.
+     * Synchronously invoke a function.
      *
-     * @param name      the name of the invoked function.
+     * @param name      the fully-qualified name of the invoked function.
      * @param inputs    the list of arguments provided to the invoked function.
      * @return          an {@link FunctionOutput} object that stores the output from a function.
      */
@@ -60,19 +59,19 @@ public abstract class ApiaryContext {
     /** Apiary-private **/
 
     /**
-     * Only for internal use. Do not use in public functions!
+     * For internal use only.
      * @return {@link FunctionOutput}
      */
     public abstract FunctionOutput checkPreviousExecution();
 
     /**
-     * Only for internal use. Do not use in public functions!
+     * For internal use only.
      * @param output    the finalized output of a function.
      */
     public abstract void recordExecution(FunctionOutput output);
 
     /**
-     * Only for internal use. Do not use in public functions!
+     * For internal use only.
      * @param output    the original output of a function.
      * @return          the finalized output of a function.
      */

@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.dbos.apiary.utilities.ApiaryConfig.getApiaryClientID;
 
 /**
- * ApiaryWorkerClient provides interface for invoking Apiary functions from a remote client.
- * Note that this class is not thread-safe (due to ZMQ.Socket), thus cannot be shared between threads.
+ * ApiaryWorkerClient provides an interface for invoking Apiary functions from a remote client.
+ * This class is not thread-safe.
  */
 public class ApiaryWorkerClient {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorkerClient.class);
@@ -25,7 +25,7 @@ public class ApiaryWorkerClient {
     private final AtomicLong execIDGenerator = new AtomicLong(0);
 
     /**
-     * This constructor is used by clients that only send synchronous requests to Apiary.
+     * Create a client for sending synchronous requests to Apiary.
      * @param apiaryWorkerAddress   the address of an Apiary worker.
      */
     public ApiaryWorkerClient(String apiaryWorkerAddress) {
@@ -33,16 +33,16 @@ public class ApiaryWorkerClient {
     }
 
     /**
-     * This constructor is used by clients that send/receive asynchronous requests to Apiary over the <code>ZContext</code>.
+     * Create a client for sending asynchronous requests to Apiary.
      * @param apiaryWorkerAddress   the address of an Apiary worker.
-     * @param zContext              the zContext managed by the client.
+     * @param zContext              the ZContext to be used for sending requests and receiving replies.
      */
     public ApiaryWorkerClient(String apiaryWorkerAddress, ZContext zContext) {
         this.apiaryWorkerAddress = apiaryWorkerAddress;
         this.internalClient = new InternalApiaryWorkerClient(zContext);
         int tmpID = 0;
         try {
-            tmpID = internalClient.executeFunction(this.apiaryWorkerAddress, getApiaryClientID, "ApiarySystem", 0l).getInt();
+            tmpID = internalClient.executeFunction(this.apiaryWorkerAddress, getApiaryClientID, "ApiarySystem", 0L).getInt();
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }

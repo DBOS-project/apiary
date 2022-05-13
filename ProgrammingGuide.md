@@ -130,7 +130,7 @@ create the tables and functions used in the [tutorial](https://github.com/DBOS-p
 and start a worker:
 
 ```java
-PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 conn.createTable("WebsiteLogins", "Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL");
 conn.createTable("WebsitePosts", "Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL");
 conn.registerFunction("NectarRegister", NectarRegister::new);

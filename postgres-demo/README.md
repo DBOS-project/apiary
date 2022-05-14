@@ -5,7 +5,7 @@ web application using Apiary and [Spring Boot](https://spring.io/projects/spring
 We use Apiary's Postgres backend.
 To get started, let's first install some dependencies:
 
-    sudo apt install openjdk-11-jdk maven libatomic1 postgresql-client
+    sudo apt install openjdk-11-jdk maven libatomic1
 
 Next, let's compile Apiary. In the Apiary root directory, run:
 
@@ -14,6 +14,8 @@ Next, let's compile Apiary. In the Apiary root directory, run:
 Then, let's start Postgres from a Docker image:
 
     sudo scripts/initialize_postgres_docker.sh
+
+It is also possible to [run](https://docs.docker.com/engine/install/linux-postinstall/) docker using non-root users.
 
 Now, it's time to build a website!
 We want to build a simple social network application where you can
@@ -184,7 +186,7 @@ number of failed attempts:
 
 
 ```postgresql
->> psql -h localhost -U postgres
+>> sudo docker exec -it apiary-postgres psql -h localhost -U postgres
 postgres=# SELECT COUNT(*) FROM WebsiteLoginsEvents WHERE username='peter' AND apiary_timestamp / 1000000 > (select extract(epoch from now()) - 300);
 count
 -------

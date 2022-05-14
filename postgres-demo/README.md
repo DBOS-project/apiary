@@ -13,7 +13,9 @@ Next, let's compile Apiary. In the Apiary root directory, run:
 
 Then, let's start Postgres from a Docker image:
 
-    scripts/initialize_postgres_docker.sh
+    sudo scripts/initialize_postgres_docker.sh
+
+It is also possible to [run](https://docs.docker.com/engine/install/linux-postinstall/) docker using non-root users.
 
 Now, it's time to build a website!
 We want to build a simple social network application where you can
@@ -183,8 +185,9 @@ how many login attempts have occurred for a particular account in the last
 five minutes,  for example to send an alert in case of a large
 number of failed attempts:
 
+
 ```postgresql
->> psql
+>> sudo docker exec -it apiary-postgres psql -h localhost -U postgres
 postgres=# SELECT COUNT(*) FROM WebsiteLoginsEvents WHERE username='peter' AND apiary_timestamp / 1000000 > (select extract(epoch from now()) - 300);
 count
 -------

@@ -4,7 +4,7 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 
 /**
- * For internal use only.
+ * The base class for Apiary stateless functions.
  */
 public class StatelessFunction implements ApiaryFunction {
 

@@ -5,17 +5,21 @@ web application using Apiary and [Spring Boot](https://spring.io/projects/spring
 We use Apiary's Postgres backend.
 To get started, let's first install some dependencies:
 
-    sudo apt install openjdk-11-jdk maven libatomic1
+```shell
+sudo apt install openjdk-11-jdk maven libatomic1
+```
 
 Next, let's compile Apiary. In the Apiary root directory, run:
 
-    mvn -DskipTests package
+```shell
+mvn -DskipTests package
+```
 
-Then, let's start Postgres from a Docker image:
+Then, let's start Postgres from a Docker image. We recommend you [configure Docker](https://docs.docker.com/engine/install/linux-postinstall/) so it can be run by non-root users.
 
-    sudo scripts/initialize_postgres_docker.sh
-
-It is also possible to [run](https://docs.docker.com/engine/install/linux-postinstall/) docker using non-root users.
+```shell
+scripts/initialize_postgres_docker.sh
+```
 
 Now, it's time to build a website!
 We want to build a simple social network application where you can

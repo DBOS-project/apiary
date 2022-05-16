@@ -1,12 +1,14 @@
 <img src="https://storage.googleapis.com/apiary_public/apiary_logo_timeburner.png" width="400">
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Welcome to Apiary!  Apiary is a transactional function-as-a-service (FaaS) framework for building
 database-oriented applications such as microservices and web service backends.
 Apiary provides an easy-to-use Java interface that supports general computation
 and offers excellent performance, strong consistency guarantees,
 and powerful new observability features such as automatic data provenance capture.
 Apiary is an ongoing research project within the MIT-Stanford 
-[DBOS](https://dbos-project.github.io/) collaboration; it is licensed under the [MIT License](LICENSE).
+[DBOS](https://dbos-project.github.io/) collaboration; it is released under the [MIT License](LICENSE).
 We are interested in any feedback you can provide to improve the project
 so it better meets developers' needs.
 

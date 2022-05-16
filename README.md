@@ -29,14 +29,14 @@ debugging, monitoring, and auditing.
 
 Apiary currently supports two database backends: Postgres and VoltDB.
 It can export provenance data to two systems: Postgres and Vertica.
-We are open to supporting more databases in theh future.
+We are open to supporting more databases in the future.
 
 ### Getting Started
 
 To get started with Apiary, let's run a demo application:
 a simple [social network](postgres-demo/)
 built with Apiary and [Spring Boot](https://spring.io/projects/spring-boot).
-It requires Docker.
+It requires [Docker](https://docs.docker.com/engine/install/).
 
 To set up the demo, let's first install some dependencies:
 
@@ -50,15 +50,16 @@ Next, let's compile Apiary. In the Apiary root directory, run:
 mvn -DskipTests package
 ```
 
-Then, let's start Postgres from a Docker image:
+Then, let's start Postgres from a Docker image. We recommend you [configure Docker](https://docs.docker.com/engine/install/linux-postinstall/) so it can be run by non-root users.
 
 ```shell
 scripts/initialize_postgres_docker.sh
 ```
 
 To start the website, run in the `postgres-demo` root directory:
-
-    mvn clean && mvn package && mvn spring-boot:run
+```shell
+mvn clean && mvn package && mvn spring-boot:run
+```
 
 Then, navigate to `localhost:8081` to view this new social network!
 You should see its home page.
@@ -76,5 +77,6 @@ Apiary is primarily developed by [Peter Kraft](http://petereliaskraft.net/)
 and [Qian Li](https://cs.stanford.edu/people/qianli/)
 as part of the [DBOS](https://dbos-project.github.io/) project.
 Contact us via email at:
-
-    apiary-group@cs.stanford.edu
+```
+apiary-group@cs.stanford.edu
+```

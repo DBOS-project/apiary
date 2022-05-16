@@ -15,7 +15,7 @@ Next, let's compile Apiary. In the Apiary root directory, run:
 mvn -DskipTests package
 ```
 
-Then, let's start Postgres from a Docker image:
+Then, let's start Postgres from a Docker image. We recommend you [configure Docker](https://docs.docker.com/engine/install/linux-postinstall/) so it can be run by non-root users.
 
 ```shell
 scripts/initialize_postgres_docker.sh

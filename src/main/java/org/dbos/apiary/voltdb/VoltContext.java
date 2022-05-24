@@ -25,7 +25,8 @@ import static org.dbos.apiary.voltdb.VoltFunction.getRecordedOutput;
 import static org.dbos.apiary.voltdb.VoltFunction.recordOutput;
 
 /**
- * For internal use only.
+ * VoltContext is a context for Apiary-VoltDB functions.
+ * It provides methods for accessing a VoltDB database.
  */
 public class VoltContext extends ApiaryTransactionalContext {
 
@@ -128,6 +129,11 @@ public class VoltContext extends ApiaryTransactionalContext {
         p.voltExecuteSQL();
     }
 
+    /**
+     * Execute a database update.
+     * @param procedure a SQL DML statement (e.g., INSERT, UPDATE, DELETE).
+     * @param input     input parameters for the SQL statement.
+     */
     public void executeUpdate(SQLStmt procedure, Object... input) {
         if (ApiaryConfig.captureUpdates && (this.provBuff != null)) {
             // TODO: currently only captures "INSERT INTO <table> VALUES (?,...)". Support more patterns later.
@@ -148,13 +154,18 @@ public class VoltContext extends ApiaryTransactionalContext {
         }
     }
 
-    public VoltTable[] executeQuery(Object procedure, Object... input) {
+    /**
+     * Execute a database query.
+     * @param procedure a SQL query.
+     * @param input     input parameters for the SQL statement.
+     */
+    public VoltTable[] executeQuery(SQLStmt procedure, Object... input) {
         if (ApiaryConfig.captureReads && (this.provBuff != null)) {
             // TODO: Volt doesn't differentiate columns returned from different tables.
             // TODO: This capture won't capture the record if a query assigns aliases for columns.
-            String sqlStr = ((SQLStmt) procedure).getText();
+            String sqlStr = procedure.getText();
             String tableName = getSelectTableNames(sqlStr);
-            p.voltQueueSQL((SQLStmt) procedure, input);
+            p.voltQueueSQL(procedure, input);
             VoltTable[] vs = p.voltExecuteSQL();
             VoltTable v = vs[0];
             long timestamp = Utilities.getMicroTimestamp();
@@ -182,7 +193,7 @@ public class VoltContext extends ApiaryTransactionalContext {
             v.resetRowPosition();
             return vs;
         } else {
-            p.voltQueueSQL((SQLStmt) procedure, input);
+            p.voltQueueSQL(procedure, input);
             return p.voltExecuteSQL();
         }
     }

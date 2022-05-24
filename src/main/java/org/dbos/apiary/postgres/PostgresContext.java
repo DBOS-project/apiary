@@ -15,7 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * For internal use only.
+ * PostgresContext is a context for Apiary-Postgres functions.
+ * It provides methods for accessing a Postgres database.
  */
 public class PostgresContext extends ApiaryTransactionalContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresContext.class);
@@ -172,6 +173,11 @@ public class PostgresContext extends ApiaryTransactionalContext {
         }
     }
 
+    /**
+     * Execute a database update.
+     * @param procedure a SQL DML statement (e.g., INSERT, UPDATE, DELETE).
+     * @param input     input parameters for the SQL statement.
+     */
     public void executeUpdate(String procedure, Object... input) {
         if (ApiaryConfig.captureUpdates && (this.provBuff != null)) {
             // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
@@ -215,7 +221,11 @@ public class PostgresContext extends ApiaryTransactionalContext {
         }
     }
 
-
+    /**
+     * Execute a database query.
+     * @param procedure a SQL query.
+     * @param input     input parameters for the SQL statement.
+     */
     public ResultSet executeQuery(String procedure, Object... input) {
         try {
             PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
@@ -256,6 +266,8 @@ public class PostgresContext extends ApiaryTransactionalContext {
         }
     }
 
+    /* --------------- For internal use ----------------- */
+
     @Override
     public long internalGetTransactionId() {
         if (this.transactionId >= 0) {
@@ -273,7 +285,6 @@ public class PostgresContext extends ApiaryTransactionalContext {
         return this.transactionId;
     }
 
-    /* --------------- For internal use ----------------- */
     private String interceptUpdate(String query) {
         // Remove the semicolon.
         String res = query.replace(';', ' ').toUpperCase(Locale.ROOT);

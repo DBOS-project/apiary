@@ -1,6 +1,5 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
-import org.dbos.apiary.function.ApiaryTransactionalContext;
 import org.dbos.apiary.voltdb.VoltContext;
 import org.dbos.apiary.voltdb.VoltFunction;
 import org.voltdb.SQLStmt;

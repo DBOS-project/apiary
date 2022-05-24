@@ -1,6 +1,5 @@
 package org.dbos.apiary.procedures.postgres.tests;
 
-import org.dbos.apiary.function.ApiaryTransactionalContext;
 import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;
 

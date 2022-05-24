@@ -2,7 +2,6 @@ package org.dbos.apiary.function;
 
 /**
  * ApiaryTransactionalContext is the base class for transactional function contexts.
- * It provides an interface to query and update the database.
  */
 public abstract class ApiaryTransactionalContext extends ApiaryContext {
 

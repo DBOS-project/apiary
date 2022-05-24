@@ -33,33 +33,21 @@ public class ElasticsearchContext extends ApiaryTransactionalContext {
         return null;
     }
 
-    @Override
-    protected void internalExecuteUpdate(Object indexRequest, Object... input) {
+    public void executeUpdate(IndexRequest indexRequest) {
         try {
-            client.index((IndexRequest) indexRequest);
+            client.index(indexRequest);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    @Override
-    protected void internalExecuteUpdateCaptured(Object procedure, Object... input) {
-
-    }
-
-    @Override
-    protected SearchResponse internalExecuteQuery(Object procedure, Object... input) {
+    public SearchResponse executeQuery(SearchRequest request, Class clazz) {
         try {
-            return client.search((SearchRequest) procedure, (Class) input[0]);
+            return client.search(request, clazz);
         } catch (IOException e) {
             e.printStackTrace();
             return null;
         }
-    }
-
-    @Override
-    protected Object internalExecuteQueryCaptured(Object procedure, Object... input) {
-        return null;
     }
 
     @Override

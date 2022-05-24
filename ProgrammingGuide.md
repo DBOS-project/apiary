@@ -33,12 +33,12 @@ public class NectarRegister extends PostgresFunction {
     private static final String checkExists = "SELECT * FROM WebsiteLogins WHERE Username=?";
     private static final String register = "INSERT INTO WebsiteLogins(Username, Password) VALUES (?, ?);";
 
-    public static int runFunction(ApiaryTransactionalContext ctxt, String username, String password) throws SQLException {
-        ResultSet exists = (ResultSet) ctxt.apiaryExecuteQuery(checkExists, username);
+    public static int runFunction(PostgresContext ctxt, String username, String password) throws SQLException {
+        ResultSet exists = ctxt.executeQuery(checkExists, username);
         if (exists.next()) {
             return 1;  // Failed registration, username already exists.
         }
-        ctxt.apiaryExecuteUpdate(register, username, password);
+        ctxt.executeUpdate(register, username, password);
         return 0;
     }
 }
@@ -84,7 +84,7 @@ all in the same transaction:
 
 ```java
 public class BankTransfer extends PostgresFunction {
-    public static int runFunction(ApiaryTransactionalContext context, 
+    public static int runFunction(PostgresContext context, 
                                    int senderAccountNumber, int receiverAccountNumber, int amount) {
         int validation = ctxt.apiaryCallFunction("org.example.bank.transfer.validate", senderAccountNumber, receiverAccountNumber, amount).getInt();
         if (validation == 0) { // Validation succeeded.
@@ -111,8 +111,8 @@ public class SendMessage extends PostgresFunction {
 
     private static final String addMessage = "INSERT INTO Messages(Sender, Receiver, MessageText) VALUES (?, ?, ?);";
 
-    public static ApiaryFuture runFunction(ApiaryTransactionalContext ctxt, String sender, String receiver, String message) {
-        ctxt.apiaryExecuteUpdate(addPost, sender, receiver, message);
+    public static ApiaryFuture runFunction(PostgresContext ctxt, String sender, String receiver, String message) {
+        ctxt.executeUpdate(addPost, sender, receiver, message);
         ApiaryFuture notificationSuccess = ctxt.apiaryQueueFunction("Notify", receiver, message);
         return notificationSuccess; // This will be dereferenced upon delievery, so the caller will receieve the actual success value.
     }

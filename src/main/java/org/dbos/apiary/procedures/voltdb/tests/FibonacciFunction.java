@@ -1,7 +1,7 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
 import org.dbos.apiary.function.ApiaryFuture;
-import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.voltdb.VoltContext;
 import org.dbos.apiary.voltdb.VoltFunction;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -23,20 +23,20 @@ public class FibonacciFunction extends VoltFunction {
         return super.run(pkey, voltInput);
     }
 
-    public Object runFunction(ApiaryTransactionalContext context, int key) {
+    public Object runFunction(VoltContext context, int key) {
         if (key < 0) {
             return -1;
         }
         if (key == 0) {
-            context.apiaryExecuteUpdate(addResult, key, 0);
+            context.executeUpdate(addResult, key, 0);
             return 0;
         }
         if (key == 1) {
-            context.apiaryExecuteUpdate(addResult, key, 1);
+            context.executeUpdate(addResult, key, 1);
             return 1;
         }
         // Check if the number has been calculated before.
-        VoltTable res = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];
+        VoltTable res = ((VoltTable[]) context.executeQuery(getValue, key))[0];
         if (res.getRowCount() > 0) {
             return res.fetchRow(0).getLong(0);
         }

@@ -1,6 +1,6 @@
 package org.dbos.apiary.procedures.postgres.retwis;
 
-import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;
 
 import java.sql.ResultSet;
@@ -11,8 +11,8 @@ import java.util.List;
 public class RetwisGetFollowees extends PostgresFunction {
     private static final String getFollowees = "SELECT FolloweeID FROM RetwisFollowees WHERE UserID=?;";
 
-    public static int[] runFunction(ApiaryTransactionalContext ctxt, int userID) throws SQLException {
-        ResultSet result = (ResultSet) ctxt.apiaryExecuteQuery(getFollowees, userID);
+    public static int[] runFunction(PostgresContext ctxt, int userID) throws SQLException {
+        ResultSet result = (ResultSet) ctxt.executeQuery(getFollowees, userID);
         List<Integer> followees = new ArrayList<>();
         while (result.next()) {
             followees.add(result.getInt(1));

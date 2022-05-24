@@ -3,6 +3,7 @@ package org.dbos.apiary.postgres;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.Task;
 import org.dbos.apiary.function.*;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * For internal use only.
+ * PostgresContext is a context for Apiary-Postgres functions.
+ * It provides methods for accessing a Postgres database.
  */
 public class PostgresContext extends ApiaryTransactionalContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresContext.class);
@@ -171,101 +173,100 @@ public class PostgresContext extends ApiaryTransactionalContext {
         }
     }
 
-    @Override
-    protected void internalExecuteUpdate(Object procedure, Object... input) {
-        try {
-            // First, prepare statement. Then, execute.
-            PreparedStatement pstmt = conn.prepareStatement((String) procedure);
-            prepareStatement(pstmt, input);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    protected void internalExecuteUpdateCaptured(Object procedure, Object... input) {
-        // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
-        String interceptedQuery = interceptUpdate((String) procedure);
-        ResultSet rs;
-        ResultSetMetaData rsmd;
-        String tableName;
-        int exportOperation = Utilities.getQueryType(interceptedQuery);
-        try {
-            // First, prepare statement. Then, execute.
-            PreparedStatement pstmt = conn.prepareStatement(interceptedQuery);
-            prepareStatement(pstmt, input);
-            rs = pstmt.executeQuery();
-            rsmd = rs.getMetaData();
-            tableName = rsmd.getTableName(1);
-            long timestamp = Utilities.getMicroTimestamp();
-            int numCol = rsmd.getColumnCount();
-            // Record provenance data.
-            Object[] rowData = new Object[numCol+3];
-            rowData[0] = internalGetTransactionId();
-            rowData[1] = timestamp;
-            rowData[2] = exportOperation;
-            while (rs.next()) {
-                for (int i = 1; i <= numCol; i++) {
-                    rowData[i+2] = rs.getObject(i);
+    /**
+     * Execute a database update.
+     * @param procedure a SQL DML statement (e.g., INSERT, UPDATE, DELETE).
+     * @param input     input parameters for the SQL statement.
+     */
+    public void executeUpdate(String procedure, Object... input) {
+        if (ApiaryConfig.captureUpdates && (this.provBuff != null)) {
+            // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
+            String interceptedQuery = interceptUpdate((String) procedure);
+            ResultSet rs;
+            ResultSetMetaData rsmd;
+            String tableName;
+            int exportOperation = Utilities.getQueryType(interceptedQuery);
+            try {
+                // First, prepare statement. Then, execute.
+                PreparedStatement pstmt = conn.prepareStatement(interceptedQuery);
+                prepareStatement(pstmt, input);
+                rs = pstmt.executeQuery();
+                rsmd = rs.getMetaData();
+                tableName = rsmd.getTableName(1);
+                long timestamp = Utilities.getMicroTimestamp();
+                int numCol = rsmd.getColumnCount();
+                // Record provenance data.
+                Object[] rowData = new Object[numCol+3];
+                rowData[0] = internalGetTransactionId();
+                rowData[1] = timestamp;
+                rowData[2] = exportOperation;
+                while (rs.next()) {
+                    for (int i = 1; i <= numCol; i++) {
+                        rowData[i+2] = rs.getObject(i);
+                    }
+                    provBuff.addEntry(tableName + "Events", rowData);
                 }
-                provBuff.addEntry(tableName + "Events", rowData);
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } else {
+            try {
+                // First, prepare statement. Then, execute.
+                PreparedStatement pstmt = conn.prepareStatement(procedure);
+                prepareStatement(pstmt, input);
+                pstmt.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 
-    @Override
-    protected Object internalExecuteQuery(Object procedure, Object... input) {
+    /**
+     * Execute a database query.
+     * @param procedure a SQL query.
+     * @param input     input parameters for the SQL statement.
+     */
+    public ResultSet executeQuery(String procedure, Object... input) {
         try {
-            // First, prepare statement. Then, execute.
-            PreparedStatement pstmt = conn.prepareStatement((String) procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+            PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             prepareStatement(pstmt, input);
-            return pstmt.executeQuery();
+            ResultSet rs = pstmt.executeQuery();
+            if (ApiaryConfig.captureReads && this.provBuff != null) {
+                long timestamp = Utilities.getMicroTimestamp();
+                // Record provenance data.
+                Map<String, Object[]> tableToRowData = new HashMap<>();
+                while (rs.next()) {
+                    for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
+                        String tableName = rs.getMetaData().getTableName(colNum);
+                        Map<String, Integer> schemaMap = getSchemaMap(tableName);
+                        if (!tableToRowData.containsKey(tableName)) {
+                            Object[] rowData = new Object[3 + schemaMap.size()];
+                            rowData[0] = internalGetTransactionId();
+                            rowData[1] = timestamp;
+                            rowData[2] = Utilities.getQueryType(procedure);
+                            tableToRowData.put(tableName, rowData);
+                        }
+                        Object[] rowData = tableToRowData.get(tableName);
+                        String columnName = rs.getMetaData().getColumnName(colNum);
+                        if (schemaMap.containsKey(columnName)) {
+                            int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
+                            rowData[3 + index] = rs.getObject(colNum);
+                        }
+                    }
+                    for (String tableName : tableToRowData.keySet()) {
+                        provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
+                    }
+                }
+                rs.beforeFirst();
+            }
+            return rs;
         } catch (SQLException e) {
             e.printStackTrace();
             return null;
         }
     }
 
-    @Override
-    protected Object internalExecuteQueryCaptured(Object procedure, Object... input) {
-        ResultSet rs = null;
-        String query = (String) procedure;
-        try {
-            rs = (ResultSet) internalExecuteQuery(procedure, input);
-            long timestamp = Utilities.getMicroTimestamp();
-            // Record provenance data.
-            Map<String, Object[]> tableToRowData = new HashMap<>();
-            while (rs.next()) {
-                for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
-                    String tableName = rs.getMetaData().getTableName(colNum);
-                    Map<String, Integer> schemaMap = getSchemaMap(tableName);
-                    if (!tableToRowData.containsKey(tableName)) {
-                        Object[] rowData = new Object[3 + schemaMap.size()];
-                        rowData[0] = internalGetTransactionId();
-                        rowData[1] = timestamp;
-                        rowData[2] = Utilities.getQueryType(query);
-                        tableToRowData.put(tableName, rowData);
-                    }
-                    Object[] rowData = tableToRowData.get(tableName);
-                    String columnName = rs.getMetaData().getColumnName(colNum);
-                    if (schemaMap.containsKey(columnName)) {
-                        int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
-                        rowData[3 + index] = rs.getObject(colNum);
-                    }
-                }
-                for (String tableName: tableToRowData.keySet()) {
-                    provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
-                }
-            }
-            rs.beforeFirst();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return rs;
-    }
+    /* --------------- For internal use ----------------- */
 
     @Override
     public long internalGetTransactionId() {
@@ -284,7 +285,6 @@ public class PostgresContext extends ApiaryTransactionalContext {
         return this.transactionId;
     }
 
-    /* --------------- For internal use ----------------- */
     private String interceptUpdate(String query) {
         // Remove the semicolon.
         String res = query.replace(';', ' ').toUpperCase(Locale.ROOT);

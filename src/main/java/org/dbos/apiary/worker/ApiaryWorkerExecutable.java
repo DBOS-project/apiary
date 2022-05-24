@@ -1,7 +1,5 @@
 package org.dbos.apiary.worker;
 
-import java.sql.SQLException;
-
 import org.apache.commons_voltpatches.cli.CommandLine;
 import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
@@ -13,11 +11,6 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.dbos.apiary.procedures.cockroachdb.CockroachDBIncrementFunction;
-import org.dbos.apiary.procedures.cockroachdb.CockroachDBFibSumFunction;
-import org.dbos.apiary.procedures.cockroachdb.CockroachDBFibonacciFunction;
-import org.postgresql.ds.PGSimpleDataSource;
-import org.dbos.apiary.cockroachdb.CockroachDBConnection;
 
 // Executable for the worker daemon.
 public class ApiaryWorkerExecutable {
@@ -45,10 +38,6 @@ public class ApiaryWorkerExecutable {
         if (db.equals("voltdb")) {
             // Only need to connect to localhost.
             c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        } else if (db.equals("cockroachdb")) {
-            c = getCockroachDBConnection(
-                    /* cockroachdbAddr= */cmd.hasOption("cockroachdbAddr") ? cmd.getOptionValue("cockroachdbAddr")
-                            : "localhost");
         } else {
             throw new IllegalArgumentException("Option 'db' must be one of (voltdb, cockroachdb).");
         }
@@ -83,28 +72,5 @@ public class ApiaryWorkerExecutable {
         }));
         Thread.sleep(Long.MAX_VALUE);
         worker.shutdown();
-    }
-
-    private static ApiaryConnection getCockroachDBConnection(String cockroachdbAddr) throws SQLException {
-        PGSimpleDataSource ds = new PGSimpleDataSource();
-        ds.setServerNames(new String[] { cockroachdbAddr });
-        ds.setPortNumbers(new int[] { ApiaryConfig.cockroachdbPort });
-        ds.setDatabaseName("test");
-        ds.setUser("root");
-        ds.setSsl(false);
-
-        CockroachDBConnection c = new CockroachDBConnection(ds, /* tableName= */"KVTable");
-
-        c.registerFunction("IncrementFunction", () -> {
-            return new CockroachDBIncrementFunction(c.getConnectionForFunction());
-        });
-        c.registerFunction("FibonacciFunction", () -> {
-            return new CockroachDBFibonacciFunction(c.getConnectionForFunction());
-        });
-        c.registerFunction("FibSumFunction", () -> {
-            return new CockroachDBFibSumFunction(c.getConnectionForFunction());
-        });
-
-        return c;
     }
 }

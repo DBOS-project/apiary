@@ -49,9 +49,6 @@ public class BenchmarkingExecutable {
         } else if (benchmark.equals("retwis")) {
             logger.info("Retwis Benchmark");
             RetwisBenchmark.benchmark(mainHostAddr, service, interval, duration);
-        } else if (benchmark.equals("cockroach-increment")) {
-            logger.info("CockroachDB Increment Benchmark");
-            CockroachDBIncrementBenchmark.benchmark(mainHostAddr, service, interval, duration);
         }
     }
 }

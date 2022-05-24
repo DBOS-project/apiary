@@ -3,6 +3,7 @@ package org.dbos.apiary;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.elasticsearch.core.IndexResponse;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.TotalHits;
@@ -11,6 +12,7 @@ import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -19,8 +21,19 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
+import org.dbos.apiary.client.ApiaryWorkerClient;
+import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
+import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
+import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
+import org.dbos.apiary.procedures.postgres.tests.PostgresFibSumFunction;
+import org.dbos.apiary.procedures.postgres.tests.PostgresFibonacciFunction;
+import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.worker.ApiaryNaiveScheduler;
+import org.dbos.apiary.worker.ApiaryWorker;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -41,110 +54,57 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.util.List;
 
-public class ElasticsearchTests {
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
+public class ElasticsearchTests {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchTests.class);
 
-    public ElasticsearchClient getClient() throws KeyStoreException, CertificateException, IOException, NoSuchAlgorithmException, KeyManagementException {
-        // Cert
-        Path caCertificatePath = Paths.get("/home/kraftp/elasticsearch-8.2.0/config/certs/http_ca.crt");
-        CertificateFactory factory =
-                CertificateFactory.getInstance("X.509");
-        Certificate trustedCa;
-        try (InputStream is = Files.newInputStream(caCertificatePath)) {
-            trustedCa = factory.generateCertificate(is);
+    private ApiaryWorker apiaryWorker;
+
+    @AfterEach
+    public void cleanupWorker() {
+        if (apiaryWorker != null) {
+            apiaryWorker.shutdown();
         }
-        KeyStore trustStore = KeyStore.getInstance("pkcs12");
-        trustStore.load(null, null);
-        trustStore.setCertificateEntry("ca", trustedCa);
-        SSLContextBuilder sslContextBuilder = SSLContexts.custom()
-                .loadTrustMaterial(trustStore, null);
-        final SSLContext sslContext = sslContextBuilder.build();
-
-        // Create the low-level client
-        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials("elastic", "password"));
-        RestClient restClient = RestClient.builder(
-                        new HttpHost("localhost", 9200, "https"))
-                .setHttpClientConfigCallback(h -> h.setSSLContext(sslContext).setDefaultCredentialsProvider(credentialsProvider)).build();
-
-        // Create the transport with a Jackson mapper
-        ElasticsearchTransport transport = new RestClientTransport(
-                restClient, new JacksonJsonpMapper());
-
-        // And create the API client
-        return new ElasticsearchClient(transport);
     }
 
     @BeforeEach
-    public void cleanup() throws CertificateException, KeyStoreException, IOException, NoSuchAlgorithmException, KeyManagementException {
-        ElasticsearchClient client = getClient();
-        DeleteIndexRequest request = new DeleteIndexRequest.Builder().index("people").build();
-        client.indices().delete(request);
+    public void cleanupElasticsearch() {
+        try {
+            ElasticsearchClient client = new ElasticsearchConnection("localhost", 9200, "elastic", "password").client;
+            DeleteIndexRequest request = new DeleteIndexRequest.Builder().index("people").build();
+            client.indices().delete(request);
+        } catch (Exception e) {
+            logger.info("Index Not Deleted {}", e.getMessage());
+        }
     }
 
     @Test
-    public void testElasticsearch() throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException, KeyManagementException, InterruptedException {
-        ElasticsearchClient client = getClient();
-        Person person = new Person("matei", 1);
-        IndexRequest<Person> request = IndexRequest.of(i -> i.index("people").id(person.getName()).document(person));
-        client.index(request);
+    public void testElasticsearchBasic() throws InvalidProtocolBufferException, InterruptedException {
+        logger.info("testElasticsearchBasic");
+
+        ElasticsearchConnection conn;
+        try {
+            conn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
+        } catch (Exception e) {
+            logger.info("No Elasticsearch instance!");
+            return;
+        }
+        conn.registerFunction("ElasticsearchIndexPerson", ElasticsearchIndexPerson::new);
+        conn.registerFunction("ElasticsearchSearchPerson", ElasticsearchSearchPerson::new);
+
+        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("ElasticsearchIndexPerson", "matei", 1).getInt();
+        assertEquals(1, res);
 
         Thread.sleep(5000);
 
-        String searchText = "matei";
-
-        SearchResponse<Person> response = client.search(s -> s
-                        .index("people")
-                        .query(q -> q
-                                .match(t -> t
-                                        .field("name")
-                                        .query(searchText)
-                                )
-                        ),
-                Person.class
-        );
-
-        TotalHits total = response.hits().total();
-        boolean isExactResult = total.relation() == TotalHitsRelation.Eq;
-        if (isExactResult) {
-            logger.info("There are " + total.value() + " results");
-        } else {
-            logger.info("There are more than " + total.value() + " results");
-        }
-
-        List<Hit<Person>> hits = response.hits().hits();
-        for (Hit<Person> hit: hits) {
-            Person result = hit.source();
-            logger.info("Found person " + result.name + ", score " + hit.score());
-        }
+        res = client.executeFunction("ElasticsearchSearchPerson", "matei").getInt();
+        assertEquals(1, res);
     }
-
-    public static class Person {
-        private String name;
-        private int number;
-
-        public Person() {}
-        public Person(String name, int number) {
-            this.name = name;
-            this.number = number;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public int getNumber() {
-            return number;
-        }
-
-        public void setNumber(int number) {
-            this.number = number;
-        }
-    }
-
 }

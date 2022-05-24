@@ -1,6 +1,6 @@
 package org.dbos.apiary.procedures.voltdb;
 
-import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.voltdb.VoltContext;
 import org.dbos.apiary.voltdb.VoltFunction;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -22,7 +22,7 @@ public class GetApiaryClientID extends VoltFunction {
 
     private static final String clientIDName = "ClientID";
 
-    public int runFunction(ApiaryTransactionalContext context, int pkey) {
+    public int runFunction(VoltContext context, int pkey) {
         voltQueueSQL(getValue, clientIDName);
         VoltTable results = ((VoltTable[]) voltExecuteSQL())[0];
         int value = results.getRowCount() == 0 ? 0 : (int) results.fetchRow(0).getLong(0);

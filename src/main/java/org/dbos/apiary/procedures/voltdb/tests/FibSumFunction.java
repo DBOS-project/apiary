@@ -1,6 +1,7 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
 import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.voltdb.VoltContext;
 import org.dbos.apiary.voltdb.VoltFunction;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -17,8 +18,8 @@ public class FibSumFunction extends VoltFunction {
         return super.run(pkey, voltInput);
     }
 
-    public int runFunction(ApiaryTransactionalContext context, int key, int num1, int num2) {
-        context.apiaryExecuteUpdate(addResult, key, num1 + num2);
+    public int runFunction(VoltContext context, int key, int num1, int num2) {
+        context.executeUpdate(addResult, key, num1 + num2);
         return num1 + num2;
     }
 }

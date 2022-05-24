@@ -1,6 +1,7 @@
 package org.dbos.apiary.procedures.postgres.tests;
 
 import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;
 
 import java.sql.ResultSet;
@@ -12,9 +13,9 @@ public class PostgresProvenanceBasic extends PostgresFunction {
     private static final String updateEntry = "UPDATE KVTABLE SET KVvalue=? WHERE KVKEY=?";
     private static final String deleteEntry = "DELETE FROM KVTable WHERE KVKey=?;";
 
-    public static int runFunction(ApiaryTransactionalContext ctxt, int key, int baseValue) throws SQLException {
+    public static int runFunction(PostgresContext ctxt, int key, int baseValue) throws SQLException {
         if (key == 1) {
-            ctxt.apiaryExecuteUpdate(addEntry, key, baseValue);
+            ctxt.executeUpdate(addEntry, key, baseValue);
             return baseValue+1;
         } else {
             // Synchronously call.
@@ -22,18 +23,18 @@ public class PostgresProvenanceBasic extends PostgresFunction {
         }
         // Add an entry at a given key and set to base value, get value, then increase the value by 1, get value again, and finally delete.
         // Return the increased value.
-        ctxt.apiaryExecuteUpdate(addEntry, key, baseValue);
-        ResultSet r = (ResultSet) ctxt.apiaryExecuteQuery(getValue, key);
+        ctxt.executeUpdate(addEntry, key, baseValue);
+        ResultSet r = ctxt.executeQuery(getValue, key);
         r.next();
         assert (r.getInt(1) == baseValue);
 
-        ctxt.apiaryExecuteUpdate(updateEntry, baseValue+1, key);
-        r = (ResultSet) ctxt.apiaryExecuteQuery(getValue, key);
+        ctxt.executeUpdate(updateEntry, baseValue+1, key);
+        r = ctxt.executeQuery(getValue, key);
         r.next();
         int res = r.getInt(1);
         assert (res == (baseValue+1));
 
-        ctxt.apiaryExecuteUpdate(deleteEntry, key);
+        ctxt.executeUpdate(deleteEntry, key);
         return res;
     }
 }

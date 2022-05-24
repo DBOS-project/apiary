@@ -1,6 +1,7 @@
 package org.dbos.apiary.procedures.voltdb.retwis;
 
 import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.voltdb.VoltContext;
 import org.dbos.apiary.voltdb.VoltFunction;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -16,8 +17,8 @@ public class RetwisFollow extends VoltFunction {
         return super.run(pkey, voltInput);
     }
 
-    public int runFunction(ApiaryTransactionalContext context, int userID, int followeeID) {
-        context.apiaryExecuteUpdate(addItem, userID, followeeID);
+    public int runFunction(VoltContext context, int userID, int followeeID) {
+        context.executeUpdate(addItem, userID, followeeID);
         return userID;
     }
 }

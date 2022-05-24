@@ -8,7 +8,7 @@ public class ElasticsearchIndexPerson extends ElasticsearchFunction {
     public int runFunction(ElasticsearchContext context, String name, int number) {
         Person person = new Person(name, number);
         IndexRequest<Person> request = IndexRequest.of(i -> i.index("people").id(person.getName()).document(person));
-        context.apiaryExecuteUpdate(request);
+        context.executeUpdate(request);
         return number;
     }
 }

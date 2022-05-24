@@ -2,6 +2,7 @@ package org.dbos.apiary.procedures.voltdb.retwis;
 
 import org.dbos.apiary.function.ApiaryFuture;
 import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.voltdb.VoltContext;
 import org.dbos.apiary.voltdb.VoltFunction;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -19,8 +20,8 @@ public class RetwisGetTimeline extends VoltFunction {
         return super.run(pkey, voltInput);
     }
 
-    public ApiaryFuture runFunction(ApiaryTransactionalContext context, int userID) {
-        VoltTable followeesTable = ((VoltTable[]) context.apiaryExecuteQuery(getFollowees, userID))[0];
+    public ApiaryFuture runFunction(VoltContext context, int userID) {
+        VoltTable followeesTable = (context.executeQuery(getFollowees, userID))[0];
         List<Integer> followeesList = new ArrayList<>();
         while(followeesTable.advanceRow()) {
             followeesList.add((int) followeesTable.getLong(0));

@@ -1,6 +1,7 @@
 package org.dbos.apiary.procedures.voltdb.tests;
 
 import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.voltdb.VoltContext;
 import org.voltdb.VoltTable;
 
 import java.lang.reflect.InvocationTargetException;
@@ -11,10 +12,10 @@ public class SynchronousCounter extends VoltProcedureContainer {
         return super.run(pkey, voltInput);
     }
 
-    public String runFunction(ApiaryTransactionalContext context, String keyString) {
+    public String runFunction(VoltContext context, String keyString) {
         int key = Integer.parseInt(keyString);
 
-        VoltTable res = ((VoltTable[]) context.apiaryExecuteQuery(getValue, key))[0];
+        VoltTable res = (context.executeQuery(getValue, key))[0];
         int value;
         if (res.getRowCount() > 0) {
             value = (int) res.fetchRow(0).getLong(0);

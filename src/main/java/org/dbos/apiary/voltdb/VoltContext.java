@@ -128,68 +128,63 @@ public class VoltContext extends ApiaryTransactionalContext {
         p.voltExecuteSQL();
     }
 
-    @Override
-    protected void internalExecuteUpdate(Object procedure, Object... input) {
-        p.voltQueueSQL((SQLStmt) procedure, input);
-        p.voltExecuteSQL();
-    }
-
-    @Override
-    protected void internalExecuteUpdateCaptured(Object procedure, Object... input) {
-        String sqlStr = ((SQLStmt) procedure).getText();
-        // TODO: currently only captures "INSERT INTO <table> VALUES (?,...)". Support more patterns later.
-        long timestamp = Utilities.getMicroTimestamp();
-        String tableName = getUpdateTableName(sqlStr);
-        String upperName = tableName.toUpperCase();
-        Object[] rowData = new Object[input.length+3];
-        rowData[0] = this.transactionID;
-        rowData[1] = timestamp;
-        rowData[2] = Utilities.getQueryType(sqlStr);
-        System.arraycopy(input, 0, rowData, 3, input.length);
-        p.voltQueueSQL((SQLStmt) procedure, input);
-        p.voltExecuteSQL();
-        provBuff.addEntry(upperName + "EVENTS", rowData);
-    }
-
-    @Override
-    protected VoltTable[] internalExecuteQuery(Object procedure, Object... input) {
-        p.voltQueueSQL((SQLStmt) procedure, input);
-        return p.voltExecuteSQL();
-    }
-
-    @Override
-    protected VoltTable[] internalExecuteQueryCaptured(Object procedure, Object... input) {
-        // TODO: Volt doesn't differentiate columns returned from different tables. This capture won't capture the record if a query assigns aliases for columns.
-        String sqlStr = ((SQLStmt) procedure).getText();
-        String tableName = getSelectTableNames(sqlStr);
-        p.voltQueueSQL((SQLStmt) procedure, input);
-        VoltTable[] vs = p.voltExecuteSQL();
-        VoltTable v = vs[0];
-        long timestamp = Utilities.getMicroTimestamp();
-        int queryType = ProvenanceBuffer.ExportOperation.READ.getValue();
-
-        String upperTable = tableName.toUpperCase(Locale.ROOT);
-        Map<String, Integer> localSchemaMap = getSchemaMap(upperTable);
-
-        // Record provenance data.
-        while (v.advanceRow()) {
-            Object[] rowData = new Object[3 + localSchemaMap.size()];
+    public void executeUpdate(SQLStmt procedure, Object... input) {
+        if (ApiaryConfig.captureUpdates && (this.provBuff != null)) {
+            // TODO: currently only captures "INSERT INTO <table> VALUES (?,...)". Support more patterns later.
+            long timestamp = Utilities.getMicroTimestamp();
+            String tableName = getUpdateTableName(procedure.getText());
+            String upperName = tableName.toUpperCase();
+            Object[] rowData = new Object[input.length+3];
             rowData[0] = this.transactionID;
             rowData[1] = timestamp;
-            rowData[2] = queryType;
-            for (int colNum = 0; colNum < v.getColumnCount(); colNum++) {
-                String columnName = v.getColumnName(colNum);
-                // Check if the table has this column name.
-                if (localSchemaMap.containsKey(columnName)) {
-                    int colIndex = localSchemaMap.get(columnName);
-                    rowData[3 + colIndex] = v.get(colNum, v.getColumnType(colNum));
-                }
-            }
-            provBuff.addEntry(tableName + "EVENTS", rowData);
+            rowData[2] = Utilities.getQueryType(procedure.getText());
+            System.arraycopy(input, 0, rowData, 3, input.length);
+            p.voltQueueSQL(procedure, input);
+            p.voltExecuteSQL();
+            provBuff.addEntry(upperName + "EVENTS", rowData);
+        } else {
+            p.voltQueueSQL(procedure, input);
+            p.voltExecuteSQL();
         }
+    }
 
-        v.resetRowPosition();
-        return vs;
+    public VoltTable[] executeQuery(Object procedure, Object... input) {
+        if (ApiaryConfig.captureReads && (this.provBuff != null)) {
+            // TODO: Volt doesn't differentiate columns returned from different tables.
+            // TODO: This capture won't capture the record if a query assigns aliases for columns.
+            String sqlStr = ((SQLStmt) procedure).getText();
+            String tableName = getSelectTableNames(sqlStr);
+            p.voltQueueSQL((SQLStmt) procedure, input);
+            VoltTable[] vs = p.voltExecuteSQL();
+            VoltTable v = vs[0];
+            long timestamp = Utilities.getMicroTimestamp();
+            int queryType = ProvenanceBuffer.ExportOperation.READ.getValue();
+
+            String upperTable = tableName.toUpperCase(Locale.ROOT);
+            Map<String, Integer> localSchemaMap = getSchemaMap(upperTable);
+
+            // Record provenance data.
+            while (v.advanceRow()) {
+                Object[] rowData = new Object[3 + localSchemaMap.size()];
+                rowData[0] = this.transactionID;
+                rowData[1] = timestamp;
+                rowData[2] = queryType;
+                for (int colNum = 0; colNum < v.getColumnCount(); colNum++) {
+                    String columnName = v.getColumnName(colNum);
+                    // Check if the table has this column name.
+                    if (localSchemaMap.containsKey(columnName)) {
+                        int colIndex = localSchemaMap.get(columnName);
+                        rowData[3 + colIndex] = v.get(colNum, v.getColumnType(colNum));
+                    }
+                }
+                provBuff.addEntry(tableName + "EVENTS", rowData);
+            }
+            v.resetRowPosition();
+            return vs;
+        } else {
+            p.voltQueueSQL((SQLStmt) procedure, input);
+            return p.voltExecuteSQL();
+        }
     }
 
     @Override

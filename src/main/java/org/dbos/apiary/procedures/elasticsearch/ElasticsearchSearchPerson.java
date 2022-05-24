@@ -16,7 +16,7 @@ public class ElasticsearchSearchPerson extends ElasticsearchFunction {
                                         .query(searchText)
                                 )
                         ).build();
-        SearchResponse<Person> response = (SearchResponse<Person>) context.apiaryExecuteQuery(request, Person.class);
+        SearchResponse<Person> response = context.executeQuery(request, Person.class);
         return (int) response.hits().total().value();
     }
 }

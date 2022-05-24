@@ -48,7 +48,7 @@ public class ElasticsearchConnection implements ApiaryConnection {
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
         try {
-            Path caCertificatePath = Paths.get("/home/kraftp/elasticsearch-8.2.0/config/certs/http_ca.crt");
+            Path caCertificatePath = Paths.get(System.getenv("ES_HOME") + "/config/certs/http_ca.crt");
             CertificateFactory factory =
                     CertificateFactory.getInstance("X.509");
             Certificate trustedCa;

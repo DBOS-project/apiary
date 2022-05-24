@@ -7,7 +7,7 @@ database-oriented applications such as microservices and web service backends.
 Apiary provides an easy-to-use Java interface that supports general computation
 and offers excellent performance, strong consistency guarantees,
 and powerful new observability features such as automatic data provenance capture.
-Apiary is an ongoing research project within the MIT-Stanford
+Apiary is an ongoing research project within the MIT-Stanford 
 [DBOS](https://dbos-project.github.io/) collaboration;
 we are interested in any feedback you can provide to improve the project
 so it better meets developers' needs.
@@ -19,13 +19,13 @@ We provide interfaces to write these functions, compose them into larger program
 then schedule and run them.  Apiary provides three exciting features:
 
 * High performance, especially in a distributed setting,
-  through aggressive co-location of compute and data.
-* Strong consistency for programs, including exactly-once semantics for program execution
-  and cross-function or even cross-application transactional guarantees.
-* Data provenance capture for observability: we automatically record
-  every function execution and every operation performed on data,
-  then store this information in easy-to query database tables to aid in
-  debugging, monitoring, and auditing.
+through aggressive co-location of compute and data.
+* Strong consistency for programs, including exactly-once semantics for program execution 
+and cross-function or even cross-application transactional guarantees.
+* Data provenance capture for observability: we automatically record 
+every function execution and every operation performed on data,
+then store this information in easy-to query database tables to aid in
+debugging, monitoring, and auditing.
 
 Apiary currently supports two database backends: Postgres and VoltDB.
 It can export provenance data to two systems: Postgres and Vertica.

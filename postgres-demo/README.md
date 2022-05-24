@@ -34,7 +34,7 @@ to monitor website activity and provide
 cool features like easily rolling back
 your database and application to any previous point in time.
 
-### Tables
+### Tables 
 The first thing we need to do is  create some database tables in Postgres
 to store the information our site needs: logins and posts.
 We create these tables inside the Spring Boot controller
@@ -45,8 +45,8 @@ conventional Postgres syntax:
 
 ```java
 PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
-        conn.createTable("WebsiteLogins", "Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL");
-        conn.createTable("WebsitePosts", "Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL");
+conn.createTable("WebsiteLogins", "Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL");
+conn.createTable("WebsitePosts", "Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL");
 ```
 
 ### Functions
@@ -95,13 +95,13 @@ whenever we get a registration request to our site:
 ```java
 @PostMapping("/registration")
 public String registrationSubmit(@ModelAttribute Credentials credentials, Model model) throws IOException {
-        int success = client.executeFunction("NectarRegister", credentials.getUsername(), credentials.getPassword()).getInt();
-        if (success != 0) {
+    int success = client.executeFunction("NectarRegister", credentials.getUsername(), credentials.getPassword()).getInt();
+    if (success != 0) {
         return "redirect:/home";
-        }
-        model.addAttribute("registration", credentials);
-        return "registration_result";
-        }
+    }
+    model.addAttribute("registration", credentials);
+    return "registration_result";
+}
 ```
 
 Now, let's write a `login` function that actually logs a user in.
@@ -128,17 +128,17 @@ In Spring, we call this function whenever a user tries to log in:
 ```java
 @PostMapping("/login")
 public RedirectView loginSubmit(@ModelAttribute Credentials credentials, @ModelAttribute("logincredentials") Credentials logincredentials, RedirectAttributes attributes) throws InvalidProtocolBufferException {
-        int success = client.executeFunction("NectarLogin", credentials.getUsername(), credentials.getPassword()).getInt();
-        if (success == 0) { // Login successful.
+    int success = client.executeFunction("NectarLogin", credentials.getUsername(), credentials.getPassword()).getInt();
+    if (success == 0) { // Login successful.
         logincredentials.setUsername(credentials.getUsername());
         logincredentials.setPassword(credentials.getPassword());
         // Ensure credentials are saved across page reloads.
         attributes.addFlashAttribute("logincredentials", logincredentials);
         return new RedirectView("/timeline");
-        } else { // Login failed.
+    } else { // Login failed.
         return new RedirectView("/home");
-        }
-        }
+    }
+}
 ```
 
 We similarly write [AddPosts](src/main/java/org/dbos/apiary/postgresdemo/functions/NectarAddPost.java)
@@ -155,13 +155,13 @@ then register all our functions with the worker:
 
 ```java
 PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        conn.registerFunction("NectarRegister", NectarRegister::new);
-        conn.registerFunction("NectarLogin", NectarLogin::new);
-        conn.registerFunction("NectarAddPost", NectarAddPost::new);
-        conn.registerFunction("NectarGetPosts", NectarGetPosts::new);
+conn.registerFunction("NectarRegister", NectarRegister::new);
+conn.registerFunction("NectarLogin", NectarLogin::new);
+conn.registerFunction("NectarAddPost", NectarAddPost::new);
+conn.registerFunction("NectarGetPosts", NectarGetPosts::new);
 
-        ApiaryWorker apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
-        apiaryWorker.startServing();
+ApiaryWorker apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+apiaryWorker.startServing();
 ```
 
 Everything's ready!  To start the site, run in the `postgres-demo` root directory:

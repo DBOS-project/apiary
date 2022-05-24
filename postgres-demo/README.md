@@ -67,12 +67,12 @@ public class NectarRegister extends PostgresFunction {
     private static final String checkExists = "SELECT * FROM WebsiteLogins WHERE Username=?";
     private static final String register = "INSERT INTO WebsiteLogins(Username, Password) VALUES (?, ?);";
 
-    public static int runFunction(ApiaryTransactionalContext ctxt, String username, String password) throws SQLException {
-        ResultSet exists = (ResultSet) ctxt.apiaryExecuteQuery(checkExists, username);
+    public static int runFunction(PostgresContext ctxt, String username, String password) throws SQLException {
+        ResultSet exists = ctxt.executeQuery(checkExists, username);
         if (exists.next()) {
             return 1;  // Failed registration, username already exists.
         }
-        ctxt.apiaryExecuteUpdate(register, username, password);
+        ctxt.executeUpdate(register, username, password);
         return 0;
     }
 }
@@ -112,8 +112,8 @@ public class NectarLogin extends PostgresFunction {
 
     private static final String checkPassword = "SELECT Username, Password FROM WebsiteLogins WHERE Username=?";
 
-    public static int runFunction(ApiaryTransactionalContext ctxt, String username, String password) throws SQLException {
-        ResultSet pwdCheck = (ResultSet) ctxt.apiaryExecuteQuery(checkPassword, username);
+    public static int runFunction(PostgresContext ctxt, String username, String password) throws SQLException {
+        ResultSet pwdCheck = ctxt.executeQuery(checkPassword, username);
         if (pwdCheck.next() && pwdCheck.getString(2).equals(password)) {
             return 0; // Success!
         } else {

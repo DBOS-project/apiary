@@ -1,8 +1,9 @@
 package org.dbos.apiary;
 
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
-import org.dbos.apiary.procedures.voltdb.retwis.RetwisStatelessGetTimeline;
+import org.dbos.apiary.procedures.voltdb.increment.IncrementProcedure;
+import org.dbos.apiary.procedures.voltdb.retwis.*;
+import org.dbos.apiary.procedures.voltdb.tests.FibonacciFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltConnection;
 import org.dbos.apiary.worker.ApiaryWFQScheduler;
@@ -27,12 +28,18 @@ public class BenchmarkTests {
     }
 
     @Test
-    public void testRetwis() throws IOException, InterruptedException {
+    public void testRetwis() throws IOException {
         logger.info("testRetwis");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(scheduler, 128);
         worker.registerFunction("RetwisMerge", ApiaryConfig.stateless, RetwisMerge::new);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("RetwisPost", ApiaryConfig.voltdb, RetwisPost::new);
+        worker.registerFunction("RetwisFollow", ApiaryConfig.voltdb, RetwisFollow::new);
+        worker.registerFunction("RetwisGetFollowees", ApiaryConfig.voltdb, RetwisGetFollowees::new);
+        worker.registerFunction("RetwisGetPosts", ApiaryConfig.voltdb, RetwisGetPosts::new);
+        worker.registerFunction("RetwisGetTimeline", ApiaryConfig.voltdb, RetwisGetTimeline::new);
         worker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
@@ -65,7 +72,7 @@ public class BenchmarkTests {
         worker.shutdown();
     }
 
-    @Test
+//    @Test // TODO: Support stateless driver.
     public void testStatelessRetwis() throws IOException {
         logger.info("testStatelessRetwis");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
@@ -103,6 +110,8 @@ public class BenchmarkTests {
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(scheduler, 128);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("IncrementProcedure", ApiaryConfig.voltdb, IncrementProcedure::new);
         worker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");

@@ -92,6 +92,8 @@ public class ApiaryWorker {
         connections.put(type, connection);
         if (type.equals(ApiaryConfig.postgres)) {
             registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.postgres, GetApiaryClientID::new);
+        } else if (type.equals(ApiaryConfig.voltdb)) {
+            registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.voltdb, org.dbos.apiary.procedures.voltdb.GetApiaryClientID::new);
         }
     }
 
@@ -200,6 +202,9 @@ public class ApiaryWorker {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {
+            if (!functions.containsKey(name)) {
+                logger.info("Unrecognized function: {}", name);
+            }
             ApiaryFunction function = functions.get(name).call();
             String type = functionTypes.get(name);
             if (type.equals("stateless")) {

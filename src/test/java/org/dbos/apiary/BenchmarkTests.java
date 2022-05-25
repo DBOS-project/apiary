@@ -1,14 +1,13 @@
 package org.dbos.apiary;
 
+import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.increment.IncrementProcedure;
 import org.dbos.apiary.procedures.voltdb.retwis.*;
-import org.dbos.apiary.procedures.voltdb.tests.FibonacciFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltConnection;
 import org.dbos.apiary.worker.ApiaryWFQScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -17,7 +16,8 @@ import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BenchmarkTests {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkTests.class);

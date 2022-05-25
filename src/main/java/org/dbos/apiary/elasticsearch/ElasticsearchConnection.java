@@ -33,10 +33,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
 
 public class ElasticsearchConnection implements ApiaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConnection.class);

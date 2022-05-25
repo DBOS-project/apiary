@@ -1,21 +1,16 @@
 package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
+import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.ApiaryFunction;
 import org.dbos.apiary.function.FunctionOutput;
-import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.ProvenanceBuffer;
-import org.dbos.apiary.procedures.postgres.GetApiaryClientID;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
-
-import static org.dbos.apiary.utilities.ApiaryConfig.getApiaryClientID;
 
 /**
  * A connection to a Postgres database.

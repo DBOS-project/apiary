@@ -1,16 +1,15 @@
 package org.dbos.apiary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.dbos.apiary.client.ApiaryWorkerClient;
+import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.GetApiaryClientID;
-import org.dbos.apiary.procedures.postgres.tests.*;
 import org.dbos.apiary.procedures.postgres.retwis.*;
+import org.dbos.apiary.procedures.postgres.tests.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.dbos.apiary.client.ApiaryWorkerClient;
-import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

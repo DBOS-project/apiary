@@ -1,9 +1,6 @@
 package org.dbos.apiary.function;
 
-import com.google.protobuf.Api;
-import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.dbos.apiary.utilities.ApiaryConfig;
 
 import java.util.Map;

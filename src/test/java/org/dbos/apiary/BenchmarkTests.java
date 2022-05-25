@@ -33,8 +33,8 @@ public class BenchmarkTests {
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(scheduler, 128);
-        worker.registerFunction("RetwisMerge", ApiaryConfig.stateless, RetwisMerge::new);
         worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("RetwisMerge", ApiaryConfig.stateless, RetwisMerge::new);
         worker.registerFunction("RetwisPost", ApiaryConfig.voltdb, RetwisPost::new);
         worker.registerFunction("RetwisFollow", ApiaryConfig.voltdb, RetwisFollow::new);
         worker.registerFunction("RetwisGetFollowees", ApiaryConfig.voltdb, RetwisGetFollowees::new);
@@ -72,14 +72,20 @@ public class BenchmarkTests {
         worker.shutdown();
     }
 
-//    @Test // TODO: Support stateless driver.
+    @Test
     public void testStatelessRetwis() throws IOException {
         logger.info("testStatelessRetwis");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(scheduler, 128);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
         worker.registerFunction("RetwisMerge", ApiaryConfig.stateless, RetwisMerge::new);
         worker.registerFunction("RetwisStatelessGetTimeline", ApiaryConfig.stateless, RetwisStatelessGetTimeline::new);
+        worker.registerFunction("RetwisPost", ApiaryConfig.voltdb, RetwisPost::new);
+        worker.registerFunction("RetwisFollow", ApiaryConfig.voltdb, RetwisFollow::new);
+        worker.registerFunction("RetwisGetFollowees", ApiaryConfig.voltdb, RetwisGetFollowees::new);
+        worker.registerFunction("RetwisGetPosts", ApiaryConfig.voltdb, RetwisGetPosts::new);
+        worker.registerFunction("RetwisGetTimeline", ApiaryConfig.voltdb, RetwisGetTimeline::new);
         worker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");

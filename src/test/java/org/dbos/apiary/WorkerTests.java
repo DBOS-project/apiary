@@ -177,7 +177,7 @@ public class WorkerTests {
         worker.shutdown();
     }
 
-//    @Test // TODO: Support stateless driver.
+    @Test
     public void testStatelessDriver() throws IOException {
         logger.info("testStatelessDriver");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);

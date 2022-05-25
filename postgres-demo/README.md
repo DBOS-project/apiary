@@ -155,7 +155,7 @@ then register all our functions with the worker:
 
 ```java
 PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-ApiaryWorker apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, "postgres", ApiaryConfig.provenanceDefaultAddress);
+ApiaryWorker apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
 apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
 apiaryWorker.registerFunction("NectarRegister", ApiaryConfig.postgres, NectarRegister::new);
 apiaryWorker.registerFunction("NectarLogin", ApiaryConfig.postgres, NectarLogin::new);

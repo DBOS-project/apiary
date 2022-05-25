@@ -29,7 +29,7 @@ public class VoltFunction extends VoltProcedure implements ApiaryFunction {
     static {
         ProvenanceBuffer tempBuffer;
         try {
-            tempBuffer = new ProvenanceBuffer("vertica", ApiaryConfig.provenanceDefaultAddress);
+            tempBuffer = new ProvenanceBuffer(ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
             if (!tempBuffer.hasConnection) {
                 // No vertica connection.
                 tempBuffer = null;

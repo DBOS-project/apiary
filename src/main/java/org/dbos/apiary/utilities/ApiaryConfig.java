@@ -20,4 +20,5 @@ public class ApiaryConfig {
     public static final String elasticsearch = "elasticsearch";
     public static final String postgres = "postgres";
     public static final String voltdb = "voltdb";
+    public static final String vertica = "vertica";
 }

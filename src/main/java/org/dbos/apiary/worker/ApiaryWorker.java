@@ -62,7 +62,7 @@ public class ApiaryWorker {
     public final ProvenanceBuffer provenanceBuffer;
 
     public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads) {
-        this(scheduler, numWorkerThreads, "vertica", ApiaryConfig.provenanceDefaultAddress);
+        this(scheduler, numWorkerThreads, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
     }
 
     public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads, String provenanceDatabase, String provenanceAddress) {

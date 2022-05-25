@@ -220,7 +220,7 @@ public class PostgresTests {
             return;
         }
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 1, "postgres", ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 1, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("PostgresProvenanceBasic", ApiaryConfig.postgres, PostgresProvenanceBasic::new);
         apiaryWorker.startServing();
@@ -352,7 +352,7 @@ public class PostgresTests {
             return;
         }
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 1, "postgres", ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 1, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("PostgresProvenanceJoins", ApiaryConfig.postgres, PostgresProvenanceJoins::new);
         apiaryWorker.startServing();

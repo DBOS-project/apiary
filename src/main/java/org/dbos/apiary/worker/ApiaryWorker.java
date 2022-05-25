@@ -36,13 +36,10 @@ public class ApiaryWorker {
     private final Deque<OutgoingMsg> outgoingReqMsgQueue = new ConcurrentLinkedDeque<>();
     private final Deque<OutgoingMsg> outgoingReplyMsgQueue = new ConcurrentLinkedDeque<>();
 
-    private final ApiaryConnection c;
     private final ApiaryScheduler scheduler;
     private final ZContext zContext = new ZContext(2);  // TODO: How many IO threads?
     private Thread serverThread;
-    private final Map<String, Callable<StatelessFunction>> statelessFunctions = new HashMap<>();
     private final ExecutorService reqThreadPool;
-    private final ExecutorService statelessReqThreadPool;
     private final ExecutorService repThreadPool;
     private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
     private final Set<ZContext> localContexts = ConcurrentHashMap.newKeySet();
@@ -57,17 +54,19 @@ public class ApiaryWorker {
         return new InternalApiaryWorkerClient(context);
     });
 
+    private final Map<String, ApiaryConnection> connections = new HashMap<>();
+    private final Map<String, Callable<ApiaryFunction>> functions = new HashMap<>();
+    private final Map<String, String> functionTypes = new HashMap<>();
+
     public final ProvenanceBuffer provenanceBuffer;
 
-    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads) {
-        this(c, scheduler, numWorkerThreads, "vertica", ApiaryConfig.provenanceDefaultAddress);
+    public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads) {
+        this(scheduler, numWorkerThreads, "vertica", ApiaryConfig.provenanceDefaultAddress);
     }
 
-    public ApiaryWorker(ApiaryConnection c, ApiaryScheduler scheduler, int numWorkerThreads, String provenanceDatabase, String provenanceAddress) {
-        this.c = c;
+    public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads, String provenanceDatabase, String provenanceAddress) {
         this.scheduler = scheduler;
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
-        statelessReqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new DispatcherPriorityQueue<>());
         repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         for (int i = 0; i < runningAverageLength; i++) {
             defaultQueue.add(defaultTimeNs);
@@ -86,6 +85,43 @@ public class ApiaryWorker {
         provenanceBuffer = tempBuffer;
     }
 
+    /** Public Interface **/
+
+    public void registerConnection(String type, ApiaryConnection connection) {
+        connections.put(type, connection);
+    }
+
+    public void registerFunction(String name, String type, Callable<ApiaryFunction> function) {
+        functions.put(name, function);
+        functionTypes.put(name, type);
+    }
+
+    public void startServing() {
+        serverThread = new Thread(this::serverThread);
+        serverThread.start();
+    }
+
+    public void shutdown() {
+        try {
+            Thread.sleep(100);
+            reqThreadPool.shutdown();
+            reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            repThreadPool.shutdown();
+            repThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            localContexts.forEach(ZContext::close);
+            serverThread.interrupt();
+            zContext.close();
+            serverThread.join();
+            if (provenanceBuffer != null) {
+                provenanceBuffer.close();
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /** Private Methods **/
+
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
         int numTraversed = 0;
         int totalTasks = currTask.queuedTasks.size();
@@ -101,7 +137,7 @@ public class ApiaryWorker {
                     if (!removed) {
                         continue;
                     }
-                    String address = statelessFunctions.containsKey(subtask.funcName) ? c.getPartitionHostMap().get(0) : c.getHostname(subtask.input); // TODO: Fix hack, use local hostname.
+                    String address = "localhost"; // TODO: Fix hack.
                     // Push to the outgoing queue.
                     byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currCallerID, subtask.functionID, subtask.input);
                     outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
@@ -160,12 +196,14 @@ public class ApiaryWorker {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {
-            if (!statelessFunctions.containsKey(name)) {
-                o = c.callFunction(provenanceBuffer, service, execID, functionID, name, arguments);
+            ApiaryFunction function = functions.get(name).call();
+            String type = functionTypes.get(name);
+            if (type.equals("stateless")) {
+                ApiaryStatelessContext context = new ApiaryStatelessContext(provenanceBuffer, service, execID, functionID);
+                o = function.apiaryRunFunction(context, arguments);
             } else {
-                StatelessFunction f = statelessFunctions.get(name).call();
-                ApiaryContext ctxt = new ApiaryStatelessContext(c, localClients.get(), provenanceBuffer, service, execID, functionID, statelessFunctions);
-                o = f.apiaryRunFunction(ctxt, arguments);
+                ApiaryConnection c = connections.get(type);
+                o = c.callFunction(name, function, provenanceBuffer, service, execID, functionID, arguments);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -313,9 +351,7 @@ public class ApiaryWorker {
 
         // This main server thread is used as I/O thread.
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(shadowContext);
-        List<String> distinctHosts = c.getPartitionHostMap().values().stream()
-                .distinct()
-                .collect(Collectors.toList());
+        List<String> distinctHosts = List.of("localhost"); // TODO: Fix hack.
         ZMQ.Poller poller = zContext.createPoller(distinctHosts.size() + 1);
         // The backend worker is always the first poller socket.
         poller.register(frontend, ZMQ.Poller.POLLIN);
@@ -344,11 +380,7 @@ public class ApiaryWorker {
                     msg.destroy();
                     byte[] reqBytes = content.getData();
                     ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(reqBytes);
-                    if (statelessFunctions.containsKey(req.getName())) {
-                        statelessReqThreadPool.execute(new RequestRunnable(address, req));
-                    } else {
-                        reqThreadPool.execute(new RequestRunnable(address, req));
-                    }
+                    reqThreadPool.execute(new RequestRunnable(address, req));
                 } catch (ZMQException e) {
                     if (e.getErrorCode() == ZMQ.Error.ETERM.getCode() || e.getErrorCode() == ZMQ.Error.EINTR.getCode()) {
                         break;
@@ -443,37 +475,5 @@ public class ApiaryWorker {
 
         poller.close();
         shadowContext.close();
-    }
-
-    // TODO: Can registration be centralized instead of doing it on every worker separately?
-    public void registerStatelessFunction(String name, Callable<StatelessFunction> function) {
-        statelessFunctions.put(name, function);
-    }
-
-    public void startServing() {
-        serverThread = new Thread(this::serverThread);
-        serverThread.start();
-    }
-
-    public void shutdown() {
-        try {
-            // TODO: a more elegant way to stop worker. Now it has to wait until worker initilized. Otherwise, those threads would throw ZMQ exceptions.
-            Thread.sleep(100);
-            reqThreadPool.shutdown();
-            reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
-            repThreadPool.shutdown();
-            repThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
-            statelessReqThreadPool.shutdown();
-            statelessReqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
-            localContexts.forEach(ZContext::close);
-            serverThread.interrupt();
-            zContext.close();
-            serverThread.join();
-            if (provenanceBuffer != null) {
-                provenanceBuffer.close();
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
     }
 }

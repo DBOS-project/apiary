@@ -41,7 +41,7 @@ public class NectarController {
         conn.registerFunction("NectarAddPost", NectarAddPost::new);
         conn.registerFunction("NectarGetPosts", NectarGetPosts::new);
 
-        ApiaryWorker apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4, "postgres", ApiaryConfig.provenanceDefaultAddress);
+        ApiaryWorker apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, "postgres", ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.startServing();
 
         this.client = new ApiaryWorkerClient("localhost");

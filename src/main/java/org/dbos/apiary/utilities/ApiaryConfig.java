@@ -14,4 +14,10 @@ public class ApiaryConfig {
 
     // For system functions.
     public static final String getApiaryClientID = "GetApiaryClientID";
+
+    // Database names;
+    public static final String stateless = "stateless";
+    public static final String elasticsearch = "elasticsearch";
+    public static final String postgres = "postgres";
+    public static final String voltdb = "voltdb";
 }

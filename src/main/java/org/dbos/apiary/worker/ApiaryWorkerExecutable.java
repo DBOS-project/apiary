@@ -1,5 +1,6 @@
 package org.dbos.apiary.worker;
 
+import com.google.protobuf.Api;
 import org.apache.commons_voltpatches.cli.CommandLine;
 import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
@@ -57,12 +58,12 @@ public class ApiaryWorkerExecutable {
             numThreads = Integer.parseInt(cmd.getOptionValue("t"));
         }
         logger.info("{} worker threads", numThreads);
-        ApiaryWorker worker = new ApiaryWorker(c, scheduler, numThreads);
+        ApiaryWorker worker = new ApiaryWorker(scheduler, numThreads);
 
         // Register all stateless functions for experiments.
         if (db.equals("voltdb")) {
-            worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
-            worker.registerStatelessFunction("IncrementStatelessDriver", IncrementStatelessDriver::new);
+            worker.registerFunction("RetwisMerge", ApiaryConfig.stateless, RetwisMerge::new);
+            worker.registerFunction("IncrementStatelessDriver", ApiaryConfig.stateless, IncrementStatelessDriver::new);
         }
 
         worker.startServing();

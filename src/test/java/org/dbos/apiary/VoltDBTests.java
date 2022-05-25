@@ -1,5 +1,6 @@
 package org.dbos.apiary;
 
+import com.google.protobuf.Api;
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.procedures.voltdb.tests.StatelessIncrement;
@@ -49,7 +50,7 @@ public class VoltDBTests {
     public void testVoltProvenance() throws IOException, SQLException, InterruptedException {
         logger.info("testVoltProvenance");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        apiaryWorker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;
@@ -145,7 +146,7 @@ public class VoltDBTests {
     public void testExactlyOnceVoltSyncCounter() throws IOException {
         logger.info("testExactlyOnceVoltSyncCounter");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
+        ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         worker.startServing();
 
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());
@@ -170,8 +171,8 @@ public class VoltDBTests {
     public void testExactlyOnceVoltStatelessCounter() throws IOException {
         logger.info("testExactlyOnceVoltStatelessCounter");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
-        worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
+        ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        worker.registerFunction("StatelessIncrement", ApiaryConfig.stateless, StatelessIncrement::new);
         worker.startServing();
 
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());

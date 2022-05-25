@@ -1,10 +1,7 @@
 package org.dbos.apiary.voltdb;
 
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.function.FunctionOutput;
-import org.dbos.apiary.function.Task;
-import org.dbos.apiary.function.ApiaryFuture;
-import org.dbos.apiary.function.ProvenanceBuffer;
+import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,8 +112,8 @@ public class VoltConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String funcName, Object... inputs) throws IOException, ProcCallException {
-        if (funcName.startsWith(getApiaryClientID)) {
+    public FunctionOutput callFunction(String functionName, ApiaryFunction function, ProvenanceBuffer provBuff, String service, long execID, long functionID, Object... inputs) throws IOException, ProcCallException {
+        if (functionName.startsWith(getApiaryClientID)) {
             // Add input value for the procedure.
             inputs = new Integer[1];
             inputs[0] = 0;
@@ -124,7 +121,7 @@ public class VoltConnection implements ApiaryConnection {
         VoltTable voltInput = inputToVoltTable(service, execID, functionID, inputs);
         assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
         Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];
-        VoltTable[] res = client.callProcedure(funcName, keyInput, voltInput).getResults();
+        VoltTable[] res = client.callProcedure(functionName, keyInput, voltInput).getResults();
         VoltTable retVal = res[0];
         assert (retVal.getColumnCount() == 1 && retVal.getRowCount() == 1);
         Object output = null;

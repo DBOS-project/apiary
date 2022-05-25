@@ -1,15 +1,14 @@
 package org.dbos.apiary;
 
+import org.dbos.apiary.client.ApiaryWorkerClient;
+import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.ProvenanceBuffer;
-import org.dbos.apiary.procedures.voltdb.tests.StatelessIncrement;
-import org.dbos.apiary.procedures.voltdb.tests.VoltProvenanceBasic;
+import org.dbos.apiary.procedures.voltdb.tests.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltConnection;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.dbos.apiary.client.ApiaryWorkerClient;
-import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +23,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class VoltDBTests {
     private static final Logger logger = LoggerFactory.getLogger(VoltDBTests.class);
@@ -49,7 +49,9 @@ public class VoltDBTests {
     public void testVoltProvenance() throws IOException, SQLException, InterruptedException {
         logger.info("testVoltProvenance");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        apiaryWorker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.voltdb, c);
+        apiaryWorker.registerFunction("VoltProvenanceBasic", ApiaryConfig.voltdb, VoltProvenanceBasic::new);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;
@@ -145,7 +147,9 @@ public class VoltDBTests {
     public void testExactlyOnceVoltSyncCounter() throws IOException {
         logger.info("testExactlyOnceVoltSyncCounter");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
+        ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("SynchronousCounter", ApiaryConfig.voltdb, SynchronousCounter::new);
         worker.startServing();
 
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());
@@ -170,8 +174,11 @@ public class VoltDBTests {
     public void testExactlyOnceVoltStatelessCounter() throws IOException {
         logger.info("testExactlyOnceVoltStatelessCounter");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 4);
-        worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
+        ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("StatelessIncrement", ApiaryConfig.stateless, StatelessIncrement::new);
+        worker.registerFunction("CounterFunction", ApiaryConfig.voltdb, CounterFunction::new);
+        worker.registerFunction("InsertFunction", ApiaryConfig.voltdb, InsertFunction::new);
         worker.startServing();
 
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());

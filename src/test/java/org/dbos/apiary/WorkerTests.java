@@ -1,9 +1,8 @@
 package org.dbos.apiary;
 
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.procedures.voltdb.tests.StatelessIncrement;
+import org.dbos.apiary.procedures.voltdb.tests.*;
 import org.dbos.apiary.function.ProvenanceBuffer;
-import org.dbos.apiary.procedures.voltdb.tests.StatelessDriver;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltConnection;
@@ -55,7 +54,10 @@ public class WorkerTests {
         logger.info("testFib");
         for (int i = 0; i < 10; i++) {
             ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-            ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
+            ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
+            worker.registerConnection(ApiaryConfig.voltdb, c);
+            worker.registerFunction("FibonacciFunction", ApiaryConfig.voltdb, FibonacciFunction::new);
+            worker.registerFunction("FibSumFunction", ApiaryConfig.voltdb, FibSumFunction::new);
             worker.startServing();
 
             ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
@@ -78,7 +80,9 @@ public class WorkerTests {
     public void testAddition() throws IOException {
         logger.info("testAddition");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
+        ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("AdditionFunction", ApiaryConfig.voltdb, AdditionFunction::new);
         worker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
@@ -93,7 +97,9 @@ public class WorkerTests {
     public void testAsyncClientAddition() throws IOException {
         logger.info("testAsyncClientAddition");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
+        ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("AdditionFunction", ApiaryConfig.voltdb, AdditionFunction::new);
         worker.startServing();
 
         ZContext clientContext = new ZContext();
@@ -146,8 +152,11 @@ public class WorkerTests {
     public void testStatelessCounter() throws IOException, InterruptedException {
         logger.info("testStatelessCounter");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
-        worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
+        ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("StatelessIncrement", ApiaryConfig.stateless, StatelessIncrement::new);
+        worker.registerFunction("CounterFunction", ApiaryConfig.voltdb, CounterFunction::new);
+        worker.registerFunction("InsertFunction", ApiaryConfig.voltdb, InsertFunction::new);
         worker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
@@ -172,9 +181,12 @@ public class WorkerTests {
     public void testStatelessDriver() throws IOException {
         logger.info("testStatelessDriver");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
-        worker.registerStatelessFunction("StatelessDriver", StatelessDriver::new);
-        worker.registerStatelessFunction("StatelessIncrement", StatelessIncrement::new);
+        ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("FibonacciFunction", ApiaryConfig.voltdb, FibonacciFunction::new);
+        worker.registerFunction("FibSumFunction", ApiaryConfig.voltdb, FibSumFunction::new);
+        worker.registerFunction("StatelessDriver", ApiaryConfig.stateless, StatelessDriver::new);
+        worker.registerFunction("StatelessIncrement", ApiaryConfig.stateless, StatelessIncrement::new);
         worker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
@@ -192,7 +204,9 @@ public class WorkerTests {
     public void testSynchronousCounter() throws IOException {
         logger.info("testSynchronousCounter");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        ApiaryWorker worker = new ApiaryWorker(c, new ApiaryNaiveScheduler(), 128);
+        ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("SynchronousCounter", ApiaryConfig.voltdb, SynchronousCounter::new);
         worker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");

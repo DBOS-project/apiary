@@ -28,7 +28,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
 
     public PostgresContext(Connection c, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
         super(provBuff, service, execID, functionID);
-        this.conn= c;
+        this.conn = c;
         this.transactionId = -1;
     }
 

@@ -1,5 +1,6 @@
 package org.dbos.apiary.connection;
 
+import org.dbos.apiary.function.ApiaryFunction;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.ProvenanceBuffer;
 
@@ -11,16 +12,17 @@ import java.util.Map;
 public interface ApiaryConnection {
     /**
      * For internal use only.
+     * @param functionName
+     * @param function
      * @param provBuff
      * @param service
      * @param execID
      * @param functionID
-     * @param name
      * @param inputs
      * @return
      * @throws Exception
      */
-    FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String name, Object... inputs) throws Exception;
+    FunctionOutput callFunction(String functionName, ApiaryFunction function, ProvenanceBuffer provBuff, String service, long execID, long functionID, Object... inputs) throws Exception;
 
     // For partition mapping information.
 

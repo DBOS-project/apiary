@@ -122,24 +122,27 @@ public class SendMessage extends PostgresFunction {
 ### Running Apiary: Workers and Clients
 
 To run Apiary, you need to start up a worker that can communicate with the database
-and run functions.  To do this, create a database connection
-(e.g., `PostgresConnection`), use it to create tables,
-and register your functions with it. Then, start a worker using that connection.
+and run functions.  To do this, first create a database connection
+(e.g., `PostgresConnection`) and use it to create tables.
+Then, start an `ApiaryWorker` and register your connection and functions with it.
 For example, here is the code to initialize a Postgres connection,
-create the tables and functions used in the [tutorial](postgres-demo/),
-and start a worker:
+create the tables used in the [tutorial](postgres-demo/),
+launch a worker, and then register the Postgres connection and the tutorial functions
+with the worker:
 
 ```java
 PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 conn.createTable("WebsiteLogins", "Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL");
 conn.createTable("WebsitePosts", "Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL");
-conn.registerFunction("NectarRegister", NectarRegister::new);
-conn.registerFunction("NectarLogin", NectarLogin::new);
-conn.registerFunction("NectarAddPost", NectarAddPost::new);
-conn.registerFunction("NectarGetPosts", NectarGetPosts::new);
 
-ApiaryWorker apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4, "postgres", ApiaryConfig.provenanceDefaultAddress);
+ApiaryWorker apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+apiaryWorker.registerFunction("NectarRegister", ApiaryConfig.postgres, NectarRegister::new);
+apiaryWorker.registerFunction("NectarLogin", ApiaryConfig.postgres, NectarLogin::new);
+apiaryWorker.registerFunction("NectarAddPost", ApiaryConfig.postgres, NectarAddPost::new);
+apiaryWorker.registerFunction("NectarGetPosts", ApiaryConfig.postgres, NectarGetPosts::new);
 apiaryWorker.startServing();
+
 ```
 
 After a worker is running, you can launch clients to communicate with it

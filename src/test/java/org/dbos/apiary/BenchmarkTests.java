@@ -1,13 +1,13 @@
 package org.dbos.apiary;
 
+import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
-import org.dbos.apiary.procedures.voltdb.retwis.RetwisStatelessGetTimeline;
+import org.dbos.apiary.procedures.voltdb.increment.IncrementProcedure;
+import org.dbos.apiary.procedures.voltdb.retwis.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltConnection;
 import org.dbos.apiary.worker.ApiaryWFQScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -16,7 +16,8 @@ import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BenchmarkTests {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkTests.class);
@@ -27,12 +28,18 @@ public class BenchmarkTests {
     }
 
     @Test
-    public void testRetwis() throws IOException, InterruptedException {
+    public void testRetwis() throws IOException {
         logger.info("testRetwis");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
-        ApiaryWorker worker = new ApiaryWorker(c, scheduler, 128);
-        worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
+        ApiaryWorker worker = new ApiaryWorker(scheduler, 128);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("RetwisMerge", ApiaryConfig.stateless, RetwisMerge::new);
+        worker.registerFunction("RetwisPost", ApiaryConfig.voltdb, RetwisPost::new);
+        worker.registerFunction("RetwisFollow", ApiaryConfig.voltdb, RetwisFollow::new);
+        worker.registerFunction("RetwisGetFollowees", ApiaryConfig.voltdb, RetwisGetFollowees::new);
+        worker.registerFunction("RetwisGetPosts", ApiaryConfig.voltdb, RetwisGetPosts::new);
+        worker.registerFunction("RetwisGetTimeline", ApiaryConfig.voltdb, RetwisGetTimeline::new);
         worker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
@@ -70,9 +77,15 @@ public class BenchmarkTests {
         logger.info("testStatelessRetwis");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
-        ApiaryWorker worker = new ApiaryWorker(c, scheduler, 128);
-        worker.registerStatelessFunction("RetwisStatelessGetTimeline", RetwisStatelessGetTimeline::new);
-        worker.registerStatelessFunction("RetwisMerge", RetwisMerge::new);
+        ApiaryWorker worker = new ApiaryWorker(scheduler, 128);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("RetwisMerge", ApiaryConfig.stateless, RetwisMerge::new);
+        worker.registerFunction("RetwisStatelessGetTimeline", ApiaryConfig.stateless, RetwisStatelessGetTimeline::new);
+        worker.registerFunction("RetwisPost", ApiaryConfig.voltdb, RetwisPost::new);
+        worker.registerFunction("RetwisFollow", ApiaryConfig.voltdb, RetwisFollow::new);
+        worker.registerFunction("RetwisGetFollowees", ApiaryConfig.voltdb, RetwisGetFollowees::new);
+        worker.registerFunction("RetwisGetPosts", ApiaryConfig.voltdb, RetwisGetPosts::new);
+        worker.registerFunction("RetwisGetTimeline", ApiaryConfig.voltdb, RetwisGetTimeline::new);
         worker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
@@ -102,7 +115,9 @@ public class BenchmarkTests {
         logger.info("testIncrement");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
-        ApiaryWorker worker = new ApiaryWorker(c, scheduler, 128);
+        ApiaryWorker worker = new ApiaryWorker(scheduler, 128);
+        worker.registerConnection(ApiaryConfig.voltdb, c);
+        worker.registerFunction("IncrementProcedure", ApiaryConfig.voltdb, IncrementProcedure::new);
         worker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");

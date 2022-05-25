@@ -51,7 +51,7 @@ public class ProvenanceBuffer {
 
     public ProvenanceBuffer(String databaseName, String databaseAddress) throws ClassNotFoundException {
         this.databaseName = databaseName;
-        if (databaseName.equals("vertica")) {
+        if (databaseName.equals(ApiaryConfig.vertica)) {
             Class.forName("com.vertica.jdbc.Driver");
             this.conn = ThreadLocal.withInitial(() -> {
                 // Connect to Vertica.
@@ -73,7 +73,7 @@ public class ProvenanceBuffer {
                 return null;
             });
         } else {
-            assert(databaseName.equals("postgres"));
+            assert(databaseName.equals(ApiaryConfig.postgres));
             this.conn = ThreadLocal.withInitial(() -> {
                 // Connect to Postgres.
                 PGSimpleDataSource ds = new PGSimpleDataSource();
@@ -259,7 +259,7 @@ public class ProvenanceBuffer {
             return preparedQueries.get(table);
         }
         StringBuilder preparedQuery;
-        if (databaseName.equals("vertica")) {
+        if (databaseName.equals(ApiaryConfig.vertica)) {
             preparedQuery = new StringBuilder("INSERT INTO " + table + " VALUES (");
             for (int i = 0; i < numColumns; i++) {
                 if (i != 0) {
@@ -268,7 +268,7 @@ public class ProvenanceBuffer {
                 preparedQuery.append("?");
             }
         } else {
-            assert(databaseName.equals("postgres"));
+            assert(databaseName.equals(ApiaryConfig.postgres));
             preparedQuery = new StringBuilder("INSERT INTO " + table + " (");
             List<String> columnNames = getColNames(table);
             for (int i = 0; i < numColumns; i++) {

@@ -1,8 +1,7 @@
 package org.dbos.apiary.function;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.client.InternalApiaryWorkerClient;
+import org.dbos.apiary.utilities.ApiaryConfig;
 
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -12,23 +11,26 @@ import java.util.concurrent.Callable;
  */
 public class ApiaryStatelessContext extends ApiaryContext {
 
-    private final ApiaryConnection c;
-    private final InternalApiaryWorkerClient client;
-    private final Map<String, Callable<StatelessFunction>> statelessFunctions;
+    private final Map<String, String> functionTypes;
+    private final Map<String, Callable<ApiaryFunction>> functions;
+    private final Map<String, ApiaryConnection> connections;
 
-    public ApiaryStatelessContext(ApiaryConnection c, InternalApiaryWorkerClient client, ProvenanceBuffer provBuff, String service, long execID, long functionID, Map<String, Callable<StatelessFunction>> statelessFunctions) {
+    public ApiaryStatelessContext(ProvenanceBuffer provBuff, String service, long execID, long functionID,
+                                  Map<String, String> functionTypes, Map<String, Callable<ApiaryFunction>> functions,
+                                  Map<String, ApiaryConnection> connections) {
         super(provBuff, service, execID, functionID);
-        this.client = client;
-        this.statelessFunctions = statelessFunctions;
-        this.c = c;
+        this.functionTypes = functionTypes;
+        this.functions = functions;
+        this.connections = connections;
     }
 
     @Override
     public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
-        if (statelessFunctions.containsKey(name)) {
-            StatelessFunction f = null;
+        String type = functionTypes.get(name);
+        if (type.equals(ApiaryConfig.stateless)) {
+            ApiaryFunction f = null;
             try {
-                f = statelessFunctions.get(name).call();
+                f = functions.get(name).call();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -36,8 +38,10 @@ public class ApiaryStatelessContext extends ApiaryContext {
             return f.apiaryRunFunction(this, inputs);
         } else {
             try {
-                return client.executeFunction(c.getHostname(inputs), name, service, execID, inputs);
-            } catch (InvalidProtocolBufferException e) {
+                ApiaryConnection c = connections.get(type);
+                ApiaryFunction f = functions.get(name).call();
+                return c.callFunction(name, f, provBuff, service, execID, functionID, inputs);
+            } catch (Exception e) {
                 e.printStackTrace();
                 return null;
             }

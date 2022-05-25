@@ -155,13 +155,14 @@ then register all our functions with the worker:
 
 ```java
 PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-conn.registerFunction("NectarRegister", NectarRegister::new);
-conn.registerFunction("NectarLogin", NectarLogin::new);
-conn.registerFunction("NectarAddPost", NectarAddPost::new);
-conn.registerFunction("NectarGetPosts", NectarGetPosts::new);
-
-ApiaryWorker apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+ApiaryWorker apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+apiaryWorker.registerFunction("NectarRegister", ApiaryConfig.postgres, NectarRegister::new);
+apiaryWorker.registerFunction("NectarLogin", ApiaryConfig.postgres, NectarLogin::new);
+apiaryWorker.registerFunction("NectarAddPost", ApiaryConfig.postgres, NectarAddPost::new);
+apiaryWorker.registerFunction("NectarGetPosts", ApiaryConfig.postgres, NectarGetPosts::new);
 apiaryWorker.startServing();
+
 ```
 
 Everything's ready!  To start the site, run in the `postgres-demo` root directory:

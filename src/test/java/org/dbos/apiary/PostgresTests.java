@@ -1,15 +1,15 @@
 package org.dbos.apiary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.dbos.apiary.client.ApiaryWorkerClient;
+import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.tests.*;
 import org.dbos.apiary.procedures.postgres.retwis.*;
+import org.dbos.apiary.procedures.postgres.tests.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.dbos.apiary.client.ApiaryWorkerClient;
-import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,10 +69,11 @@ public class PostgresTests {
             logger.info("No Postgres instance!");
             return;
         }
-        conn.registerFunction("PostgresFibonacciFunction", PostgresFibonacciFunction::new);
-        conn.registerFunction("PostgresFibSumFunction", PostgresFibSumFunction::new);
 
-        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresFibonacciFunction", ApiaryConfig.postgres, PostgresFibonacciFunction::new);
+        apiaryWorker.registerFunction("PostgresFibSumFunction", ApiaryConfig.postgres, PostgresFibSumFunction::new);
         apiaryWorker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
@@ -99,10 +100,11 @@ public class PostgresTests {
             logger.info("No Postgres instance!");
             return;
         }
-        conn.registerFunction("PostgresFibonacciFunction", PostgresFibonacciFunction::new);
-        conn.registerFunction("PostgresFibSumFunction", PostgresFibSumFunction::new);
 
-        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresFibonacciFunction", ApiaryConfig.postgres, PostgresFibonacciFunction::new);
+        apiaryWorker.registerFunction("PostgresFibSumFunction", ApiaryConfig.postgres, PostgresFibSumFunction::new);
         apiaryWorker.startServing();
 
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());
@@ -135,9 +137,10 @@ public class PostgresTests {
             logger.info("No Postgres instance!");
             return;
         }
-        conn.registerFunction("PostgresIncrementFunction", PostgresIncrementFunction::new);
 
-        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresIncrementFunction", ApiaryConfig.postgres, PostgresIncrementFunction::new);
         apiaryWorker.startServing();
 
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(new ZContext());
@@ -167,13 +170,14 @@ public class PostgresTests {
             logger.info("No Postgres instance!");
             return;
         }
-        conn.registerFunction("RetwisPost", RetwisPost::new);
-        conn.registerFunction("RetwisFollow", RetwisFollow::new);
-        conn.registerFunction("RetwisGetPosts", RetwisGetPosts::new);
-        conn.registerFunction("RetwisGetFollowees", RetwisGetFollowees::new);
-        conn.registerFunction("RetwisGetTimeline", RetwisGetTimeline::new);
 
-        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 4);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("RetwisPost", ApiaryConfig.postgres, RetwisPost::new);
+        apiaryWorker.registerFunction("RetwisFollow", ApiaryConfig.postgres, RetwisFollow::new);
+        apiaryWorker.registerFunction("RetwisGetPosts", ApiaryConfig.postgres, RetwisGetPosts::new);
+        apiaryWorker.registerFunction("RetwisGetFollowees", ApiaryConfig.postgres, RetwisGetFollowees::new);
+        apiaryWorker.registerFunction("RetwisGetTimeline", ApiaryConfig.postgres, RetwisGetTimeline::new);
         apiaryWorker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
@@ -214,9 +218,10 @@ public class PostgresTests {
             logger.info("No Postgres instance!");
             return;
         }
-        conn.registerFunction("PostgresProvenanceBasic", PostgresProvenanceBasic::new);
 
-        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 1, "postgres", ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 1, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresProvenanceBasic", ApiaryConfig.postgres, PostgresProvenanceBasic::new);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;
@@ -345,9 +350,10 @@ public class PostgresTests {
             logger.info("No Postgres instance!");
             return;
         }
-        conn.registerFunction("PostgresProvenanceJoins", PostgresProvenanceJoins::new);
 
-        apiaryWorker = new ApiaryWorker(conn, new ApiaryNaiveScheduler(), 1, "postgres", ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 1, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresProvenanceJoins", ApiaryConfig.postgres, PostgresProvenanceJoins::new);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;

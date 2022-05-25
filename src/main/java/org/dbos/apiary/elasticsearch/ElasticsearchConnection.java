@@ -13,11 +13,9 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.ApiaryContext;
+import org.dbos.apiary.function.ApiaryFunction;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.ProvenanceBuffer;
-import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.postgres.PostgresContext;
-import org.dbos.apiary.postgres.PostgresFunction;
 import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,16 +33,11 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
 
 public class ElasticsearchConnection implements ApiaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConnection.class);
     public ElasticsearchClient client;
-
-    private final Map<String, Callable<ElasticsearchFunction>> functions = new HashMap<>();
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
         try {
@@ -81,16 +74,8 @@ public class ElasticsearchConnection implements ApiaryConnection {
         }
     }
 
-    public void registerFunction(String name, Callable<ElasticsearchFunction> function) {
-        functions.put(name, function);
-    }
-
     @Override
-    public FunctionOutput callFunction(ProvenanceBuffer provBuff, String service, long execID, long functionID, String name, Object... inputs) throws Exception {
-        if (name.equals("GetApiaryClientID")) {
-            return new FunctionOutput(0, new ArrayList<>());
-        }
-        ElasticsearchFunction function = functions.get(name).call();
+    public FunctionOutput callFunction(String functionName, ApiaryFunction function, ProvenanceBuffer provBuff, String service, long execID, long functionID, Object... inputs) throws Exception {
         ApiaryContext ctxt = new ElasticsearchContext(client, provBuff, service, execID, functionID);
         FunctionOutput f = null;
         try {

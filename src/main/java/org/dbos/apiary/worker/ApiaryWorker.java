@@ -9,6 +9,7 @@ import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.Task;
 import org.dbos.apiary.function.*;
+import org.dbos.apiary.procedures.postgres.GetApiaryClientID;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
@@ -89,6 +90,9 @@ public class ApiaryWorker {
 
     public void registerConnection(String type, ApiaryConnection connection) {
         connections.put(type, connection);
+        if (type.equals(ApiaryConfig.postgres)) {
+            registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.postgres, GetApiaryClientID::new);
+        }
     }
 
     public void registerFunction(String name, String type, Callable<ApiaryFunction> function) {

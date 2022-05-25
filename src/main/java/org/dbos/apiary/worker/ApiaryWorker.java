@@ -210,7 +210,7 @@ public class ApiaryWorker {
             ApiaryFunction function = functions.get(name).call();
             String type = functionTypes.get(name);
             if (type.equals(ApiaryConfig.stateless)) {
-                ApiaryStatelessContext context = new ApiaryStatelessContext(provenanceBuffer, service, execID, functionID, functionTypes, functions, connections, localClients.get());
+                ApiaryStatelessContext context = new ApiaryStatelessContext(provenanceBuffer, service, execID, functionID, functionTypes, functions, connections);
                 o = function.apiaryRunFunction(context, arguments);
             } else {
                 ApiaryConnection c = connections.get(type);

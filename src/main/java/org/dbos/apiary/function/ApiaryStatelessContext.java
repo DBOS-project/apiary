@@ -17,17 +17,14 @@ public class ApiaryStatelessContext extends ApiaryContext {
     private final Map<String, String> functionTypes;
     private final Map<String, Callable<ApiaryFunction>> functions;
     private final Map<String, ApiaryConnection> connections;
-    private final InternalApiaryWorkerClient client;
 
     public ApiaryStatelessContext(ProvenanceBuffer provBuff, String service, long execID, long functionID,
                                   Map<String, String> functionTypes, Map<String, Callable<ApiaryFunction>> functions,
-                                  Map<String, ApiaryConnection> connections,
-                                  InternalApiaryWorkerClient client) {
+                                  Map<String, ApiaryConnection> connections) {
         super(provBuff, service, execID, functionID);
         this.functionTypes = functionTypes;
         this.functions = functions;
         this.connections = connections;
-        this.client = client;
     }
 
     @Override

@@ -24,12 +24,11 @@ public class ElasticsearchContext extends ApiaryContext {
     }
 
     @Override
-    public void recordExecution(FunctionOutput output) {
-
-    }
+    public void recordExecution(FunctionOutput output) {}
 
     @Override
     public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
+        // TODO: Implement.
         return null;
     }
 

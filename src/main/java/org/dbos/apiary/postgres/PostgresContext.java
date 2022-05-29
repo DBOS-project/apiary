@@ -1,5 +1,6 @@
 package org.dbos.apiary.postgres;
 
+import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.Task;
 import org.dbos.apiary.function.*;
@@ -35,35 +36,38 @@ public class PostgresContext extends ApiaryContext {
 
     @Override
     public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
-        Object clazz;
-        try {
-            clazz = Class.forName(name).getDeclaredConstructor().newInstance();
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-            e.printStackTrace();
-            return null;
-        }
-        assert(clazz instanceof ApiaryFunction);
-        ApiaryFunction f = (ApiaryFunction) clazz;
-        // Remember current txid.
-        try {
-            Savepoint s = conn.setSavepoint();
-            long oldID = currentID;
+        ApiaryFunction f = workerContext.getFunction(name);
+        String functionType = workerContext.getFunctionType(name);
+        if (functionType.equals(ApiaryConfig.postgres) || functionType.equals(ApiaryConfig.stateless)) {
             try {
-                this.currentID = functionID + functionIDCounter.incrementAndGet();
-                FunctionOutput o = f.apiaryRunFunction(this, inputs);
-                this.currentID = oldID;
-                conn.releaseSavepoint(s);
-                return o;
-            } catch (Exception e) {
+                Savepoint s = conn.setSavepoint();
+                long oldID = currentID;
+                try {
+                    this.currentID = functionID + functionIDCounter.incrementAndGet();
+                    FunctionOutput o = f.apiaryRunFunction(this, inputs);
+                    this.currentID = oldID;
+                    conn.releaseSavepoint(s);
+                    return o;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    this.currentID = oldID;
+                    conn.rollback(s);
+                    conn.releaseSavepoint(s);
+                    return null;
+                }
+            } catch (SQLException e) {
                 e.printStackTrace();
-                this.currentID = oldID;
-                conn.rollback(s);
-                conn.releaseSavepoint(s);
                 return null;
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
+        } else {
+            try {
+                ApiaryConnection c = workerContext.getConnection(functionType);
+                long newID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
+                return c.callFunction(name, workerContext, service, execID, newID, inputs);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
         }
     }
 

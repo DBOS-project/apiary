@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class ApiaryContext {
 
-    private final AtomicInteger calledFunctionID = new AtomicInteger(0);
+    protected final AtomicInteger calledFunctionID = new AtomicInteger(0);
     private final List<Task> queuedTasks = new ArrayList<>();
     /**
      * For internal use only.

@@ -1,7 +1,6 @@
-package org.dbos.apiary.worker;
+package org.dbos.apiary.function;
 
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.function.ApiaryFunction;
 import org.dbos.apiary.procedures.postgres.GetApiaryClientID;
 import org.dbos.apiary.utilities.ApiaryConfig;
 
@@ -10,9 +9,15 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 public class WorkerContext {
-    final Map<String, ApiaryConnection> connections = new HashMap<>();
+    public final Map<String, ApiaryConnection> connections = new HashMap<>();
     private final Map<String, Callable<ApiaryFunction>> functions = new HashMap<>();
     private final Map<String, String> functionTypes = new HashMap<>();
+
+    public final ProvenanceBuffer provBuff;
+
+    public WorkerContext(ProvenanceBuffer provBuff) {
+        this.provBuff = provBuff;
+    }
 
     public void registerConnection(String type, ApiaryConnection connection) {
         connections.put(type, connection);

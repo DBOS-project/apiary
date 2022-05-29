@@ -5,6 +5,7 @@ import org.dbos.apiary.function.Task;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
+import org.dbos.apiary.function.WorkerContext;
 import org.voltdb.DeprecatedProcedureAPIAccess;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
@@ -36,7 +37,7 @@ public class VoltContext extends ApiaryTransactionalContext {
     private long currentID = functionID;
 
     public VoltContext(VoltFunction p, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
-        super(provBuff, service, execID, functionID);
+        super(new WorkerContext(provBuff), service, execID, functionID);
         this.p = p;
         this.transactionID = internalGetTransactionId();
     }
@@ -135,7 +136,7 @@ public class VoltContext extends ApiaryTransactionalContext {
      * @param input     input parameters for the SQL statement.
      */
     public void executeUpdate(SQLStmt procedure, Object... input) {
-        if (ApiaryConfig.captureUpdates && (this.provBuff != null)) {
+        if (ApiaryConfig.captureUpdates && (workerContext.provBuff != null)) {
             // TODO: currently only captures "INSERT INTO <table> VALUES (?,...)". Support more patterns later.
             long timestamp = Utilities.getMicroTimestamp();
             String tableName = getUpdateTableName(procedure.getText());
@@ -147,7 +148,7 @@ public class VoltContext extends ApiaryTransactionalContext {
             System.arraycopy(input, 0, rowData, 3, input.length);
             p.voltQueueSQL(procedure, input);
             p.voltExecuteSQL();
-            provBuff.addEntry(upperName + "EVENTS", rowData);
+            workerContext.provBuff.addEntry(upperName + "EVENTS", rowData);
         } else {
             p.voltQueueSQL(procedure, input);
             p.voltExecuteSQL();
@@ -160,7 +161,7 @@ public class VoltContext extends ApiaryTransactionalContext {
      * @param input     input parameters for the SQL statement.
      */
     public VoltTable[] executeQuery(SQLStmt procedure, Object... input) {
-        if (ApiaryConfig.captureReads && (this.provBuff != null)) {
+        if (ApiaryConfig.captureReads && (workerContext.provBuff != null)) {
             // TODO: Volt doesn't differentiate columns returned from different tables.
             // TODO: This capture won't capture the record if a query assigns aliases for columns.
             String sqlStr = procedure.getText();
@@ -188,7 +189,7 @@ public class VoltContext extends ApiaryTransactionalContext {
                         rowData[3 + colIndex] = v.get(colNum, v.getColumnType(colNum));
                     }
                 }
-                provBuff.addEntry(tableName + "EVENTS", rowData);
+                workerContext.provBuff.addEntry(tableName + "EVENTS", rowData);
             }
             v.resetRowPosition();
             return vs;

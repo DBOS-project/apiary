@@ -12,12 +12,12 @@ import org.dbos.apiary.utilities.Utilities;
 public class PostgresFunction implements ApiaryFunction {
     @Override
     public void recordInvocation(ApiaryContext ctxt, String funcName) {
-        if (ctxt.provBuff == null) {
+        if (ctxt.workerContext.provBuff == null) {
             // If no OLAP DB available.
             return;
         }
         long timestamp = Utilities.getMicroTimestamp();
         long txid = ((ApiaryTransactionalContext) ctxt).apiaryGetTransactionId();
-        ctxt.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txid, timestamp, ctxt.execID, ctxt.service, funcName);
+        ctxt.workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txid, timestamp, ctxt.execID, ctxt.service, funcName);
     }
 }

@@ -5,6 +5,7 @@ import org.dbos.apiary.function.Task;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
+import org.dbos.apiary.function.WorkerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,8 +27,8 @@ public class PostgresContext extends ApiaryTransactionalContext {
     private AtomicLong functionIDCounter = new AtomicLong(0);
     private long currentID = functionID;
 
-    public PostgresContext(Connection c, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
-        super(provBuff, service, execID, functionID);
+    public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID) {
+        super(workerContext, service, execID, functionID);
         this.conn = c;
         this.transactionId = -1;
     }
@@ -179,7 +180,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
      * @param input     input parameters for the SQL statement.
      */
     public void executeUpdate(String procedure, Object... input) {
-        if (ApiaryConfig.captureUpdates && (this.provBuff != null)) {
+        if (ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) {
             // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
             String interceptedQuery = interceptUpdate((String) procedure);
             ResultSet rs;
@@ -204,7 +205,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
                     for (int i = 1; i <= numCol; i++) {
                         rowData[i+2] = rs.getObject(i);
                     }
-                    provBuff.addEntry(tableName + "Events", rowData);
+                    workerContext.provBuff.addEntry(tableName + "Events", rowData);
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -231,7 +232,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
             PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             prepareStatement(pstmt, input);
             ResultSet rs = pstmt.executeQuery();
-            if (ApiaryConfig.captureReads && this.provBuff != null) {
+            if (ApiaryConfig.captureReads && workerContext.provBuff != null) {
                 long timestamp = Utilities.getMicroTimestamp();
                 // Record provenance data.
                 Map<String, Object[]> tableToRowData = new HashMap<>();
@@ -254,7 +255,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
                         }
                     }
                     for (String tableName : tableToRowData.keySet()) {
-                        provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
+                        workerContext.provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
                     }
                 }
                 rs.beforeFirst();

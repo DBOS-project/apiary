@@ -7,9 +7,7 @@ import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.function.Task;
 import org.dbos.apiary.function.*;
-import org.dbos.apiary.procedures.postgres.GetApiaryClientID;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
@@ -55,9 +53,7 @@ public class ApiaryWorker {
         return new InternalApiaryWorkerClient(context);
     });
 
-    private final WorkerContext workerContext = new WorkerContext();
-
-    public final ProvenanceBuffer provenanceBuffer;
+    public final WorkerContext workerContext;
 
     public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads) {
         this(scheduler, numWorkerThreads, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
@@ -71,17 +67,17 @@ public class ApiaryWorker {
             defaultQueue.add(defaultTimeNs);
         }
 
-        ProvenanceBuffer tempBuffer = null;
+        ProvenanceBuffer buff = null;
         try {
-            tempBuffer = new ProvenanceBuffer(provenanceDatabase, provenanceAddress);
-            if (!tempBuffer.hasConnection) {
+            buff = new ProvenanceBuffer(provenanceDatabase, provenanceAddress);
+            if (!buff.hasConnection) {
                 // No vertica connection.
-                tempBuffer = null;
+                buff = null;
             }
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
-        provenanceBuffer = tempBuffer;
+        workerContext = new WorkerContext(buff);
     }
 
     /** Public Interface **/
@@ -110,8 +106,8 @@ public class ApiaryWorker {
             serverThread.interrupt();
             zContext.close();
             serverThread.join();
-            if (provenanceBuffer != null) {
-                provenanceBuffer.close();
+            if (workerContext.provBuff != null) {
+                workerContext.provBuff.close();
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -199,14 +195,14 @@ public class ApiaryWorker {
             if (!workerContext.functionExists(name)) {
                 logger.info("Unrecognized function: {}", name);
             }
-            ApiaryFunction function = workerContext.getFunction(name);
             String type = workerContext.getFunctionType(name);
             if (type.equals(ApiaryConfig.stateless)) {
-                ApiaryStatelessContext context = new ApiaryStatelessContext(provenanceBuffer, service, execID, functionID, workerContext);
+                ApiaryFunction function = workerContext.getFunction(name);
+                ApiaryStatelessContext context = new ApiaryStatelessContext(workerContext, service, execID, functionID);
                 o = function.apiaryRunFunction(context, arguments);
             } else {
                 ApiaryConnection c = workerContext.getConnection(type);
-                o = c.callFunction(name, function, provenanceBuffer, service, execID, functionID, arguments);
+                o = c.callFunction(name, workerContext, service, execID, functionID, arguments);
             }
         } catch (Exception e) {
             e.printStackTrace();

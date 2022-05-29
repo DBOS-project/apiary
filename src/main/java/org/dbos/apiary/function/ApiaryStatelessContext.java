@@ -2,22 +2,14 @@ package org.dbos.apiary.function;
 
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.worker.WorkerContext;
-
-import java.util.Map;
-import java.util.concurrent.Callable;
 
 /**
  * ApiaryStatelessContext is a context for stateless functions.
  */
 public class ApiaryStatelessContext extends ApiaryContext {
 
-    private final WorkerContext workerContext;
-
-    public ApiaryStatelessContext(ProvenanceBuffer provBuff, String service, long execID, long functionID,
-                                  WorkerContext workerContext) {
-        super(provBuff, service, execID, functionID);
-        this.workerContext = workerContext;
+    public ApiaryStatelessContext(WorkerContext workerContext, String service, long execID, long functionID) {
+        super(workerContext, service, execID, functionID);
     }
 
     @Override
@@ -35,8 +27,7 @@ public class ApiaryStatelessContext extends ApiaryContext {
         } else {
             try {
                 ApiaryConnection c = workerContext.getConnection(type);
-                ApiaryFunction f = workerContext.getFunction(name);
-                return c.callFunction(name, f, provBuff, service, execID, functionID, inputs);
+                return c.callFunction(name, workerContext, service, execID, functionID, inputs);
             } catch (Exception e) {
                 e.printStackTrace();
                 return null;

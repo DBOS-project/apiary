@@ -54,7 +54,7 @@ public class VoltDBTests {
         apiaryWorker.registerFunction("VoltProvenanceBasic", ApiaryConfig.voltdb, VoltProvenanceBasic::new);
         apiaryWorker.startServing();
 
-        ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;
+        ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
         if (provBuff == null) {
             logger.info("Provenance buffer (Vertica) not available.");
             return;

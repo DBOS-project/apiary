@@ -6,15 +6,15 @@ import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import org.dbos.apiary.function.ApiaryTransactionalContext;
 import org.dbos.apiary.function.FunctionOutput;
-import org.dbos.apiary.function.ProvenanceBuffer;
+import org.dbos.apiary.function.WorkerContext;
 
 import java.io.IOException;
 
 public class ElasticsearchContext extends ApiaryTransactionalContext {
     private final ElasticsearchClient client;
 
-    public ElasticsearchContext(ElasticsearchClient client, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
-        super(provBuff, service, execID, functionID);
+    public ElasticsearchContext(ElasticsearchClient client, WorkerContext workerContext, String service, long execID, long functionID) {
+        super(workerContext, service, execID, functionID);
         this.client = client;
     }
 

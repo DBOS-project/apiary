@@ -5,8 +5,8 @@ package org.dbos.apiary.function;
  */
 public abstract class ApiaryTransactionalContext extends ApiaryContext {
 
-    public ApiaryTransactionalContext(ProvenanceBuffer provBuff, String service, long execID, long functionID) {
-        super(provBuff, service, execID, functionID);
+    public ApiaryTransactionalContext(WorkerContext workerContext, String service, long execID, long functionID) {
+        super(workerContext, service, execID, functionID);
     }
     /** Public Interface for functions. **/
 

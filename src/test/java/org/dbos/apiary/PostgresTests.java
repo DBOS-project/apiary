@@ -224,7 +224,7 @@ public class PostgresTests {
         apiaryWorker.registerFunction("PostgresProvenanceBasic", ApiaryConfig.postgres, PostgresProvenanceBasic::new);
         apiaryWorker.startServing();
 
-        ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;
+        ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
         assert(provBuff != null);
 
         // Wait a bit so previous provenance capture data would be flushed out.
@@ -356,7 +356,7 @@ public class PostgresTests {
         apiaryWorker.registerFunction("PostgresProvenanceJoins", ApiaryConfig.postgres, PostgresProvenanceJoins::new);
         apiaryWorker.startServing();
 
-        ProvenanceBuffer provBuff = apiaryWorker.provenanceBuffer;
+        ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
         assert(provBuff != null);
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 4);

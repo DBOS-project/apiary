@@ -4,17 +4,17 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
-import org.dbos.apiary.function.ApiaryTransactionalContext;
+import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
-import org.dbos.apiary.function.ProvenanceBuffer;
+import org.dbos.apiary.function.WorkerContext;
 
 import java.io.IOException;
 
-public class ElasticsearchContext extends ApiaryTransactionalContext {
+public class ElasticsearchContext extends ApiaryContext {
     private final ElasticsearchClient client;
 
-    public ElasticsearchContext(ElasticsearchClient client, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
-        super(provBuff, service, execID, functionID);
+    public ElasticsearchContext(ElasticsearchClient client, WorkerContext workerContext, String service, long execID, long functionID) {
+        super(workerContext, service, execID, functionID);
         this.client = client;
     }
 
@@ -24,12 +24,11 @@ public class ElasticsearchContext extends ApiaryTransactionalContext {
     }
 
     @Override
-    public void recordExecution(FunctionOutput output) {
-
-    }
+    public void recordExecution(FunctionOutput output) {}
 
     @Override
     public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
+        // TODO: Implement.
         return null;
     }
 
@@ -48,10 +47,5 @@ public class ElasticsearchContext extends ApiaryTransactionalContext {
             e.printStackTrace();
             return null;
         }
-    }
-
-    @Override
-    protected long internalGetTransactionId() {
-        return 0;
     }
 }

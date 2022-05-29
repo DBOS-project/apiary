@@ -7,9 +7,7 @@ import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.function.Task;
 import org.dbos.apiary.function.*;
-import org.dbos.apiary.procedures.postgres.GetApiaryClientID;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
@@ -55,11 +53,7 @@ public class ApiaryWorker {
         return new InternalApiaryWorkerClient(context);
     });
 
-    private final Map<String, ApiaryConnection> connections = new HashMap<>();
-    private final Map<String, Callable<ApiaryFunction>> functions = new HashMap<>();
-    private final Map<String, String> functionTypes = new HashMap<>();
-
-    public final ProvenanceBuffer provenanceBuffer;
+    public final WorkerContext workerContext;
 
     public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads) {
         this(scheduler, numWorkerThreads, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
@@ -73,33 +67,27 @@ public class ApiaryWorker {
             defaultQueue.add(defaultTimeNs);
         }
 
-        ProvenanceBuffer tempBuffer = null;
+        ProvenanceBuffer buff = null;
         try {
-            tempBuffer = new ProvenanceBuffer(provenanceDatabase, provenanceAddress);
-            if (!tempBuffer.hasConnection) {
+            buff = new ProvenanceBuffer(provenanceDatabase, provenanceAddress);
+            if (!buff.hasConnection) {
                 // No vertica connection.
-                tempBuffer = null;
+                buff = null;
             }
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
-        provenanceBuffer = tempBuffer;
+        workerContext = new WorkerContext(buff);
     }
 
     /** Public Interface **/
 
     public void registerConnection(String type, ApiaryConnection connection) {
-        connections.put(type, connection);
-        if (type.equals(ApiaryConfig.postgres)) {
-            registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.postgres, GetApiaryClientID::new);
-        } else if (type.equals(ApiaryConfig.voltdb)) {
-            registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.voltdb, org.dbos.apiary.procedures.voltdb.GetApiaryClientID::new);
-        }
+        workerContext.registerConnection(type, connection);
     }
 
     public void registerFunction(String name, String type, Callable<ApiaryFunction> function) {
-        functions.put(name, function);
-        functionTypes.put(name, type);
+        workerContext.registerFunction(name, type, function);
     }
 
     public void startServing() {
@@ -118,8 +106,8 @@ public class ApiaryWorker {
             serverThread.interrupt();
             zContext.close();
             serverThread.join();
-            if (provenanceBuffer != null) {
-                provenanceBuffer.close();
+            if (workerContext.provBuff != null) {
+                workerContext.provBuff.close();
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -143,9 +131,9 @@ public class ApiaryWorker {
                     if (!removed) {
                         continue;
                     }
-                    String address = functionTypes.get(subtask.funcName).equals(ApiaryConfig.stateless) ?
-                            connections.values().stream().findFirst().get().getPartitionHostMap().get(0)
-                            : connections.get(functionTypes.get(subtask.funcName)).getHostname(subtask.input);
+                    String address = workerContext.getFunctionType(subtask.funcName).equals(ApiaryConfig.stateless) ?
+                            workerContext.connections.values().stream().findFirst().get().getPartitionHostMap().get(0)
+                            : workerContext.getConnection(workerContext.getFunctionType((subtask.funcName))).getHostname(subtask.input);
                     // Push to the outgoing queue.
                     byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currCallerID, subtask.functionID, subtask.input);
                     outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
@@ -204,17 +192,17 @@ public class ApiaryWorker {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {
-            if (!functions.containsKey(name)) {
+            if (!workerContext.functionExists(name)) {
                 logger.info("Unrecognized function: {}", name);
             }
-            ApiaryFunction function = functions.get(name).call();
-            String type = functionTypes.get(name);
+            String type = workerContext.getFunctionType(name);
             if (type.equals(ApiaryConfig.stateless)) {
-                ApiaryStatelessContext context = new ApiaryStatelessContext(provenanceBuffer, service, execID, functionID, functionTypes, functions, connections);
+                ApiaryFunction function = workerContext.getFunction(name);
+                ApiaryStatelessContext context = new ApiaryStatelessContext(workerContext, service, execID, functionID);
                 o = function.apiaryRunFunction(context, arguments);
             } else {
-                ApiaryConnection c = connections.get(type);
-                o = c.callFunction(name, function, provenanceBuffer, service, execID, functionID, arguments);
+                ApiaryConnection c = workerContext.getConnection(type);
+                o = c.callFunction(name, workerContext, service, execID, functionID, arguments);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -363,7 +351,7 @@ public class ApiaryWorker {
         // This main server thread is used as I/O thread.
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(shadowContext);
         List<String> distinctHosts = new ArrayList<>();
-        for (ApiaryConnection c: connections.values()) {
+        for (ApiaryConnection c: workerContext.connections.values()) {
             distinctHosts.addAll(c.getPartitionHostMap().values());
         }
         distinctHosts = distinctHosts.stream().distinct().collect(Collectors.toList());

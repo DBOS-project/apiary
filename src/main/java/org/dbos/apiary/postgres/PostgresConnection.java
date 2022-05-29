@@ -2,9 +2,8 @@ package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.ApiaryContext;
-import org.dbos.apiary.function.ApiaryFunction;
 import org.dbos.apiary.function.FunctionOutput;
-import org.dbos.apiary.function.ProvenanceBuffer;
+import org.dbos.apiary.function.WorkerContext;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,11 +102,11 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, ApiaryFunction function, ProvenanceBuffer provBuff, String service, long execID, long functionID, Object... inputs) throws Exception {
-        ApiaryContext ctxt = new PostgresContext(connection.get(), provBuff, service, execID, functionID);
+    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) throws Exception {
+        ApiaryContext ctxt = new PostgresContext(connection.get(), workerContext, service, execID, functionID);
         FunctionOutput f = null;
         try {
-            f = function.apiaryRunFunction(ctxt, inputs);
+            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
             connection.get().commit();
         } catch (Exception e) {
             e.printStackTrace();

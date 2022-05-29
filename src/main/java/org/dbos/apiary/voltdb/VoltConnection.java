@@ -3,6 +3,7 @@ package org.dbos.apiary.voltdb;
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.Utilities;
+import org.dbos.apiary.function.WorkerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.voltdb.TheHashinator;
@@ -112,7 +113,7 @@ public class VoltConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, ApiaryFunction function, ProvenanceBuffer provBuff, String service, long execID, long functionID, Object... inputs) throws IOException, ProcCallException {
+    public FunctionOutput callFunction(String functionName, WorkerContext context, String service, long execID, long functionID, Object... inputs) throws IOException, ProcCallException {
         if (functionName.startsWith(getApiaryClientID)) {
             // Add input value for the procedure.
             inputs = new Integer[1];

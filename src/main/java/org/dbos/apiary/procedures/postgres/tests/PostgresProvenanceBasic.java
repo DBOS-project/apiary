@@ -18,7 +18,7 @@ public class PostgresProvenanceBasic extends PostgresFunction {
             return baseValue+1;
         } else {
             // Synchronously call.
-            ctxt.apiaryCallFunction("org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceBasic", 1, baseValue);
+            ctxt.apiaryCallFunction("PostgresProvenanceBasic", 1, baseValue);
         }
         // Add an entry at a given key and set to base value, get value, then increase the value by 1, get value again, and finally delete.
         // Return the increased value.

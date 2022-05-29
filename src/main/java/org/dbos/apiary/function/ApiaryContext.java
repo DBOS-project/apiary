@@ -9,12 +9,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class ApiaryContext {
 
-    private final AtomicInteger calledFunctionID = new AtomicInteger(0);
+    protected final AtomicInteger calledFunctionID = new AtomicInteger(0);
     private final List<Task> queuedTasks = new ArrayList<>();
     /**
      * For internal use only.
      */
-    public final ProvenanceBuffer provBuff;
+    public final WorkerContext workerContext;
     /**
      * For internal use only.
      */
@@ -24,8 +24,8 @@ public abstract class ApiaryContext {
      */
     public final long execID, functionID;
 
-    public ApiaryContext(ProvenanceBuffer provBuff, String service, long execID, long functionID) {
-        this.provBuff = provBuff;
+    public ApiaryContext(WorkerContext workerContext, String service, long execID, long functionID) {
+        this.workerContext = workerContext;
         this.service = service;
         this.execID = execID;
         this.functionID = functionID;

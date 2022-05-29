@@ -2,7 +2,6 @@ package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.function.ApiaryFunction;
 import org.dbos.apiary.function.ApiaryContext;
-import org.dbos.apiary.function.ApiaryTransactionalContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 
@@ -17,7 +16,7 @@ public class PostgresFunction implements ApiaryFunction {
             return;
         }
         long timestamp = Utilities.getMicroTimestamp();
-        long txid = ((ApiaryTransactionalContext) ctxt).apiaryGetTransactionId();
+        long txid = ((PostgresContext) ctxt).getTransactionId();
         ctxt.workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txid, timestamp, ctxt.execID, ctxt.service, funcName);
     }
 }

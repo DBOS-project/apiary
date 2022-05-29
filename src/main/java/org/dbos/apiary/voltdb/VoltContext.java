@@ -29,7 +29,7 @@ import static org.dbos.apiary.voltdb.VoltFunction.recordOutput;
  * VoltContext is a context for Apiary-VoltDB functions.
  * It provides methods for accessing a VoltDB database.
  */
-public class VoltContext extends ApiaryTransactionalContext {
+public class VoltContext extends ApiaryContext {
 
     private final VoltFunction p;
     private long transactionID;
@@ -39,7 +39,7 @@ public class VoltContext extends ApiaryTransactionalContext {
     public VoltContext(VoltFunction p, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
         super(new WorkerContext(provBuff), service, execID, functionID);
         this.p = p;
-        this.transactionID = internalGetTransactionId();
+        this.transactionID = getTransactionID();
     }
 
     @Override
@@ -199,8 +199,7 @@ public class VoltContext extends ApiaryTransactionalContext {
         }
     }
 
-    @Override
-    protected long internalGetTransactionId() {
+    protected long getTransactionID() {
         return DeprecatedProcedureAPIAccess.getVoltPrivateRealTransactionId(this.p);
     }
 

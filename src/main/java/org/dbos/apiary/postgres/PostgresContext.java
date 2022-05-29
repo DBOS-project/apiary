@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * PostgresContext is a context for Apiary-Postgres functions.
  * It provides methods for accessing a Postgres database.
  */
-public class PostgresContext extends ApiaryTransactionalContext {
+public class PostgresContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresContext.class);
     // This connection ties to all prepared statements in one transaction.
     private final Connection conn;
@@ -198,7 +198,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
                 int numCol = rsmd.getColumnCount();
                 // Record provenance data.
                 Object[] rowData = new Object[numCol+3];
-                rowData[0] = internalGetTransactionId();
+                rowData[0] = getTransactionId();
                 rowData[1] = timestamp;
                 rowData[2] = exportOperation;
                 while (rs.next()) {
@@ -242,7 +242,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
                         Map<String, Integer> schemaMap = getSchemaMap(tableName);
                         if (!tableToRowData.containsKey(tableName)) {
                             Object[] rowData = new Object[3 + schemaMap.size()];
-                            rowData[0] = internalGetTransactionId();
+                            rowData[0] = getTransactionId();
                             rowData[1] = timestamp;
                             rowData[2] = Utilities.getQueryType(procedure);
                             tableToRowData.put(tableName, rowData);
@@ -269,8 +269,7 @@ public class PostgresContext extends ApiaryTransactionalContext {
 
     /* --------------- For internal use ----------------- */
 
-    @Override
-    public long internalGetTransactionId() {
+    public long getTransactionId() {
         if (this.transactionId >= 0) {
             return this.transactionId;
         }

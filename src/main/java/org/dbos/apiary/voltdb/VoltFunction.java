@@ -154,7 +154,7 @@ public class VoltFunction extends VoltProcedure implements ApiaryFunction {
             return;
         }
         long timestamp = Utilities.getMicroTimestamp();
-        long txid = ((ApiaryTransactionalContext) ctxt).apiaryGetTransactionId();
+        long txid = ((VoltContext) ctxt).getTransactionID();
         ctxt.workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txid, timestamp, ctxt.execID, ctxt.service, funcName);
     }
 }

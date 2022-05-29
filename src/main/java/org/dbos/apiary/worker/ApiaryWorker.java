@@ -55,9 +55,7 @@ public class ApiaryWorker {
         return new InternalApiaryWorkerClient(context);
     });
 
-    private final Map<String, ApiaryConnection> connections = new HashMap<>();
-    private final Map<String, Callable<ApiaryFunction>> functions = new HashMap<>();
-    private final Map<String, String> functionTypes = new HashMap<>();
+    private final WorkerContext workerContext = new WorkerContext();
 
     public final ProvenanceBuffer provenanceBuffer;
 
@@ -89,17 +87,11 @@ public class ApiaryWorker {
     /** Public Interface **/
 
     public void registerConnection(String type, ApiaryConnection connection) {
-        connections.put(type, connection);
-        if (type.equals(ApiaryConfig.postgres)) {
-            registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.postgres, GetApiaryClientID::new);
-        } else if (type.equals(ApiaryConfig.voltdb)) {
-            registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.voltdb, org.dbos.apiary.procedures.voltdb.GetApiaryClientID::new);
-        }
+        workerContext.registerConnection(type, connection);
     }
 
     public void registerFunction(String name, String type, Callable<ApiaryFunction> function) {
-        functions.put(name, function);
-        functionTypes.put(name, type);
+        workerContext.registerFunction(name, type, function);
     }
 
     public void startServing() {
@@ -143,9 +135,9 @@ public class ApiaryWorker {
                     if (!removed) {
                         continue;
                     }
-                    String address = functionTypes.get(subtask.funcName).equals(ApiaryConfig.stateless) ?
-                            connections.values().stream().findFirst().get().getPartitionHostMap().get(0)
-                            : connections.get(functionTypes.get(subtask.funcName)).getHostname(subtask.input);
+                    String address = workerContext.getFunctionType(subtask.funcName).equals(ApiaryConfig.stateless) ?
+                            workerContext.connections.values().stream().findFirst().get().getPartitionHostMap().get(0)
+                            : workerContext.getConnection(workerContext.getFunctionType((subtask.funcName))).getHostname(subtask.input);
                     // Push to the outgoing queue.
                     byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currCallerID, subtask.functionID, subtask.input);
                     outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
@@ -204,16 +196,16 @@ public class ApiaryWorker {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {
-            if (!functions.containsKey(name)) {
+            if (!workerContext.functionExists(name)) {
                 logger.info("Unrecognized function: {}", name);
             }
-            ApiaryFunction function = functions.get(name).call();
-            String type = functionTypes.get(name);
+            ApiaryFunction function = workerContext.getFunction(name);
+            String type = workerContext.getFunctionType(name);
             if (type.equals(ApiaryConfig.stateless)) {
-                ApiaryStatelessContext context = new ApiaryStatelessContext(provenanceBuffer, service, execID, functionID, functionTypes, functions, connections);
+                ApiaryStatelessContext context = new ApiaryStatelessContext(provenanceBuffer, service, execID, functionID, workerContext);
                 o = function.apiaryRunFunction(context, arguments);
             } else {
-                ApiaryConnection c = connections.get(type);
+                ApiaryConnection c = workerContext.getConnection(type);
                 o = c.callFunction(name, function, provenanceBuffer, service, execID, functionID, arguments);
             }
         } catch (Exception e) {
@@ -363,7 +355,7 @@ public class ApiaryWorker {
         // This main server thread is used as I/O thread.
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(shadowContext);
         List<String> distinctHosts = new ArrayList<>();
-        for (ApiaryConnection c: connections.values()) {
+        for (ApiaryConnection c: workerContext.connections.values()) {
             distinctHosts.addAll(c.getPartitionHostMap().values());
         }
         distinctHosts = distinctHosts.stream().distinct().collect(Collectors.toList());

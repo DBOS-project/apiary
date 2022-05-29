@@ -2,6 +2,7 @@ package org.dbos.apiary.function;
 
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.worker.WorkerContext;
 
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -11,26 +12,21 @@ import java.util.concurrent.Callable;
  */
 public class ApiaryStatelessContext extends ApiaryContext {
 
-    private final Map<String, String> functionTypes;
-    private final Map<String, Callable<ApiaryFunction>> functions;
-    private final Map<String, ApiaryConnection> connections;
+    private final WorkerContext workerContext;
 
     public ApiaryStatelessContext(ProvenanceBuffer provBuff, String service, long execID, long functionID,
-                                  Map<String, String> functionTypes, Map<String, Callable<ApiaryFunction>> functions,
-                                  Map<String, ApiaryConnection> connections) {
+                                  WorkerContext workerContext) {
         super(provBuff, service, execID, functionID);
-        this.functionTypes = functionTypes;
-        this.functions = functions;
-        this.connections = connections;
+        this.workerContext = workerContext;
     }
 
     @Override
     public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
-        String type = functionTypes.get(name);
+        String type = workerContext.getFunctionType(name);
         if (type.equals(ApiaryConfig.stateless)) {
             ApiaryFunction f = null;
             try {
-                f = functions.get(name).call();
+                f = workerContext.getFunction(name);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -38,8 +34,8 @@ public class ApiaryStatelessContext extends ApiaryContext {
             return f.apiaryRunFunction(this, inputs);
         } else {
             try {
-                ApiaryConnection c = connections.get(type);
-                ApiaryFunction f = functions.get(name).call();
+                ApiaryConnection c = workerContext.getConnection(type);
+                ApiaryFunction f = workerContext.getFunction(name);
                 return c.callFunction(name, f, provBuff, service, execID, functionID, inputs);
             } catch (Exception e) {
                 e.printStackTrace();

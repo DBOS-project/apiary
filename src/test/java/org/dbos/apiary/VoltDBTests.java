@@ -49,7 +49,7 @@ public class VoltDBTests {
     public void testVoltProvenance() throws IOException, SQLException, InterruptedException {
         logger.info("testVoltProvenance");
         ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.voltdb, c);
         apiaryWorker.registerFunction("VoltProvenanceBasic", ApiaryConfig.voltdb, VoltProvenanceBasic::new);
         apiaryWorker.startServing();

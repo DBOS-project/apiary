@@ -41,22 +41,17 @@ public class ApiaryWorker {
     private final ExecutorService reqThreadPool;
     private final ExecutorService repThreadPool;
     private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
-    private final Set<ZContext> localContexts = ConcurrentHashMap.newKeySet();
     private final Map<String, Deque<Long>> functionRuntimesNs = new ConcurrentHashMap<>();
     private final Map<String, AtomicDouble> functionAverageRuntimesNs = new ConcurrentHashMap<>();
     private final int runningAverageLength = 100;
     private final List<Long> defaultQueue = new ArrayList<>();
     private final Long defaultTimeNs = 100000L;
-    private final ThreadLocal<InternalApiaryWorkerClient> localClients = ThreadLocal.withInitial(() -> {
-        ZContext context = ZContext.shadow(zContext);
-        localContexts.add(context);
-        return new InternalApiaryWorkerClient(context);
-    });
 
     public final WorkerContext workerContext;
 
     public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads) {
-        this(scheduler, numWorkerThreads, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
+        // By default, no provenance buffer.
+        this(scheduler, numWorkerThreads, null, null);
     }
 
     public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads, String provenanceDatabase, String provenanceAddress) {
@@ -102,7 +97,6 @@ public class ApiaryWorker {
             reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             repThreadPool.shutdown();
             repThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
-            localContexts.forEach(ZContext::close);
             serverThread.interrupt();
             zContext.close();
             serverThread.join();
@@ -163,23 +157,8 @@ public class ApiaryWorker {
             Object finalOutput = callerTask.getFinalOutput();
             assert (finalOutput != null);
             // Send back the response only once.
-            ExecuteFunctionReply.Builder b = ExecuteFunctionReply.newBuilder()
-                    .setCallerId(callerTask.callerId)
-                    .setFunctionId(callerTask.functionID)
-                    .setSenderTimestampNano(callerTask.senderTimestampNano);
-            if (output instanceof String) {
-                b.setReplyType(stringType);
-                b.setReplyString((String) output);
-            } else if (output instanceof Integer) {
-                b.setReplyType(intType);
-                b.setReplyInt((int) output);
-            } else if (output instanceof String[]) {
-                b.setReplyType(stringArrayType);
-                b.setReplyArray(ByteString.copyFrom(Utilities.stringArraytoByteArray((String[]) output)));
-            } else if (output instanceof int[]) {
-                b.setReplyType(intArrayType);
-                b.setReplyArray(ByteString.copyFrom(Utilities.intArrayToByteArray((int[]) output)));
-            }
+            ExecuteFunctionReply.Builder b = Utilities.constructReply(callerTask.callerId, callerTask.functionID,
+                    callerTask.senderTimestampNano, finalOutput);
             outgoingReplyMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, b.build().toByteArray()));
 
             // Clean up the stash map.
@@ -188,7 +167,8 @@ public class ApiaryWorker {
     }
 
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
-    private void executeFunction(String name, String service, long execID, long callerID, long functionID, ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
+    private void executeFunction(String name, String service, long execID, long callerID, long functionID,
+                                 ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {
@@ -227,23 +207,7 @@ public class ApiaryWorker {
         Object output = currTask.getFinalOutput();
         // If the output is not null, meaning everything is done. Directly return.
         if (output != null) {
-            ExecuteFunctionReply.Builder b = ExecuteFunctionReply.newBuilder()
-                    .setCallerId(callerID)
-                    .setFunctionId(functionID)
-                    .setSenderTimestampNano(senderTimestampNano);
-            if (output instanceof String) {
-                b.setReplyType(stringType);
-                b.setReplyString((String) output);
-            } else if (output instanceof Integer) {
-                b.setReplyType(intType);
-                b.setReplyInt((int) output);
-            } else if (output instanceof String[]) {
-                b.setReplyType(stringArrayType);
-                b.setReplyArray(ByteString.copyFrom(Utilities.stringArraytoByteArray((String[]) output)));
-            } else if (output instanceof int[]) {
-                b.setReplyType(intArrayType);
-                b.setReplyArray(ByteString.copyFrom(Utilities.intArrayToByteArray((int[]) output)));
-            }
+            ExecuteFunctionReply.Builder b = Utilities.constructReply(callerID, functionID, senderTimestampNano, output);
             outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
         }
         // Record runtime.
@@ -319,16 +283,7 @@ public class ApiaryWorker {
             // Handle the reply.
             try {
                 ExecuteFunctionReply reply = ExecuteFunctionReply.parseFrom(replyBytes);
-                Object output = null;
-                if (reply.getReplyType() == ApiaryWorker.stringType) {
-                    output = reply.getReplyString();
-                } else if (reply.getReplyType() == ApiaryWorker.intType) {
-                    output = reply.getReplyInt();
-                } else if (reply.getReplyType() == ApiaryWorker.stringArrayType) {
-                    output = Utilities.byteArrayToStringArray(reply.getReplyArray().toByteArray());
-                } else if (reply.getReplyType() == ApiaryWorker.intArrayType) {
-                    output = Utilities.byteArrayToIntArray(reply.getReplyArray().toByteArray());
-                }
+                Object output = Utilities.getOutputFromReply(reply);
                 long callerID = reply.getCallerId();
                 long functionID = reply.getFunctionId();
                 // Resume execution.

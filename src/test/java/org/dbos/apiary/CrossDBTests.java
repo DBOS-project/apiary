@@ -34,7 +34,6 @@ public class CrossDBTests {
             conn.dropTable("PersonTable");
             conn.createTable("PersonTable", "Name varchar(1000) NOT NULL, Number integer PRIMARY KEY NOT NULL");
         } catch (Exception e) {
-            e.printStackTrace();
             logger.info("Failed to connect to Postgres.");
         }
         apiaryWorker = null;

@@ -41,7 +41,7 @@ public class ProvenanceBuffer {
         }
     }
 
-    // TODO: need a better way to auto-reconnect to Vertica, during transient failures.
+    // TODO: need a better way to auto-reconnect to the remote provenance DB, during transient failures.
     public final ThreadLocal<Connection> conn;
     private final String databaseName;
 
@@ -51,6 +51,12 @@ public class ProvenanceBuffer {
 
     public ProvenanceBuffer(String databaseName, String databaseAddress) throws ClassNotFoundException {
         this.databaseName = databaseName;
+        if (databaseName == null) {
+            logger.info("No provenance buffer!");
+            this.conn = null;
+            this.hasConnection = false;
+            return;
+        }
         if (databaseName.equals(ApiaryConfig.vertica)) {
             Class.forName("com.vertica.jdbc.Driver");
             this.conn = ThreadLocal.withInitial(() -> {
@@ -95,7 +101,7 @@ public class ProvenanceBuffer {
         }
 
         if (conn.get() == null) {
-            logger.info("No Vertica instance!");
+            logger.info("No DB instance for provenance!");
             this.hasConnection = false;
             return;
         }

@@ -58,12 +58,15 @@ public class ApiaryWorkerExecutable {
             numThreads = Integer.parseInt(cmd.getOptionValue("t"));
         }
         logger.info("{} worker threads", numThreads);
-        ApiaryWorker worker = new ApiaryWorker(scheduler, numThreads);
+        ApiaryWorker worker;
 
         // Register all stateless functions for experiments.
         if (db.equals("voltdb")) {
+            worker = new ApiaryWorker(scheduler, numThreads, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
             worker.registerFunction("RetwisMerge", ApiaryConfig.stateless, RetwisMerge::new);
             worker.registerFunction("IncrementStatelessDriver", ApiaryConfig.stateless, IncrementStatelessDriver::new);
+        } else {
+            worker = new ApiaryWorker(scheduler, numThreads, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         }
 
         worker.startServing();

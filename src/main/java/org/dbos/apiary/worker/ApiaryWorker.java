@@ -50,7 +50,8 @@ public class ApiaryWorker {
     public final WorkerContext workerContext;
 
     public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads) {
-        this(scheduler, numWorkerThreads, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
+        // By default, no provenance buffer.
+        this(scheduler, numWorkerThreads, null, null);
     }
 
     public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads, String provenanceDatabase, String provenanceAddress) {

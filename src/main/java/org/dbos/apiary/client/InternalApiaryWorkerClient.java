@@ -2,6 +2,7 @@ package org.dbos.apiary.client;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import jdk.jshell.execution.Util;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.function.FunctionOutput;
@@ -93,16 +94,7 @@ public class InternalApiaryWorkerClient {
         socket.send(reqBytes, 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
-        Object output = null;
-        if (rep.getReplyType() == ApiaryWorker.stringType) {
-            output = rep.getReplyString();
-        } else if (rep.getReplyType() == ApiaryWorker.intType) {
-            output = rep.getReplyInt();
-        } else if (rep.getReplyType() == ApiaryWorker.stringArrayType) {
-            output = Utilities.byteArrayToStringArray(rep.getReplyArray().toByteArray());
-        } else if (rep.getReplyType() == ApiaryWorker.intArrayType) {
-            output = Utilities.byteArrayToIntArray(rep.getReplyArray().toByteArray());
-        }
+        Object output = Utilities.getOutputFromReply(rep);
         return new FunctionOutput(output, null);
     }
 

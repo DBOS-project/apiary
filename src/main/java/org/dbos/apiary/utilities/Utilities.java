@@ -1,6 +1,9 @@
 package org.dbos.apiary.utilities;
 
+import com.google.protobuf.ByteString;
+import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.function.ProvenanceBuffer;
+import org.dbos.apiary.worker.ApiaryWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -178,5 +181,41 @@ public class Utilities {
             res = ProvenanceBuffer.ExportOperation.READ.getValue();
         }
         return res;
+    }
+
+    public static ExecuteFunctionReply.Builder constructReply(
+            long callerID, long functionID, long senderTimestampNano, Object output) {
+        ExecuteFunctionReply.Builder b = ExecuteFunctionReply.newBuilder()
+                .setCallerId(callerID)
+                .setFunctionId(functionID)
+                .setSenderTimestampNano(senderTimestampNano);
+        if (output instanceof String) {
+            b.setReplyType(ApiaryWorker.stringType);
+            b.setReplyString((String) output);
+        } else if (output instanceof Integer) {
+            b.setReplyType(ApiaryWorker.intType);
+            b.setReplyInt((int) output);
+        } else if (output instanceof String[]) {
+            b.setReplyType(ApiaryWorker.stringArrayType);
+            b.setReplyArray(ByteString.copyFrom(stringArraytoByteArray((String[]) output)));
+        } else if (output instanceof int[]) {
+            b.setReplyType(ApiaryWorker.intArrayType);
+            b.setReplyArray(ByteString.copyFrom(intArrayToByteArray((int[]) output)));
+        }
+        return b;
+    }
+
+    public static Object getOutputFromReply(ExecuteFunctionReply rep) {
+        Object output = null;
+        if (rep.getReplyType() == ApiaryWorker.stringType) {
+            output = rep.getReplyString();
+        } else if (rep.getReplyType() == ApiaryWorker.intType) {
+            output = rep.getReplyInt();
+        } else if (rep.getReplyType() == ApiaryWorker.stringArrayType) {
+            output = Utilities.byteArrayToStringArray(rep.getReplyArray().toByteArray());
+        } else if (rep.getReplyType() == ApiaryWorker.intArrayType) {
+            output = Utilities.byteArrayToIntArray(rep.getReplyArray().toByteArray());
+        }
+        return output;
     }
 }

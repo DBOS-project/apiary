@@ -171,9 +171,6 @@ public class WorkerTests {
         res = client.executeFunction("CounterFunction", "1").getString();
         assertEquals("1", res);
 
-        // Should be able to see provenance data if Vertica is running.
-        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
-
         worker.shutdown();
     }
 

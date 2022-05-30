@@ -69,7 +69,7 @@ public class ElasticsearchConnection implements ApiaryConnection {
             this.client = new ElasticsearchClient(transport);
         } catch (CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException | KeyManagementException e) {
             logger.info("Elasticsearch Connection Failed");
-            e.printStackTrace();
+            throw new RuntimeException("Failed to connect to ElasticSearch");
         }
     }
 

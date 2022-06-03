@@ -33,10 +33,14 @@ public class ElasticsearchContext extends ApiaryContext {
         return null;
     }
 
-    public void executeUpdate(IndexRequest.Builder indexRequestBuilder) {
+    public void executeUpdate(String index, ApiaryDocument document, String id) {
         try {
-            indexRequestBuilder = indexRequestBuilder.refresh(Refresh.WaitFor);
-            client.index(indexRequestBuilder.build());
+            document.setId(id);
+            document.setVersion(0);
+            client.index(i -> i
+                    .index(index)
+                    .document(document)
+                    .refresh(Refresh.WaitFor));
         } catch (IOException e) {
             e.printStackTrace();
         }

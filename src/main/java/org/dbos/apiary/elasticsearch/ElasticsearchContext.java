@@ -1,6 +1,7 @@
 package org.dbos.apiary.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -32,9 +33,10 @@ public class ElasticsearchContext extends ApiaryContext {
         return null;
     }
 
-    public void executeUpdate(IndexRequest indexRequest) {
+    public void executeUpdate(IndexRequest.Builder indexRequestBuilder) {
         try {
-            client.index(indexRequest);
+            indexRequestBuilder = indexRequestBuilder.refresh(Refresh.WaitFor);
+            client.index(indexRequestBuilder.build());
         } catch (IOException e) {
             e.printStackTrace();
         }

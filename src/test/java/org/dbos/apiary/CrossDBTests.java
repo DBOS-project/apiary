@@ -85,8 +85,6 @@ public class CrossDBTests {
         res = client.executeFunction("PostgresIndexPerson", "matei", 1).getInt();
         assertEquals(1, res);
 
-        Thread.sleep(5000);
-
         res = client.executeFunction("ElasticsearchSearchPerson", "matei").getInt();
         assertEquals(1, res);
     }

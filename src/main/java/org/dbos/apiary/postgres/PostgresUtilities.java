@@ -28,7 +28,7 @@ public class PostgresUtilities {
         return Long.parseLong(snapshotString.split(":")[1]);
     }
 
-    public static long[] parseCurrentSnapshot(String snapshotString) {
+    public static long[] parseActiveTransactions(String snapshotString) {
         String[] splitString = snapshotString.split(":");
         if (splitString.length == 3 ) {
             return Arrays.stream(snapshotString.split(":")[2].split(",")).mapToLong(Long::parseLong).toArray();

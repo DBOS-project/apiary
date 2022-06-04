@@ -26,7 +26,7 @@ public class PostgresContext extends ApiaryContext {
     public long transactionId;
     private long xmax;
     private long xmin;
-    private long[] currentSnapshot;
+    private long[] activeTransactions;
 
     public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
@@ -43,7 +43,7 @@ public class PostgresContext extends ApiaryContext {
             String snapshotString = rs.getString(1);
             this.xmax = PostgresUtilities.parseXmax(snapshotString);
             this.xmin = PostgresUtilities.parseXmin(snapshotString);
-            this.currentSnapshot = PostgresUtilities.parseCurrentSnapshot(snapshotString);
+            this.activeTransactions = PostgresUtilities.parseActiveTransactions(snapshotString);
         } catch (Exception e) {
             e.printStackTrace();
         }

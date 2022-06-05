@@ -26,6 +26,8 @@ public class ElasticsearchContext extends ApiaryContext {
     private final ElasticsearchClient client;
     private final TransactionContext txc;
 
+    List<String> updatedKeys = new ArrayList<>();
+
     public ElasticsearchContext(ElasticsearchClient client, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
         this.client = client;
@@ -48,6 +50,7 @@ public class ElasticsearchContext extends ApiaryContext {
 
     public void executeUpdate(String index, ApiaryDocument document, String id) {
         try {
+            updatedKeys.add(id);
             document.setApiaryID(id);
             document.setBeginVersion(txc.txID);
             document.setEndVersion(Long.MAX_VALUE);

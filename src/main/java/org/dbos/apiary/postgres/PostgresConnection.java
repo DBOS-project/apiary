@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -104,16 +105,32 @@ public class PostgresConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) throws Exception {
-        ApiaryContext ctxt = new PostgresContext(connection.get(), workerContext, service, execID, functionID);
-        FunctionOutput f = null;
+        Connection c = connection.get();
+        PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID);
         try {
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-            connection.get().commit();
+            FunctionOutput f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+            boolean valid = true;
+            for (String secondary: ctxt.secondaryUpdatedKeys.keySet()) {
+                List<String> updatedKeys = ctxt.secondaryUpdatedKeys.get(secondary);
+                valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(updatedKeys, ctxt.txc);
+            }
+            try {
+                if (valid) {
+                    ctxt.conn.commit();
+                    return f;
+                } else {
+                    ctxt.conn.rollback();
+                    return null;
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return null;
+            }
         } catch (Exception e) {
             e.printStackTrace();
-            connection.get().rollback();
+            c.rollback();
+            return null;
         }
-        return f;
     }
 
     @Override

@@ -1,6 +1,5 @@
 package org.dbos.apiary.postgres;
 
-import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -20,31 +19,29 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PostgresContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresContext.class);
     // This connection ties to all prepared statements in one transaction.
-    private final Connection conn;
+    final Connection conn;
     private AtomicLong functionIDCounter = new AtomicLong(0);
     private long currentID = functionID;
 
-    public long transactionId;
-    private long xmax;
-    private long xmin;
-    private long[] activeTransactions;
+    public TransactionContext txc;
+
+    Map<String, List<String>> secondaryUpdatedKeys = new HashMap<>();
 
     public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
         this.conn = c;
-        this.transactionId = -1;
-
         try {
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("select txid_current();");
             rs.next();
-            this.transactionId = rs.getLong(1);
+            long txID = rs.getLong(1);
             rs = stmt.executeQuery("select  pg_current_snapshot();");
             rs.next();
             String snapshotString = rs.getString(1);
-            this.xmax = PostgresUtilities.parseXmax(snapshotString);
-            this.xmin = PostgresUtilities.parseXmin(snapshotString);
-            this.activeTransactions = PostgresUtilities.parseActiveTransactions(snapshotString);
+            long xmin = PostgresUtilities.parseXmin(snapshotString);
+            long xmax = PostgresUtilities.parseXmax(snapshotString);
+            long[] activeTransactions = PostgresUtilities.parseActiveTransactions(snapshotString);
+            this.txc = new TransactionContext(txID, xmin, xmax, activeTransactions);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -79,8 +76,10 @@ public class PostgresContext extends ApiaryContext {
             try {
                 ApiarySecondaryConnection c = workerContext.getSecondaryConnection(functionType);
                 long newID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
-                TransactionContext txc = new TransactionContext(transactionId, xmin, xmax, activeTransactions);
-                return c.callFunction(name, workerContext, txc, service, execID, newID, inputs);
+                FunctionOutput fo = c.callFunction(name, workerContext, txc, service, execID, newID, inputs);
+                secondaryUpdatedKeys.putIfAbsent(functionType, new ArrayList<>());
+                secondaryUpdatedKeys.get(functionType).addAll(fo.getUpdatedKeys());
+                return fo;
             } catch (Exception e) {
                 e.printStackTrace();
                 return null;
@@ -219,7 +218,7 @@ public class PostgresContext extends ApiaryContext {
                 int numCol = rsmd.getColumnCount();
                 // Record provenance data.
                 Object[] rowData = new Object[numCol+3];
-                rowData[0] = transactionId;
+                rowData[0] = txc.txID;
                 rowData[1] = timestamp;
                 rowData[2] = exportOperation;
                 while (rs.next()) {
@@ -263,7 +262,7 @@ public class PostgresContext extends ApiaryContext {
                         Map<String, Integer> schemaMap = getSchemaMap(tableName);
                         if (!tableToRowData.containsKey(tableName)) {
                             Object[] rowData = new Object[3 + schemaMap.size()];
-                            rowData[0] = transactionId;
+                            rowData[0] = txc.txID;
                             rowData[1] = timestamp;
                             rowData[2] = Utilities.getQueryType(procedure);
                             tableToRowData.put(tableName, rowData);

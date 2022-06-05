@@ -33,10 +33,17 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class ElasticsearchConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConnection.class);
     public ElasticsearchClient client;
+
+    private final Map<String, List<Long>> committedUpdates = new HashMap<>(); // TODO: Garbage-collect this.
+    private final Lock validationLock = new ReentrantLock();
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
         try {
@@ -83,5 +90,30 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
             e.printStackTrace();
         }
         return f;
+    }
+
+    @Override
+    public boolean validate(List<String> updatedKeys, TransactionContext txc) {
+        Set<Long> activeTransactions = Arrays.stream(txc.activeTransactions).boxed().collect(Collectors.toSet());
+        validationLock.lock();
+        boolean valid = true;
+        for (String key: updatedKeys) {
+            // Has the key been modified by a transaction not in the snapshot?
+            List<Long> updates = committedUpdates.getOrDefault(key, Collections.emptyList());
+            for (Long update: updates) {
+                if (update > txc.xmax || activeTransactions.contains(update)) {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+        if (valid) {
+            for (String key: updatedKeys) {
+                committedUpdates.putIfAbsent(key, new ArrayList<>());
+                committedUpdates.get(key).add(txc.txID);
+            }
+        }
+        validationLock.unlock();
+        return valid;
     }
 }

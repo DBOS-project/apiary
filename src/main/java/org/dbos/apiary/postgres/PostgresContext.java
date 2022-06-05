@@ -1,6 +1,7 @@
 package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
+import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
@@ -76,7 +77,7 @@ public class PostgresContext extends ApiaryContext {
             }
         } else {
             try {
-                ApiaryConnection c = workerContext.getConnection(functionType);
+                ApiarySecondaryConnection c = workerContext.getSecondaryConnection(functionType);
                 long newID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
                 TransactionContext txc = new TransactionContext(transactionId, xmin, xmax, activeTransactions);
                 return c.callFunction(name, workerContext, txc, service, execID, newID, inputs);

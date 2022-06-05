@@ -1,6 +1,5 @@
 package org.dbos.apiary.worker;
 
-import com.google.protobuf.Api;
 import org.apache.commons_voltpatches.cli.CommandLine;
 import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;

@@ -147,11 +147,6 @@ public class VoltConnection implements ApiaryConnection {
         return new FunctionOutput(output, calledFunctions);
     }
 
-    @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext transactionContext, String service, long execID, long functionID, Object... inputs) throws Exception {
-        return null;
-    }
-
     // Update partition info table: (partitionID, pkey, hostId, hostname, isLeader).
     // Warning: this function is not thread safe.
     @Override

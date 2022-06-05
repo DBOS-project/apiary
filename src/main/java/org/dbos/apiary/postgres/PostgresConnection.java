@@ -117,11 +117,6 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext transactionContext, String service, long execID, long functionID, Object... inputs) throws Exception {
-        return null;
-    }
-
-    @Override
     public void updatePartitionInfo() {
         // Nothing here.
         return;

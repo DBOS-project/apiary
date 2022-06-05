@@ -7,6 +7,7 @@ import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.dbos.apiary.connection.ApiaryConnection;
+import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
@@ -78,6 +79,10 @@ public class ApiaryWorker {
     /** Public Interface **/
 
     public void registerConnection(String type, ApiaryConnection connection) {
+        workerContext.registerConnection(type, connection);
+    }
+
+    public void registerConnection(String type, ApiarySecondaryConnection connection) {
         workerContext.registerConnection(type, connection);
     }
 

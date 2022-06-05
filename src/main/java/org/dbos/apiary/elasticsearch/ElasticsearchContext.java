@@ -13,12 +13,16 @@ import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ElasticsearchContext extends ApiaryContext {
+    private static final Logger logger = LoggerFactory.getLogger(ElasticsearchContext.class);
+
     private final ElasticsearchClient client;
     private final TransactionContext txc;
 

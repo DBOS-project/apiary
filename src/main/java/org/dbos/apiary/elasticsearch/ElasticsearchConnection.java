@@ -33,6 +33,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.util.Arrays;
 import java.util.Map;
 
 public class ElasticsearchConnection implements ApiaryConnection {
@@ -76,14 +77,7 @@ public class ElasticsearchConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) throws Exception {
-        ApiaryContext ctxt = new ElasticsearchContext(client, workerContext, new TransactionContext(0, Long.MAX_VALUE, Long.MAX_VALUE, new long[0]), service, execID, functionID);
-        FunctionOutput f = null;
-        try {
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return f;
+        return callFunction(functionName, workerContext, new TransactionContext(0, Long.MAX_VALUE, Long.MAX_VALUE, new long[0]), service, execID, functionID, inputs);
     }
 
     @Override

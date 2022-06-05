@@ -1,6 +1,7 @@
 package org.dbos.apiary.connection;
 
 import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 
 import java.util.Map;
@@ -21,6 +22,8 @@ public interface ApiaryConnection {
      * @throws Exception
      */
     FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) throws Exception;
+
+    FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext transactionContext, String service, long execID, long functionID, Object... inputs) throws Exception;
 
     // For partition mapping information.
 

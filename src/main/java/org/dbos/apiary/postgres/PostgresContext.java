@@ -78,7 +78,8 @@ public class PostgresContext extends ApiaryContext {
             try {
                 ApiaryConnection c = workerContext.getConnection(functionType);
                 long newID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
-                return c.callFunction(name, workerContext, service, execID, newID, inputs);
+                TransactionContext txc = new TransactionContext(transactionId, xmin, xmax, activeTransactions);
+                return c.callFunction(name, workerContext, txc, service, execID, newID, inputs);
             } catch (Exception e) {
                 e.printStackTrace();
                 return null;

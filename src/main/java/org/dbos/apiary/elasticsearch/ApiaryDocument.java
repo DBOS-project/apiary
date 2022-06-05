@@ -1,22 +1,32 @@
 package org.dbos.apiary.elasticsearch;
 
 public class ApiaryDocument {
-    private String id;
-    private int version;
+    private String apiaryID;
+    private long beginVersion;
+    private long endVersion;
 
-    public String getId() {
-        return id;
+
+    public String getApiaryID() {
+        return apiaryID;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public void setApiaryID(String apiaryID) {
+        this.apiaryID = apiaryID;
     }
 
-    public int getVersion() {
-        return version;
+    public long getBeginVersion() {
+        return beginVersion;
     }
 
-    public void setVersion(int version) {
-        this.version = version;
+    public void setBeginVersion(long beginVersion) {
+        this.beginVersion = beginVersion;
+    }
+
+    public long getEndVersion() {
+        return endVersion;
+    }
+
+    public void setEndVersion(long endVersion) {
+        this.endVersion = endVersion;
     }
 }

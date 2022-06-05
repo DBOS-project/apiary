@@ -1,16 +1,12 @@
 package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.function.FunctionOutput;
-import org.dbos.apiary.function.Task;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
-import org.dbos.apiary.function.WorkerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,14 +20,33 @@ public class PostgresContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresContext.class);
     // This connection ties to all prepared statements in one transaction.
     private final Connection conn;
-    private long transactionId;  // This is the transaction ID of the main transaction. Postgres subtransaction IDs are invisible.
     private AtomicLong functionIDCounter = new AtomicLong(0);
     private long currentID = functionID;
+
+    public long transactionId;
+    private long xmax;
+    private long xmin;
+    private long[] activeTransactions;
 
     public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
         this.conn = c;
         this.transactionId = -1;
+
+        try {
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("select txid_current();");
+            rs.next();
+            this.transactionId = rs.getLong(1);
+            rs = stmt.executeQuery("select  pg_current_snapshot();");
+            rs.next();
+            String snapshotString = rs.getString(1);
+            this.xmax = PostgresUtilities.parseXmax(snapshotString);
+            this.xmin = PostgresUtilities.parseXmin(snapshotString);
+            this.activeTransactions = PostgresUtilities.parseActiveTransactions(snapshotString);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -63,7 +78,8 @@ public class PostgresContext extends ApiaryContext {
             try {
                 ApiaryConnection c = workerContext.getConnection(functionType);
                 long newID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
-                return c.callFunction(name, workerContext, service, execID, newID, inputs);
+                TransactionContext txc = new TransactionContext(transactionId, xmin, xmax, activeTransactions);
+                return c.callFunction(name, workerContext, txc, service, execID, newID, inputs);
             } catch (Exception e) {
                 e.printStackTrace();
                 return null;
@@ -202,7 +218,7 @@ public class PostgresContext extends ApiaryContext {
                 int numCol = rsmd.getColumnCount();
                 // Record provenance data.
                 Object[] rowData = new Object[numCol+3];
-                rowData[0] = getTransactionId();
+                rowData[0] = transactionId;
                 rowData[1] = timestamp;
                 rowData[2] = exportOperation;
                 while (rs.next()) {
@@ -246,7 +262,7 @@ public class PostgresContext extends ApiaryContext {
                         Map<String, Integer> schemaMap = getSchemaMap(tableName);
                         if (!tableToRowData.containsKey(tableName)) {
                             Object[] rowData = new Object[3 + schemaMap.size()];
-                            rowData[0] = getTransactionId();
+                            rowData[0] = transactionId;
                             rowData[1] = timestamp;
                             rowData[2] = Utilities.getQueryType(procedure);
                             tableToRowData.put(tableName, rowData);
@@ -272,22 +288,6 @@ public class PostgresContext extends ApiaryContext {
     }
 
     /* --------------- For internal use ----------------- */
-
-    public long getTransactionId() {
-        if (this.transactionId >= 0) {
-            return this.transactionId;
-        }
-        try {
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("select txid_current();");
-            rs.next();
-            this.transactionId = rs.getLong(1);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return 0L;
-        }
-        return this.transactionId;
-    }
 
     private String interceptUpdate(String query) {
         // Remove the semicolon.

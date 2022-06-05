@@ -1,6 +1,8 @@
 package org.dbos.apiary.procedures.elasticsearch;
 
-public class Person {
+import org.dbos.apiary.elasticsearch.ApiaryDocument;
+
+public class Person extends ApiaryDocument {
     private String name;
     private int number;
 

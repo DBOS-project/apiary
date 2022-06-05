@@ -9,6 +9,7 @@ import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
 import org.dbos.apiary.procedures.postgres.tests.PostgresIndexPerson;
+import org.dbos.apiary.procedures.postgres.tests.PostgresSearchPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -74,6 +75,7 @@ public class CrossDBTests {
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.elasticsearch, conn);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresSearchPerson", ApiaryConfig.postgres, PostgresSearchPerson::new);
         apiaryWorker.registerFunction("PostgresIndexPerson", ApiaryConfig.postgres, PostgresIndexPerson::new);
         apiaryWorker.registerFunction("ElasticsearchIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchIndexPerson::new);
         apiaryWorker.registerFunction("ElasticsearchSearchPerson", ApiaryConfig.elasticsearch, ElasticsearchSearchPerson::new);
@@ -85,9 +87,7 @@ public class CrossDBTests {
         res = client.executeFunction("PostgresIndexPerson", "matei", 1).getInt();
         assertEquals(1, res);
 
-        Thread.sleep(5000);
-
-        res = client.executeFunction("ElasticsearchSearchPerson", "matei").getInt();
+        res = client.executeFunction("PostgresSearchPerson", "matei").getInt();
         assertEquals(1, res);
     }
 }

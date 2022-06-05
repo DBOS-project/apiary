@@ -69,8 +69,6 @@ public class ElasticsearchTests {
         res = client.executeFunction("ElasticsearchIndexPerson", "matei", 1).getInt();
         assertEquals(1, res);
 
-        Thread.sleep(5000);
-
         res = client.executeFunction("ElasticsearchSearchPerson", "matei").getInt();
         assertEquals(1, res);
     }

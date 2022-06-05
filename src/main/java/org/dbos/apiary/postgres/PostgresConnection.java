@@ -3,6 +3,7 @@ package org.dbos.apiary.postgres;
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
@@ -113,6 +114,11 @@ public class PostgresConnection implements ApiaryConnection {
             connection.get().rollback();
         }
         return f;
+    }
+
+    @Override
+    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext transactionContext, String service, long execID, long functionID, Object... inputs) throws Exception {
+        return null;
     }
 
     @Override

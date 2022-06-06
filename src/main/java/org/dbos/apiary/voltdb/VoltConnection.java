@@ -17,10 +17,7 @@ import org.voltdb.client.ProcCallException;
 import org.voltdb.iv2.MpInitiator;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.dbos.apiary.utilities.ApiaryConfig.getApiaryClientID;
 
@@ -145,6 +142,11 @@ public class VoltConnection implements ApiaryConnection {
             calledFunctions.add(voltOutputToTask(res[i]));
         }
         return new FunctionOutput(output, calledFunctions);
+    }
+
+    @Override
+    public Set<TransactionContext> getActiveTransactions() {
+        return null;
     }
 
     // Update partition info table: (partitionID, pkey, hostId, hostname, isLeader).

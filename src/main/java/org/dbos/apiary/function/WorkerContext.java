@@ -14,6 +14,7 @@ public class WorkerContext {
     public final Map<String, ApiarySecondaryConnection> secondaryConnections = new HashMap<>();
     private final Map<String, Callable<ApiaryFunction>> functions = new HashMap<>();
     private final Map<String, String> functionTypes = new HashMap<>();
+    private ApiaryConnection primaryConnection;
 
     public final ProvenanceBuffer provBuff;
 
@@ -23,6 +24,7 @@ public class WorkerContext {
 
     public void registerConnection(String type, ApiaryConnection connection) {
         connections.put(type, connection);
+        primaryConnection = connection;
         if (type.equals(ApiaryConfig.postgres)) {
             registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.postgres, GetApiaryClientID::new);
         } else if (type.equals(ApiaryConfig.voltdb)) {
@@ -55,6 +57,8 @@ public class WorkerContext {
             return null;
         }
     }
+
+    public ApiaryConnection getPrimaryConnection() { return primaryConnection; }
 
     public ApiaryConnection getConnection(String db) {
         return connections.get(db);

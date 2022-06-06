@@ -2,14 +2,20 @@ package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * A connection to a Postgres database.
@@ -19,6 +25,9 @@ public class PostgresConnection implements ApiaryConnection {
 
     private final PGSimpleDataSource ds;
     private final ThreadLocal<Connection> connection;
+    private final ReadWriteLock activeTransactionsLock = new ReentrantReadWriteLock();
+    private long biggestxmin = Long.MIN_VALUE;
+    private final Set<TransactionContext> activeTransactions = ConcurrentHashMap.newKeySet();
 
     /**
      * Create a connection to a Postgres database.
@@ -104,9 +113,16 @@ public class PostgresConnection implements ApiaryConnection {
     @Override
     public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) throws Exception {
         Connection c = connection.get();
+        activeTransactionsLock.readLock().lock();
         PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID);
+        activeTransactions.add(ctxt.txc);
+        if (ctxt.txc.xmin > biggestxmin) {
+            biggestxmin = ctxt.txc.xmin;
+        }
+        activeTransactionsLock.readLock().unlock();
+        FunctionOutput f = null;
         try {
-            FunctionOutput f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
             boolean valid = true;
             for (String secondary: ctxt.secondaryUpdatedKeys.keySet()) {
                 List<String> updatedKeys = ctxt.secondaryUpdatedKeys.get(secondary);
@@ -115,20 +131,29 @@ public class PostgresConnection implements ApiaryConnection {
             try {
                 if (valid) {
                     ctxt.conn.commit();
-                    return f;
                 } else {
                     ctxt.conn.rollback();
-                    return null;
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
-                return null;
             }
         } catch (Exception e) {
             e.printStackTrace();
             c.rollback();
-            return null;
         }
+        activeTransactions.remove(ctxt.txc);
+        return f;
+    }
+
+    @Override
+    public Set<TransactionContext> getActiveTransactions() {
+        activeTransactionsLock.writeLock().lock();
+        Set<TransactionContext> txSnapshot = new HashSet<>(activeTransactions);
+        if (txSnapshot.isEmpty()) {
+            txSnapshot.add(new TransactionContext(0, biggestxmin, biggestxmin + 1, new long[0]));
+        }
+        activeTransactionsLock.writeLock().unlock();
+        return txSnapshot;
     }
 
     @Override

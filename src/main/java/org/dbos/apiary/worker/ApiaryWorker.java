@@ -48,6 +48,10 @@ public class ApiaryWorker {
     private final List<Long> defaultQueue = new ArrayList<>();
     private final Long defaultTimeNs = 100000L;
 
+    private Thread garbageCollectorThread;
+    private boolean garbageCollect = true;
+    private static final long gcIntervalms = 1000;
+
     public final WorkerContext workerContext;
 
     public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads) {
@@ -91,13 +95,18 @@ public class ApiaryWorker {
     }
 
     public void startServing() {
+        garbageCollectorThread = new Thread(this::garbageCollectorThread);
+        garbageCollectorThread.start();
         serverThread = new Thread(this::serverThread);
         serverThread.start();
     }
 
     public void shutdown() {
         try {
+            garbageCollect = false;
             Thread.sleep(100);
+            garbageCollectorThread.interrupt();
+            garbageCollectorThread.join();
             reqThreadPool.shutdown();
             reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             repThreadPool.shutdown();
@@ -114,6 +123,21 @@ public class ApiaryWorker {
     }
 
     /** Private Methods **/
+
+    private void garbageCollectorThread() {
+        while (garbageCollect) {
+            Set<TransactionContext> activeTransactions = workerContext.getPrimaryConnection().getActiveTransactions();
+            for (String secondary : workerContext.secondaryConnections.keySet()) {
+                ApiarySecondaryConnection c = workerContext.getSecondaryConnection(secondary);
+                c.garbageCollect(activeTransactions);
+            }
+            try {
+                Thread.sleep(gcIntervalms);
+            } catch (InterruptedException e) {
+                return;
+            }
+        }
+    }
 
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
         int numTraversed = 0;

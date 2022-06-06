@@ -34,6 +34,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -42,7 +43,7 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConnection.class);
     public ElasticsearchClient client;
 
-    private final Map<String, List<Long>> committedUpdates = new HashMap<>(); // TODO: Garbage-collect this.
+    private final Map<String, Set<Long>> committedUpdates = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
@@ -99,7 +100,7 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
         boolean valid = true;
         for (String key: updatedKeys) {
             // Has the key been modified by a transaction not in the snapshot?
-            List<Long> updates = committedUpdates.getOrDefault(key, Collections.emptyList());
+            Set<Long> updates = committedUpdates.getOrDefault(key, Collections.emptySet());
             for (Long update: updates) {
                 if (update >= txc.xmax || activeTransactions.contains(update)) {
                     valid = false;
@@ -109,11 +110,16 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
         }
         if (valid) {
             for (String key: updatedKeys) {
-                committedUpdates.putIfAbsent(key, new ArrayList<>());
+                committedUpdates.putIfAbsent(key, ConcurrentHashMap.newKeySet());
                 committedUpdates.get(key).add(txc.txID);
             }
         }
         validationLock.unlock();
         return valid;
+    }
+
+    public void garbageCollect(Set<TransactionContext> activeTransactions) {
+        long globalxmin = activeTransactions.stream().mapToLong(i -> i.xmin).min().getAsLong();
+        committedUpdates.values().forEach(u -> u.removeIf(updateTxID -> updateTxID < globalxmin));
     }
 }

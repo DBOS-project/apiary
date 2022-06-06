@@ -50,7 +50,7 @@ public class ApiaryWorker {
 
     private Thread garbageCollectorThread;
     private boolean garbageCollect = true;
-    private static final long gcIntervalms = 1000;
+    private static final long gcIntervalMs = 1000;
 
     public final WorkerContext workerContext;
 
@@ -132,7 +132,7 @@ public class ApiaryWorker {
                 c.garbageCollect(activeTransactions);
             }
             try {
-                Thread.sleep(gcIntervalms);
+                Thread.sleep(gcIntervalMs);
             } catch (InterruptedException e) {
                 return;
             }

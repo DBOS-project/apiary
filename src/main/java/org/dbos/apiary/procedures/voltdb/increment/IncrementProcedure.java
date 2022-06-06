@@ -17,7 +17,7 @@ public class IncrementProcedure extends VoltFunction {
             "UPSERT INTO KVTable VALUES (?, ?);"
     );
 
-    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(int pkey, VoltTable voltInput) throws Exception {
         return super.run(pkey, voltInput);
     }
 

@@ -23,7 +23,12 @@ public class ApiaryStatelessContext extends ApiaryContext {
                 e.printStackTrace();
             }
             assert f != null;
-            return f.apiaryRunFunction(this, inputs);
+            try {
+                return f.apiaryRunFunction(this, inputs);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
         } else {
             try {
                 assert(type.equals(workerContext.getPrimaryConnectionType()));

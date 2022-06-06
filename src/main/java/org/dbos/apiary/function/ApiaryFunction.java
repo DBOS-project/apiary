@@ -10,7 +10,7 @@ import java.lang.reflect.Method;
 public interface ApiaryFunction {
     void recordInvocation(ApiaryContext ctxt, String funcName);
 
-    default FunctionOutput apiaryRunFunction(ApiaryContext ctxt, Object... input) {
+    default FunctionOutput apiaryRunFunction(ApiaryContext ctxt, Object... input) throws Exception {
         // Check if execution has already occured. Skip system functions.
         if (ctxt.execID != 0) {
             FunctionOutput prev = ctxt.checkPreviousExecution();
@@ -32,12 +32,7 @@ public interface ApiaryFunction {
         Object[] contextInput = new Object[input.length + 1];
         contextInput[0] = ctxt;
         System.arraycopy(input, 0, contextInput, 1, input.length);
-        try {
-            output = functionMethod.invoke(this, contextInput);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+        output = functionMethod.invoke(this, contextInput);
         FunctionOutput fo = ctxt.getFunctionOutput(output);
         if (ctxt.execID != 0) {
             ctxt.recordExecution(fo);

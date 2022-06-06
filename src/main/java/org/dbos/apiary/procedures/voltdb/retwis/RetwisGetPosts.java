@@ -12,7 +12,7 @@ public class RetwisGetPosts extends VoltFunction {
             "SELECT Post FROM RetwisPosts WHERE UserID=? ORDER BY Timestamp LIMIT 10;"
     );
 
-    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(int pkey, VoltTable voltInput) throws Exception {
         return super.run(pkey, voltInput);
     }
 

@@ -55,7 +55,12 @@ public class VoltContext extends ApiaryContext {
         ApiaryFunction f = (ApiaryFunction) clazz;
         long oldID = currentID;
         this.currentID = functionID + functionIDCounter.incrementAndGet();
-        FunctionOutput fo = f.apiaryRunFunction(this, inputs);
+        FunctionOutput fo = null;
+        try {
+            fo = f.apiaryRunFunction(this, inputs);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         this.currentID = oldID;
         return fo;
     }

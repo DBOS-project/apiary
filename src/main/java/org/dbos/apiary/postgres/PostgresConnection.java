@@ -5,6 +5,7 @@ import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.postgresql.ds.PGSimpleDataSource;
+import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +52,7 @@ public class PostgresConnection implements ApiaryConnection {
            try {
                Connection conn = ds.getConnection();
                conn.setAutoCommit(false);
+               conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
                return conn;
            } catch (SQLException e) {
                e.printStackTrace();
@@ -111,7 +113,7 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) throws Exception {
+    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) {
         Connection c = connection.get();
         activeTransactionsLock.readLock().lock();
         PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID);
@@ -121,25 +123,27 @@ public class PostgresConnection implements ApiaryConnection {
         }
         activeTransactionsLock.readLock().unlock();
         FunctionOutput f = null;
-        try {
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-            boolean valid = true;
-            for (String secondary: ctxt.secondaryUpdatedKeys.keySet()) {
-                List<String> updatedKeys = ctxt.secondaryUpdatedKeys.get(secondary);
-                valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(updatedKeys, ctxt.txc);
-            }
+        while (true) {
             try {
+                f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+                boolean valid = true;
+                for (String secondary : ctxt.secondaryUpdatedKeys.keySet()) {
+                    List<String> updatedKeys = ctxt.secondaryUpdatedKeys.get(secondary);
+                    valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(updatedKeys, ctxt.txc);
+                }
                 if (valid) {
                     ctxt.conn.commit();
                 } else {
                     ctxt.conn.rollback();
                 }
-            } catch (SQLException e) {
-                e.printStackTrace();
+                break;
+            } catch (Exception e) {
+                try {
+                    ctxt.conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            c.rollback();
         }
         activeTransactions.remove(ctxt.txc);
         return f;

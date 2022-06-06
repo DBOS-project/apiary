@@ -7,9 +7,9 @@ import org.dbos.apiary.function.FunctionOutput;
 public class ElasticsearchFunction implements ApiaryFunction {
 
     @Override
-    public FunctionOutput apiaryRunFunction(ApiaryContext apiaryContext, Object... input) {
+    public FunctionOutput apiaryRunFunction(ApiaryContext apiaryContext, Object... input) throws Exception {
         ElasticsearchContext ctxt = (ElasticsearchContext) apiaryContext;
-        FunctionOutput fo =  ApiaryFunction.super.apiaryRunFunction(apiaryContext, input);
+        FunctionOutput fo = ApiaryFunction.super.apiaryRunFunction(apiaryContext, input);
         fo.setUpdatedKeys(ctxt.updatedKeys);
         return fo;
     }

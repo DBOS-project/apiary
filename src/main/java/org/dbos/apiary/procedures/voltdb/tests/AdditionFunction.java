@@ -8,7 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class AdditionFunction extends VoltFunction {
 
-    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(int pkey, VoltTable voltInput) throws Exception {
         return super.run(pkey, voltInput);
     }
 

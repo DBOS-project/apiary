@@ -155,8 +155,8 @@ public class ApiaryWorker {
                         continue;
                     }
                     String address = workerContext.getFunctionType(subtask.funcName).equals(ApiaryConfig.stateless) ?
-                            workerContext.connections.values().stream().findFirst().get().getPartitionHostMap().get(0)
-                            : workerContext.getConnection(workerContext.getFunctionType((subtask.funcName))).getHostname(subtask.input);
+                            workerContext.getPrimaryConnection().getPartitionHostMap().get(0)
+                            : workerContext.getPrimaryConnection().getHostname(subtask.input);
                     // Push to the outgoing queue.
                     byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currCallerID, subtask.functionID, subtask.input);
                     outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
@@ -210,7 +210,8 @@ public class ApiaryWorker {
                 ApiaryStatelessContext context = new ApiaryStatelessContext(workerContext, service, execID, functionID);
                 o = function.apiaryRunFunction(context, arguments);
             } else {
-                ApiaryConnection c = workerContext.getConnection(type);
+                assert(workerContext.getPrimaryConnectionType().equals(type));
+                ApiaryConnection c = workerContext.getPrimaryConnection();
                 o = c.callFunction(name, workerContext, service, execID, functionID, arguments);
             }
         } catch (Exception e) {
@@ -334,11 +335,8 @@ public class ApiaryWorker {
 
         // This main server thread is used as I/O thread.
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(shadowContext);
-        List<String> distinctHosts = new ArrayList<>();
-        for (ApiaryConnection c: workerContext.connections.values()) {
-            distinctHosts.addAll(c.getPartitionHostMap().values());
-        }
-        distinctHosts = distinctHosts.stream().distinct().collect(Collectors.toList());
+        List<String> distinctHosts = workerContext.getPrimaryConnection().getPartitionHostMap()
+                .values().stream().distinct().collect(Collectors.toList());
         ZMQ.Poller poller = zContext.createPoller(distinctHosts.size() + 1);
         // The backend worker is always the first poller socket.
         poller.register(frontend, ZMQ.Poller.POLLIN);

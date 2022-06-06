@@ -26,7 +26,8 @@ public class ApiaryStatelessContext extends ApiaryContext {
             return f.apiaryRunFunction(this, inputs);
         } else {
             try {
-                ApiaryConnection c = workerContext.getConnection(type);
+                assert(type.equals(workerContext.getPrimaryConnectionType()));
+                ApiaryConnection c = workerContext.getPrimaryConnection();
                 return c.callFunction(name, workerContext, service, execID, functionID, inputs);
             } catch (Exception e) {
                 e.printStackTrace();

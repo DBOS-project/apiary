@@ -71,8 +71,8 @@ public class ElasticsearchContext extends ApiaryContext {
                 beginVersionFilter.add(TermQuery.of(f -> f.field("beginVersion").value(txID))._toQuery());
             }
             List<Query> endVersionFilter = new ArrayList<>();
-            // If endVersion is greater than xmax, it is not in the snapshot.
-            endVersionFilter.add(RangeQuery.of(f -> f.field("endVersion").gt(JsonData.of(txc.xmax)))._toQuery());
+            // If endVersion is greater than or equal to xmax, it is not in the snapshot.
+            endVersionFilter.add(RangeQuery.of(f -> f.field("endVersion").gte(JsonData.of(txc.xmax)))._toQuery());
             // If endVersion is an active transaction, it is not in the snapshot.
             for (long txID: txc.activeTransactions) {
                 endVersionFilter.add(TermQuery.of(f -> f.field("endVersion").value(txID))._toQuery());
@@ -82,7 +82,7 @@ public class ElasticsearchContext extends ApiaryContext {
                                     .must(searchQuery)
                                     .filter(BoolQuery.of(bb -> bb
                                                     .must( // beginVersion must be in the snapshot.
-                                                            RangeQuery.of(f -> f.field("beginVersion").lte(JsonData.of(txc.xmax)))._toQuery()
+                                                            RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.xmax)))._toQuery()
                                                     ).mustNot( // Therefore, beginVersion must not be an active transaction.
                                                             beginVersionFilter
                                                     ).should( // endVersion must not be in the snapshot.

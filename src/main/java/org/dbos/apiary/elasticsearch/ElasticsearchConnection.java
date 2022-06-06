@@ -101,7 +101,7 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
             // Has the key been modified by a transaction not in the snapshot?
             List<Long> updates = committedUpdates.getOrDefault(key, Collections.emptyList());
             for (Long update: updates) {
-                if (update > txc.xmax || activeTransactions.contains(update)) {
+                if (update >= txc.xmax || activeTransactions.contains(update)) {
                     valid = false;
                     break;
                 }

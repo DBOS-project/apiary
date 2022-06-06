@@ -61,18 +61,6 @@ public abstract class ApiaryContext {
 
     /**
      * For internal use only.
-     * @return {@link FunctionOutput}
-     */
-    public abstract FunctionOutput checkPreviousExecution() throws SQLException;
-
-    /**
-     * For internal use only.
-     * @param output    the finalized output of a function.
-     */
-    public abstract void recordExecution(FunctionOutput output) throws SQLException;
-
-    /**
-     * For internal use only.
      * @param output    the original output of a function.
      * @return          the finalized output of a function.
      */

@@ -40,14 +40,4 @@ public class ApiaryStatelessContext extends ApiaryContext {
             }
         }
     }
-
-    @Override
-    public FunctionOutput checkPreviousExecution() {
-        return null;
-    }
-
-    @Override
-    public void recordExecution(FunctionOutput output) {
-
-    }
 }

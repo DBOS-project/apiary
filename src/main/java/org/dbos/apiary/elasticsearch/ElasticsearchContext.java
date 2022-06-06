@@ -35,14 +35,6 @@ public class ElasticsearchContext extends ApiaryContext {
     }
 
     @Override
-    public FunctionOutput checkPreviousExecution() {
-        return null;
-    }
-
-    @Override
-    public void recordExecution(FunctionOutput output) {}
-
-    @Override
     public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
         // TODO: Implement.
         return null;
@@ -77,6 +69,7 @@ public class ElasticsearchContext extends ApiaryContext {
             for (long txID: txc.activeTransactions) {
                 endVersionFilter.add(TermQuery.of(f -> f.field("endVersion").value(txID))._toQuery());
             }
+            // TODO: Also handle records left by aborted transactions, which must be skipped.
             SearchRequest request = SearchRequest.of(s -> s
                     .index(index).query(q -> q.bool(b -> b
                                     .must(searchQuery)

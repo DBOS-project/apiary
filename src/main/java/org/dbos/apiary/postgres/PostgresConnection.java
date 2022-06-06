@@ -1,9 +1,7 @@
 package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
-import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;

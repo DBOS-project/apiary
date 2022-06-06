@@ -1,13 +1,9 @@
 package org.dbos.apiary.postgres;
 
-import org.dbos.apiary.function.ApiaryFunction;
 import org.dbos.apiary.function.ApiaryContext;
-import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.ApiaryFunction;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
-
-import java.sql.SQLException;
-import java.util.List;
 
 /**
  * All Postgres functions should extend this class and implement <code>runFunction</code>.

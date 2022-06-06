@@ -128,47 +128,47 @@ public class PostgresContext extends ApiaryContext {
 
     @Override
     public void recordExecution(FunctionOutput output) throws SQLException {
-        PreparedStatement s = conn.prepareStatement("INSERT INTO RecordedOutputs(ExecID, FunctionID, StringOutput, IntOutput, StringArrayOutput, IntArrayOutput, FutureOutput, QueuedTasks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        s.setLong(1, execID);
-        s.setLong(2, currentID);
-        if (output.getString() != null) {
-            s.setString(3, output.getString());
-            s.setNull(4, Types.INTEGER);
-            s.setNull(5, Types.VARBINARY);
-            s.setNull(6, Types.VARBINARY);
-            s.setNull(7, Types.INTEGER);
-        } else if (output.getInt() != null) {
-            s.setNull(3, Types.VARCHAR);
-            s.setInt(4, output.getInt());
-            s.setNull(5, Types.VARBINARY);
-            s.setNull(6, Types.VARBINARY);
-            s.setNull(7, Types.INTEGER);
-        } else if (output.getStringArray() != null) {
-            s.setNull(3, Types.VARCHAR);
-            s.setNull(4, Types.INTEGER);
-            s.setBytes(5, Utilities.stringArraytoByteArray(output.getStringArray()));
-            s.setNull(6, Types.VARBINARY);
-            s.setNull(7, Types.INTEGER);
-        } else if (output.getIntArray() != null) {
-            s.setNull(3, Types.VARCHAR);
-            s.setNull(4, Types.INTEGER);
-            s.setNull(5, Types.VARBINARY);
-            s.setBytes(6, Utilities.intArrayToByteArray(output.getIntArray()));
-            s.setNull(7, Types.INTEGER);
-        }else if (output.getFuture() != null) {
-            s.setNull(3, Types.VARCHAR);
-            s.setNull(4, Types.INTEGER);
-            s.setNull(5, Types.VARBINARY);
-            s.setNull(6, Types.VARBINARY);
-            s.setLong(7, output.getFuture().futureID);
-        }
-        if (!output.queuedTasks.isEmpty()) {
-            s.setBytes(8, Utilities.objectToByteArray(output.queuedTasks.toArray(new Task[0])));
-        } else {
-            s.setNull(8, Types.VARBINARY);
-        }
-        s.executeUpdate();
-        s.close();
+//        PreparedStatement s = conn.prepareStatement("INSERT INTO RecordedOutputs(ExecID, FunctionID, StringOutput, IntOutput, StringArrayOutput, IntArrayOutput, FutureOutput, QueuedTasks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+//        s.setLong(1, execID);
+//        s.setLong(2, currentID);
+//        if (output.getString() != null) {
+//            s.setString(3, output.getString());
+//            s.setNull(4, Types.INTEGER);
+//            s.setNull(5, Types.VARBINARY);
+//            s.setNull(6, Types.VARBINARY);
+//            s.setNull(7, Types.INTEGER);
+//        } else if (output.getInt() != null) {
+//            s.setNull(3, Types.VARCHAR);
+//            s.setInt(4, output.getInt());
+//            s.setNull(5, Types.VARBINARY);
+//            s.setNull(6, Types.VARBINARY);
+//            s.setNull(7, Types.INTEGER);
+//        } else if (output.getStringArray() != null) {
+//            s.setNull(3, Types.VARCHAR);
+//            s.setNull(4, Types.INTEGER);
+//            s.setBytes(5, Utilities.stringArraytoByteArray(output.getStringArray()));
+//            s.setNull(6, Types.VARBINARY);
+//            s.setNull(7, Types.INTEGER);
+//        } else if (output.getIntArray() != null) {
+//            s.setNull(3, Types.VARCHAR);
+//            s.setNull(4, Types.INTEGER);
+//            s.setNull(5, Types.VARBINARY);
+//            s.setBytes(6, Utilities.intArrayToByteArray(output.getIntArray()));
+//            s.setNull(7, Types.INTEGER);
+//        }else if (output.getFuture() != null) {
+//            s.setNull(3, Types.VARCHAR);
+//            s.setNull(4, Types.INTEGER);
+//            s.setNull(5, Types.VARBINARY);
+//            s.setNull(6, Types.VARBINARY);
+//            s.setLong(7, output.getFuture().futureID);
+//        }
+//        if (!output.queuedTasks.isEmpty()) {
+//            s.setBytes(8, Utilities.objectToByteArray(output.queuedTasks.toArray(new Task[0])));
+//        } else {
+//            s.setNull(8, Types.VARBINARY);
+//        }
+//        s.executeUpdate();
+//        s.close();
     }
 
     private void prepareStatement(PreparedStatement ps, Object[] input) throws SQLException {

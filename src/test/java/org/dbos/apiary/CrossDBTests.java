@@ -128,16 +128,15 @@ public class CrossDBTests {
         Runnable r = () -> {
             try {
                 ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
-//                while (System.currentTimeMillis() < start + testDurationMs) {
-//                    int localCount = count.getAndIncrement();
-//                    client.executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
-//
-//                    String search = "matei" + ThreadLocalRandom.current().nextInt(localCount - 5, localCount + 5);
-//                    int res = client.executeFunction("PostgresSearchPerson", search).getInt();
-//                    if (res == -1) {
-//                        success.set(false);
-//                    }
-//                }
+                while (System.currentTimeMillis() < start + testDurationMs) {
+                    int localCount = count.getAndIncrement();
+                    client.executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
+                    String search = "matei" + ThreadLocalRandom.current().nextInt(localCount - 5, localCount + 5);
+                    int res = client.executeFunction("PostgresSearchPerson", search).getInt();
+                    if (res == -1) {
+                        success.set(false);
+                    }
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 success.set(false);

@@ -133,10 +133,10 @@ public class PostgresConnection implements ApiaryConnection {
                 }
                 if (valid) {
                     ctxt.conn.commit();
+                    break;
                 } else {
                     ctxt.conn.rollback();
                 }
-                break;
             } catch (Exception e) {
                 try {
                     ctxt.conn.rollback();

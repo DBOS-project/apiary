@@ -34,7 +34,6 @@ public class PostgresTests {
     public void resetTables() {
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-            conn.dropTable("RecordedOutputs");
             conn.dropTable("FuncInvocations");
             conn.dropTable("KVTable");
             conn.createTable("KVTable", "KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL");

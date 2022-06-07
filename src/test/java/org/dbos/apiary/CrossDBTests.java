@@ -36,7 +36,6 @@ public class CrossDBTests {
     public void resetTables() {
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-            conn.dropTable("RecordedOutputs");
             conn.dropTable("FuncInvocations");
             conn.dropTable("PersonTable");
             conn.createTable("PersonTable", "Name varchar(1000) NOT NULL, Number integer PRIMARY KEY NOT NULL");

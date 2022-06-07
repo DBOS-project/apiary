@@ -5,6 +5,12 @@ import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
 import org.apache.commons_voltpatches.cli.Options;
 import org.dbos.apiary.connection.ApiaryConnection;
+import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
+import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
+import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
+import org.dbos.apiary.procedures.postgres.tests.PostgresIndexPerson;
+import org.dbos.apiary.procedures.postgres.tests.PostgresSearchPerson;
 import org.dbos.apiary.procedures.voltdb.increment.IncrementStatelessDriver;
 import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -21,25 +27,17 @@ public class ApiaryWorkerExecutable {
         logger.info("Starting Apiary worker server.");
         Options options = new Options();
         options.addOption("db", true,
-                "The db used by this worker. Can be one of (voltdb, cockroachdb). Defaults to voltdb.");
+                "The db used by this worker. Can be one of (voltdb, postgres). Defaults to postgres.");
         options.addOption("s", true, "Which Scheduler?");
         options.addOption("t", true, "How many worker threads?  Defaults to 128.");
-        options.addOption("cockroachdbAddr", true, "Address of the CockroachDB server (e.g. localhost or ip addr).");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
 
-        String db = "voltdb";
+        String db = "postgres";
         if (cmd.hasOption("db")) {
             db = cmd.getOptionValue("db");
             logger.info("Using database: {}", db);
-        }
-        ApiaryConnection c;
-        if (db.equals("voltdb")) {
-            // Only need to connect to localhost.
-            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        } else {
-            throw new IllegalArgumentException("Option 'db' must be one of (voltdb, cockroachdb).");
         }
 
         ApiaryScheduler scheduler = new ApiaryNaiveScheduler();
@@ -52,20 +50,27 @@ public class ApiaryWorkerExecutable {
                 scheduler = new ApiaryNaiveScheduler();
             }
         }
-        int numThreads = 128;
+        int numThreads = 8;
         if (cmd.hasOption("t")) {
             numThreads = Integer.parseInt(cmd.getOptionValue("t"));
         }
         logger.info("{} worker threads", numThreads);
         ApiaryWorker worker;
 
-        // Register all stateless functions for experiments.
         if (db.equals("voltdb")) {
-            worker = new ApiaryWorker(scheduler, numThreads, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
-            worker.registerFunction("RetwisMerge", ApiaryConfig.stateless, RetwisMerge::new);
-            worker.registerFunction("IncrementStatelessDriver", ApiaryConfig.stateless, IncrementStatelessDriver::new);
-        } else {
+            throw new IllegalArgumentException("TODO: Implement VoltDB worker");
+        } else if (db.equals("postgres")) {
             worker = new ApiaryWorker(scheduler, numThreads, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            ElasticsearchConnection econn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
+            worker.registerConnection(ApiaryConfig.elasticsearch, econn);
+            worker.registerConnection(ApiaryConfig.postgres, conn);
+            worker.registerFunction("PostgresSearchPerson", ApiaryConfig.postgres, PostgresSearchPerson::new);
+            worker.registerFunction("PostgresIndexPerson", ApiaryConfig.postgres, PostgresIndexPerson::new);
+            worker.registerFunction("ElasticsearchIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchIndexPerson::new);
+            worker.registerFunction("ElasticsearchSearchPerson", ApiaryConfig.elasticsearch, ElasticsearchSearchPerson::new);
+        } else {
+            throw new IllegalArgumentException("Option 'db' must be one of (voltdb, postgres).");
         }
 
         worker.startServing();

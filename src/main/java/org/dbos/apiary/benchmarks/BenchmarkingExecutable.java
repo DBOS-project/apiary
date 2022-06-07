@@ -49,6 +49,9 @@ public class BenchmarkingExecutable {
         } else if (benchmark.equals("retwis")) {
             logger.info("Retwis Benchmark");
             RetwisBenchmark.benchmark(mainHostAddr, service, interval, duration);
+        } else if (benchmark.equals("es")) {
+            logger.info("PostgresESBenchmark");
+            PostgresESBenchmark.benchmark(mainHostAddr, service, interval, duration);
         }
     }
 }

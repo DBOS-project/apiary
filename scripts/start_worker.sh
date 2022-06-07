@@ -4,8 +4,8 @@ set -ex
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
 SCHEDULER=""
-DBTYPE="voltdb"
-NUMTHREADS="128"
+DBTYPE="postgres"
+NUMTHREADS="8"
 if [[ $# -eq 1 ]]; then
     SCHEDULER="$1"
 elif [[ $# -eq 2 ]]; then
@@ -31,7 +31,7 @@ LOG_DIR="/var/tmp/apiary_worker"
 mkdir -p ${LOG_DIR}
 
 # Compile the executable.
-mvn -DskipTests package
+mvn -T 1C -DskipTests package
 
 LOGFILE=${LOG_DIR}"/worker.log"
 PIDFILE=${LOG_DIR}"/daemon.pid"

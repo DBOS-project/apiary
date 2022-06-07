@@ -29,7 +29,6 @@ public class PostgresESBenchmark {
     public static void benchmark(String dbAddr, String service, Integer interval, Integer duration) throws SQLException, InterruptedException, InvalidProtocolBufferException {
 
         PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        conn.dropTable("RecordedOutputs");
         conn.dropTable("FuncInvocations");
         conn.dropTable("PersonTable");
         conn.createTable("PersonTable", "Name varchar(1000) NOT NULL, Number integer PRIMARY KEY NOT NULL");

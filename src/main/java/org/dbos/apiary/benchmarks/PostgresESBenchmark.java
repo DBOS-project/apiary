@@ -84,5 +84,6 @@ public class PostgresESBenchmark {
         threadPool.shutdown();
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
+        System.exit(0); // ES client is bugged and won't exit.
     }
 }

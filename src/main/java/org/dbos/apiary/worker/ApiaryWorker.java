@@ -125,7 +125,7 @@ public class ApiaryWorker {
     /** Private Methods **/
 
     private void garbageCollectorThread() {
-        while (garbageCollect) {
+        while (garbageCollect && ApiaryConfig.XDBTransactions) {
             Set<TransactionContext> activeTransactions = workerContext.getPrimaryConnection().getActiveTransactions();
             for (String secondary : workerContext.secondaryConnections.keySet()) {
                 ApiarySecondaryConnection c = workerContext.getSecondaryConnection(secondary);

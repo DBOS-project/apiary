@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 
 public class PostgresESBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(PostgresESBenchmark.class);
-    private static final int threadPoolSize = 8;
+    private static final int threadPoolSize = 256;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
     private static final Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();

@@ -50,7 +50,7 @@ public class ApiaryWorkerExecutable {
                 scheduler = new ApiaryNaiveScheduler();
             }
         }
-        int numThreads = 8;
+        int numThreads = 64;
         if (cmd.hasOption("t")) {
             numThreads = Integer.parseInt(cmd.getOptionValue("t"));
         }

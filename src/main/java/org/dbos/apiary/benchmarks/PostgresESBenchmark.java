@@ -2,6 +2,7 @@ package org.dbos.apiary.benchmarks;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
@@ -12,21 +13,20 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class PostgresESBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(PostgresESBenchmark.class);
     private static final int threadPoolSize = 256;
+    private static final int percentageRead = 99;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
-    private static final Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
+    private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();
+    private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
 
-    public static void benchmark(String dbAddr, String service, Integer interval, Integer duration) throws SQLException, InterruptedException {
+    public static void benchmark(String dbAddr, String service, Integer interval, Integer duration) throws SQLException, InterruptedException, InvalidProtocolBufferException {
 
         PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         conn.dropTable("RecordedOutputs");
@@ -43,20 +43,34 @@ public class PostgresESBenchmark {
         esClient.shutdown();
 
         AtomicInteger count = new AtomicInteger(0);
+        ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
+        ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
+
+        for (int i = 0; i < 10; i++) {
+            int localCount = count.getAndIncrement();
+            client.get().executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
+        }
+        logger.info("Done Loading");
 
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
 
-        ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
-
-        ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
-
         Runnable r = () -> {
             try {
                 long t0 = System.nanoTime();
-                int localCount = count.getAndIncrement();
-                client.get().executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
-                trialTimes.add(System.nanoTime() - t0);
+                int chooser = ThreadLocalRandom.current().nextInt(100);
+                if (chooser < percentageRead) {
+                    String search = "matei" + ThreadLocalRandom.current().nextInt(count.get() - 5, count.get() + 5);
+                    int res = client.get().executeFunction("PostgresSearchPerson", search).getInt();
+                    if (res == -1) {
+                        logger.info("Inconsistency: {}", search);
+                    }
+                    readTimes.add(System.nanoTime() - t0);
+                } else {
+                    int localCount = count.getAndIncrement();
+                    client.get().executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
+                    writeTimes.add(System.nanoTime() - t0);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -65,7 +79,8 @@ public class PostgresESBenchmark {
         while (System.currentTimeMillis() < endTime) {
             long t = System.nanoTime();
             if (System.currentTimeMillis() - startTime < threadWarmupMs) {
-                trialTimes.clear();
+                writeTimes.clear();
+                readTimes.clear();
             }
             threadPool.submit(r);
             while (System.nanoTime() - t < interval.longValue() * 1000) {
@@ -74,13 +89,31 @@ public class PostgresESBenchmark {
         }
 
         long elapsedTime = (System.currentTimeMillis() - startTime) - threadWarmupMs;
-        List<Long> queryTimes = trialTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+
+        List<Long> queryTimes = readTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
         int numQueries = queryTimes.size();
-        long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
-        double throughput = (double) numQueries * 1000.0 / elapsedTime;
-        long p50 = queryTimes.get(numQueries / 2);
-        long p99 = queryTimes.get((numQueries * 99) / 100);
-        logger.info("Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
+        if (numQueries > 0) {
+            long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
+            double throughput = (double) numQueries * 1000.0 / elapsedTime;
+            long p50 = queryTimes.get(numQueries / 2);
+            long p99 = queryTimes.get((numQueries * 99) / 100);
+            logger.info("Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
+        } else {
+            logger.info("No reads");
+        }
+
+        queryTimes = writeTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+        numQueries = queryTimes.size();
+        if (numQueries > 0) {
+            long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
+            double throughput = (double) numQueries * 1000.0 / elapsedTime;
+            long p50 = queryTimes.get(numQueries / 2);
+            long p99 = queryTimes.get((numQueries * 99) / 100);
+            logger.info("Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
+        } else {
+            logger.info("No writes");
+        }
+
         threadPool.shutdown();
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);

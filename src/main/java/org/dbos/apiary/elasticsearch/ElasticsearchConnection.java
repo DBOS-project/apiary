@@ -11,7 +11,7 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
-import org.dbos.apiary.connection.ApiaryConnection;
+import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
@@ -33,12 +33,18 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
-import java.util.Arrays;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
-public class ElasticsearchConnection implements ApiaryConnection {
+public class ElasticsearchConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConnection.class);
     public ElasticsearchClient client;
+
+    private final Map<String, Set<Long>> committedUpdates = new ConcurrentHashMap<>();
+    private final Lock validationLock = new ReentrantLock();
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
         try {
@@ -76,11 +82,6 @@ public class ElasticsearchConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) throws Exception {
-        return callFunction(functionName, workerContext, new TransactionContext(0, Long.MAX_VALUE, Long.MAX_VALUE, new long[0]), service, execID, functionID, inputs);
-    }
-
-    @Override
     public FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
         ApiaryContext ctxt = new ElasticsearchContext(client, workerContext, txc, service, execID, functionID);
         FunctionOutput f = null;
@@ -93,20 +94,32 @@ public class ElasticsearchConnection implements ApiaryConnection {
     }
 
     @Override
-    public void updatePartitionInfo() {}
-
-    @Override
-    public int getNumPartitions() {
-        return 1;
+    public boolean validate(List<String> updatedKeys, TransactionContext txc) {
+        Set<Long> activeTransactions = Arrays.stream(txc.activeTransactions).boxed().collect(Collectors.toSet());
+        validationLock.lock();
+        boolean valid = true;
+        for (String key: updatedKeys) {
+            // Has the key been modified by a transaction not in the snapshot?
+            Set<Long> updates = committedUpdates.getOrDefault(key, Collections.emptySet());
+            for (Long update: updates) {
+                if (update >= txc.xmax || activeTransactions.contains(update)) {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+        if (valid) {
+            for (String key: updatedKeys) {
+                committedUpdates.putIfAbsent(key, ConcurrentHashMap.newKeySet());
+                committedUpdates.get(key).add(txc.txID);
+            }
+        }
+        validationLock.unlock();
+        return valid;
     }
 
-    @Override
-    public String getHostname(Object... input) {
-        return "localhost";
-    }
-
-    @Override
-    public Map<Integer, String> getPartitionHostMap() {
-        return Map.of(0, "localhost");
+    public void garbageCollect(Set<TransactionContext> activeTransactions) {
+        long globalxmin = activeTransactions.stream().mapToLong(i -> i.xmin).min().getAsLong();
+        committedUpdates.values().forEach(u -> u.removeIf(updateTxID -> updateTxID < globalxmin));
     }
 }

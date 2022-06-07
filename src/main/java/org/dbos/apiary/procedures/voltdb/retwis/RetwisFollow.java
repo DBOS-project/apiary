@@ -12,7 +12,7 @@ public class RetwisFollow extends VoltFunction {
             "INSERT INTO RetwisFollowees VALUES (?, ?);"
     );
 
-    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(int pkey, VoltTable voltInput) throws Exception {
         return super.run(pkey, voltInput);
     }
 

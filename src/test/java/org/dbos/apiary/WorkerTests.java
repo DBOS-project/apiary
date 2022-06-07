@@ -2,7 +2,6 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.tests.*;
-import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.voltdb.VoltConnection;

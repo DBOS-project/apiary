@@ -14,7 +14,7 @@ public class RetwisGetFollowees extends VoltFunction {
             "SELECT FolloweeID FROM RetwisFollowees WHERE UserID=?;"
     );
 
-    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(int pkey, VoltTable voltInput) throws Exception {
         return super.run(pkey, voltInput);
     }
 

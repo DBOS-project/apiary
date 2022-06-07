@@ -1,16 +1,22 @@
 package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.postgresql.ds.PGSimpleDataSource;
+import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * A connection to a Postgres database.
@@ -20,6 +26,9 @@ public class PostgresConnection implements ApiaryConnection {
 
     private final PGSimpleDataSource ds;
     private final ThreadLocal<Connection> connection;
+    private final ReadWriteLock activeTransactionsLock = new ReentrantReadWriteLock();
+    private long biggestxmin = Long.MIN_VALUE;
+    private final Set<TransactionContext> activeTransactions = ConcurrentHashMap.newKeySet();
 
     /**
      * Create a connection to a Postgres database.
@@ -43,6 +52,7 @@ public class PostgresConnection implements ApiaryConnection {
            try {
                Connection conn = ds.getConnection();
                conn.setAutoCommit(false);
+               conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
                return conn;
            } catch (SQLException e) {
                e.printStackTrace();
@@ -103,22 +113,51 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) throws Exception {
-        ApiaryContext ctxt = new PostgresContext(connection.get(), workerContext, service, execID, functionID);
-        FunctionOutput f = null;
-        try {
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-            connection.get().commit();
-        } catch (Exception e) {
-            e.printStackTrace();
-            connection.get().rollback();
+    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) {
+        Connection c = connection.get();
+        activeTransactionsLock.readLock().lock();
+        PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID);
+        activeTransactions.add(ctxt.txc);
+        if (ctxt.txc.xmin > biggestxmin) {
+            biggestxmin = ctxt.txc.xmin;
         }
+        activeTransactionsLock.readLock().unlock();
+        FunctionOutput f = null;
+        while (true) {
+            try {
+                f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+                boolean valid = true;
+                for (String secondary : ctxt.secondaryUpdatedKeys.keySet()) {
+                    List<String> updatedKeys = ctxt.secondaryUpdatedKeys.get(secondary);
+                    valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(updatedKeys, ctxt.txc);
+                }
+                if (valid) {
+                    ctxt.conn.commit();
+                    break;
+                } else {
+                    ctxt.conn.rollback();
+                }
+            } catch (Exception e) {
+                try {
+                    ctxt.conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
+        activeTransactions.remove(ctxt.txc);
         return f;
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext transactionContext, String service, long execID, long functionID, Object... inputs) throws Exception {
-        return null;
+    public Set<TransactionContext> getActiveTransactions() {
+        activeTransactionsLock.writeLock().lock();
+        Set<TransactionContext> txSnapshot = new HashSet<>(activeTransactions);
+        if (txSnapshot.isEmpty()) {
+            txSnapshot.add(new TransactionContext(0, biggestxmin, biggestxmin + 1, new long[0]));
+        }
+        activeTransactionsLock.writeLock().unlock();
+        return txSnapshot;
     }
 
     @Override

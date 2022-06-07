@@ -19,7 +19,7 @@ public class FibonacciFunction extends VoltFunction {
             "SELECT KVValue FROM KVTable WHERE KVKey=?;"
     );
 
-    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(int pkey, VoltTable voltInput) throws Exception {
         return super.run(pkey, voltInput);
     }
 

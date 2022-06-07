@@ -5,9 +5,10 @@ import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
- * A connection to a database.
+ * A connection to a primary database.
  */
 public interface ApiaryConnection {
     /**
@@ -23,7 +24,7 @@ public interface ApiaryConnection {
      */
     FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) throws Exception;
 
-    FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext transactionContext, String service, long execID, long functionID, Object... inputs) throws Exception;
+    public Set<TransactionContext> getActiveTransactions();
 
     // For partition mapping information.
 

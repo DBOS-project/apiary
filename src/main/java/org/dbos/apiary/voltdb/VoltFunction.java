@@ -41,7 +41,7 @@ public class VoltFunction extends VoltProcedure implements ApiaryFunction {
         provBuff = tempBuffer;
     }
 
-    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(int pkey, VoltTable voltInput) throws Exception {
         this.pkey = pkey;
         Object[] parsedInput = parseInput(voltInput);
         String service = parsedInput[0].toString();

@@ -23,25 +23,21 @@ public class ApiaryStatelessContext extends ApiaryContext {
                 e.printStackTrace();
             }
             assert f != null;
-            return f.apiaryRunFunction(this, inputs);
+            try {
+                return f.apiaryRunFunction(this, inputs);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
         } else {
             try {
-                ApiaryConnection c = workerContext.getConnection(type);
+                assert(type.equals(workerContext.getPrimaryConnectionType()));
+                ApiaryConnection c = workerContext.getPrimaryConnection();
                 return c.callFunction(name, workerContext, service, execID, functionID, inputs);
             } catch (Exception e) {
                 e.printStackTrace();
                 return null;
             }
         }
-    }
-
-    @Override
-    public FunctionOutput checkPreviousExecution() {
-        return null;
-    }
-
-    @Override
-    public void recordExecution(FunctionOutput output) {
-
     }
 }

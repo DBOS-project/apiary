@@ -26,19 +26,13 @@ public class ElasticsearchContext extends ApiaryContext {
     private final ElasticsearchClient client;
     private final TransactionContext txc;
 
+    List<String> updatedKeys = new ArrayList<>();
+
     public ElasticsearchContext(ElasticsearchClient client, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
         this.client = client;
         this.txc = txc;
     }
-
-    @Override
-    public FunctionOutput checkPreviousExecution() {
-        return null;
-    }
-
-    @Override
-    public void recordExecution(FunctionOutput output) {}
 
     @Override
     public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
@@ -48,6 +42,7 @@ public class ElasticsearchContext extends ApiaryContext {
 
     public void executeUpdate(String index, ApiaryDocument document, String id) {
         try {
+            updatedKeys.add(id);
             document.setApiaryID(id);
             document.setBeginVersion(txc.txID);
             document.setEndVersion(Long.MAX_VALUE);
@@ -68,18 +63,19 @@ public class ElasticsearchContext extends ApiaryContext {
                 beginVersionFilter.add(TermQuery.of(f -> f.field("beginVersion").value(txID))._toQuery());
             }
             List<Query> endVersionFilter = new ArrayList<>();
-            // If endVersion is greater than xmax, it is not in the snapshot.
-            endVersionFilter.add(RangeQuery.of(f -> f.field("endVersion").gt(JsonData.of(txc.xmax)))._toQuery());
+            // If endVersion is greater than or equal to xmax, it is not in the snapshot.
+            endVersionFilter.add(RangeQuery.of(f -> f.field("endVersion").gte(JsonData.of(txc.xmax)))._toQuery());
             // If endVersion is an active transaction, it is not in the snapshot.
             for (long txID: txc.activeTransactions) {
                 endVersionFilter.add(TermQuery.of(f -> f.field("endVersion").value(txID))._toQuery());
             }
+            // TODO: Also handle records left by aborted transactions, which must be skipped.
             SearchRequest request = SearchRequest.of(s -> s
                     .index(index).query(q -> q.bool(b -> b
                                     .must(searchQuery)
                                     .filter(BoolQuery.of(bb -> bb
                                                     .must( // beginVersion must be in the snapshot.
-                                                            RangeQuery.of(f -> f.field("beginVersion").lte(JsonData.of(txc.xmax)))._toQuery()
+                                                            RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.xmax)))._toQuery()
                                                     ).mustNot( // Therefore, beginVersion must not be an active transaction.
                                                             beginVersionFilter
                                                     ).should( // endVersion must not be in the snapshot.

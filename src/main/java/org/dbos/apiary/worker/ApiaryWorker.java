@@ -7,6 +7,7 @@ import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.dbos.apiary.connection.ApiaryConnection;
+import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
@@ -47,6 +48,10 @@ public class ApiaryWorker {
     private final List<Long> defaultQueue = new ArrayList<>();
     private final Long defaultTimeNs = 100000L;
 
+    private Thread garbageCollectorThread;
+    private boolean garbageCollect = true;
+    private static final long gcIntervalMs = 1000;
+
     public final WorkerContext workerContext;
 
     public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads) {
@@ -81,18 +86,27 @@ public class ApiaryWorker {
         workerContext.registerConnection(type, connection);
     }
 
+    public void registerConnection(String type, ApiarySecondaryConnection connection) {
+        workerContext.registerConnection(type, connection);
+    }
+
     public void registerFunction(String name, String type, Callable<ApiaryFunction> function) {
         workerContext.registerFunction(name, type, function);
     }
 
     public void startServing() {
+        garbageCollectorThread = new Thread(this::garbageCollectorThread);
+        garbageCollectorThread.start();
         serverThread = new Thread(this::serverThread);
         serverThread.start();
     }
 
     public void shutdown() {
         try {
+            garbageCollect = false;
             Thread.sleep(100);
+            garbageCollectorThread.interrupt();
+            garbageCollectorThread.join();
             reqThreadPool.shutdown();
             reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
             repThreadPool.shutdown();
@@ -110,6 +124,21 @@ public class ApiaryWorker {
 
     /** Private Methods **/
 
+    private void garbageCollectorThread() {
+        while (garbageCollect) {
+            Set<TransactionContext> activeTransactions = workerContext.getPrimaryConnection().getActiveTransactions();
+            for (String secondary : workerContext.secondaryConnections.keySet()) {
+                ApiarySecondaryConnection c = workerContext.getSecondaryConnection(secondary);
+                c.garbageCollect(activeTransactions);
+            }
+            try {
+                Thread.sleep(gcIntervalMs);
+            } catch (InterruptedException e) {
+                return;
+            }
+        }
+    }
+
     private void processQueuedTasks(ApiaryTaskStash currTask, long currCallerID) {
         int numTraversed = 0;
         int totalTasks = currTask.queuedTasks.size();
@@ -126,8 +155,8 @@ public class ApiaryWorker {
                         continue;
                     }
                     String address = workerContext.getFunctionType(subtask.funcName).equals(ApiaryConfig.stateless) ?
-                            workerContext.connections.values().stream().findFirst().get().getPartitionHostMap().get(0)
-                            : workerContext.getConnection(workerContext.getFunctionType((subtask.funcName))).getHostname(subtask.input);
+                            workerContext.getPrimaryConnection().getPartitionHostMap().get(0)
+                            : workerContext.getPrimaryConnection().getHostname(subtask.input);
                     // Push to the outgoing queue.
                     byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currCallerID, subtask.functionID, subtask.input);
                     outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
@@ -181,7 +210,8 @@ public class ApiaryWorker {
                 ApiaryStatelessContext context = new ApiaryStatelessContext(workerContext, service, execID, functionID);
                 o = function.apiaryRunFunction(context, arguments);
             } else {
-                ApiaryConnection c = workerContext.getConnection(type);
+                assert(workerContext.getPrimaryConnectionType().equals(type));
+                ApiaryConnection c = workerContext.getPrimaryConnection();
                 o = c.callFunction(name, workerContext, service, execID, functionID, arguments);
             }
         } catch (Exception e) {
@@ -305,11 +335,8 @@ public class ApiaryWorker {
 
         // This main server thread is used as I/O thread.
         InternalApiaryWorkerClient client = new InternalApiaryWorkerClient(shadowContext);
-        List<String> distinctHosts = new ArrayList<>();
-        for (ApiaryConnection c: workerContext.connections.values()) {
-            distinctHosts.addAll(c.getPartitionHostMap().values());
-        }
-        distinctHosts = distinctHosts.stream().distinct().collect(Collectors.toList());
+        List<String> distinctHosts = workerContext.getPrimaryConnection().getPartitionHostMap()
+                .values().stream().distinct().collect(Collectors.toList());
         ZMQ.Poller poller = zContext.createPoller(distinctHosts.size() + 1);
         // The backend worker is always the first poller socket.
         poller.register(frontend, ZMQ.Poller.POLLIN);

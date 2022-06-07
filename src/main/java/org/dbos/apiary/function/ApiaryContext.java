@@ -1,5 +1,6 @@
 package org.dbos.apiary.function;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -57,18 +58,6 @@ public abstract class ApiaryContext {
     public abstract FunctionOutput apiaryCallFunction(String name, Object... inputs);
 
     /** Apiary-private **/
-
-    /**
-     * For internal use only.
-     * @return {@link FunctionOutput}
-     */
-    public abstract FunctionOutput checkPreviousExecution();
-
-    /**
-     * For internal use only.
-     * @param output    the finalized output of a function.
-     */
-    public abstract void recordExecution(FunctionOutput output);
 
     /**
      * For internal use only.

@@ -16,7 +16,7 @@ public class GetApiaryClientID extends VoltFunction {
             "UPSERT INTO ApiaryMetadata VALUES (0, ?, ?);"
     );
 
-    public VoltTable[] run(int pkey, VoltTable voltInput) throws InvocationTargetException, IllegalAccessException {
+    public VoltTable[] run(int pkey, VoltTable voltInput) throws Exception {
         return super.run(pkey, voltInput);
     }
 

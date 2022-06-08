@@ -6,9 +6,12 @@ import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.postgresql.ds.PGSimpleDataSource;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.HashSet;
 import java.util.List;
@@ -140,11 +143,22 @@ public class PostgresConnection implements ApiaryConnection {
                     ctxt.conn.rollback();
                 }
             } catch (Exception e) {
-                try {
-                    ctxt.conn.rollback();
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
+                if (e instanceof InvocationTargetException) {
+                    InvocationTargetException i = (InvocationTargetException) e;
+                    if (i.getCause() instanceof PSQLException) {
+                        PSQLException p = (PSQLException) i.getCause();
+                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                            try {
+                                ctxt.conn.rollback();
+                                continue;
+                            } catch (SQLException ex) {
+                                ex.printStackTrace();
+                            }
+                        }
+                    }
                 }
+                e.printStackTrace();
+                break;
             }
         }
         activeTransactions.remove(ctxt.txc);

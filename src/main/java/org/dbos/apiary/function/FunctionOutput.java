@@ -1,6 +1,7 @@
 package org.dbos.apiary.function;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * FunctionOutput stores the output of a function. It supports all Apiary function return types.
@@ -8,7 +9,7 @@ import java.util.List;
 public class FunctionOutput {
     public final Object output;
     public final List<Task> queuedTasks;
-    private List<String> writtenKeys;
+    private Map<String, List<String>> writtenKeys;
 
     public FunctionOutput(Object output, List<Task> queuedTasks) {
         assert(output != null);
@@ -55,11 +56,11 @@ public class FunctionOutput {
 
     /** Internal API **/
 
-    public List<String> getWrittenKeys() {
+    public Map<String, List<String>> getWrittenKeys() {
         return writtenKeys;
     }
 
-    public void setWrittenKeys(List<String> writtenKeys) {
+    public void setWrittenKeys(Map<String, List<String>> writtenKeys) {
         this.writtenKeys = writtenKeys;
     }
 

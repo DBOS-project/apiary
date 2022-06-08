@@ -19,7 +19,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ElasticsearchContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchContext.class);
@@ -27,7 +29,7 @@ public class ElasticsearchContext extends ApiaryContext {
     private final ElasticsearchClient client;
     private final TransactionContext txc;
 
-    List<String> writtenKeys = new ArrayList<>();
+    Map<String, List<String>> writtenKeys = new HashMap<>();
 
     public ElasticsearchContext(ElasticsearchClient client, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
@@ -43,8 +45,9 @@ public class ElasticsearchContext extends ApiaryContext {
 
     public void executeWrite(String index, ApiaryDocument document, String id) {
         try {
-            writtenKeys.add(id);
             if (ApiaryConfig.XDBTransactions) {
+                writtenKeys.putIfAbsent(index, new ArrayList<>());
+                writtenKeys.get(index).add(id);
                 document.setApiaryID(id);
                 document.setBeginVersion(txc.txID);
                 document.setEndVersion(Long.MAX_VALUE);

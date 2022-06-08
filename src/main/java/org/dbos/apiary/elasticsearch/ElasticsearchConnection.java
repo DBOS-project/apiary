@@ -49,7 +49,7 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConnection.class);
     public ElasticsearchClient client;
 
-    private final Map<String, Set<Long>> committedWrites = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
@@ -100,44 +100,51 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public boolean validate(List<String> writtenKeys, TransactionContext txc) {
+    public boolean validate(Map<String, List<String>> writtenKeys, TransactionContext txc) {
         Set<Long> activeTransactions = Arrays.stream(txc.activeTransactions).boxed().collect(Collectors.toSet());
         validationLock.lock();
         boolean valid = true;
-        for (String key: writtenKeys) {
-            // Has the key been modified by a transaction not in the snapshot?
-            Set<Long> writes = committedWrites.getOrDefault(key, Collections.emptySet());
-            for (Long write: writes) {
-                if (write >= txc.xmax || activeTransactions.contains(write)) {
-                    valid = false;
-                    break;
+        for (String index: writtenKeys.keySet()) {
+            for (String key : writtenKeys.get(index)) {
+                // Has the key been modified by a transaction not in the snapshot?
+                Set<Long> writes = committedWrites.getOrDefault(index, Collections.emptyMap()).getOrDefault(key, Collections.emptySet());
+                for (Long write : writes) {
+                    if (write >= txc.xmax || activeTransactions.contains(write)) {
+                        valid = false;
+                        break;
+                    }
                 }
             }
         }
         if (valid) {
-            for (String key: writtenKeys) {
-                committedWrites.putIfAbsent(key, ConcurrentHashMap.newKeySet());
-                committedWrites.get(key).add(txc.txID);
+            for (String index: writtenKeys.keySet()) {
+                for (String key : writtenKeys.get(index)) {
+                    committedWrites.putIfAbsent(index, new ConcurrentHashMap<>());
+                    committedWrites.get(index).putIfAbsent(key, ConcurrentHashMap.newKeySet());
+                    committedWrites.get(index).get(key).add(txc.txID);
+                }
             }
         }
         validationLock.unlock();
         try {
             String updateScript = String.format("ctx._source.endVersion=%s", txc.txID);
             if (valid) {
-                for (String key : writtenKeys) {
-                    UpdateByQueryResponse r = client.updateByQuery(ubq -> ubq
-                            .index("people") // TODO: Don't hardcode.
-                            .query(BoolQuery.of(bb -> bb
-                                            .must(
-                                                    MatchQuery.of(t -> t.field("apiaryID").query(key))._toQuery(),
-                                                    RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.txID)))._toQuery()
-                                            )
-                            )._toQuery())
-                            .script(s -> s
-                                    .inline(InlineScript.of(i -> i.lang("painless").source(updateScript)))
-                            )
-                            .refresh(Boolean.TRUE)
-                    );
+                for (String index : writtenKeys.keySet()) {
+                    for (String key : writtenKeys.get(index)) {
+                        client.updateByQuery(ubq -> ubq
+                                .index(index)
+                                .query(BoolQuery.of(bb -> bb
+                                        .must(
+                                                MatchQuery.of(t -> t.field("apiaryID").query(key))._toQuery(),
+                                                RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.txID)))._toQuery()
+                                        )
+                                )._toQuery())
+                                .script(s -> s
+                                        .inline(InlineScript.of(i -> i.lang("painless").source(updateScript)))
+                                )
+                                .refresh(Boolean.TRUE)
+                        );
+                    }
                 }
             }
         } catch (IOException e) {
@@ -148,6 +155,6 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
 
     public void garbageCollect(Set<TransactionContext> activeTransactions) {
         long globalxmin = activeTransactions.stream().mapToLong(i -> i.xmin).min().getAsLong();
-        committedWrites.values().forEach(w -> w.removeIf(txID -> txID < globalxmin));
+        committedWrites.values().forEach(i -> i.values().forEach(w -> w.removeIf(txID -> txID < globalxmin)));
     }
 }

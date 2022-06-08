@@ -6,7 +6,6 @@ import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.postgresql.ds.PGSimpleDataSource;
-import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -129,8 +128,8 @@ public class PostgresConnection implements ApiaryConnection {
                 f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
                 boolean valid = true;
                 if (ApiaryConfig.XDBTransactions) {
-                    for (String secondary : ctxt.secondaryUpdatedKeys.keySet()) {
-                        List<String> updatedKeys = ctxt.secondaryUpdatedKeys.get(secondary);
+                    for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
+                        List<String> updatedKeys = ctxt.secondaryWrittenKeys.get(secondary);
                         valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(updatedKeys, ctxt.txc);
                     }
                 }

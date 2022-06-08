@@ -25,7 +25,7 @@ public class PostgresContext extends ApiaryContext {
 
     public TransactionContext txc;
 
-    Map<String, List<String>> secondaryUpdatedKeys = new HashMap<>();
+    Map<String, List<String>> secondaryWrittenKeys = new HashMap<>();
 
     public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
@@ -77,8 +77,8 @@ public class PostgresContext extends ApiaryContext {
                 ApiarySecondaryConnection c = workerContext.getSecondaryConnection(functionType);
                 long newID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
                 FunctionOutput fo = c.callFunction(name, workerContext, txc, service, execID, newID, inputs);
-                secondaryUpdatedKeys.putIfAbsent(functionType, new ArrayList<>());
-                secondaryUpdatedKeys.get(functionType).addAll(fo.getUpdatedKeys());
+                secondaryWrittenKeys.putIfAbsent(functionType, new ArrayList<>());
+                secondaryWrittenKeys.get(functionType).addAll(fo.getWrittenKeys());
                 return fo;
             } catch (Exception e) {
                 e.printStackTrace();

@@ -9,7 +9,6 @@ import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.json.JsonData;
-import com.google.protobuf.Api;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
@@ -28,7 +27,7 @@ public class ElasticsearchContext extends ApiaryContext {
     private final ElasticsearchClient client;
     private final TransactionContext txc;
 
-    List<String> updatedKeys = new ArrayList<>();
+    List<String> writtenKeys = new ArrayList<>();
 
     public ElasticsearchContext(ElasticsearchClient client, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
@@ -42,9 +41,9 @@ public class ElasticsearchContext extends ApiaryContext {
         return null;
     }
 
-    public void executeUpdate(String index, ApiaryDocument document, String id) {
+    public void executeWrite(String index, ApiaryDocument document, String id) {
         try {
-            updatedKeys.add(id);
+            writtenKeys.add(id);
             if (ApiaryConfig.XDBTransactions) {
                 document.setApiaryID(id);
                 document.setBeginVersion(txc.txID);

@@ -43,7 +43,7 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConnection.class);
     public ElasticsearchClient client;
 
-    private final Map<String, Set<Long>> committedUpdates = new ConcurrentHashMap<>();
+    private final Map<String, Set<Long>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
@@ -94,24 +94,24 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public boolean validate(List<String> updatedKeys, TransactionContext txc) {
+    public boolean validate(List<String> writtenKeys, TransactionContext txc) {
         Set<Long> activeTransactions = Arrays.stream(txc.activeTransactions).boxed().collect(Collectors.toSet());
         validationLock.lock();
         boolean valid = true;
-        for (String key: updatedKeys) {
+        for (String key: writtenKeys) {
             // Has the key been modified by a transaction not in the snapshot?
-            Set<Long> updates = committedUpdates.getOrDefault(key, Collections.emptySet());
-            for (Long update: updates) {
-                if (update >= txc.xmax || activeTransactions.contains(update)) {
+            Set<Long> writes = committedWrites.getOrDefault(key, Collections.emptySet());
+            for (Long write: writes) {
+                if (write >= txc.xmax || activeTransactions.contains(write)) {
                     valid = false;
                     break;
                 }
             }
         }
         if (valid) {
-            for (String key: updatedKeys) {
-                committedUpdates.putIfAbsent(key, ConcurrentHashMap.newKeySet());
-                committedUpdates.get(key).add(txc.txID);
+            for (String key: writtenKeys) {
+                committedWrites.putIfAbsent(key, ConcurrentHashMap.newKeySet());
+                committedWrites.get(key).add(txc.txID);
             }
         }
         validationLock.unlock();
@@ -120,6 +120,6 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
 
     public void garbageCollect(Set<TransactionContext> activeTransactions) {
         long globalxmin = activeTransactions.stream().mapToLong(i -> i.xmin).min().getAsLong();
-        committedUpdates.values().forEach(u -> u.removeIf(updateTxID -> updateTxID < globalxmin));
+        committedWrites.values().forEach(w -> w.removeIf(txID -> txID < globalxmin));
     }
 }

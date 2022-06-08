@@ -85,6 +85,7 @@ public class ElasticsearchContext extends ApiaryContext {
                                         ).should( // endVersion must not be in the snapshot.
                                                 endVersionFilter
                                         )
+                                        .minimumShouldMatch("1")
                                 )._toQuery())
                         ))
                 );

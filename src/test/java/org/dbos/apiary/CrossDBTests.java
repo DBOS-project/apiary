@@ -38,7 +38,7 @@ public class CrossDBTests {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
             conn.dropTable("FuncInvocations");
             conn.dropTable("PersonTable");
-            conn.createTable("PersonTable", "Name varchar(1000) NOT NULL, Number integer PRIMARY KEY NOT NULL");
+            conn.createTable("PersonTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Number integer NOT NULL");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
         }
@@ -91,6 +91,45 @@ public class CrossDBTests {
         int res;
         res = client.executeFunction("PostgresIndexPerson", "matei", 1).getInt();
         assertEquals(1, res);
+
+        res = client.executeFunction("PostgresSearchPerson", "matei").getInt();
+        assertEquals(1, res);
+    }
+
+    @Test
+    public void testElasticsearchUpdate() throws InvalidProtocolBufferException, InterruptedException {
+        logger.info("testElasticsearchUpdate");
+
+        ElasticsearchConnection conn;
+        PostgresConnection pconn;
+        try {
+            conn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        } catch (Exception e) {
+            logger.info("No Elasticsearch/Postgres instance! {}", e.getMessage());
+            return;
+        }
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.elasticsearch, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresSearchPerson", ApiaryConfig.postgres, PostgresSearchPerson::new);
+        apiaryWorker.registerFunction("PostgresIndexPerson", ApiaryConfig.postgres, PostgresIndexPerson::new);
+        apiaryWorker.registerFunction("ElasticsearchIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchIndexPerson::new);
+        apiaryWorker.registerFunction("ElasticsearchSearchPerson", ApiaryConfig.elasticsearch, ElasticsearchSearchPerson::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresIndexPerson", "matei", 1).getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("PostgresSearchPerson", "matei").getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("PostgresIndexPerson", "matei", 2).getInt();
+        assertEquals(2, res);
 
         res = client.executeFunction("PostgresSearchPerson", "matei").getInt();
         assertEquals(1, res);

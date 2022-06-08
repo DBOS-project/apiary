@@ -156,7 +156,7 @@ public class PostgresConnection implements ApiaryConnection {
         activeTransactionsLock.writeLock().lock();
         Set<TransactionContext> txSnapshot = new HashSet<>(activeTransactions);
         if (txSnapshot.isEmpty()) {
-            txSnapshot.add(new TransactionContext(0, biggestxmin, biggestxmin + 1, new long[0]));
+            txSnapshot.add(new TransactionContext(0, biggestxmin, biggestxmin, new long[0]));
         }
         activeTransactionsLock.writeLock().unlock();
         return txSnapshot;

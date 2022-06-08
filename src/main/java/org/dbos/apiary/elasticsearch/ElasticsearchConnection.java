@@ -1,6 +1,12 @@
 package org.dbos.apiary.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.InlineScript;
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
+import co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
+import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
@@ -115,6 +121,28 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
             }
         }
         validationLock.unlock();
+        try {
+            String updateScript = String.format("ctx._source.endVersion=%s", txc.txID);
+            if (valid) {
+                for (String key : writtenKeys) {
+                    UpdateByQueryResponse r = client.updateByQuery(ubq -> ubq
+                            .index("people") // TODO: Don't hardcode.
+                            .query(BoolQuery.of(bb -> bb
+                                            .must(
+                                                    MatchQuery.of(t -> t.field("apiaryID").query(key))._toQuery(),
+                                                    RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.txID)))._toQuery()
+                                            )
+                            )._toQuery())
+                            .script(s -> s
+                                    .inline(InlineScript.of(i -> i.lang("painless").source(updateScript)))
+                            )
+                            .refresh(Boolean.TRUE)
+                    );
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return valid;
     }
 

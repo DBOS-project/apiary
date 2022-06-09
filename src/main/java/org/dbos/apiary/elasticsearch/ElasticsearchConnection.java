@@ -2,6 +2,7 @@ package org.dbos.apiary.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.InlineScript;
+import co.elastic.clients.elasticsearch._types.StoredScriptId;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
@@ -51,6 +52,7 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
 
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
+    private static final String updateEndVersionScript = "updateEndVersion";
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
         try {
@@ -81,6 +83,9 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
 
             // And create the API client
             this.client = new ElasticsearchClient(transport);
+
+            // Store scripts
+            client.putScript(p -> p.id(updateEndVersionScript).script(s -> s.lang("painless").source("ctx._source.endVersion=params['endV']")));
         } catch (CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException | KeyManagementException e) {
             logger.info("Elasticsearch Connection Failed");
             throw new RuntimeException("Failed to connect to ElasticSearch");
@@ -127,7 +132,6 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
         }
         validationLock.unlock();
         try {
-            String updateScript = String.format("ctx._source.endVersion=%s", txc.txID);
             if (valid) {
                 for (String index : writtenKeys.keySet()) {
                     for (String key : writtenKeys.get(index)) {
@@ -140,7 +144,9 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
                                         )
                                 )._toQuery())
                                 .script(s -> s
-                                        .inline(InlineScript.of(i -> i.lang("painless").source(updateScript)))
+                                        .stored(StoredScriptId.of(b -> b
+                                                .id(updateEndVersionScript).params(Map.of("endV", JsonData.of(txc.txID))))
+                                        )
                                 )
                                 .refresh(Boolean.TRUE)
                         );

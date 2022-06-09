@@ -118,15 +118,15 @@ public class PostgresConnection implements ApiaryConnection {
     @Override
     public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) {
         Connection c = connection.get();
-        activeTransactionsLock.readLock().lock();
-        PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID);
-        activeTransactions.add(ctxt.txc);
-        if (ctxt.txc.xmin > biggestxmin) {
-            biggestxmin = ctxt.txc.xmin;
-        }
-        activeTransactionsLock.readLock().unlock();
         FunctionOutput f = null;
         while (true) {
+            activeTransactionsLock.readLock().lock();
+            PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID);
+            activeTransactions.add(ctxt.txc);
+            if (ctxt.txc.xmin > biggestxmin) {
+                biggestxmin = ctxt.txc.xmin;
+            }
+            activeTransactionsLock.readLock().unlock();
             try {
                 f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
                 boolean valid = true;
@@ -138,9 +138,11 @@ public class PostgresConnection implements ApiaryConnection {
                 }
                 if (valid) {
                     ctxt.conn.commit();
+                    activeTransactions.remove(ctxt.txc);
                     break;
                 } else {
                     ctxt.conn.rollback();
+                    activeTransactions.remove(ctxt.txc);
                 }
             } catch (Exception e) {
                 if (e instanceof InvocationTargetException) {
@@ -150,6 +152,7 @@ public class PostgresConnection implements ApiaryConnection {
                         if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
                             try {
                                 ctxt.conn.rollback();
+                                activeTransactions.remove(ctxt.txc);
                                 continue;
                             } catch (SQLException ex) {
                                 ex.printStackTrace();
@@ -161,7 +164,6 @@ public class PostgresConnection implements ApiaryConnection {
                 break;
             }
         }
-        activeTransactions.remove(ctxt.txc);
         return f;
     }
 

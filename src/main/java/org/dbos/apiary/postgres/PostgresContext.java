@@ -11,6 +11,7 @@ import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * PostgresContext is a context for Apiary-Postgres functions.
@@ -27,7 +28,8 @@ public class PostgresContext extends ApiaryContext {
 
     Map<String, Map<String, List<String>>> secondaryWrittenKeys = new HashMap<>();
 
-    public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID) {
+    public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID,
+                           Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions) {
         super(workerContext, service, execID, functionID);
         this.conn = c;
         try {
@@ -40,8 +42,10 @@ public class PostgresContext extends ApiaryContext {
             String snapshotString = rs.getString(1);
             long xmin = PostgresUtilities.parseXmin(snapshotString);
             long xmax = PostgresUtilities.parseXmax(snapshotString);
-            long[] activeTransactions = PostgresUtilities.parseActiveTransactions(snapshotString);
-            this.txc = new TransactionContext(txID, xmin, xmax, activeTransactions);
+            List<Long> activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
+            activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(i -> i < xmax).collect(Collectors.toList()));
+            // TODO: Get the rest.
+            this.txc = new TransactionContext(txID, xmin, xmax, activeTxIDs);
         } catch (Exception e) {
             e.printStackTrace();
         }

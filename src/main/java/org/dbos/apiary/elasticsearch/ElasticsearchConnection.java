@@ -52,6 +52,7 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
 
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
+    private static final String updateBeginVersionScript = "updateBeginVersion";
     private static final String updateEndVersionScript = "updateEndVersion";
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
@@ -85,6 +86,7 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
             this.client = new ElasticsearchClient(transport);
 
             // Store scripts
+            client.putScript(p -> p.id(updateBeginVersionScript).script(s -> s.lang("painless").source("ctx._source.beginVersion=params['beginV']")));
             client.putScript(p -> p.id(updateEndVersionScript).script(s -> s.lang("painless").source("ctx._source.endVersion=params['endV']")));
         } catch (CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException | KeyManagementException e) {
             logger.info("Elasticsearch Connection Failed");
@@ -105,8 +107,29 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
     }
 
     @Override
+    public void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+        try {
+            // Make invisible all records written by this transaction by setting their beginVersion to infinity.
+            for (String index : writtenKeys.keySet()) {
+                UpdateByQueryResponse r= client.updateByQuery(ubq -> ubq
+                        .index(index)
+                        .query(MatchQuery.of(t -> t.field("beginVersion").query(txc.txID))._toQuery())
+                        .script(s -> s
+                                .stored(StoredScriptId.of(b -> b
+                                        .id(updateBeginVersionScript).params(Map.of("beginV", JsonData.of(Long.MAX_VALUE))))
+                                )
+                        )
+                        .refresh(Boolean.TRUE)
+                );
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
     public boolean validate(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-        Set<Long> activeTransactions = Arrays.stream(txc.activeTransactions).boxed().collect(Collectors.toSet());
+        Set<Long> activeTransactions = new HashSet<>(txc.activeTransactions);
         validationLock.lock();
         boolean valid = true;
         for (String index: writtenKeys.keySet()) {

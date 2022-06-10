@@ -15,6 +15,8 @@ public interface ApiarySecondaryConnection {
 
     FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext transactionContext, String service, long execID, long functionID, Object... inputs) throws Exception;
 
+    void rollback(Map<String, List<String>> updatedKeys, TransactionContext txc);
+
     boolean validate(Map<String, List<String>> updatedKeys, TransactionContext txc);
 
     void garbageCollect(Set<TransactionContext> activeTransactions);

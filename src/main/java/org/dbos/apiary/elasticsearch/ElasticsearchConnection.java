@@ -23,6 +23,7 @@ import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
+import org.elasticsearch.client.ResponseException;
 import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -154,30 +155,33 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
             }
         }
         validationLock.unlock();
-        try {
-            if (valid) {
-                for (String index : writtenKeys.keySet()) {
-                    for (String key : writtenKeys.get(index)) {
-                        client.updateByQuery(ubq -> ubq
-                                .index(index)
-                                .query(BoolQuery.of(bb -> bb
-                                        .must(
-                                                MatchQuery.of(t -> t.field("apiaryID").query(key))._toQuery(),
-                                                RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.txID)))._toQuery()
-                                        )
-                                )._toQuery())
-                                .script(s -> s
-                                        .stored(StoredScriptId.of(b -> b
-                                                .id(updateEndVersionScript).params(Map.of("endV", JsonData.of(txc.txID))))
-                                        )
-                                )
-                                .refresh(Boolean.TRUE)
-                        );
+        if (valid) {
+            for (String index : writtenKeys.keySet()) {
+                for (String key : writtenKeys.get(index)) {
+                    while (true) {
+                        try {
+                            client.updateByQuery(ubq -> ubq
+                                    .index(index)
+                                    .query(BoolQuery.of(bb -> bb
+                                            .must(
+                                                    MatchQuery.of(t -> t.field("apiaryID").query(key))._toQuery(),
+                                                    RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.txID)))._toQuery()
+                                            )
+                                    )._toQuery())
+                                    .script(s -> s
+                                            .stored(StoredScriptId.of(b -> b
+                                                    .id(updateEndVersionScript).params(Map.of("endV", JsonData.of(txc.txID))))
+                                            )
+                                    ).refresh(Boolean.TRUE)
+                            );
+                            break;
+                        } catch (IOException e) {
+                            // Retry on version conflict.
+                            continue;
+                        }
                     }
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
         return valid;
     }

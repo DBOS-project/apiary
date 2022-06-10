@@ -188,6 +188,20 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
 
     public void garbageCollect(Set<TransactionContext> activeTransactions) {
         long globalxmin = activeTransactions.stream().mapToLong(i -> i.xmin).min().getAsLong();
+        // No need to keep track of writes that are visible to all active or future transactions.
         committedWrites.values().forEach(i -> i.values().forEach(w -> w.removeIf(txID -> txID < globalxmin)));
+        // Delete old versions that are no longer visible to any active or future transaction.
+        try {
+            for (String index : committedWrites.keySet()) {
+                client.deleteByQuery(dbq -> dbq
+                        .index(index)
+                        .query(
+                                RangeQuery.of(t -> t.field("endVersion").lt(JsonData.of(globalxmin)))._toQuery()
+                        )
+                );
+            }
+        } catch (IOException e) {
+            // No need to retry on version conflicts, clean up the record in the next GC.
+        }
     }
 }

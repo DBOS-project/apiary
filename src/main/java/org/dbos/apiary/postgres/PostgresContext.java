@@ -37,14 +37,22 @@ public class PostgresContext extends ApiaryContext {
             ResultSet rs = stmt.executeQuery("select txid_current();");
             rs.next();
             long txID = rs.getLong(1);
-            rs = stmt.executeQuery("select  pg_current_snapshot();");
+            rs = stmt.executeQuery("select pg_current_snapshot();");
             rs.next();
             String snapshotString = rs.getString(1);
             long xmin = PostgresUtilities.parseXmin(snapshotString);
             long xmax = PostgresUtilities.parseXmax(snapshotString);
             List<Long> activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
-            activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(i -> i < xmax).collect(Collectors.toList()));
-            // TODO: Get the rest.
+            activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < xmax).collect(Collectors.toList()));
+            for (TransactionContext t: activeTransactions) {
+                if (t.txID < xmax && !activeTxIDs.contains(t.txID)) {
+                    rs = stmt.executeQuery("select txid_status(" + t.txID + ");");
+                    rs.next();
+                    if (rs.getString("txid_status").equals("aborted")) {
+                        activeTxIDs.add(t.txID);
+                    }
+                }
+            }
             this.txc = new TransactionContext(txID, xmin, xmax, activeTxIDs);
         } catch (Exception e) {
             e.printStackTrace();

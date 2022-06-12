@@ -7,14 +7,13 @@ import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.postgresql.util.PSQLException;
+import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -30,6 +29,7 @@ public class PostgresConnection implements ApiaryConnection {
     private final ReadWriteLock activeTransactionsLock = new ReentrantReadWriteLock();
     private long biggestxmin = Long.MIN_VALUE;
     private final Set<TransactionContext> activeTransactions = ConcurrentHashMap.newKeySet();
+    private final Set<TransactionContext> abortedTransactions = ConcurrentHashMap.newKeySet();
 
     /**
      * Create a connection to a Postgres database.
@@ -113,42 +113,65 @@ public class PostgresConnection implements ApiaryConnection {
         conn.close();
     }
 
+    private void rollback(PostgresContext ctxt) throws SQLException {
+        abortedTransactions.add(ctxt.txc);
+        for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
+            Map<String, List<String>> updatedKeys = ctxt.secondaryWrittenKeys.get(secondary);
+            ctxt.workerContext.getSecondaryConnection(secondary).rollback(updatedKeys, ctxt.txc);
+        }
+        ctxt.conn.rollback();
+        abortedTransactions.remove(ctxt.txc);
+        activeTransactions.remove(ctxt.txc);
+    }
+
     @Override
     public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) {
         Connection c = connection.get();
-        activeTransactionsLock.readLock().lock();
-        PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID);
-        activeTransactions.add(ctxt.txc);
-        if (ctxt.txc.xmin > biggestxmin) {
-            biggestxmin = ctxt.txc.xmin;
-        }
-        activeTransactionsLock.readLock().unlock();
         FunctionOutput f = null;
         while (true) {
+            activeTransactionsLock.readLock().lock();
+            PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID,
+                    new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
+            activeTransactions.add(ctxt.txc);
+            if (ctxt.txc.xmin > biggestxmin) {
+                biggestxmin = ctxt.txc.xmin;
+            }
+            activeTransactionsLock.readLock().unlock();
             try {
                 f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
                 boolean valid = true;
                 if (ApiaryConfig.XDBTransactions) {
-                    for (String secondary : ctxt.secondaryUpdatedKeys.keySet()) {
-                        List<String> updatedKeys = ctxt.secondaryUpdatedKeys.get(secondary);
+                    for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
+                        Map<String, List<String>> updatedKeys = ctxt.secondaryWrittenKeys.get(secondary);
                         valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(updatedKeys, ctxt.txc);
                     }
                 }
                 if (valid) {
                     ctxt.conn.commit();
+                    activeTransactions.remove(ctxt.txc);
                     break;
                 } else {
-                    ctxt.conn.rollback();
+                    rollback(ctxt);
                 }
             } catch (Exception e) {
-                try {
-                    ctxt.conn.rollback();
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
+                if (e instanceof InvocationTargetException) {
+                    InvocationTargetException i = (InvocationTargetException) e;
+                    if (i.getCause() instanceof PSQLException) {
+                        PSQLException p = (PSQLException) i.getCause();
+                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                            try {
+                                rollback(ctxt);
+                                continue;
+                            } catch (SQLException ex) {
+                                ex.printStackTrace();
+                            }
+                        }
+                    }
                 }
+                e.printStackTrace();
+                break;
             }
         }
-        activeTransactions.remove(ctxt.txc);
         return f;
     }
 
@@ -157,7 +180,7 @@ public class PostgresConnection implements ApiaryConnection {
         activeTransactionsLock.writeLock().lock();
         Set<TransactionContext> txSnapshot = new HashSet<>(activeTransactions);
         if (txSnapshot.isEmpty()) {
-            txSnapshot.add(new TransactionContext(0, biggestxmin, biggestxmin + 1, new long[0]));
+            txSnapshot.add(new TransactionContext(0, biggestxmin, biggestxmin, new ArrayList<>()));
         }
         activeTransactionsLock.writeLock().unlock();
         return txSnapshot;

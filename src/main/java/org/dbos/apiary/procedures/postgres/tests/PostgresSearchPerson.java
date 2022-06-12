@@ -21,7 +21,8 @@ public class PostgresSearchPerson extends PostgresFunction {
         if (pgCount == esCount) {
             return pgCount;
         } else {
-            logger.info("{} {} {}", searchText, pgCount, esCount);
+            logger.info("{} {} {} {} {} {} {}", searchText, pgCount, esCount,
+                    context.txc.txID, context.txc.xmin, context.txc.xmax, context.txc.activeTransactions);
             return -1;
         }
     }

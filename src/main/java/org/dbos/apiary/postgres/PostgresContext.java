@@ -11,6 +11,7 @@ import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * PostgresContext is a context for Apiary-Postgres functions.
@@ -25,9 +26,10 @@ public class PostgresContext extends ApiaryContext {
 
     public TransactionContext txc;
 
-    Map<String, List<String>> secondaryUpdatedKeys = new HashMap<>();
+    Map<String, Map<String, List<String>>> secondaryWrittenKeys = new HashMap<>();
 
-    public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID) {
+    public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID,
+                           Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions) {
         super(workerContext, service, execID, functionID);
         this.conn = c;
         try {
@@ -35,13 +37,23 @@ public class PostgresContext extends ApiaryContext {
             ResultSet rs = stmt.executeQuery("select txid_current();");
             rs.next();
             long txID = rs.getLong(1);
-            rs = stmt.executeQuery("select  pg_current_snapshot();");
+            rs = stmt.executeQuery("select pg_current_snapshot();");
             rs.next();
             String snapshotString = rs.getString(1);
             long xmin = PostgresUtilities.parseXmin(snapshotString);
             long xmax = PostgresUtilities.parseXmax(snapshotString);
-            long[] activeTransactions = PostgresUtilities.parseActiveTransactions(snapshotString);
-            this.txc = new TransactionContext(txID, xmin, xmax, activeTransactions);
+            List<Long> activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
+            activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < xmax).collect(Collectors.toList()));
+            for (TransactionContext t: activeTransactions) {
+                if (t.txID < xmax && !activeTxIDs.contains(t.txID)) {
+                    rs = stmt.executeQuery("select txid_status(" + t.txID + ");");
+                    rs.next();
+                    if (rs.getString("txid_status").equals("aborted")) {
+                        activeTxIDs.add(t.txID);
+                    }
+                }
+            }
+            this.txc = new TransactionContext(txID, xmin, xmax, activeTxIDs);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -77,8 +89,11 @@ public class PostgresContext extends ApiaryContext {
                 ApiarySecondaryConnection c = workerContext.getSecondaryConnection(functionType);
                 long newID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
                 FunctionOutput fo = c.callFunction(name, workerContext, txc, service, execID, newID, inputs);
-                secondaryUpdatedKeys.putIfAbsent(functionType, new ArrayList<>());
-                secondaryUpdatedKeys.get(functionType).addAll(fo.getUpdatedKeys());
+                secondaryWrittenKeys.putIfAbsent(functionType, new HashMap<>());
+                for (String table: fo.getWrittenKeys().keySet()) {
+                    secondaryWrittenKeys.get(functionType).putIfAbsent(table, new ArrayList<>());
+                    secondaryWrittenKeys.get(functionType).get(table).addAll(fo.getWrittenKeys().get(table));
+                }
                 return fo;
             } catch (Exception e) {
                 e.printStackTrace();

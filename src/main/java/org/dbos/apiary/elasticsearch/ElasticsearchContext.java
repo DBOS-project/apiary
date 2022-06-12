@@ -9,7 +9,6 @@ import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.json.JsonData;
-import com.google.protobuf.Api;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
@@ -20,7 +19,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ElasticsearchContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchContext.class);
@@ -28,7 +29,7 @@ public class ElasticsearchContext extends ApiaryContext {
     private final ElasticsearchClient client;
     private final TransactionContext txc;
 
-    List<String> updatedKeys = new ArrayList<>();
+    Map<String, List<String>> writtenKeys = new HashMap<>();
 
     public ElasticsearchContext(ElasticsearchClient client, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
@@ -42,10 +43,11 @@ public class ElasticsearchContext extends ApiaryContext {
         return null;
     }
 
-    public void executeUpdate(String index, ApiaryDocument document, String id) {
+    public void executeWrite(String index, ApiaryDocument document, String id) {
         try {
-            updatedKeys.add(id);
             if (ApiaryConfig.XDBTransactions) {
+                writtenKeys.putIfAbsent(index, new ArrayList<>());
+                writtenKeys.get(index).add(id);
                 document.setApiaryID(id);
                 document.setBeginVersion(txc.txID);
                 document.setEndVersion(Long.MAX_VALUE);
@@ -86,6 +88,7 @@ public class ElasticsearchContext extends ApiaryContext {
                                         ).should( // endVersion must not be in the snapshot.
                                                 endVersionFilter
                                         )
+                                        .minimumShouldMatch("1")
                                 )._toQuery())
                         ))
                 );

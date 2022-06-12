@@ -10,7 +10,7 @@ public class ElasticsearchFunction implements ApiaryFunction {
     public FunctionOutput apiaryRunFunction(ApiaryContext apiaryContext, Object... input) throws Exception {
         ElasticsearchContext ctxt = (ElasticsearchContext) apiaryContext;
         FunctionOutput fo = ApiaryFunction.super.apiaryRunFunction(apiaryContext, input);
-        fo.setUpdatedKeys(ctxt.updatedKeys);
+        fo.setWrittenKeys(ctxt.writtenKeys);
         return fo;
     }
 

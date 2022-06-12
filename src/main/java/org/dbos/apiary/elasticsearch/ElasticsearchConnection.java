@@ -1,6 +1,12 @@
 package org.dbos.apiary.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.StoredScriptId;
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
+import co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
+import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
@@ -37,14 +43,14 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 public class ElasticsearchConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConnection.class);
     public ElasticsearchClient client;
 
-    private final Map<String, Set<Long>> committedUpdates = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
+    private static final String updateEndVersionScript = "updateEndVersion";
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
         try {
@@ -75,6 +81,9 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
 
             // And create the API client
             this.client = new ElasticsearchClient(transport);
+
+            // Store scripts
+            client.putScript(p -> p.id(updateEndVersionScript).script(s -> s.lang("painless").source("ctx._source.endVersion=params['endV']")));
         } catch (CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException | KeyManagementException e) {
             logger.info("Elasticsearch Connection Failed");
             throw new RuntimeException("Failed to connect to ElasticSearch");
@@ -94,32 +103,95 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public boolean validate(List<String> updatedKeys, TransactionContext txc) {
-        Set<Long> activeTransactions = Arrays.stream(txc.activeTransactions).boxed().collect(Collectors.toSet());
+    public void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+        try {
+            // Delete all records written by this transaction.
+            for (String index : writtenKeys.keySet()) {
+                client.deleteByQuery(ubq -> ubq
+                        .index(index)
+                        .query(MatchQuery.of(t -> t.field("beginVersion").query(txc.txID))._toQuery())
+                        .refresh(Boolean.TRUE)
+                );
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public boolean validate(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+        Set<Long> activeTransactions = new HashSet<>(txc.activeTransactions);
         validationLock.lock();
         boolean valid = true;
-        for (String key: updatedKeys) {
-            // Has the key been modified by a transaction not in the snapshot?
-            Set<Long> updates = committedUpdates.getOrDefault(key, Collections.emptySet());
-            for (Long update: updates) {
-                if (update >= txc.xmax || activeTransactions.contains(update)) {
-                    valid = false;
-                    break;
+        for (String index: writtenKeys.keySet()) {
+            for (String key : writtenKeys.get(index)) {
+                // Has the key been modified by a transaction not in the snapshot?
+                Set<Long> writes = committedWrites.getOrDefault(index, Collections.emptyMap()).getOrDefault(key, Collections.emptySet());
+                for (Long write : writes) {
+                    if (write >= txc.xmax || activeTransactions.contains(write)) {
+                        valid = false;
+                        break;
+                    }
                 }
             }
         }
         if (valid) {
-            for (String key: updatedKeys) {
-                committedUpdates.putIfAbsent(key, ConcurrentHashMap.newKeySet());
-                committedUpdates.get(key).add(txc.txID);
+            for (String index: writtenKeys.keySet()) {
+                for (String key : writtenKeys.get(index)) {
+                    committedWrites.putIfAbsent(index, new ConcurrentHashMap<>());
+                    committedWrites.get(index).putIfAbsent(key, ConcurrentHashMap.newKeySet());
+                    committedWrites.get(index).get(key).add(txc.txID);
+                }
             }
         }
         validationLock.unlock();
+        if (valid) {
+            for (String index : writtenKeys.keySet()) {
+                for (String key : writtenKeys.get(index)) {
+                    while (true) {
+                        try {
+                            client.updateByQuery(ubq -> ubq
+                                    .index(index)
+                                    .query(BoolQuery.of(bb -> bb
+                                            .must(
+                                                    MatchQuery.of(t -> t.field("apiaryID").query(key))._toQuery(),
+                                                    RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.txID)))._toQuery()
+                                            )
+                                    )._toQuery())
+                                    .script(s -> s
+                                            .stored(StoredScriptId.of(b -> b
+                                                    .id(updateEndVersionScript).params(Map.of("endV", JsonData.of(txc.txID))))
+                                            )
+                                    ).refresh(Boolean.TRUE)
+                            );
+                            break;
+                        } catch (IOException e) {
+                            // Retry on version conflict.
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
         return valid;
     }
 
     public void garbageCollect(Set<TransactionContext> activeTransactions) {
         long globalxmin = activeTransactions.stream().mapToLong(i -> i.xmin).min().getAsLong();
-        committedUpdates.values().forEach(u -> u.removeIf(updateTxID -> updateTxID < globalxmin));
+        // No need to keep track of writes that are visible to all active or future transactions.
+        committedWrites.values().forEach(i -> i.values().forEach(w -> w.removeIf(txID -> txID < globalxmin)));
+        // Delete old versions that are no longer visible to any active or future transaction.
+        try {
+            for (String index : committedWrites.keySet()) {
+                client.deleteByQuery(dbq -> dbq
+                        .index(index)
+                        .query(
+                                RangeQuery.of(t -> t.field("endVersion").lt(JsonData.of(globalxmin)))._toQuery()
+                        )
+                );
+            }
+        } catch (IOException e) {
+            // No need to retry on version conflicts, clean up the record in the next GC.
+        }
     }
 }

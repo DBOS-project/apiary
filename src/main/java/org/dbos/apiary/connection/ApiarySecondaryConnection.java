@@ -5,6 +5,7 @@ import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -14,7 +15,10 @@ public interface ApiarySecondaryConnection {
 
     FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext transactionContext, String service, long execID, long functionID, Object... inputs) throws Exception;
 
-    boolean validate(List<String> updatedKeys, TransactionContext txc);
+    // Map is from a table/index to a list of written keys for that index.
+    void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc);
+
+    boolean validate(Map<String, List<String>> writtenKeys, TransactionContext txc);
 
     void garbageCollect(Set<TransactionContext> activeTransactions);
 }

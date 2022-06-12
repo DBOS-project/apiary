@@ -1,7 +1,6 @@
 package org.dbos.apiary.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.InlineScript;
 import co.elastic.clients.elasticsearch._types.StoredScriptId;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
@@ -23,7 +22,6 @@ import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
-import org.elasticsearch.client.ResponseException;
 import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +43,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 public class ElasticsearchConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchConnection.class);
@@ -53,7 +50,6 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
 
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
-    private static final String updateBeginVersionScript = "updateBeginVersion";
     private static final String updateEndVersionScript = "updateEndVersion";
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
@@ -87,7 +83,6 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
             this.client = new ElasticsearchClient(transport);
 
             // Store scripts
-            client.putScript(p -> p.id(updateBeginVersionScript).script(s -> s.lang("painless").source("ctx._source.beginVersion=params['beginV']")));
             client.putScript(p -> p.id(updateEndVersionScript).script(s -> s.lang("painless").source("ctx._source.endVersion=params['endV']")));
         } catch (CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException | KeyManagementException e) {
             logger.info("Elasticsearch Connection Failed");
@@ -110,16 +105,11 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
     @Override
     public void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc) {
         try {
-            // Make invisible all records written by this transaction by setting their beginVersion to infinity.
+            // Delete all records written by this transaction.
             for (String index : writtenKeys.keySet()) {
-                UpdateByQueryResponse r= client.updateByQuery(ubq -> ubq
+                client.deleteByQuery(ubq -> ubq
                         .index(index)
                         .query(MatchQuery.of(t -> t.field("beginVersion").query(txc.txID))._toQuery())
-                        .script(s -> s
-                                .stored(StoredScriptId.of(b -> b
-                                        .id(updateBeginVersionScript).params(Map.of("beginV", JsonData.of(Long.MAX_VALUE))))
-                                )
-                        )
                         .refresh(Boolean.TRUE)
                 );
             }

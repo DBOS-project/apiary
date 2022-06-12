@@ -56,7 +56,7 @@ public class ElasticsearchContext extends ApiaryContext {
             client.index(i -> i
                     .index(index)
                     .document(document)
-                    .refresh(Refresh.WaitFor));
+                    .refresh(Refresh.True));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -78,7 +78,7 @@ public class ElasticsearchContext extends ApiaryContext {
                         .index(index)
                         .document(document)
                 )
-            ).refresh(Refresh.WaitFor);
+            ).refresh(Refresh.True);
         }
         client.bulk(br.build());
     }

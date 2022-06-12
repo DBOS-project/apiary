@@ -59,30 +59,42 @@ public class PostgresESBenchmark {
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
 
         AtomicInteger count = new AtomicInteger(initialDocs);
-        ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
+        ExecutorService readThreadPool = Executors.newFixedThreadPool(threadPoolSize);
+        ExecutorService writeThreadPool = Executors.newFixedThreadPool(threadPoolSize);
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
 
-        Runnable r = () -> {
+        Runnable readR = () -> {
             try {
                 long t0 = System.nanoTime();
-                int chooser = ThreadLocalRandom.current().nextInt(100);
-                if (chooser < percentageRead) {
-                    String search = "matei" + ThreadLocalRandom.current().nextInt(count.get() - 5, count.get() + 5);
-                    int res = client.get().executeFunction("PostgresSearchPerson", search).getInt();
-                    if (ApiaryConfig.XDBTransactions && res == -1) {
-                        logger.info("Inconsistency: {}", search);
-                    }
-                    readTimes.add(System.nanoTime() - t0);
-                } else if (chooser < percentageRead + percentageAppend) {
-                    int localCount = count.getAndIncrement();
-                    client.get().executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
-                    writeTimes.add(System.nanoTime() - t0);
-                } else {
-                    int localCount = ThreadLocalRandom.current().nextInt(count.get());
-                    client.get().executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
-                    writeTimes.add(System.nanoTime() - t0);
+                String search = "matei" + ThreadLocalRandom.current().nextInt(count.get() - 5, count.get() + 5);
+                int res = client.get().executeFunction("PostgresSearchPerson", search).getInt();
+                if (ApiaryConfig.XDBTransactions && res == -1) {
+                    logger.info("Inconsistency: {}", search);
                 }
+                readTimes.add(System.nanoTime() - t0);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        };
+
+        Runnable appendR = () -> {
+            try {
+                long t0 = System.nanoTime();
+                int localCount = count.getAndIncrement();
+                client.get().executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
+                writeTimes.add(System.nanoTime() - t0);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        };
+
+        Runnable updateR = () -> {
+            try {
+                long t0 = System.nanoTime();
+                int localCount = ThreadLocalRandom.current().nextInt(count.get());
+                client.get().executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
+                writeTimes.add(System.nanoTime() - t0);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -94,7 +106,14 @@ public class PostgresESBenchmark {
                 writeTimes.clear();
                 readTimes.clear();
             }
-            threadPool.submit(r);
+            int chooser = ThreadLocalRandom.current().nextInt(100);
+            if (chooser < percentageRead) {
+                readThreadPool.submit(readR);
+            } else if (chooser < percentageRead + percentageAppend) {
+                writeThreadPool.submit(appendR);
+            } else {
+                writeThreadPool.submit(updateR);
+            }
             while (System.nanoTime() - t < interval.longValue() * 1000) {
                 // Busy-spin
             }
@@ -126,8 +145,10 @@ public class PostgresESBenchmark {
             logger.info("No writes");
         }
 
-        threadPool.shutdown();
-        threadPool.awaitTermination(100000, TimeUnit.SECONDS);
+        readThreadPool.shutdown();
+        readThreadPool.awaitTermination(100000, TimeUnit.SECONDS);
+        writeThreadPool.shutdown();
+        writeThreadPool.awaitTermination(100000, TimeUnit.SECONDS);
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
         System.exit(0); // ES client is bugged and won't exit.
     }

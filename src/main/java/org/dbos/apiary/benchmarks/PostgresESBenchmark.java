@@ -22,7 +22,7 @@ public class PostgresESBenchmark {
     private static final int threadPoolSize = 256;
     private static final int percentageRead = 99;
 
-    private static final int initialDocs = 10000;
+    private static final int initialDocs = 100000;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
     private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();

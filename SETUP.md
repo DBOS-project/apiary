@@ -46,3 +46,15 @@ Now you could run some Apiary unit tests!
 mvn test
 ```
 All should pass.
+
+
+## Elasticsearch
+
+Download the Elasticsearch binaries from [here](https://www.elastic.co/downloads/elasticsearch).
+
+Set `ES_HOME` to your Elasticsearch root directory.
+
+Set the password for the `elastic` user:
+```
+bin/elasticsearch-reset-password -u elastic -i
+```

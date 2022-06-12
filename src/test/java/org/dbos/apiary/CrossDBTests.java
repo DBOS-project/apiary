@@ -6,10 +6,12 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
-import org.dbos.apiary.procedures.postgres.tests.PostgresIndexPerson;
-import org.dbos.apiary.procedures.postgres.tests.PostgresSearchPerson;
+import org.dbos.apiary.procedures.postgres.crossdb.PostgresBulkIndexPerson;
+import org.dbos.apiary.procedures.postgres.crossdb.PostgresIndexPerson;
+import org.dbos.apiary.procedures.postgres.crossdb.PostgresSearchPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -94,6 +96,49 @@ public class CrossDBTests {
 
         res = client.executeFunction("PostgresSearchPerson", "matei").getInt();
         assertEquals(1, res);
+    }
+
+    @Test
+    public void testElasticsearchBulk() throws InvalidProtocolBufferException, InterruptedException {
+        logger.info("testElasticsearchBulk");
+
+        ElasticsearchConnection conn;
+        PostgresConnection pconn;
+        try {
+            conn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        } catch (Exception e) {
+            logger.info("No Elasticsearch/Postgres instance! {}", e.getMessage());
+            return;
+        }
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.elasticsearch, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresSearchPerson", ApiaryConfig.postgres, PostgresSearchPerson::new);
+        apiaryWorker.registerFunction("PostgresBulkIndexPerson", ApiaryConfig.postgres, PostgresBulkIndexPerson::new);
+        apiaryWorker.registerFunction("ElasticsearchBulkIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchBulkIndexPerson::new);
+        apiaryWorker.registerFunction("ElasticsearchSearchPerson", ApiaryConfig.elasticsearch, ElasticsearchSearchPerson::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int numItems = 10;
+        String[] names = new String[numItems];
+        int[] numbers = new int[numItems];
+        for (int i = 0 ; i < numItems; i++) {
+            names[i] = "matei" + i;
+            numbers[i] = i;
+        }
+
+        int res;
+        res = client.executeFunction("PostgresBulkIndexPerson", names, numbers).getInt();
+        assertEquals(0, res);
+
+        for (int i = 0 ; i < numItems; i++) {
+            res = client.executeFunction("PostgresSearchPerson", "matei" + i).getInt();
+            assertEquals(1, res);
+        }
     }
 
     @Test

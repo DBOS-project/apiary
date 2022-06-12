@@ -1,4 +1,4 @@
-package org.dbos.apiary.procedures.postgres.tests;
+package org.dbos.apiary.procedures.postgres.crossdb;
 
 import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;

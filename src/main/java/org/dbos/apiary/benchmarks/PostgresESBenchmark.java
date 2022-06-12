@@ -21,6 +21,8 @@ public class PostgresESBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(PostgresESBenchmark.class);
     private static final int threadPoolSize = 256;
     private static final int percentageRead = 99;
+    private static final int percentageAppend = 1;
+    private static final int percentageUpdate = 0;
 
     private static final int initialDocs = 100000;
 
@@ -29,6 +31,7 @@ public class PostgresESBenchmark {
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
 
     public static void benchmark(String dbAddr, String service, Integer interval, Integer duration) throws SQLException, InterruptedException, InvalidProtocolBufferException {
+        assert(percentageRead + percentageAppend + percentageUpdate == 100);
 
         PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         conn.dropTable("FuncInvocations");
@@ -71,8 +74,12 @@ public class PostgresESBenchmark {
                         logger.info("Inconsistency: {}", search);
                     }
                     readTimes.add(System.nanoTime() - t0);
-                } else {
+                } else if (chooser < percentageRead + percentageAppend) {
                     int localCount = count.getAndIncrement();
+                    client.get().executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
+                    writeTimes.add(System.nanoTime() - t0);
+                } else {
+                    int localCount = ThreadLocalRandom.current().nextInt(count.get());
                     client.get().executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
                     writeTimes.add(System.nanoTime() - t0);
                 }

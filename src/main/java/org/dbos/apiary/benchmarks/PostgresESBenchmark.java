@@ -67,7 +67,7 @@ public class PostgresESBenchmark {
                 if (chooser < percentageRead) {
                     String search = "matei" + ThreadLocalRandom.current().nextInt(count.get() - 5, count.get() + 5);
                     int res = client.get().executeFunction("PostgresSearchPerson", search).getInt();
-                    if (res == -1) {
+                    if (ApiaryConfig.XDBTransactions && res == -1) {
                         logger.info("Inconsistency: {}", search);
                     }
                     readTimes.add(System.nanoTime() - t0);

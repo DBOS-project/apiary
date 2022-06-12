@@ -22,6 +22,8 @@ public class PostgresESBenchmark {
     private static final int threadPoolSize = 256;
     private static final int percentageRead = 99;
 
+    private static final int initialDocs = 100;
+
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
     private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
@@ -31,7 +33,7 @@ public class PostgresESBenchmark {
         PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         conn.dropTable("FuncInvocations");
         conn.dropTable("PersonTable");
-        conn.createTable("PersonTable", "Name varchar(1000) NOT NULL, Number integer PRIMARY KEY NOT NULL");
+        conn.createTable("PersonTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Number integer NOT NULL");
         ElasticsearchClient esClient = new ElasticsearchConnection("localhost", 9200, "elastic", "password").client;
         try {
             DeleteIndexRequest request = new DeleteIndexRequest.Builder().index("people").build();
@@ -41,16 +43,20 @@ public class PostgresESBenchmark {
         }
         esClient.shutdown();
 
-        AtomicInteger count = new AtomicInteger(0);
-        ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
 
-        for (int i = 0; i < 10; i++) {
-            int localCount = count.getAndIncrement();
-            client.get().executeFunction("PostgresIndexPerson", "matei" + localCount, localCount).getInt();
+        long loadStart = System.currentTimeMillis();
+        String[] initialNames = new String[initialDocs];
+        int[] initialNumbers = new int[initialDocs];
+        for (int i = 0; i < initialDocs; i++) {
+            initialNames[i] = "matei" + i;
+            initialNumbers[i] = i;
         }
-        logger.info("Done Loading");
+        client.get().executeFunction("PostgresBulkIndexPerson", initialNames, initialNumbers);
+        logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
 
+        AtomicInteger count = new AtomicInteger(initialDocs);
+        ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
 

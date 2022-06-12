@@ -7,6 +7,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.json.JsonData;
@@ -53,10 +54,11 @@ public class ElasticsearchContext extends ApiaryContext {
                 document.setBeginVersion(txc.txID);
                 document.setEndVersion(Long.MAX_VALUE);
             }
-            client.index(i -> i
-                    .index(index)
-                    .document(document)
-                    .refresh(Refresh.True));
+            IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document).refresh(Refresh.True);
+            if (!ApiaryConfig.XDBTransactions) {
+                b = b.id(id);
+            }
+            client.index(b.build());
         } catch (IOException e) {
             e.printStackTrace();
         }

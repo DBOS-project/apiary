@@ -4,17 +4,15 @@ import org.apache.commons_voltpatches.cli.CommandLine;
 import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
 import org.apache.commons_voltpatches.cli.Options;
-import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
-import org.dbos.apiary.procedures.postgres.tests.PostgresIndexPerson;
-import org.dbos.apiary.procedures.postgres.tests.PostgresSearchPerson;
-import org.dbos.apiary.procedures.voltdb.increment.IncrementStatelessDriver;
-import org.dbos.apiary.procedures.voltdb.retwis.RetwisMerge;
+import org.dbos.apiary.procedures.postgres.crossdb.PostgresBulkIndexPerson;
+import org.dbos.apiary.procedures.postgres.crossdb.PostgresIndexPerson;
+import org.dbos.apiary.procedures.postgres.crossdb.PostgresSearchPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.voltdb.VoltConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,9 +63,11 @@ public class ApiaryWorkerExecutable {
             ElasticsearchConnection econn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
             worker.registerConnection(ApiaryConfig.elasticsearch, econn);
             worker.registerConnection(ApiaryConfig.postgres, conn);
-            worker.registerFunction("PostgresSearchPerson", ApiaryConfig.postgres, PostgresSearchPerson::new);
             worker.registerFunction("PostgresIndexPerson", ApiaryConfig.postgres, PostgresIndexPerson::new);
+            worker.registerFunction("PostgresBulkIndexPerson", ApiaryConfig.postgres, PostgresBulkIndexPerson::new);
+            worker.registerFunction("PostgresSearchPerson", ApiaryConfig.postgres, PostgresSearchPerson::new);
             worker.registerFunction("ElasticsearchIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchIndexPerson::new);
+            worker.registerFunction("ElasticsearchBulkIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchBulkIndexPerson::new);
             worker.registerFunction("ElasticsearchSearchPerson", ApiaryConfig.elasticsearch, ElasticsearchSearchPerson::new);
         } else {
             throw new IllegalArgumentException("Option 'db' must be one of (voltdb, postgres).");

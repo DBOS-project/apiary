@@ -6,6 +6,8 @@ import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
+import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.IndexRequest;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.json.JsonData;
@@ -52,13 +54,35 @@ public class ElasticsearchContext extends ApiaryContext {
                 document.setBeginVersion(txc.txID);
                 document.setEndVersion(Long.MAX_VALUE);
             }
-            client.index(i -> i
-                    .index(index)
-                    .document(document)
-                    .refresh(Refresh.WaitFor));
+            IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document).refresh(Refresh.True);
+            if (!ApiaryConfig.XDBTransactions) {
+                b = b.id(id);
+            }
+            client.index(b.build());
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void executeBulkWrite(String index, List<ApiaryDocument> documents, List<String> ids) throws IOException {
+        assert(documents.size() == ids.size());
+        BulkRequest.Builder br = new BulkRequest.Builder();
+        for (int i = 0; i < documents.size(); i++) {
+            ApiaryDocument document = documents.get(i);
+            String id = ids.get(i);
+            writtenKeys.putIfAbsent(index, new ArrayList<>());
+            writtenKeys.get(index).add(id);
+            document.setApiaryID(id);
+            document.setBeginVersion(txc.txID);
+            document.setEndVersion(Long.MAX_VALUE);
+            br.operations(op -> op
+                .index(idx -> idx
+                        .index(index)
+                        .document(document)
+                )
+            ).refresh(Refresh.True);
+        }
+        client.bulk(br.build());
     }
 
     public SearchResponse executeQuery(String index, Query searchQuery, Class clazz) {

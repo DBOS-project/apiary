@@ -98,12 +98,16 @@ public class CrossDBBenchmarkTests {
         apiaryWorker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
-
-        client.executeFunction("ShopAddItem", 0, "camera", "good camera", 5, 5);
-        client.executeFunction("ShopAddItem", 1, "stove", "good stove", 4, 4);
-        client.executeFunction("ShopAddCart", 0, 0);
-        client.executeFunction("ShopAddCart", 0, 1);
-        int totalCost = client.executeFunction("ShopCheckoutCart", 0).getInt();
-        assertEquals(9, totalCost);
+        int res;
+        res = client.executeFunction("ShopAddItem", 0, "camera", "good camera", 5, 5).getInt();
+        res = client.executeFunction("ShopAddItem", 1, "stove", "good stove", 4, 1).getInt();
+        res = client.executeFunction("ShopAddCart", 0, 0).getInt();
+        assertEquals(0, res);
+        res = client.executeFunction("ShopAddCart", 0, 1).getInt();
+        assertEquals(0, res);
+        res = client.executeFunction("ShopAddCart", 0, 1).getInt();
+        assertEquals(1, res);
+        res = client.executeFunction("ShopCheckoutCart", 0).getInt();
+        assertEquals(9, res);
     }
 }

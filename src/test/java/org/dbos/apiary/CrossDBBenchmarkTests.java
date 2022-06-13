@@ -9,12 +9,15 @@ import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
+import org.dbos.apiary.procedures.elasticsearch.shop.ShopESAddItem;
+import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresBulkIndexPerson;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresIndexPerson;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresSearchPerson;
 import org.dbos.apiary.procedures.postgres.shop.ShopAddCart;
 import org.dbos.apiary.procedures.postgres.shop.ShopAddItem;
 import org.dbos.apiary.procedures.postgres.shop.ShopCheckoutCart;
+import org.dbos.apiary.procedures.postgres.shop.ShopSearchItem;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -68,7 +71,7 @@ public class CrossDBBenchmarkTests {
     public void cleanupElasticsearch() {
         try {
             ElasticsearchClient client = new ElasticsearchConnection("localhost", 9200, "elastic", "password").client;
-            DeleteIndexRequest request = new DeleteIndexRequest.Builder().index("people").build();
+            DeleteIndexRequest request = new DeleteIndexRequest.Builder().index("items").build();
             client.indices().delete(request);
         } catch (Exception e) {
             logger.info("Index Not Deleted {}", e.getMessage());
@@ -93,14 +96,26 @@ public class CrossDBBenchmarkTests {
         apiaryWorker.registerConnection(ApiaryConfig.elasticsearch, conn);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerFunction("ShopAddItem", ApiaryConfig.postgres, ShopAddItem::new);
+        apiaryWorker.registerFunction("ShopSearchItem", ApiaryConfig.postgres, ShopSearchItem::new);
         apiaryWorker.registerFunction("ShopAddCart", ApiaryConfig.postgres, ShopAddCart::new);
         apiaryWorker.registerFunction("ShopCheckoutCart", ApiaryConfig.postgres, ShopCheckoutCart::new);
+        apiaryWorker.registerFunction("ShopESAddItem", ApiaryConfig.elasticsearch, ShopESAddItem::new);
+        apiaryWorker.registerFunction("ShopESSearchItem", ApiaryConfig.elasticsearch, ShopESSearchItem::new);
         apiaryWorker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
         int res;
+        String[] items;
         res = client.executeFunction("ShopAddItem", 0, "camera", "good camera", 5, 5).getInt();
         res = client.executeFunction("ShopAddItem", 1, "stove", "good stove", 4, 1).getInt();
+        items = client.executeFunction("ShopSearchItem", "camera").getStringArray();
+        assertEquals(1, items.length);
+        assertEquals("0", items[0]);
+        items = client.executeFunction("ShopSearchItem", "stove").getStringArray();
+        assertEquals(1, items.length);
+        assertEquals("1", items[0]);
+        items = client.executeFunction("ShopSearchItem", "nothing").getStringArray();
+        assertEquals(0, items.length);
         res = client.executeFunction("ShopAddCart", 0, 0).getInt();
         assertEquals(0, res);
         res = client.executeFunction("ShopAddCart", 0, 1).getInt();

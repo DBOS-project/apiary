@@ -10,6 +10,7 @@ public class ShopAddItem extends PostgresFunction {
 
     public static int runFunction(PostgresContext ctxt, int itemID, String itemName, String itemDesc, int cost, int inventory) throws SQLException {
         ctxt.executeUpdate(addItem, itemID, itemName, itemDesc, cost, inventory);
+        ctxt.apiaryCallFunction("ShopESAddItem", itemID, itemName, itemDesc, cost);
         return 0;
     }
 }

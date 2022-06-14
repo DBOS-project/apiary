@@ -2,19 +2,25 @@ package org.dbos.apiary.benchmarks;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
-import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.elasticsearch.shop.ShopItem;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class ShopBenchmark {
@@ -28,7 +34,7 @@ public class ShopBenchmark {
     private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
 
-    public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageGetItem, int percentageCheckout, int percentageWrite) throws SQLException, InterruptedException, InvalidProtocolBufferException {
+    public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageGetItem, int percentageCheckout, int percentageWrite) throws SQLException, InterruptedException, IOException {
         assert (percentageGetItem + percentageCheckout + percentageWrite == 100);
         PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         conn.dropTable("FuncInvocations");
@@ -53,8 +59,10 @@ public class ShopBenchmark {
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
 
         long loadStart = System.currentTimeMillis();
+        List<ShopItem> partData = partData(Path.of("data", "part.tbl"));
         for (int i = 0; i < initialItems; i++) {
-            client.get().executeFunction("ShopAddItem", i, "camera" + i, "good camera", i % 10, 100000000);
+            ShopItem item = partData.get(i);
+            client.get().executeFunction("ShopAddItem", i, item.getItemName(), item.getItemDesc(), item.getCost(), 100000000);
         }
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
 
@@ -69,8 +77,8 @@ public class ShopBenchmark {
                 int chooser = ThreadLocalRandom.current().nextInt(100);
                 if (chooser < percentageGetItem) {
                     int personID = ThreadLocalRandom.current().nextInt(numPeople);
-                    String search = "camera" + ThreadLocalRandom.current().nextInt(count.get());
-                    client.get().executeFunction("ShopGetItem", personID, search, 8).getInt();
+                    String search = partData.get(ThreadLocalRandom.current().nextInt(count.get())).getItemName();
+                    client.get().executeFunction("ShopGetItem", personID, search, 1150).getInt();
                     readTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageGetItem + percentageCheckout) {
                     int personID = ThreadLocalRandom.current().nextInt(numPeople);
@@ -78,7 +86,8 @@ public class ShopBenchmark {
                     readTimes.add(System.nanoTime() - t0);
                 } else {
                     int localCount = count.getAndIncrement();
-                    client.get().executeFunction("ShopAddItem", localCount, "camera" + localCount, "good camera", localCount % 10, 100000000);
+                    ShopItem item = partData.get(localCount);
+                    client.get().executeFunction("ShopAddItem", localCount, item.getItemName(), item.getItemDesc(), item.getCost(), 100000000);
                     writeTimes.add(System.nanoTime() - t0);
                 }
             } catch (Exception e) {
@@ -129,4 +138,23 @@ public class ShopBenchmark {
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
         System.exit(0); // ES client is bugged and won't exit.
     }
+
+    public static List<ShopItem> partData(Path orderPath) throws IOException {
+        List<ShopItem> items = new ArrayList<>();
+        BufferedReader reader =
+                new BufferedReader(new FileReader(orderPath.toFile()), 10000000);
+        String line;
+        while ((line = reader.readLine()) != null) {
+            String[] entries = line.split(Pattern.quote("|"));
+            assert(entries.length == 9);
+            ShopItem item = new ShopItem();
+            item.setItemID(entries[0]);
+            item.setItemDesc(entries[8]);
+            item.setItemName(entries[1]);
+            item.setCost((int) Double.parseDouble(entries[7]));
+            items.add(item);
+        }
+        return items;
+    }
+
 }

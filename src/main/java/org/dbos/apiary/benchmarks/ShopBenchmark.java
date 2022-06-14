@@ -68,7 +68,6 @@ public class ShopBenchmark {
         for (int i = 0; i < initialItems; i++) {
             ShopItem item = partData.get(i);
             searchPhrasesSet.add(item.getItemName());
-            // searchPhrasesSet.addAll(Arrays.stream(item.getItemName().split(" ")).collect(Collectors.toList()));
             itemIDs[i] = Integer.parseInt(item.getItemID());
             itemNames[i] = item.getItemName();
             itemDescs[i] = item.getItemDesc();

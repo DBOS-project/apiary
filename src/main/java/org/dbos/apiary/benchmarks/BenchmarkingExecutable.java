@@ -21,6 +21,7 @@ public class BenchmarkingExecutable {
         options.addOption("p1", true, "Percentage 1");
         options.addOption("p2", true, "Percentage 2");
         options.addOption("p3", true, "Percentage 3");
+        options.addOption("p4", true, "Percentage 4");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -58,9 +59,10 @@ public class BenchmarkingExecutable {
         } else if (benchmark.equals("shop")) {
             int percentageGetItem = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 80;
             int percentageCheckout = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 10;
-            int percentageWrite = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 10;
-            logger.info("ShopBenchmark {} {} {}", percentageGetItem, percentageCheckout, percentageWrite);
-            ShopBenchmark.benchmark(mainHostAddr, interval, duration, percentageGetItem, percentageCheckout, percentageWrite);
+            int percentageAppend = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 10;
+            int percentageUpdate = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p4")) : 0;
+            logger.info("ShopBenchmark {} {} {} {}", percentageGetItem, percentageCheckout, percentageAppend, percentageUpdate);
+            ShopBenchmark.benchmark(mainHostAddr, interval, duration, percentageGetItem, percentageCheckout, percentageAppend, percentageUpdate);
         }
     }
 }

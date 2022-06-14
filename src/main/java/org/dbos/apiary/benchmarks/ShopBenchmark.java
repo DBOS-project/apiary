@@ -33,8 +33,8 @@ public class ShopBenchmark {
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
 
     // Requires file part.tbl in the data/ folder from TPC-H.  Download here: https://kraftp-uniserve-data.s3.us-east-2.amazonaws.com/TPC-H-SF1/part.tbl
-    public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageGetItem, int percentageCheckout, int percentageWrite) throws SQLException, InterruptedException, IOException {
-        assert (percentageGetItem + percentageCheckout + percentageWrite == 100);
+    public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageGetItem, int percentageCheckout, int percentageAppend, int percentageUpdate) throws SQLException, InterruptedException, IOException {
+        assert (percentageGetItem + percentageCheckout + percentageAppend + percentageUpdate == 100);
         PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         conn.dropTable("FuncInvocations");
         conn.dropTable("ShopItems");
@@ -96,10 +96,16 @@ public class ShopBenchmark {
                     int personID = ThreadLocalRandom.current().nextInt(numPeople);
                     client.get().executeFunction("ShopCheckoutCart", personID).getInt();
                     readTimes.add(System.nanoTime() - t0);
-                } else {
+                } else if (chooser < percentageGetItem + percentageCheckout + percentageAppend ){
                     int localCount = count.incrementAndGet();
                     ShopItem item = partData.get(localCount);
                     client.get().executeFunction("ShopAddItem", localCount, item.getItemName(), item.getItemDesc(), item.getCost(), 100000000);
+                    writeTimes.add(System.nanoTime() - t0);
+                } else {
+                    int itemID = ThreadLocalRandom.current().nextInt(count.get());
+                    int delta = ThreadLocalRandom.current().nextInt(-100, 100);
+                    ShopItem item = partData.get(itemID);
+                    client.get().executeFunction("ShopAddItem",  itemID, item.getItemName(), item.getItemDesc(), item.getCost() + delta, 100000000);
                     writeTimes.add(System.nanoTime() - t0);
                 }
             } catch (Exception e) {

@@ -15,9 +15,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
@@ -27,7 +25,7 @@ public class ShopBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(ShopBenchmark.class);
     private static final int threadPoolSize = 256;
 
-    private static final int initialItems = 10;
+    private static final int initialItems = 10000;
     private static final int numPeople = 100;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
@@ -66,14 +64,17 @@ public class ShopBenchmark {
         String[] itemDescs = new String[initialItems];
         int[] costs = new int[initialItems];
         int[] inventories = new int[initialItems];
+        Set<String> searchPhrasesSet = new HashSet<>();
         for (int i = 0; i < initialItems; i++) {
             ShopItem item = partData.get(i);
+            searchPhrasesSet.addAll(Arrays.stream(item.getItemName().split(" ")).collect(Collectors.toList()));
             itemIDs[i] = Integer.parseInt(item.getItemID());
             itemNames[i] = item.getItemName();
             itemDescs[i] = item.getItemDesc();
             costs[i] = item.getCost();
             inventories[i] = 100000000;
         }
+        List<String> searchPhrasesList = new ArrayList<>(searchPhrasesSet);
         client.get().executeFunction("ShopBulkAddItem", itemIDs, itemNames, itemDescs, costs, inventories);
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
 
@@ -88,7 +89,7 @@ public class ShopBenchmark {
                 int chooser = ThreadLocalRandom.current().nextInt(100);
                 if (chooser < percentageGetItem) {
                     int personID = ThreadLocalRandom.current().nextInt(numPeople);
-                    String search = partData.get(ThreadLocalRandom.current().nextInt(count.get())).getItemName();
+                    String search = searchPhrasesList.get(ThreadLocalRandom.current().nextInt(searchPhrasesList.size()));
                     client.get().executeFunction("ShopGetItem", personID, search, 1150).getInt();
                     readTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageGetItem + percentageCheckout) {

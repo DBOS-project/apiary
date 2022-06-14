@@ -10,6 +10,7 @@ import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESAddItem;
+import org.dbos.apiary.procedures.elasticsearch.shop.ShopESBulkAddItem;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresBulkIndexPerson;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresIndexPerson;
@@ -73,11 +74,13 @@ public class ApiaryWorkerExecutable {
             worker.registerFunction("ElasticsearchBulkIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchBulkIndexPerson::new);
             worker.registerFunction("ElasticsearchSearchPerson", ApiaryConfig.elasticsearch, ElasticsearchSearchPerson::new);
             worker.registerFunction("ShopAddItem", ApiaryConfig.postgres, ShopAddItem::new);
+            worker.registerFunction("ShopBulkAddItem", ApiaryConfig.postgres, ShopBulkAddItem::new);
             worker.registerFunction("ShopSearchItem", ApiaryConfig.postgres, ShopSearchItem::new);
             worker.registerFunction("ShopAddCart", ApiaryConfig.postgres, ShopAddCart::new);
             worker.registerFunction("ShopCheckoutCart", ApiaryConfig.postgres, ShopCheckoutCart::new);
             worker.registerFunction("ShopGetItem", ApiaryConfig.postgres, ShopGetItem::new);
             worker.registerFunction("ShopESAddItem", ApiaryConfig.elasticsearch, ShopESAddItem::new);
+            worker.registerFunction("ShopESBulkAddItem", ApiaryConfig.elasticsearch, ShopESBulkAddItem::new);
             worker.registerFunction("ShopESSearchItem", ApiaryConfig.elasticsearch, ShopESSearchItem::new);
         } else {
             throw new IllegalArgumentException("Option 'db' must be one of (voltdb, postgres).");

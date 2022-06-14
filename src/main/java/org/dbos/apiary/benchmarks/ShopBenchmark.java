@@ -34,6 +34,7 @@ public class ShopBenchmark {
     private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
 
+    // Requires file part.tbl in the data/ folder from TPC-H.  Download here: https://kraftp-uniserve-data.s3.us-east-2.amazonaws.com/TPC-H-SF1/part.tbl
     public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageGetItem, int percentageCheckout, int percentageWrite) throws SQLException, InterruptedException, IOException {
         assert (percentageGetItem + percentageCheckout + percentageWrite == 100);
         PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
@@ -60,10 +61,20 @@ public class ShopBenchmark {
 
         long loadStart = System.currentTimeMillis();
         List<ShopItem> partData = partData(Path.of("data", "part.tbl"));
+        int[] itemIDs = new int[initialItems];
+        String[] itemNames = new String[initialItems];
+        String[] itemDescs = new String[initialItems];
+        int[] costs = new int[initialItems];
+        int[] inventories = new int[initialItems];
         for (int i = 0; i < initialItems; i++) {
             ShopItem item = partData.get(i);
-            client.get().executeFunction("ShopAddItem", i, item.getItemName(), item.getItemDesc(), item.getCost(), 100000000);
+            itemIDs[i] = Integer.parseInt(item.getItemID());
+            itemNames[i] = item.getItemName();
+            itemDescs[i] = item.getItemDesc();
+            costs[i] = item.getCost();
+            inventories[i] = 100000000;
         }
+        client.get().executeFunction("ShopBulkAddItem", itemIDs, itemNames, itemDescs, costs, inventories);
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
 
         AtomicInteger count = new AtomicInteger(initialItems);
@@ -85,7 +96,7 @@ public class ShopBenchmark {
                     client.get().executeFunction("ShopCheckoutCart", personID).getInt();
                     readTimes.add(System.nanoTime() - t0);
                 } else {
-                    int localCount = count.getAndIncrement();
+                    int localCount = count.incrementAndGet();
                     ShopItem item = partData.get(localCount);
                     client.get().executeFunction("ShopAddItem", localCount, item.getItemName(), item.getItemDesc(), item.getCost(), 100000000);
                     writeTimes.add(System.nanoTime() - t0);

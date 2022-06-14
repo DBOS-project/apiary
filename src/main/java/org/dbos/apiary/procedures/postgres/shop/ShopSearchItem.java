@@ -7,7 +7,7 @@ import java.sql.SQLException;
 
 public class ShopSearchItem extends PostgresFunction {
 
-    public static String[] runFunction(PostgresContext ctxt, String searchText) throws SQLException {
-        return ctxt.apiaryCallFunction("ShopESSearchItem", searchText).getStringArray();
+    public static String[] runFunction(PostgresContext ctxt, String searchText, int maxCost) throws SQLException {
+        return ctxt.apiaryCallFunction("ShopESSearchItem", searchText, maxCost).getStringArray();
     }
 }

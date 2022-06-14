@@ -108,13 +108,15 @@ public class CrossDBBenchmarkTests {
         String[] items;
         res = client.executeFunction("ShopAddItem", 0, "camera", "good camera", 5, 5).getInt();
         res = client.executeFunction("ShopAddItem", 1, "stove", "good stove", 4, 1).getInt();
-        items = client.executeFunction("ShopSearchItem", "camera").getStringArray();
+        items = client.executeFunction("ShopSearchItem", "camera", 10).getStringArray();
         assertEquals(1, items.length);
         assertEquals("0", items[0]);
-        items = client.executeFunction("ShopSearchItem", "stove").getStringArray();
+        items = client.executeFunction("ShopSearchItem", "camera", 3).getStringArray();
+        assertEquals(0, items.length);
+        items = client.executeFunction("ShopSearchItem", "stove", 10).getStringArray();
         assertEquals(1, items.length);
         assertEquals("1", items[0]);
-        items = client.executeFunction("ShopSearchItem", "nothing").getStringArray();
+        items = client.executeFunction("ShopSearchItem", "nothing", 10).getStringArray();
         assertEquals(0, items.length);
         res = client.executeFunction("ShopAddCart", 0, 0).getInt();
         assertEquals(0, res);

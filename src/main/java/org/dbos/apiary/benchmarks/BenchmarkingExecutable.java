@@ -56,10 +56,10 @@ public class BenchmarkingExecutable {
             logger.info("PostgresESBenchmark");
             PostgresESBenchmark.benchmark(mainHostAddr, service, interval, duration);
         } else if (benchmark.equals("shop")) {
-            logger.info("ShopBenchmark");
             int percentageGetItem = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 80;
             int percentageCheckout = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 10;
             int percentageWrite = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 10;
+            logger.info("ShopBenchmark {} {} {}", percentageGetItem, percentageCheckout, percentageWrite);
             ShopBenchmark.benchmark(mainHostAddr, interval, duration, percentageGetItem, percentageCheckout, percentageWrite);
         }
     }

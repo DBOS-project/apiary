@@ -14,10 +14,7 @@ import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresBulkIndexPerson;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresIndexPerson;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresSearchPerson;
-import org.dbos.apiary.procedures.postgres.shop.ShopAddCart;
-import org.dbos.apiary.procedures.postgres.shop.ShopAddItem;
-import org.dbos.apiary.procedures.postgres.shop.ShopCheckoutCart;
-import org.dbos.apiary.procedures.postgres.shop.ShopSearchItem;
+import org.dbos.apiary.procedures.postgres.shop.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -99,6 +96,7 @@ public class CrossDBBenchmarkTests {
         apiaryWorker.registerFunction("ShopSearchItem", ApiaryConfig.postgres, ShopSearchItem::new);
         apiaryWorker.registerFunction("ShopAddCart", ApiaryConfig.postgres, ShopAddCart::new);
         apiaryWorker.registerFunction("ShopCheckoutCart", ApiaryConfig.postgres, ShopCheckoutCart::new);
+        apiaryWorker.registerFunction("ShopGetItem", ApiaryConfig.postgres, ShopGetItem::new);
         apiaryWorker.registerFunction("ShopESAddItem", ApiaryConfig.elasticsearch, ShopESAddItem::new);
         apiaryWorker.registerFunction("ShopESSearchItem", ApiaryConfig.elasticsearch, ShopESSearchItem::new);
         apiaryWorker.startServing();
@@ -124,7 +122,9 @@ public class CrossDBBenchmarkTests {
         assertEquals(0, res);
         res = client.executeFunction("ShopAddCart", 0, 1).getInt();
         assertEquals(1, res);
+        res = client.executeFunction("ShopGetItem", 0, "camera", 10).getInt();
+        assertEquals(0, res);
         res = client.executeFunction("ShopCheckoutCart", 0).getInt();
-        assertEquals(9, res);
+        assertEquals(14, res);
     }
 }

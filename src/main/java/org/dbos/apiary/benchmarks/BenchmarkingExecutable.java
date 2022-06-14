@@ -52,6 +52,9 @@ public class BenchmarkingExecutable {
         } else if (benchmark.equals("es")) {
             logger.info("PostgresESBenchmark");
             PostgresESBenchmark.benchmark(mainHostAddr, service, interval, duration);
+        } else if (benchmark.equals("shop")) {
+            logger.info("ShopBenchmark");
+            ShopBenchmark.benchmark(mainHostAddr, interval, duration);
         }
     }
 }

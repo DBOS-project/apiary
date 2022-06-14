@@ -71,7 +71,6 @@ public class ApiaryWorker {
         try {
             buff = new ProvenanceBuffer(provenanceDatabase, provenanceAddress);
             if (!buff.hasConnection) {
-                // No vertica connection.
                 buff = null;
             }
         } catch (ClassNotFoundException e) {

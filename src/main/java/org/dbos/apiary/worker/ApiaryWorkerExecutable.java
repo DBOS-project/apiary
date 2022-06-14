@@ -9,9 +9,12 @@ import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
+import org.dbos.apiary.procedures.elasticsearch.shop.ShopESAddItem;
+import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresBulkIndexPerson;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresIndexPerson;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresSearchPerson;
+import org.dbos.apiary.procedures.postgres.shop.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +61,7 @@ public class ApiaryWorkerExecutable {
         if (db.equals("voltdb")) {
             throw new IllegalArgumentException("TODO: Implement VoltDB worker");
         } else if (db.equals("postgres")) {
-            worker = new ApiaryWorker(scheduler, numThreads, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+            worker = new ApiaryWorker(scheduler, numThreads);
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
             ElasticsearchConnection econn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
             worker.registerConnection(ApiaryConfig.elasticsearch, econn);
@@ -69,6 +72,13 @@ public class ApiaryWorkerExecutable {
             worker.registerFunction("ElasticsearchIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchIndexPerson::new);
             worker.registerFunction("ElasticsearchBulkIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchBulkIndexPerson::new);
             worker.registerFunction("ElasticsearchSearchPerson", ApiaryConfig.elasticsearch, ElasticsearchSearchPerson::new);
+            worker.registerFunction("ShopAddItem", ApiaryConfig.postgres, ShopAddItem::new);
+            worker.registerFunction("ShopSearchItem", ApiaryConfig.postgres, ShopSearchItem::new);
+            worker.registerFunction("ShopAddCart", ApiaryConfig.postgres, ShopAddCart::new);
+            worker.registerFunction("ShopCheckoutCart", ApiaryConfig.postgres, ShopCheckoutCart::new);
+            worker.registerFunction("ShopGetItem", ApiaryConfig.postgres, ShopGetItem::new);
+            worker.registerFunction("ShopESAddItem", ApiaryConfig.elasticsearch, ShopESAddItem::new);
+            worker.registerFunction("ShopESSearchItem", ApiaryConfig.elasticsearch, ShopESSearchItem::new);
         } else {
             throw new IllegalArgumentException("Option 'db' must be one of (voltdb, postgres).");
         }

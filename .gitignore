@@ -4,6 +4,7 @@
 target
 *.iml
 postgres-demo/target
+data/
 
 # Log file
 *.log

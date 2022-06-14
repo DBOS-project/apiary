@@ -113,6 +113,14 @@ public class PostgresConnection implements ApiaryConnection {
         conn.close();
     }
 
+    public void createIndex(String indexString) throws SQLException {
+        Connection c = ds.getConnection();
+        Statement s = c.createStatement();
+        s.execute(indexString);
+        s.close();
+        c.close();
+    }
+
     private void rollback(PostgresContext ctxt) throws SQLException {
         abortedTransactions.add(ctxt.txc);
         for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {

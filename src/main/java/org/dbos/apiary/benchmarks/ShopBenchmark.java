@@ -40,6 +40,7 @@ public class ShopBenchmark {
         conn.createTable("ShopCart", "PersonID integer NOT NULL, ItemID integer NOT NULL, Cost integer NOT NULL");
         conn.createTable("ShopOrders", "PersonID integer NOT NULL, OrderID integer NOT NULL, ItemID integer NOT NULL");
         conn.createTable("ShopTransactions", "OrderID integer PRIMARY KEY NOT NULL, PersonID integer NOT NULL, Cost integer NOT NULL");
+        conn.createIndex("CREATE INDEX CartIndex ON ShopCart (PersonID);");
         ElasticsearchClient esClient = new ElasticsearchConnection("localhost", 9200, "elastic", "password").client;
         try {
             DeleteIndexRequest request = new DeleteIndexRequest.Builder().index("items").build();

@@ -6,14 +6,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
-import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
-import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESAddItem;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
-import org.dbos.apiary.procedures.postgres.crossdb.PostgresBulkIndexPerson;
-import org.dbos.apiary.procedures.postgres.crossdb.PostgresIndexPerson;
-import org.dbos.apiary.procedures.postgres.crossdb.PostgresSearchPerson;
 import org.dbos.apiary.procedures.postgres.shop.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
@@ -24,14 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CrossDBBenchmarkTests {
     private static final Logger logger = LoggerFactory.getLogger(CrossDBBenchmarkTests.class);
@@ -51,6 +38,7 @@ public class CrossDBBenchmarkTests {
             conn.createTable("ShopCart", "PersonID integer NOT NULL, ItemID integer NOT NULL, Cost integer NOT NULL");
             conn.createTable("ShopOrders", "PersonID integer NOT NULL, OrderID integer NOT NULL, ItemID integer NOT NULL");
             conn.createTable("ShopTransactions", "OrderID integer PRIMARY KEY NOT NULL, PersonID integer NOT NULL, Cost integer NOT NULL");
+            conn.createIndex("CREATE INDEX CartIndex ON ShopCart (PersonID);");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
         }

@@ -20,9 +20,6 @@ import java.util.stream.Collectors;
 public class ShopBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(ShopBenchmark.class);
     private static final int threadPoolSize = 256;
-    private static final int percentageGetItem = 80;
-    private static final int percentageCheckout = 10;
-    private static final int percentageWrite = 10;
 
     private static final int initialItems = 10;
     private static final int numPeople = 100;
@@ -31,7 +28,8 @@ public class ShopBenchmark {
     private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
 
-    public static void benchmark(String dbAddr, Integer interval, Integer duration) throws SQLException, InterruptedException, InvalidProtocolBufferException {
+    public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageGetItem, int percentageCheckout, int percentageWrite) throws SQLException, InterruptedException, InvalidProtocolBufferException {
+        assert (percentageGetItem + percentageCheckout + percentageWrite == 100);
         PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         conn.dropTable("FuncInvocations");
         conn.dropTable("ShopItems");

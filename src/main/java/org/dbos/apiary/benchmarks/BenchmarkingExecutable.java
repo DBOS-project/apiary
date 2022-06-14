@@ -18,6 +18,9 @@ public class BenchmarkingExecutable {
         options.addOption("i", true, "Benchmark Interval (μs)");
         options.addOption("mainHostAddr", true, "Address of the main host to connect to.");
         options.addOption("s", true, "Service Name");
+        options.addOption("p1", true, "Percentage 1");
+        options.addOption("p2", true, "Percentage 2");
+        options.addOption("p3", true, "Percentage 3");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -54,7 +57,10 @@ public class BenchmarkingExecutable {
             PostgresESBenchmark.benchmark(mainHostAddr, service, interval, duration);
         } else if (benchmark.equals("shop")) {
             logger.info("ShopBenchmark");
-            ShopBenchmark.benchmark(mainHostAddr, interval, duration);
+            int percentageGetItem = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 80;
+            int percentageCheckout = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 10;
+            int percentageWrite = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 10;
+            ShopBenchmark.benchmark(mainHostAddr, interval, duration, percentageGetItem, percentageCheckout, percentageWrite);
         }
     }
 }

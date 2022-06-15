@@ -101,7 +101,6 @@ public class ElasticsearchContext extends ApiaryContext {
                 for (long txID : txc.activeTransactions) {
                     endVersionFilter.add(TermQuery.of(f -> f.field("endVersion").value(txID))._toQuery());
                 }
-                // TODO: Also handle records left by aborted transactions, which must be skipped.
                 SearchRequest request = SearchRequest.of(s -> s
                         .index(index).query(q -> q.bool(b -> b
                                 .must(searchQuery)

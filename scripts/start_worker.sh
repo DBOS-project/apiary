@@ -5,7 +5,7 @@ SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
 SCHEDULER="naive"
 DBTYPE="postgres"
-NUMTHREADS="64"
+NUMTHREADS="16"
 ESADDR="localhost"
 if [[ $# -eq 1 ]]; then
     SCHEDULER="$1"

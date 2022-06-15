@@ -150,8 +150,8 @@ public class PostgresConnection implements ApiaryConnection {
                 boolean valid = true;
                 if (ApiaryConfig.XDBTransactions) {
                     for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
-                        Map<String, List<String>> updatedKeys = ctxt.secondaryWrittenKeys.get(secondary);
-                        valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(updatedKeys, ctxt.txc);
+                        Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
+                        valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(writtenKeys, ctxt.txc);
                     }
                 }
                 if (valid) {

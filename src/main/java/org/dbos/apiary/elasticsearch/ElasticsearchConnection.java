@@ -5,7 +5,6 @@ import co.elastic.clients.elasticsearch._types.StoredScriptId;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
-import co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
@@ -104,17 +103,26 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
 
     @Override
     public void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-        try {
-            // Delete all records written by this transaction.
-            for (String index : writtenKeys.keySet()) {
-                client.deleteByQuery(ubq -> ubq
-                        .index(index)
-                        .query(MatchQuery.of(t -> t.field("beginVersion").query(txc.txID))._toQuery())
-                        .refresh(Boolean.TRUE)
-                );
+        // Delete all records written by this transaction.
+        for (String index : writtenKeys.keySet()) {
+            try {
+                client.indices().refresh(r -> r.index(index));
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+            while (true) {
+                try {
+                    client.deleteByQuery(ubq -> ubq
+                            .index(index)
+                            .query(MatchQuery.of(t -> t.field("beginVersion").query(txc.txID))._toQuery())
+                            .refresh(Boolean.TRUE)
+                    );
+                    break;
+                } catch (IOException e) {
+                    // Retry on version conflict.
+                    continue;
+                }
+            }
         }
     }
 
@@ -162,7 +170,7 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
                                             .stored(StoredScriptId.of(b -> b
                                                     .id(updateEndVersionScript).params(Map.of("endV", JsonData.of(txc.txID))))
                                             )
-                                    ).refresh(Boolean.TRUE)
+                                    )
                             );
                             break;
                         } catch (IOException e) {
@@ -170,6 +178,11 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
                             continue;
                         }
                     }
+                }
+                try {
+                    client.indices().refresh(r -> r.index(index));
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             }
         }

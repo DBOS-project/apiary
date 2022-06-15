@@ -1,7 +1,6 @@
 package org.dbos.apiary.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
@@ -54,7 +53,7 @@ public class ElasticsearchContext extends ApiaryContext {
                 document.setBeginVersion(txc.txID);
                 document.setEndVersion(Long.MAX_VALUE);
             }
-            IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document).refresh(Refresh.True);
+            IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document);
             if (!ApiaryConfig.XDBTransactions) {
                 b = b.id(id);
             }
@@ -80,7 +79,7 @@ public class ElasticsearchContext extends ApiaryContext {
                         .index(index)
                         .document(document)
                 )
-            ).refresh(Refresh.True);
+            );
         }
         client.bulk(br.build());
     }
@@ -88,7 +87,6 @@ public class ElasticsearchContext extends ApiaryContext {
     public SearchResponse executeQuery(String index, Query searchQuery, Class clazz) {
         try {
             if (ApiaryConfig.XDBTransactions) {
-                long t0 = System.nanoTime();
                 List<Query> beginVersionFilter = new ArrayList<>();
                 // If beginVersion is an active transaction, it is not in the snapshot.
                 for (long txID : txc.activeTransactions) {
@@ -116,9 +114,7 @@ public class ElasticsearchContext extends ApiaryContext {
                                 )._toQuery())
                         ))
                 );
-                SearchResponse rr = client.search(request, clazz);
-                logger.debug("Time: {}μs Active Transactions: {}", (System.nanoTime() - t0) / 1000L, txc.activeTransactions.size());
-                return rr;
+                return client.search(request, clazz);
             } else {
                 SearchRequest request = SearchRequest.of(s -> s
                         .index(index).query(searchQuery));

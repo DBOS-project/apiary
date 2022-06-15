@@ -163,9 +163,13 @@ public class PostgresConnection implements ApiaryConnection {
                 }
             } catch (Exception e) {
                 if (e instanceof InvocationTargetException) {
-                    InvocationTargetException i = (InvocationTargetException) e;
-                    if (i.getCause() instanceof PSQLException) {
-                        PSQLException p = (PSQLException) i.getCause();
+                    Throwable innerException = e;
+                    while (innerException instanceof InvocationTargetException) {
+                        InvocationTargetException i = (InvocationTargetException) e;
+                        innerException = i.getCause();
+                    }
+                    if (innerException instanceof PSQLException) {
+                        PSQLException p = (PSQLException) innerException;
                         if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
                             try {
                                 rollback(ctxt);

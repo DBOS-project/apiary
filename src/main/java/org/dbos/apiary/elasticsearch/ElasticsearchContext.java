@@ -117,7 +117,7 @@ public class ElasticsearchContext extends ApiaryContext {
                         ))
                 );
                 SearchResponse rr = client.search(request, clazz);
-                logger.info("Time: {}μs Active Transactions: {}", (System.nanoTime() - t0) / 1000L, txc.activeTransactions.size());
+                logger.debug("Time: {}μs Active Transactions: {}", (System.nanoTime() - t0) / 1000L, txc.activeTransactions.size());
                 return rr;
             } else {
                 SearchRequest request = SearchRequest.of(s -> s

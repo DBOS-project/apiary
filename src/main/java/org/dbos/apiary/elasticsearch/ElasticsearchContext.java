@@ -88,6 +88,7 @@ public class ElasticsearchContext extends ApiaryContext {
     public SearchResponse executeQuery(String index, Query searchQuery, Class clazz) {
         try {
             if (ApiaryConfig.XDBTransactions) {
+                long t0 = System.nanoTime();
                 List<Query> beginVersionFilter = new ArrayList<>();
                 // If beginVersion is an active transaction, it is not in the snapshot.
                 for (long txID : txc.activeTransactions) {
@@ -116,7 +117,9 @@ public class ElasticsearchContext extends ApiaryContext {
                                 )._toQuery())
                         ))
                 );
-                return client.search(request, clazz);
+                SearchResponse rr = client.search(request, clazz);
+                logger.info("Time: {}μs Active Transactions: {}", (System.nanoTime() - t0) / 1000L, txc.activeTransactions.size());
+                return rr;
             } else {
                 SearchRequest request = SearchRequest.of(s -> s
                         .index(index).query(searchQuery));

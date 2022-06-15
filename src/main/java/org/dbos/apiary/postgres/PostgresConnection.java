@@ -173,6 +173,8 @@ public class PostgresConnection implements ApiaryConnection {
                             } catch (SQLException ex) {
                                 ex.printStackTrace();
                             }
+                        } else {
+                            logger.info("Unrecoverable Postgres error: {} {}", p.getMessage(), p.getSQLState());
                         }
                     }
                 }

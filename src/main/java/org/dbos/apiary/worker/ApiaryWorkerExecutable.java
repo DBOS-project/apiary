@@ -32,6 +32,7 @@ public class ApiaryWorkerExecutable {
                 "The db used by this worker. Can be one of (voltdb, postgres). Defaults to postgres.");
         options.addOption("s", true, "Which Scheduler?");
         options.addOption("t", true, "How many worker threads?  Defaults to 128.");
+        options.addOption("esAddr", true, "Elasticsearch Address.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -64,7 +65,12 @@ public class ApiaryWorkerExecutable {
         } else if (db.equals("postgres")) {
             worker = new ApiaryWorker(scheduler, numThreads);
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-            ElasticsearchConnection econn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
+            String esAddr = "localhost";
+            if (cmd.hasOption("esAddr")) {
+                esAddr = cmd.getOptionValue("esAddr");
+                logger.info("Elasticsearch Address: {}", esAddr);
+            }
+            ElasticsearchConnection econn = new ElasticsearchConnection(esAddr, 9200, "elastic", "password");
             worker.registerConnection(ApiaryConfig.elasticsearch, econn);
             worker.registerConnection(ApiaryConfig.postgres, conn);
             worker.registerFunction("PostgresIndexPerson", ApiaryConfig.postgres, PostgresIndexPerson::new);

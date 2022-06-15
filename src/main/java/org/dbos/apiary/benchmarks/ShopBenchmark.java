@@ -35,7 +35,7 @@ public class ShopBenchmark {
     // Requires file part.tbl in the data/ folder from TPC-H.  Download here: https://kraftp-uniserve-data.s3.us-east-2.amazonaws.com/TPC-H-SF1/part.tbl
     public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageGetItem, int percentageCheckout, int percentageAppend, int percentageUpdate) throws SQLException, InterruptedException, IOException {
         assert (percentageGetItem + percentageCheckout + percentageAppend + percentageUpdate == 100);
-        PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         conn.dropTable("FuncInvocations");
         conn.dropTable("ShopItems");
         conn.dropTable("ShopCart");
@@ -46,7 +46,7 @@ public class ShopBenchmark {
         conn.createTable("ShopOrders", "PersonID integer NOT NULL, OrderID integer NOT NULL, ItemID integer NOT NULL");
         conn.createTable("ShopTransactions", "OrderID integer PRIMARY KEY NOT NULL, PersonID integer NOT NULL, Cost integer NOT NULL");
         conn.createIndex("CREATE INDEX CartIndex ON ShopCart (PersonID);");
-        ElasticsearchClient esClient = new ElasticsearchConnection("localhost", 9200, "elastic", "password").client;
+        ElasticsearchClient esClient = new ElasticsearchConnection(dbAddr, 9200, "elastic", "password").client;
         try {
             DeleteIndexRequest request = new DeleteIndexRequest.Builder().index("items").build();
             esClient.indices().delete(request);

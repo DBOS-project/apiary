@@ -165,7 +165,7 @@ public class PostgresConnection implements ApiaryConnection {
                 if (e instanceof InvocationTargetException) {
                     Throwable innerException = e;
                     while (innerException instanceof InvocationTargetException) {
-                        InvocationTargetException i = (InvocationTargetException) e;
+                        InvocationTargetException i = (InvocationTargetException) innerException;
                         innerException = i.getCause();
                     }
                     if (innerException instanceof PSQLException) {

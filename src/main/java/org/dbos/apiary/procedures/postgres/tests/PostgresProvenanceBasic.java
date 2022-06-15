@@ -12,7 +12,7 @@ public class PostgresProvenanceBasic extends PostgresFunction {
     private static final String updateEntry = "UPDATE KVTABLE SET KVvalue=? WHERE KVKEY=?";
     private static final String deleteEntry = "DELETE FROM KVTable WHERE KVKey=?;";
 
-    public static int runFunction(PostgresContext ctxt, int key, int baseValue) throws SQLException {
+    public static int runFunction(PostgresContext ctxt, int key, int baseValue) throws Exception {
         if (key == 1) {
             ctxt.executeUpdate(addEntry, key, baseValue);
             return baseValue+1;

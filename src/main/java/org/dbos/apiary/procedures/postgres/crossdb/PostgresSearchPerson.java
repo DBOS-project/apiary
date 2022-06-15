@@ -13,7 +13,7 @@ public class PostgresSearchPerson extends PostgresFunction {
 
     private final static String search = "SELECT COUNT(*) FROM PersonTable WHERE Name=?";
 
-    public int runFunction(PostgresContext context, String searchText) throws SQLException {
+    public int runFunction(PostgresContext context, String searchText) throws Exception {
         ResultSet rs = context.executeQuery(search, searchText);
         rs.next();
         int pgCount = rs.getInt(1);

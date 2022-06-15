@@ -176,6 +176,7 @@ public class PostgresConnection implements ApiaryConnection {
                         }
                     }
                 }
+                logger.info("Unrecoverable error in function execution: {}", e.getMessage());
                 e.printStackTrace();
                 break;
             }

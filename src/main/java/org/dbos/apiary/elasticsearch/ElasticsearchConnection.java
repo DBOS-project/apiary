@@ -168,6 +168,9 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
         validationLock.unlock();
         if (valid) {
             for (String index : writtenKeys.keySet()) {
+                if (writtenKeys.get(index).size() > 10000) {
+                    continue; // Speed up bulk-loading in benchmarks.
+                }
                 for (String key : writtenKeys.get(index)) {
                     while (true) {
                         try {

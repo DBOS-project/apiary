@@ -69,7 +69,7 @@ public class ShopBenchmark {
             int itemIndex = i % partData.size();
             ShopItem item = partData.get(itemIndex);
             searchPhrasesList.add(item.getItemName());
-            itemIDs[i] = Integer.parseInt(item.getItemID());
+            itemIDs[i] = i;
             itemNames[i] = item.getItemName();
             itemDescs[i] = item.getItemDesc();
             costs[i] = item.getCost() + ThreadLocalRandom.current().nextInt(-100, 100);
@@ -98,7 +98,7 @@ public class ShopBenchmark {
                     client.get().executeFunction("ShopCheckoutCart", personID).getInt();
                     cartTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageGetItem + percentageCheckout + percentageAppend ){
-                    int localCount = count.incrementAndGet();
+                    int localCount = count.getAndIncrement();
                     ShopItem item = partData.get(localCount % partData.size());
                     client.get().executeFunction("ShopAddItem", localCount, item.getItemName(), item.getItemDesc(), item.getCost(), 100000000);
                     catalogTimes.add(System.nanoTime() - t0);

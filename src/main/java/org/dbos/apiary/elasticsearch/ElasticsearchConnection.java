@@ -5,6 +5,8 @@ import co.elastic.clients.elasticsearch._types.StoredScriptId;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
+import co.elastic.clients.elasticsearch.core.UpdateByQueryRequest;
+import co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
@@ -169,7 +171,8 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
                 for (String key : writtenKeys.get(index)) {
                     while (true) {
                         try {
-                            client.updateByQuery(ubq -> ubq
+                            long t0 = System.nanoTime();
+                            UpdateByQueryResponse r = client.updateByQuery(ubq -> ubq
                                     .index(index)
                                     .query(BoolQuery.of(bb -> bb
                                             .must(
@@ -183,6 +186,7 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
                                             )
                                     )
                             );
+                            logger.info("Update: {} {} {}", txc.txID, r.updated(), (System.nanoTime() - t0) / 1000);
                             break;
                         } catch (IOException e) {
                             // Retry on version conflict.

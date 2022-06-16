@@ -46,6 +46,7 @@ public class ElasticsearchContext extends ApiaryContext {
 
     public void executeWrite(String index, ApiaryDocument document, String id) {
         try {
+            long t0 = System.nanoTime();
             writtenKeys.putIfAbsent(index, new ArrayList<>());
             writtenKeys.get(index).add(id);
             if (ApiaryConfig.XDBTransactions) {
@@ -58,6 +59,7 @@ public class ElasticsearchContext extends ApiaryContext {
                 b = b.id(id);
             }
             client.index(b.build());
+            logger.info("Write: {}", (System.nanoTime() - t0) / 1000L);
         } catch (IOException e) {
             e.printStackTrace();
         }

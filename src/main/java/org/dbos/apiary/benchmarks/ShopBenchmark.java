@@ -64,17 +64,16 @@ public class ShopBenchmark {
         String[] itemDescs = new String[initialItems];
         int[] costs = new int[initialItems];
         int[] inventories = new int[initialItems];
-        Set<String> searchPhrasesSet = new HashSet<>();
+        List<String> searchPhrasesList = new ArrayList<>();
         for (int i = 0; i < initialItems; i++) {
             ShopItem item = partData.get(i);
-            searchPhrasesSet.add(item.getItemName());
+            searchPhrasesList.add(item.getItemName());
             itemIDs[i] = Integer.parseInt(item.getItemID());
             itemNames[i] = item.getItemName();
             itemDescs[i] = item.getItemDesc();
             costs[i] = item.getCost();
             inventories[i] = 100000000;
         }
-        List<String> searchPhrasesList = new ArrayList<>(searchPhrasesSet);
         client.get().executeFunction("ShopBulkAddItem", itemIDs, itemNames, itemDescs, costs, inventories);
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
 
@@ -101,7 +100,7 @@ public class ShopBenchmark {
                     ShopItem item = partData.get(localCount);
                     client.get().executeFunction("ShopAddItem", localCount, item.getItemName(), item.getItemDesc(), item.getCost(), 100000000);
                     catalogTimes.add(System.nanoTime() - t0);
-                    searchPhrasesSet.add(item.getItemName());
+                    searchPhrasesList.add(item.getItemName());
                 } else {
                     int itemID = ThreadLocalRandom.current().nextInt(count.get());
                     int delta = ThreadLocalRandom.current().nextInt(-100, 100);

@@ -1,7 +1,6 @@
 package org.dbos.apiary.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
@@ -47,14 +46,14 @@ public class ElasticsearchContext extends ApiaryContext {
 
     public void executeWrite(String index, ApiaryDocument document, String id) {
         try {
+            writtenKeys.putIfAbsent(index, new ArrayList<>());
+            writtenKeys.get(index).add(id);
             if (ApiaryConfig.XDBTransactions) {
-                writtenKeys.putIfAbsent(index, new ArrayList<>());
-                writtenKeys.get(index).add(id);
                 document.setApiaryID(id);
                 document.setBeginVersion(txc.txID);
                 document.setEndVersion(Long.MAX_VALUE);
             }
-            IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document).refresh(Refresh.True);
+            IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document);
             if (!ApiaryConfig.XDBTransactions) {
                 b = b.id(id);
             }
@@ -80,7 +79,7 @@ public class ElasticsearchContext extends ApiaryContext {
                         .index(index)
                         .document(document)
                 )
-            ).refresh(Refresh.True);
+            );
         }
         client.bulk(br.build());
     }
@@ -100,7 +99,6 @@ public class ElasticsearchContext extends ApiaryContext {
                 for (long txID : txc.activeTransactions) {
                     endVersionFilter.add(TermQuery.of(f -> f.field("endVersion").value(txID))._toQuery());
                 }
-                // TODO: Also handle records left by aborted transactions, which must be skipped.
                 SearchRequest request = SearchRequest.of(s -> s
                         .index(index).query(q -> q.bool(b -> b
                                 .must(searchQuery)

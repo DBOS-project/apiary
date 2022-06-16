@@ -113,6 +113,14 @@ public class PostgresConnection implements ApiaryConnection {
         conn.close();
     }
 
+    public void createIndex(String indexString) throws SQLException {
+        Connection c = ds.getConnection();
+        Statement s = c.createStatement();
+        s.execute(indexString);
+        s.close();
+        c.close();
+    }
+
     private void rollback(PostgresContext ctxt) throws SQLException {
         abortedTransactions.add(ctxt.txc);
         for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
@@ -140,10 +148,10 @@ public class PostgresConnection implements ApiaryConnection {
             try {
                 f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
                 boolean valid = true;
-                if (ApiaryConfig.XDBTransactions) {
-                    for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
-                        Map<String, List<String>> updatedKeys = ctxt.secondaryWrittenKeys.get(secondary);
-                        valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(updatedKeys, ctxt.txc);
+                for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
+                    Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
+                    if (!writtenKeys.isEmpty()) {
+                        valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(writtenKeys, ctxt.txc);
                     }
                 }
                 if (valid) {
@@ -155,9 +163,13 @@ public class PostgresConnection implements ApiaryConnection {
                 }
             } catch (Exception e) {
                 if (e instanceof InvocationTargetException) {
-                    InvocationTargetException i = (InvocationTargetException) e;
-                    if (i.getCause() instanceof PSQLException) {
-                        PSQLException p = (PSQLException) i.getCause();
+                    Throwable innerException = e;
+                    while (innerException instanceof InvocationTargetException) {
+                        InvocationTargetException i = (InvocationTargetException) innerException;
+                        innerException = i.getCause();
+                    }
+                    if (innerException instanceof PSQLException) {
+                        PSQLException p = (PSQLException) innerException;
                         if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
                             try {
                                 rollback(ctxt);
@@ -165,9 +177,12 @@ public class PostgresConnection implements ApiaryConnection {
                             } catch (SQLException ex) {
                                 ex.printStackTrace();
                             }
+                        } else {
+                            logger.info("Unrecoverable Postgres error: {} {}", p.getMessage(), p.getSQLState());
                         }
                     }
                 }
+                logger.info("Unrecoverable error in function execution: {}", e.getMessage());
                 e.printStackTrace();
                 break;
             }

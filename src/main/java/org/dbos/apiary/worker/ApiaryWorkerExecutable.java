@@ -9,9 +9,13 @@ import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
+import org.dbos.apiary.procedures.elasticsearch.shop.ShopESAddItem;
+import org.dbos.apiary.procedures.elasticsearch.shop.ShopESBulkAddItem;
+import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresBulkIndexPerson;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresIndexPerson;
 import org.dbos.apiary.procedures.postgres.crossdb.PostgresSearchPerson;
+import org.dbos.apiary.procedures.postgres.shop.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +32,7 @@ public class ApiaryWorkerExecutable {
                 "The db used by this worker. Can be one of (voltdb, postgres). Defaults to postgres.");
         options.addOption("s", true, "Which Scheduler?");
         options.addOption("t", true, "How many worker threads?  Defaults to 128.");
+        options.addOption("esAddr", true, "Elasticsearch Address.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -58,9 +63,14 @@ public class ApiaryWorkerExecutable {
         if (db.equals("voltdb")) {
             throw new IllegalArgumentException("TODO: Implement VoltDB worker");
         } else if (db.equals("postgres")) {
-            worker = new ApiaryWorker(scheduler, numThreads, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+            worker = new ApiaryWorker(scheduler, numThreads);
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-            ElasticsearchConnection econn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
+            String esAddr = "localhost";
+            if (cmd.hasOption("esAddr")) {
+                esAddr = cmd.getOptionValue("esAddr");
+                logger.info("Elasticsearch Address: {}", esAddr);
+            }
+            ElasticsearchConnection econn = new ElasticsearchConnection(esAddr, 9200, "elastic", "password");
             worker.registerConnection(ApiaryConfig.elasticsearch, econn);
             worker.registerConnection(ApiaryConfig.postgres, conn);
             worker.registerFunction("PostgresIndexPerson", ApiaryConfig.postgres, PostgresIndexPerson::new);
@@ -69,6 +79,15 @@ public class ApiaryWorkerExecutable {
             worker.registerFunction("ElasticsearchIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchIndexPerson::new);
             worker.registerFunction("ElasticsearchBulkIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchBulkIndexPerson::new);
             worker.registerFunction("ElasticsearchSearchPerson", ApiaryConfig.elasticsearch, ElasticsearchSearchPerson::new);
+            worker.registerFunction("ShopAddItem", ApiaryConfig.postgres, ShopAddItem::new);
+            worker.registerFunction("ShopBulkAddItem", ApiaryConfig.postgres, ShopBulkAddItem::new);
+            worker.registerFunction("ShopSearchItem", ApiaryConfig.postgres, ShopSearchItem::new);
+            worker.registerFunction("ShopAddCart", ApiaryConfig.postgres, ShopAddCart::new);
+            worker.registerFunction("ShopCheckoutCart", ApiaryConfig.postgres, ShopCheckoutCart::new);
+            worker.registerFunction("ShopGetItem", ApiaryConfig.postgres, ShopGetItem::new);
+            worker.registerFunction("ShopESAddItem", ApiaryConfig.elasticsearch, ShopESAddItem::new);
+            worker.registerFunction("ShopESBulkAddItem", ApiaryConfig.elasticsearch, ShopESBulkAddItem::new);
+            worker.registerFunction("ShopESSearchItem", ApiaryConfig.elasticsearch, ShopESSearchItem::new);
         } else {
             throw new IllegalArgumentException("Option 'db' must be one of (voltdb, postgres).");
         }

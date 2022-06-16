@@ -55,7 +55,7 @@ public abstract class ApiaryContext {
      * @param inputs    the list of arguments provided to the invoked function.
      * @return          an {@link FunctionOutput} object that stores the output from a function.
      */
-    public abstract FunctionOutput apiaryCallFunction(String name, Object... inputs);
+    public abstract FunctionOutput apiaryCallFunction(String name, Object... inputs) throws Exception;
 
     /** Apiary-private **/
 

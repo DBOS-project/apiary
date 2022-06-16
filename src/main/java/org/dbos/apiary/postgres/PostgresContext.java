@@ -60,30 +60,11 @@ public class PostgresContext extends ApiaryContext {
     }
 
     @Override
-    public FunctionOutput apiaryCallFunction(String name, Object... inputs) {
+    public FunctionOutput apiaryCallFunction(String name, Object... inputs) throws Exception {
         ApiaryFunction f = workerContext.getFunction(name);
         String functionType = workerContext.getFunctionType(name);
         if (functionType.equals(ApiaryConfig.postgres) || functionType.equals(ApiaryConfig.stateless)) {
-            try {
-                Savepoint s = conn.setSavepoint();
-                long oldID = currentID;
-                try {
-                    this.currentID = functionID + functionIDCounter.incrementAndGet();
-                    FunctionOutput o = f.apiaryRunFunction(this, inputs);
-                    this.currentID = oldID;
-                    conn.releaseSavepoint(s);
-                    return o;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    this.currentID = oldID;
-                    conn.rollback(s);
-                    conn.releaseSavepoint(s);
-                    return null;
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-                return null;
-            }
+            return f.apiaryRunFunction(this, inputs);
         } else {
             try {
                 ApiarySecondaryConnection c = workerContext.getSecondaryConnection(functionType);

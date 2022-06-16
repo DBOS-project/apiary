@@ -10,7 +10,7 @@ import java.util.List;
 
 public class RetwisGetTimeline extends PostgresFunction {
 
-    public static String[] runFunction(PostgresContext ctxt, int userID) throws SQLException {
+    public static String[] runFunction(PostgresContext ctxt, int userID) throws Exception {
         int[] followees = ctxt.apiaryCallFunction("RetwisGetFollowees", userID).getIntArray();
         List<String> posts = new ArrayList<>();
         for (int followee: followees) {

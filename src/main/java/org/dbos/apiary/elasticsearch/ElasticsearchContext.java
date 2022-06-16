@@ -59,7 +59,7 @@ public class ElasticsearchContext extends ApiaryContext {
                 b = b.id(id);
             }
             client.index(b.build());
-            logger.info("Write: {}", (System.nanoTime() - t0) / 1000L);
+            logger.debug("Write: {}", (System.nanoTime() - t0) / 1000L);
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -189,7 +189,7 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
                                             )
                                     )
                             );
-                            logger.info("Update: {} {} {}", txc.txID, r.updated(), (System.nanoTime() - t0) / 1000);
+                            logger.debug("Update: {} {} {}", txc.txID, r.updated(), (System.nanoTime() - t0) / 1000);
                             break;
                         } catch (IOException e) {
                             // Retry on version conflict.

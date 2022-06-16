@@ -25,7 +25,8 @@ public class ShopBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(ShopBenchmark.class);
     private static final int threadPoolSize = 256;
 
-    private static final int initialItems = 10000;
+    private static final int chunksize = 100000;
+    private static final int initialItems = 1000000;
     private static final int numPeople = 100;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
@@ -59,23 +60,27 @@ public class ShopBenchmark {
 
         long loadStart = System.currentTimeMillis();
         List<ShopItem> partData = partData(Path.of("data", "part.tbl"));
-        int[] itemIDs = new int[initialItems];
-        String[] itemNames = new String[initialItems];
-        String[] itemDescs = new String[initialItems];
-        int[] costs = new int[initialItems];
-        int[] inventories = new int[initialItems];
         List<String> searchPhrasesList = new ArrayList<>();
-        for (int i = 0; i < initialItems; i++) {
-            int itemIndex = i % partData.size();
-            ShopItem item = partData.get(itemIndex);
-            searchPhrasesList.add(item.getItemName());
-            itemIDs[i] = i;
-            itemNames[i] = item.getItemName();
-            itemDescs[i] = item.getItemDesc();
-            costs[i] = item.getCost() + ThreadLocalRandom.current().nextInt(-100, 100);
-            inventories[i] = 100000000;
+        assert (initialItems % chunksize == 0);
+        int numChunks = initialItems / chunksize;
+        for (int chunkNum = 0; chunkNum < numChunks; chunkNum++) {
+            int[] itemIDs = new int[chunksize];
+            String[] itemNames = new String[chunksize];
+            String[] itemDescs = new String[chunksize];
+            int[] costs = new int[chunksize];
+            int[] inventories = new int[chunksize];
+            for (int i = chunkNum * chunksize; i < chunkNum * chunksize + chunksize; i++) {
+                int itemIndex = i % partData.size();
+                ShopItem item = partData.get(itemIndex);
+                searchPhrasesList.add(item.getItemName());
+                itemIDs[i] = i;
+                itemNames[i] = item.getItemName();
+                itemDescs[i] = item.getItemDesc();
+                costs[i] = item.getCost() + ThreadLocalRandom.current().nextInt(-100, 100);
+                inventories[i] = 100000000;
+            }
+            client.get().executeFunction("ShopBulkAddItem", itemIDs, itemNames, itemDescs, costs, inventories);
         }
-        client.get().executeFunction("ShopBulkAddItem", itemIDs, itemNames, itemDescs, costs, inventories);
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
 
         AtomicInteger count = new AtomicInteger(initialItems);

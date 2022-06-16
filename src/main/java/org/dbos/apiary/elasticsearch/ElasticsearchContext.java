@@ -5,10 +5,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
-import co.elastic.clients.elasticsearch.core.BulkRequest;
-import co.elastic.clients.elasticsearch.core.IndexRequest;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.*;
 import co.elastic.clients.json.JsonData;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
@@ -83,7 +80,8 @@ public class ElasticsearchContext extends ApiaryContext {
                 )
             );
         }
-        client.bulk(br.build());
+        BulkResponse rr = client.bulk(br.build());
+        logger.info("Bulk load: {} {}", documents.size(), rr.errors());
     }
 
     public SearchResponse executeQuery(String index, Query searchQuery, Class clazz) {
@@ -118,7 +116,7 @@ public class ElasticsearchContext extends ApiaryContext {
                         ))
                 );
                 SearchResponse rr =  client.search(request, clazz);
-                logger.info("Read: {} {}", (System.nanoTime() - t0) / 1000L, txc.activeTransactions.size());
+                logger.debug("Read: {} {}", (System.nanoTime() - t0) / 1000L, txc.activeTransactions.size());
                 return rr;
             } else {
                 SearchRequest request = SearchRequest.of(s -> s

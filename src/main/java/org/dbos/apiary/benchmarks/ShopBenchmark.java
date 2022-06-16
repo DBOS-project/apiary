@@ -66,12 +66,13 @@ public class ShopBenchmark {
         int[] inventories = new int[initialItems];
         List<String> searchPhrasesList = new ArrayList<>();
         for (int i = 0; i < initialItems; i++) {
-            ShopItem item = partData.get(i);
+            int itemIndex = i % partData.size();
+            ShopItem item = partData.get(itemIndex);
             searchPhrasesList.add(item.getItemName());
             itemIDs[i] = Integer.parseInt(item.getItemID());
             itemNames[i] = item.getItemName();
             itemDescs[i] = item.getItemDesc();
-            costs[i] = item.getCost();
+            costs[i] = item.getCost() + ThreadLocalRandom.current().nextInt(-100, 100);
             inventories[i] = 100000000;
         }
         client.get().executeFunction("ShopBulkAddItem", itemIDs, itemNames, itemDescs, costs, inventories);
@@ -89,7 +90,8 @@ public class ShopBenchmark {
                 if (chooser < percentageGetItem) {
                     int personID = ThreadLocalRandom.current().nextInt(numPeople);
                     String search = searchPhrasesList.get(ThreadLocalRandom.current().nextInt(searchPhrasesList.size()));
-                    client.get().executeFunction("ShopGetItem", personID, search, 1150).getInt();
+                    int cost = ThreadLocalRandom.current().nextInt(1000, 2000);
+                    client.get().executeFunction("ShopGetItem", personID, search, cost).getInt();
                     cartTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageGetItem + percentageCheckout) {
                     int personID = ThreadLocalRandom.current().nextInt(numPeople);
@@ -97,14 +99,14 @@ public class ShopBenchmark {
                     cartTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageGetItem + percentageCheckout + percentageAppend ){
                     int localCount = count.incrementAndGet();
-                    ShopItem item = partData.get(localCount);
+                    ShopItem item = partData.get(localCount % partData.size());
                     client.get().executeFunction("ShopAddItem", localCount, item.getItemName(), item.getItemDesc(), item.getCost(), 100000000);
                     catalogTimes.add(System.nanoTime() - t0);
                     searchPhrasesList.add(item.getItemName());
                 } else {
                     int itemID = ThreadLocalRandom.current().nextInt(count.get());
                     int delta = ThreadLocalRandom.current().nextInt(-100, 100);
-                    ShopItem item = partData.get(itemID);
+                    ShopItem item = partData.get(itemID % partData.size());
                     client.get().executeFunction("ShopAddItem",  itemID, item.getItemName(), item.getItemDesc(), item.getCost() + delta, 100000000);
                     catalogTimes.add(System.nanoTime() - t0);
                 }

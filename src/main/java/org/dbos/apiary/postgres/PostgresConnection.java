@@ -148,9 +148,9 @@ public class PostgresConnection implements ApiaryConnection {
             try {
                 f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
                 boolean valid = true;
-                if (ApiaryConfig.XDBTransactions) {
-                    for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
-                        Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
+                for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
+                    Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
+                    if (!writtenKeys.isEmpty()) {
                         valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(writtenKeys, ctxt.txc);
                     }
                 }

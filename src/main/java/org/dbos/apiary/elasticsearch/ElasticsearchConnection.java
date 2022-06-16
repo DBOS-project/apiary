@@ -21,6 +21,7 @@ import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,6 +129,16 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
 
     @Override
     public boolean validate(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+        if (!ApiaryConfig.XDBTransactions) {
+            for (String index: writtenKeys.keySet()) {
+                try {
+                    client.indices().refresh(r -> r.index(index));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return true;
+        }
         Set<Long> activeTransactions = new HashSet<>(txc.activeTransactions);
         validationLock.lock();
         boolean valid = true;

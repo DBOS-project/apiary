@@ -46,9 +46,9 @@ public class ElasticsearchContext extends ApiaryContext {
 
     public void executeWrite(String index, ApiaryDocument document, String id) {
         try {
+            writtenKeys.putIfAbsent(index, new ArrayList<>());
+            writtenKeys.get(index).add(id);
             if (ApiaryConfig.XDBTransactions) {
-                writtenKeys.putIfAbsent(index, new ArrayList<>());
-                writtenKeys.get(index).add(id);
                 document.setApiaryID(id);
                 document.setBeginVersion(txc.txID);
                 document.setEndVersion(Long.MAX_VALUE);

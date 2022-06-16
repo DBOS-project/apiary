@@ -69,15 +69,16 @@ public class ShopBenchmark {
             String[] itemDescs = new String[chunksize];
             int[] costs = new int[chunksize];
             int[] inventories = new int[chunksize];
-            for (int i = chunkNum * chunksize; i < chunkNum * chunksize + chunksize; i++) {
-                int itemIndex = i % partData.size();
-                ShopItem item = partData.get(itemIndex);
+            for (int chunkIndex = 0; chunkIndex < chunksize; chunkIndex++) {
+                int itemID = chunkNum * chunksize + chunkIndex;
+                int partDataIndex = itemID % partData.size();
+                ShopItem item = partData.get(partDataIndex);
                 searchPhrasesList.add(item.getItemName());
-                itemIDs[i] = i;
-                itemNames[i] = item.getItemName();
-                itemDescs[i] = item.getItemDesc();
-                costs[i] = item.getCost() + ThreadLocalRandom.current().nextInt(-100, 100);
-                inventories[i] = 100000000;
+                itemIDs[chunkIndex] = itemID;
+                itemNames[chunkIndex] = item.getItemName();
+                itemDescs[chunkIndex] = item.getItemDesc();
+                costs[chunkIndex] = item.getCost() + ThreadLocalRandom.current().nextInt(-100, 100);
+                inventories[chunkIndex] = 100000000;
             }
             client.get().executeFunction("ShopBulkAddItem", itemIDs, itemNames, itemDescs, costs, inventories);
         }

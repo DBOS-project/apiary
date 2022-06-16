@@ -29,8 +29,8 @@ public class ShopBenchmark {
     private static final int numPeople = 100;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
-    private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();
-    private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
+    private static final Collection<Long> catalogTimes = new ConcurrentLinkedQueue<>();
+    private static final Collection<Long> cartTimes = new ConcurrentLinkedQueue<>();
 
     // Requires file part.tbl in the data/ folder from TPC-H.  Download here: https://kraftp-uniserve-data.s3.us-east-2.amazonaws.com/TPC-H-SF1/part.tbl
     public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageGetItem, int percentageCheckout, int percentageAppend, int percentageUpdate) throws SQLException, InterruptedException, IOException {
@@ -91,22 +91,23 @@ public class ShopBenchmark {
                     int personID = ThreadLocalRandom.current().nextInt(numPeople);
                     String search = searchPhrasesList.get(ThreadLocalRandom.current().nextInt(searchPhrasesList.size()));
                     client.get().executeFunction("ShopGetItem", personID, search, 1150).getInt();
-                    readTimes.add(System.nanoTime() - t0);
+                    cartTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageGetItem + percentageCheckout) {
                     int personID = ThreadLocalRandom.current().nextInt(numPeople);
                     client.get().executeFunction("ShopCheckoutCart", personID).getInt();
-                    readTimes.add(System.nanoTime() - t0);
+                    cartTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageGetItem + percentageCheckout + percentageAppend ){
                     int localCount = count.incrementAndGet();
                     ShopItem item = partData.get(localCount);
                     client.get().executeFunction("ShopAddItem", localCount, item.getItemName(), item.getItemDesc(), item.getCost(), 100000000);
-                    writeTimes.add(System.nanoTime() - t0);
+                    catalogTimes.add(System.nanoTime() - t0);
+                    searchPhrasesSet.add(item.getItemName());
                 } else {
                     int itemID = ThreadLocalRandom.current().nextInt(count.get());
                     int delta = ThreadLocalRandom.current().nextInt(-100, 100);
                     ShopItem item = partData.get(itemID);
                     client.get().executeFunction("ShopAddItem",  itemID, item.getItemName(), item.getItemDesc(), item.getCost() + delta, 100000000);
-                    writeTimes.add(System.nanoTime() - t0);
+                    catalogTimes.add(System.nanoTime() - t0);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -116,8 +117,8 @@ public class ShopBenchmark {
         while (System.currentTimeMillis() < endTime) {
             long t = System.nanoTime();
             if (System.currentTimeMillis() - startTime < threadWarmupMs) {
-                writeTimes.clear();
-                readTimes.clear();
+                catalogTimes.clear();
+                cartTimes.clear();
             }
             threadPool.submit(r);
             while (System.nanoTime() - t < interval.longValue() * 1000) {
@@ -127,28 +128,28 @@ public class ShopBenchmark {
 
         long elapsedTime = (System.currentTimeMillis() - startTime) - threadWarmupMs;
 
-        List<Long> queryTimes = readTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+        List<Long> queryTimes = cartTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
         int numQueries = queryTimes.size();
         if (numQueries > 0) {
             long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
             double throughput = (double) numQueries * 1000.0 / elapsedTime;
             long p50 = queryTimes.get(numQueries / 2);
             long p99 = queryTimes.get((numQueries * 99) / 100);
-            logger.info("Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
+            logger.info("Cart Operations: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
         } else {
-            logger.info("No reads");
+            logger.info("No cart operations");
         }
 
-        queryTimes = writeTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+        queryTimes = catalogTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
         numQueries = queryTimes.size();
         if (numQueries > 0) {
             long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
             double throughput = (double) numQueries * 1000.0 / elapsedTime;
             long p50 = queryTimes.get(numQueries / 2);
             long p99 = queryTimes.get((numQueries * 99) / 100);
-            logger.info("Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
+            logger.info("Catalog Updates: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
         } else {
-            logger.info("No writes");
+            logger.info("No catalog Updates");
         }
 
         threadPool.shutdown();

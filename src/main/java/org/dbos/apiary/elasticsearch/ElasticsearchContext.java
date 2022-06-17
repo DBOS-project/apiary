@@ -113,10 +113,12 @@ public class ElasticsearchContext extends ApiaryContext {
                                         )
                                         .minimumShouldMatch("1")
                                 )._toQuery())
-                        )).profile(Boolean.TRUE)
+                        )).profile(ApiaryConfig.profile)
                 );
                 SearchResponse rr =  client.search(request, clazz);
-                ElasticsearchUtilities.printESProfile(rr.profile());
+                if (ApiaryConfig.profile) {
+                    ElasticsearchUtilities.printESProfile(rr.profile());
+                }
                 logger.debug("Read: {} {}", (System.nanoTime() - t0) / 1000L, txc.activeTransactions.size());
                 return rr;
             } else {

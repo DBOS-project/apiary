@@ -12,6 +12,7 @@ public class ApiaryConfig {
     public static final String provenanceDefaultAddress = "localhost";
 
     public static final boolean XDBTransactions = true;
+    public static final Boolean profile = Boolean.FALSE;
 
     // For system functions.
     public static final String getApiaryClientID = "GetApiaryClientID";

@@ -25,7 +25,8 @@ public class ShopBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(ShopBenchmark.class);
     private static final int threadPoolSize = 256;
 
-    private static final int initialItems = 10000;
+    private static final int chunksize = 100000;
+    private static final int initialItems = 1000000;
     private static final int numPeople = 100;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
@@ -59,22 +60,28 @@ public class ShopBenchmark {
 
         long loadStart = System.currentTimeMillis();
         List<ShopItem> partData = partData(Path.of("data", "part.tbl"));
-        int[] itemIDs = new int[initialItems];
-        String[] itemNames = new String[initialItems];
-        String[] itemDescs = new String[initialItems];
-        int[] costs = new int[initialItems];
-        int[] inventories = new int[initialItems];
         List<String> searchPhrasesList = new ArrayList<>();
-        for (int i = 0; i < initialItems; i++) {
-            ShopItem item = partData.get(i);
-            searchPhrasesList.add(item.getItemName());
-            itemIDs[i] = Integer.parseInt(item.getItemID());
-            itemNames[i] = item.getItemName();
-            itemDescs[i] = item.getItemDesc();
-            costs[i] = item.getCost();
-            inventories[i] = 100000000;
+        assert (initialItems % chunksize == 0);
+        int numChunks = initialItems / chunksize;
+        for (int chunkNum = 0; chunkNum < numChunks; chunkNum++) {
+            int[] itemIDs = new int[chunksize];
+            String[] itemNames = new String[chunksize];
+            String[] itemDescs = new String[chunksize];
+            int[] costs = new int[chunksize];
+            int[] inventories = new int[chunksize];
+            for (int chunkIndex = 0; chunkIndex < chunksize; chunkIndex++) {
+                int itemID = chunkNum * chunksize + chunkIndex;
+                int partDataIndex = itemID % partData.size();
+                ShopItem item = partData.get(partDataIndex);
+                searchPhrasesList.add(item.getItemName());
+                itemIDs[chunkIndex] = itemID;
+                itemNames[chunkIndex] = item.getItemName();
+                itemDescs[chunkIndex] = item.getItemDesc();
+                costs[chunkIndex] = item.getCost() + ThreadLocalRandom.current().nextInt(-100, 100);
+                inventories[chunkIndex] = 100000000;
+            }
+            client.get().executeFunction("ShopBulkAddItem", itemIDs, itemNames, itemDescs, costs, inventories);
         }
-        client.get().executeFunction("ShopBulkAddItem", itemIDs, itemNames, itemDescs, costs, inventories);
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
 
         AtomicInteger count = new AtomicInteger(initialItems);
@@ -89,22 +96,23 @@ public class ShopBenchmark {
                 if (chooser < percentageGetItem) {
                     int personID = ThreadLocalRandom.current().nextInt(numPeople);
                     String search = searchPhrasesList.get(ThreadLocalRandom.current().nextInt(searchPhrasesList.size()));
-                    client.get().executeFunction("ShopGetItem", personID, search, 1150).getInt();
+                    int cost = ThreadLocalRandom.current().nextInt(1000, 2000);
+                    client.get().executeFunction("ShopGetItem", personID, search, cost).getInt();
                     cartTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageGetItem + percentageCheckout) {
                     int personID = ThreadLocalRandom.current().nextInt(numPeople);
                     client.get().executeFunction("ShopCheckoutCart", personID).getInt();
                     cartTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageGetItem + percentageCheckout + percentageAppend ){
-                    int localCount = count.incrementAndGet();
-                    ShopItem item = partData.get(localCount);
+                    int localCount = count.getAndIncrement();
+                    ShopItem item = partData.get(localCount % partData.size());
                     client.get().executeFunction("ShopAddItem", localCount, item.getItemName(), item.getItemDesc(), item.getCost(), 100000000);
                     catalogTimes.add(System.nanoTime() - t0);
                     searchPhrasesList.add(item.getItemName());
                 } else {
                     int itemID = ThreadLocalRandom.current().nextInt(count.get());
                     int delta = ThreadLocalRandom.current().nextInt(-100, 100);
-                    ShopItem item = partData.get(itemID);
+                    ShopItem item = partData.get(itemID % partData.size());
                     client.get().executeFunction("ShopAddItem",  itemID, item.getItemName(), item.getItemDesc(), item.getCost() + delta, 100000000);
                     catalogTimes.add(System.nanoTime() - t0);
                 }

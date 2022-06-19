@@ -13,15 +13,18 @@ public class ShopAddCart extends PostgresFunction {
 
     public static int runFunction(PostgresContext ctxt, int personID, int itemID) throws SQLException {
         ResultSet rs = ctxt.executeQuery(getItem, itemID);
-        rs.next();
-        int cost = rs.getInt(1);
-        int inventory = rs.getInt(2);
-        assert(inventory >= 0);
-        if (inventory == 0) {
-            return 1;
+        if (rs.next()) {
+            int cost = rs.getInt(1);
+            int inventory = rs.getInt(2);
+            assert (inventory >= 0);
+            if (inventory == 0) {
+                return 1;
+            }
+            ctxt.executeUpdate(addCart, personID, itemID, cost);
+            ctxt.executeUpdate(updateInventory, inventory - 1, itemID);
+            return 0;
+        } else {
+            return -1;
         }
-        ctxt.executeUpdate(addCart, personID, itemID, cost);
-        ctxt.executeUpdate(updateInventory, inventory - 1, itemID);
-        return 0;
     }
 }

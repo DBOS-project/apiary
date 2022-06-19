@@ -5,10 +5,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
-import co.elastic.clients.elasticsearch.core.BulkRequest;
-import co.elastic.clients.elasticsearch.core.IndexRequest;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.*;
 import co.elastic.clients.json.JsonData;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
@@ -46,6 +43,7 @@ public class ElasticsearchContext extends ApiaryContext {
 
     public void executeWrite(String index, ApiaryDocument document, String id) {
         try {
+            long t0 = System.nanoTime();
             writtenKeys.putIfAbsent(index, new ArrayList<>());
             writtenKeys.get(index).add(id);
             if (ApiaryConfig.XDBTransactions) {
@@ -58,6 +56,7 @@ public class ElasticsearchContext extends ApiaryContext {
                 b = b.id(id);
             }
             client.index(b.build());
+            logger.debug("Write: {}", (System.nanoTime() - t0) / 1000L);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -81,12 +80,14 @@ public class ElasticsearchContext extends ApiaryContext {
                 )
             );
         }
-        client.bulk(br.build());
+        BulkResponse rr = client.bulk(br.build());
+        logger.info("Bulk load: {} {}", documents.size(), rr.errors());
     }
 
     public SearchResponse executeQuery(String index, Query searchQuery, Class clazz) {
         try {
             if (ApiaryConfig.XDBTransactions) {
+                long t0 = System.nanoTime();
                 List<Query> beginVersionFilter = new ArrayList<>();
                 // If beginVersion is an active transaction, it is not in the snapshot.
                 for (long txID : txc.activeTransactions) {
@@ -112,9 +113,14 @@ public class ElasticsearchContext extends ApiaryContext {
                                         )
                                         .minimumShouldMatch("1")
                                 )._toQuery())
-                        ))
+                        )).profile(ApiaryConfig.profile)
                 );
-                return client.search(request, clazz);
+                SearchResponse rr =  client.search(request, clazz);
+                if (ApiaryConfig.profile) {
+                    ElasticsearchUtilities.printESProfile(rr.profile());
+                }
+                logger.debug("Read: {} {}", (System.nanoTime() - t0) / 1000L, txc.activeTransactions.size());
+                return rr;
             } else {
                 SearchRequest request = SearchRequest.of(s -> s
                         .index(index).query(searchQuery));

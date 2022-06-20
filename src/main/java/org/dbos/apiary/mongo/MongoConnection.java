@@ -100,6 +100,15 @@ public class MongoConnection implements ApiarySecondaryConnection {
 
     @Override
     public void garbageCollect(Set<TransactionContext> activeTransactions) {
-
+        long globalxmin = activeTransactions.stream().mapToLong(i -> i.xmin).min().getAsLong();
+        // No need to keep track of writes that are visible to all active or future transactions.
+        committedWrites.values().forEach(i -> i.values().forEach(w -> w.removeIf(txID -> txID < globalxmin)));
+        // Delete old versions that are no longer visible to any active or future transaction.
+        for (String collectionName : committedWrites.keySet()) {
+            MongoCollection<Document> c = database.getCollection(collectionName);
+            c.deleteMany(
+                    Filters.lt(MongoContext.endVersion, globalxmin)
+            );
+        }
     }
 }

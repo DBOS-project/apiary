@@ -2,10 +2,15 @@ package org.dbos.apiary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
+import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
 import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
+import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
 import org.dbos.apiary.procedures.mongo.MongoAddPerson;
 import org.dbos.apiary.procedures.mongo.MongoFindPerson;
+import org.dbos.apiary.procedures.postgres.pges.PostgresIndexPerson;
+import org.dbos.apiary.procedures.postgres.pges.PostgresSearchPerson;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresFindPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -91,6 +96,45 @@ public class PostgresMongoTests {
         res = client.executeFunction("PostgresAddPerson", "matei", 1).getInt();
         assertEquals(1, res);
 
+
+        res = client.executeFunction("PostgresFindPerson", "matei").getInt();
+        assertEquals(1, res);
+    }
+
+    @Test
+    public void testMongoUpdate() throws InvalidProtocolBufferException, InterruptedException {
+        logger.info("testMongoUpdate");
+
+        MongoConnection conn;
+        PostgresConnection pconn;
+        try {
+            conn = new MongoConnection("localhost", 27017);
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        } catch (Exception e) {
+            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
+            return;
+        }
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+        apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
+        apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+        apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresAddPerson", "matei", 1).getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("PostgresFindPerson", "matei").getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("PostgresAddPerson", "matei", 2).getInt();
+        assertEquals(2, res);
 
         res = client.executeFunction("PostgresFindPerson", "matei").getInt();
         assertEquals(1, res);

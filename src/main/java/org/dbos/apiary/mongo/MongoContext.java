@@ -18,9 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 public class MongoContext extends ApiaryContext {
-    private static final String apiaryID = "__apiaryID__";
-    private static final String beginVersion = "__beginVersion__";
-    private static final String endVersion = "__endVersion__";
+    public static final String apiaryID = "__apiaryID__";
+    public static final String beginVersion = "__beginVersion__";
+    public static final String endVersion = "__endVersion__";
 
 
     private final MongoDatabase database;
@@ -45,6 +45,8 @@ public class MongoContext extends ApiaryContext {
         document.append(beginVersion, txc.txID);
         document.append(endVersion, Long.MAX_VALUE);
         MongoCollection<Document> collection = database.getCollection(collectionName);
+        writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
+        writtenKeys.get(collectionName).add(id);
         collection.insertOne(document);
     }
 
@@ -54,9 +56,15 @@ public class MongoContext extends ApiaryContext {
         for (long txID: txc.activeTransactions) {
             beginVersionFilter.add(Filters.ne(beginVersion, txID));
         }
+        List<Bson> endVersionFilter = new ArrayList<>();
+        endVersionFilter.add(Filters.gte(endVersion, txc.xmax));
+        for (long txID: txc.activeTransactions) {
+            endVersionFilter.add(Filters.eq(endVersion, txID));
+        }
         Bson filter = Aggregates.match(
                 Filters.and(
-                    beginVersionFilter
+                        Filters.and(beginVersionFilter),
+                        Filters.or(endVersionFilter)
                 )
         );
         MongoCollection<Document> collection = database.getCollection(collectionName);

@@ -48,7 +48,10 @@ public class MongoConnection implements ApiarySecondaryConnection {
 
     @Override
     public void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-
+        for (String collection: writtenKeys.keySet()) {
+            MongoCollection<Document> c = database.getCollection(collection);
+            c.deleteMany(Filters.eq(MongoContext.beginVersion, txc.txID));
+        }
     }
 
     @Override
@@ -84,7 +87,8 @@ public class MongoConnection implements ApiarySecondaryConnection {
                     MongoCollection<Document> c = database.getCollection(collection);
                     c.updateMany(Filters.and(
                                     Filters.eq(MongoContext.apiaryID, key),
-                                    Filters.lt(MongoContext.beginVersion, txc.txID)
+                                    Filters.lt(MongoContext.beginVersion, txc.txID),
+                                    Filters.eq(MongoContext.endVersion, Long.MAX_VALUE)
                             ),
                             Updates.set(MongoContext.endVersion, txc.txID)
                     );

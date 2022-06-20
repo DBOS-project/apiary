@@ -18,6 +18,11 @@ public class MongoFindPerson extends MongoFunction {
                 Aggregates.count()
         );
         AggregateIterable<Document> found = context.aggregate("people", aggregation);
-        return found.first().getInteger("count");
+        Document d = found.first();
+        if (d == null) {
+            return 0;
+        } else {
+            return d.getInteger("count");
+        }
     }
 }

@@ -1,6 +1,5 @@
 package org.dbos.apiary.mongo;
 
-import org.dbos.apiary.elasticsearch.ElasticsearchContext;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.ApiaryFunction;
 import org.dbos.apiary.function.FunctionOutput;

@@ -4,9 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
 import org.dbos.apiary.procedures.mongo.MongoAddPerson;
-import org.dbos.apiary.procedures.postgres.pges.PostgresIndexPerson;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
@@ -46,6 +44,12 @@ public class PostgresMongoTests {
 
     @BeforeEach
     public void cleanupMongo() {
+        try {
+            MongoConnection conn = new MongoConnection("localhost", 27017);
+            conn.database.getCollection("people").drop();
+        } catch (Exception e) {
+            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
+        }
     }
 
 
@@ -59,7 +63,7 @@ public class PostgresMongoTests {
             conn = new MongoConnection("localhost", 27017);
             pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
-            logger.info("No Elasticsearch/Postgres instance! {}", e.getMessage());
+            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
             return;
         }
 

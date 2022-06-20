@@ -3,6 +3,8 @@ package org.dbos.apiary.mongo;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.Filters;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.dbos.apiary.function.ApiaryContext;
@@ -10,6 +12,7 @@ import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +49,19 @@ public class MongoContext extends ApiaryContext {
     }
 
     public AggregateIterable<Document> aggregate(String collectionName, List<Bson> aggregations) {
+        List<Bson> beginVersionFilter = new ArrayList<>();
+        beginVersionFilter.add(Filters.lt(beginVersion, txc.xmax));
+        for (long txID: txc.activeTransactions) {
+            beginVersionFilter.add(Filters.ne(beginVersion, txID));
+        }
+        Bson filter = Aggregates.match(
+                Filters.and(
+                    beginVersionFilter
+                )
+        );
         MongoCollection<Document> collection = database.getCollection(collectionName);
+        aggregations = new ArrayList<>(aggregations);
+        aggregations.add(0, filter);
         return collection.aggregate(aggregations);
     }
 }

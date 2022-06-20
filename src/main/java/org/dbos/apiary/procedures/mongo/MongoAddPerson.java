@@ -8,7 +8,7 @@ public class MongoAddPerson extends MongoFunction {
 
     public int runFunction(MongoContext context, String name, int number) {
         Document person = new Document("name", name).append("number", number);
-        context.executeWrite("people", person);
+        context.insertOne("people", person, name);
         return number;
     }
 }

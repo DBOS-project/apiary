@@ -15,6 +15,11 @@ import java.util.List;
 import java.util.Map;
 
 public class MongoContext extends ApiaryContext {
+    private static final String apiaryID = "__apiaryID__";
+    private static final String beginVersion = "__beginVersion__";
+    private static final String endVersion = "__endVersion__";
+
+
     private final MongoDatabase database;
     private final TransactionContext txc;
 
@@ -32,7 +37,10 @@ public class MongoContext extends ApiaryContext {
         return null;
     }
 
-    public void executeWrite(String collectionName, Document document) {
+    public void insertOne(String collectionName, Document document, String id) {
+        document.append(apiaryID, id);
+        document.append(beginVersion, txc.txID);
+        document.append(endVersion, Long.MAX_VALUE);
         MongoCollection<Document> collection = database.getCollection(collectionName);
         collection.insertOne(document);
     }

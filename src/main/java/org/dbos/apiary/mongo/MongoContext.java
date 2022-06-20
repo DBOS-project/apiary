@@ -1,8 +1,10 @@
 package org.dbos.apiary.mongo;
 
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
@@ -35,8 +37,8 @@ public class MongoContext extends ApiaryContext {
         collection.insertOne(document);
     }
 
-    public Document find(String collectionName, Document search) {
+    public AggregateIterable<Document> aggregate(String collectionName, List<Bson> aggregations) {
         MongoCollection<Document> collection = database.getCollection(collectionName);
-        return collection.find(search).first();
+        return collection.aggregate(aggregations);
     }
 }

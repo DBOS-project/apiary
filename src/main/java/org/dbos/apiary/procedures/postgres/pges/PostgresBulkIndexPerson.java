@@ -1,4 +1,4 @@
-package org.dbos.apiary.procedures.postgres.crossdb;
+package org.dbos.apiary.procedures.postgres.pges;
 
 import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;

@@ -2,15 +2,10 @@ package org.dbos.apiary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
-import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
 import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
-import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
 import org.dbos.apiary.procedures.mongo.MongoAddPerson;
 import org.dbos.apiary.procedures.mongo.MongoFindPerson;
-import org.dbos.apiary.procedures.postgres.pges.PostgresIndexPerson;
-import org.dbos.apiary.procedures.postgres.pges.PostgresSearchPerson;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresFindPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;

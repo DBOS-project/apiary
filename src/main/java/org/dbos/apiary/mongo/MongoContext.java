@@ -12,6 +12,7 @@ import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.utilities.ApiaryConfig;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,9 +43,11 @@ public class MongoContext extends ApiaryContext {
     }
 
     public void insertOne(String collectionName, Document document, String id) {
-        document.append(apiaryID, id);
-        document.append(beginVersion, txc.txID);
-        document.append(endVersion, Long.MAX_VALUE);
+        if (ApiaryConfig.XDBTransactions) {
+            document.append(apiaryID, id);
+            document.append(beginVersion, txc.txID);
+            document.append(endVersion, Long.MAX_VALUE);
+        }
         MongoCollection<Document> collection = database.getCollection(collectionName);
         writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
         writtenKeys.get(collectionName).add(id);
@@ -52,6 +55,9 @@ public class MongoContext extends ApiaryContext {
     }
 
     public FindIterable<Document> find(String collectionName, Bson filter) {
+        if (!ApiaryConfig.XDBTransactions) {
+            return database.getCollection(collectionName).find(filter);
+        }
         List<Bson> beginVersionFilter = new ArrayList<>();
         beginVersionFilter.add(Filters.lt(beginVersion, txc.xmax));
         for (long txID: txc.activeTransactions) {
@@ -72,6 +78,9 @@ public class MongoContext extends ApiaryContext {
     }
 
     public AggregateIterable<Document> aggregate(String collectionName, List<Bson> aggregations) {
+        if (!ApiaryConfig.XDBTransactions) {
+            return database.getCollection(collectionName).aggregate(aggregations);
+        }
         List<Bson> beginVersionFilter = new ArrayList<>();
         beginVersionFilter.add(Filters.lt(beginVersion, txc.xmax));
         for (long txID: txc.activeTransactions) {

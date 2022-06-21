@@ -1,5 +1,6 @@
 package org.dbos.apiary.benchmarks;
 
+import com.mongodb.client.model.Indexes;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
@@ -34,7 +35,7 @@ public class HotelBenchmark {
         conn.createTable("HotelsTable", "HotelID integer PRIMARY KEY NOT NULL, HotelName VARCHAR(1000) NOT NULL, AvailableRooms integer NOT NULL");
 
         MongoConnection mconn = new MongoConnection(dbAddr, 27017);
-        mconn.database.getCollection("people").drop();
+        mconn.database.getCollection("hotels").drop();
 
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
 
@@ -44,6 +45,7 @@ public class HotelBenchmark {
             int latitude = ThreadLocalRandom.current().nextInt(0, 90);
             client.get().executeFunction("PostgresAddHotel", hotelNum, "hotel" + hotelNum, Integer.MAX_VALUE, longitude, latitude);
         }
+        mconn.database.getCollection("hotels").createIndex(Indexes.geo2dsphere("point"));
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
 
         AtomicInteger reservationIDs = new AtomicInteger(0);

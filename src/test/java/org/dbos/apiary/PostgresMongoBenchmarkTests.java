@@ -5,16 +5,12 @@ import com.mongodb.client.model.Indexes;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.mongo.MongoAddPerson;
-import org.dbos.apiary.procedures.mongo.MongoFindPerson;
 import org.dbos.apiary.procedures.mongo.hotel.MongoAddHotel;
 import org.dbos.apiary.procedures.mongo.hotel.MongoMakeReservation;
 import org.dbos.apiary.procedures.mongo.hotel.MongoSearchHotel;
 import org.dbos.apiary.procedures.postgres.hotel.PostgresAddHotel;
 import org.dbos.apiary.procedures.postgres.hotel.PostgresMakeReservation;
 import org.dbos.apiary.procedures.postgres.hotel.PostgresSearchHotel;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresFindPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -24,14 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PostgresMongoBenchmarkTests {
     private static final Logger logger = LoggerFactory.getLogger(PostgresESTests.class);
@@ -70,8 +59,8 @@ public class PostgresMongoBenchmarkTests {
 
 
     @Test
-    public void testMongoBasic() throws InvalidProtocolBufferException {
-        logger.info("testMongoBasic");
+    public void testMongoHotel() throws InvalidProtocolBufferException {
+        logger.info("testMongoHotel");
 
         MongoConnection conn;
         PostgresConnection pconn;

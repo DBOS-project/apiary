@@ -9,9 +9,9 @@ import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
-import org.dbos.apiary.procedures.postgres.crossdb.PostgresBulkIndexPerson;
-import org.dbos.apiary.procedures.postgres.crossdb.PostgresIndexPerson;
-import org.dbos.apiary.procedures.postgres.crossdb.PostgresSearchPerson;
+import org.dbos.apiary.procedures.postgres.pges.PostgresBulkIndexPerson;
+import org.dbos.apiary.procedures.postgres.pges.PostgresIndexPerson;
+import org.dbos.apiary.procedures.postgres.pges.PostgresSearchPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -29,8 +29,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class CrossDBTests {
-    private static final Logger logger = LoggerFactory.getLogger(CrossDBTests.class);
+public class PostgresESTests {
+    private static final Logger logger = LoggerFactory.getLogger(PostgresESTests.class);
 
     private ApiaryWorker apiaryWorker;
 

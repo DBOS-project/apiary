@@ -23,4 +23,5 @@ public class ApiaryConfig {
     public static final String postgres = "postgres";
     public static final String voltdb = "voltdb";
     public static final String vertica = "vertica";
+    public static final String mongo = "mongo";
 }

@@ -23,7 +23,7 @@ public class MongoContext extends ApiaryContext {
     public static final String endVersion = "__endVersion__";
 
 
-    private final MongoDatabase database;
+    public final MongoDatabase database;
     private final TransactionContext txc;
 
     Map<String, List<String>> writtenKeys = new HashMap<>();

@@ -7,8 +7,9 @@ public class PostgresAddHotel extends PostgresFunction {
 
     private static final String insert = "INSERT INTO HotelsTable(HotelID, HotelName, AvailableRooms) VALUES (?, ?, ?);";
 
-    public static int runFunction(PostgresContext ctxt, int hotelID, String hotelName, int numRooms)throws Exception {
+    public static int runFunction(PostgresContext ctxt, int hotelID, String hotelName, int numRooms, int longitude, int latitude)throws Exception {
         ctxt.executeUpdate(insert, hotelID, hotelName, numRooms);
+        ctxt.apiaryCallFunction("MongoAddHotel", hotelID, longitude, latitude);
         return hotelID;
     }
 }

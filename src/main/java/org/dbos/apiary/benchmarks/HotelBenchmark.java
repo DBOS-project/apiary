@@ -75,8 +75,8 @@ public class HotelBenchmark {
         while (System.currentTimeMillis() < endTime) {
             long t = System.nanoTime();
             if (System.currentTimeMillis() - startTime < threadWarmupMs) {
-                reserveTimes.clear();
                 searchTimes.clear();
+                reserveTimes.clear();
             }
             threadPool.submit(r);
             while (System.nanoTime() - t < interval.longValue() * 1000) {
@@ -86,20 +86,8 @@ public class HotelBenchmark {
 
         long elapsedTime = (System.currentTimeMillis() - startTime) - threadWarmupMs;
 
-        List<Long> queryTimes = reserveTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+        List<Long> queryTimes = searchTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
         int numQueries = queryTimes.size();
-        if (numQueries > 0) {
-            long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
-            double throughput = (double) numQueries * 1000.0 / elapsedTime;
-            long p50 = queryTimes.get(numQueries / 2);
-            long p99 = queryTimes.get((numQueries * 99) / 100);
-            logger.info("Reservations: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
-        } else {
-            logger.info("No reservations");
-        }
-
-        queryTimes = searchTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
-        numQueries = queryTimes.size();
         if (numQueries > 0) {
             long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
             double throughput = (double) numQueries * 1000.0 / elapsedTime;
@@ -110,9 +98,20 @@ public class HotelBenchmark {
             logger.info("No searches");
         }
 
+        queryTimes = reserveTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+        numQueries = queryTimes.size();
+        if (numQueries > 0) {
+            long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
+            double throughput = (double) numQueries * 1000.0 / elapsedTime;
+            long p50 = queryTimes.get(numQueries / 2);
+            long p99 = queryTimes.get((numQueries * 99) / 100);
+            logger.info("Reservations: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
+        } else {
+            logger.info("No reservations");
+        }
+
         threadPool.shutdown();
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
-        System.exit(0); // ES client is bugged and won't exit.
     }
 }

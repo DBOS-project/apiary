@@ -47,10 +47,10 @@ public class MongoContext extends ApiaryContext {
             document.append(apiaryID, id);
             document.append(beginVersion, txc.txID);
             document.append(endVersion, Long.MAX_VALUE);
+            writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
+            writtenKeys.get(collectionName).add(id);
         }
         MongoCollection<Document> collection = database.getCollection(collectionName);
-        writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
-        writtenKeys.get(collectionName).add(id);
         collection.insertOne(document);
     }
 

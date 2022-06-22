@@ -36,6 +36,7 @@ public class HotelBenchmark {
 
         MongoConnection mconn = new MongoConnection(dbAddr, 27017);
         mconn.database.getCollection("hotels").drop();
+        mconn.database.getCollection("reservations").drop();
 
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
 

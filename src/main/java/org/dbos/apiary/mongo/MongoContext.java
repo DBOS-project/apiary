@@ -13,6 +13,8 @@ import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,10 +22,11 @@ import java.util.List;
 import java.util.Map;
 
 public class MongoContext extends ApiaryContext {
+    private static final Logger logger = LoggerFactory.getLogger(MongoConnection.class);
+    
     public static final String apiaryID = "__apiaryID__";
     public static final String beginVersion = "__beginVersion__";
     public static final String endVersion = "__endVersion__";
-
 
     private final MongoDatabase database;
     private final TransactionContext txc;

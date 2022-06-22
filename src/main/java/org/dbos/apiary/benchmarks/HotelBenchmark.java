@@ -3,6 +3,7 @@ package org.dbos.apiary.benchmarks;
 import com.mongodb.client.model.Indexes;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.mongo.MongoConnection;
+import org.dbos.apiary.mongo.MongoContext;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
@@ -48,6 +49,15 @@ public class HotelBenchmark {
         }
         mconn.database.getCollection("hotels").createIndex(Indexes.geo2dsphere("point"));
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
+
+        if (ApiaryConfig.XDBTransactions) {
+            mconn.database.getCollection("hotels").createIndex(Indexes.ascending(MongoContext.beginVersion));
+            mconn.database.getCollection("hotels").createIndex(Indexes.ascending(MongoContext.endVersion));
+            mconn.database.getCollection("hotels").createIndex(Indexes.ascending(MongoContext.apiaryID));
+            mconn.database.getCollection("reservations").createIndex(Indexes.ascending(MongoContext.beginVersion));
+            mconn.database.getCollection("reservations").createIndex(Indexes.ascending(MongoContext.endVersion));
+            mconn.database.getCollection("reservations").createIndex(Indexes.ascending(MongoContext.apiaryID));
+        }
 
         AtomicInteger reservationIDs = new AtomicInteger(0);
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);

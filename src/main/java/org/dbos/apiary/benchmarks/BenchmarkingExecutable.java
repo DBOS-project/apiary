@@ -63,6 +63,11 @@ public class BenchmarkingExecutable {
             int percentageUpdate = cmd.hasOption("p4") ? Integer.parseInt(cmd.getOptionValue("p4")) : 0;
             logger.info("ShopBenchmark {} {} {} {}", percentageGetItem, percentageCheckout, percentageAppend, percentageUpdate);
             ShopBenchmark.benchmark(mainHostAddr, interval, duration, percentageGetItem, percentageCheckout, percentageAppend, percentageUpdate);
+        } else if (benchmark.equals("hotel")) {
+            int percentageSearch = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 80;
+            int percentageReserve = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 20;
+            logger.info("Hotel Benchmark {} {}", percentageSearch, percentageReserve);
+            HotelBenchmark.benchmark(mainHostAddr, interval, duration, percentageSearch, percentageReserve);
         }
     }
 }

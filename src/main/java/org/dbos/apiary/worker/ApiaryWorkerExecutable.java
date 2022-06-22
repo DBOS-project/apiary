@@ -5,6 +5,7 @@ import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
 import org.apache.commons_voltpatches.cli.Options;
 import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
+import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
@@ -12,6 +13,12 @@ import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESAddItem;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESBulkAddItem;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
+import org.dbos.apiary.procedures.mongo.hotel.MongoAddHotel;
+import org.dbos.apiary.procedures.mongo.hotel.MongoMakeReservation;
+import org.dbos.apiary.procedures.mongo.hotel.MongoSearchHotel;
+import org.dbos.apiary.procedures.postgres.hotel.PostgresAddHotel;
+import org.dbos.apiary.procedures.postgres.hotel.PostgresMakeReservation;
+import org.dbos.apiary.procedures.postgres.hotel.PostgresSearchHotel;
 import org.dbos.apiary.procedures.postgres.pges.PostgresBulkIndexPerson;
 import org.dbos.apiary.procedures.postgres.pges.PostgresIndexPerson;
 import org.dbos.apiary.procedures.postgres.pges.PostgresSearchPerson;
@@ -29,18 +36,21 @@ public class ApiaryWorkerExecutable {
         logger.info("Starting Apiary worker server.");
         Options options = new Options();
         options.addOption("db", true,
-                "The db used by this worker. Can be one of (voltdb, postgres). Defaults to postgres.");
+                "The secondary used by this worker.");
         options.addOption("s", true, "Which Scheduler?");
         options.addOption("t", true, "How many worker threads?  Defaults to 128.");
-        options.addOption("esAddr", true, "Elasticsearch Address.");
+        options.addOption("secondaryAddress", true, "Secondary Address.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
 
-        String db = "postgres";
+        String db;
         if (cmd.hasOption("db")) {
             db = cmd.getOptionValue("db");
             logger.info("Using database: {}", db);
+        } else {
+            logger.info("No database!");
+            return;
         }
 
         ApiaryScheduler scheduler = new ApiaryNaiveScheduler();
@@ -62,12 +72,12 @@ public class ApiaryWorkerExecutable {
 
         if (db.equals("voltdb")) {
             throw new IllegalArgumentException("TODO: Implement VoltDB worker");
-        } else if (db.equals("postgres")) {
+        } else if (db.equals("elasticsearch")) {
             worker = new ApiaryWorker(scheduler, numThreads);
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
             String esAddr = "localhost";
-            if (cmd.hasOption("esAddr")) {
-                esAddr = cmd.getOptionValue("esAddr");
+            if (cmd.hasOption("secondaryAddress")) {
+                esAddr = cmd.getOptionValue("secondaryAddress");
                 logger.info("Elasticsearch Address: {}", esAddr);
             }
             ElasticsearchConnection econn = new ElasticsearchConnection(esAddr, 9200, "elastic", "password");
@@ -88,8 +98,25 @@ public class ApiaryWorkerExecutable {
             worker.registerFunction("ShopESAddItem", ApiaryConfig.elasticsearch, ShopESAddItem::new);
             worker.registerFunction("ShopESBulkAddItem", ApiaryConfig.elasticsearch, ShopESBulkAddItem::new);
             worker.registerFunction("ShopESSearchItem", ApiaryConfig.elasticsearch, ShopESSearchItem::new);
-        } else {
-            throw new IllegalArgumentException("Option 'db' must be one of (voltdb, postgres).");
+        } else if (db.equals("mongo")) {
+            worker = new ApiaryWorker(scheduler, numThreads);
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            String mongoAddr = "localhost";
+            if (cmd.hasOption("secondaryAddress")) {
+                mongoAddr = cmd.getOptionValue("secondaryAddress");
+                logger.info("Mongo Address: {}", mongoAddr);
+            }
+            MongoConnection mconn = new MongoConnection(mongoAddr, 27017);
+            worker.registerConnection(ApiaryConfig.mongo, mconn);
+            worker.registerConnection(ApiaryConfig.postgres, conn);
+            worker.registerFunction("PostgresAddHotel", ApiaryConfig.postgres, PostgresAddHotel::new);
+            worker.registerFunction("PostgresMakeReservation", ApiaryConfig.postgres, PostgresMakeReservation::new);
+            worker.registerFunction("PostgresSearchHotel", ApiaryConfig.postgres, PostgresSearchHotel::new);
+            worker.registerFunction("MongoMakeReservation", ApiaryConfig.mongo, MongoMakeReservation::new);
+            worker.registerFunction("MongoAddHotel", ApiaryConfig.mongo, MongoAddHotel::new);
+            worker.registerFunction("MongoSearchHotel", ApiaryConfig.mongo, MongoSearchHotel::new);
+        }  else {
+            throw new IllegalArgumentException("Option 'db' must be one of (elasticsearch, mongo).");
         }
 
         worker.startServing();

@@ -12,7 +12,7 @@ public class GCSReadString extends GCSFunction {
     public String runFunction(GCSContext context, String name) throws SQLException {
         byte[] bytes = context.retrive(ApiaryConfig.gcsTestBucket, name);
         if (bytes == null) {
-            return "";
+            return "none";
         }
         return new String(bytes, StandardCharsets.UTF_8);
     }

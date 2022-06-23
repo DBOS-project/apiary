@@ -18,7 +18,14 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PostgresMysqlTests {
     private static final Logger logger = LoggerFactory.getLogger(PostgresMysqlTests.class);
@@ -128,4 +135,62 @@ public class PostgresMysqlTests {
         assertEquals(1, res);
     }
 
+    @Test
+    public void testMysqlConcurrentInsert() throws InterruptedException {
+        logger.info("testMysqlConcurrentInsert");
+
+        MysqlConnection conn;
+        PostgresConnection pconn;
+        try {
+            conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+        } catch (Exception e) {
+            logger.info("No MySQL/Postgres instance! {}", e.getMessage());
+            return;
+        }
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.mysql, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresUpsertPerson", ApiaryConfig.postgres, PostgresUpsertPerson::new);
+        apiaryWorker.registerFunction("PostgresQueryPerson", ApiaryConfig.postgres, PostgresQueryPerson::new);
+        apiaryWorker.registerFunction("MysqlUpsertPerson", ApiaryConfig.mysql, MysqlUpsertPerson::new);
+        apiaryWorker.registerFunction("MysqlQueryPerson", ApiaryConfig.mysql, MysqlQueryPerson::new);
+
+        apiaryWorker.startServing();
+
+        int numThreads = 10;
+        long start = System.currentTimeMillis();
+        long testDurationMs = 5000L;
+        AtomicInteger count = new AtomicInteger(0);
+        AtomicBoolean success = new AtomicBoolean(true);
+        Runnable r = () -> {
+            try {
+                ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+                while (System.currentTimeMillis() < start + testDurationMs) {
+                    int localCount = count.getAndIncrement();
+                    client.executeFunction("PostgresUpsertPerson", "matei" + localCount, localCount).getInt();
+                    String search = "matei" + ThreadLocalRandom.current().nextInt(localCount - 5, localCount + 5);
+                    int res = client.executeFunction("MysqlQueryPerson", search).getInt();
+                    if (res == -1) {
+                        success.set(false);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                success.set(false);
+            }
+        };
+
+        List<Thread> threads = new ArrayList<>();
+        for (int threadNum = 0; threadNum < numThreads; threadNum++) {
+            Thread t = new Thread(r);
+            threads.add(t);
+            t.start();
+        }
+        for (Thread t: threads) {
+            t.join();
+        }
+        assertTrue(success.get());
+    }
 }

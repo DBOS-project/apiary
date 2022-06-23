@@ -1,0 +1,19 @@
+package org.dbos.apiary.procedures.gcs;
+
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import org.dbos.apiary.gcs.GCSContext;
+import org.dbos.apiary.gcs.GCSFunction;
+import org.dbos.apiary.utilities.ApiaryConfig;
+
+import java.nio.charset.StandardCharsets;
+
+public class GCSWriteString extends GCSFunction {
+
+    public String runFunction(GCSContext context, String name, String content) {
+        BlobId blobId = BlobId.of(ApiaryConfig.gcsTestBucket, name);
+        BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/plain").build();
+        context.create(blobInfo, content.getBytes(StandardCharsets.UTF_8));
+        return name;
+    }
+}

@@ -71,7 +71,7 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         String apiaryTable = String.format(
                 "CREATE TABLE IF NOT EXISTS %s (%s VARCHAR(256) NOT NULL, %s BIGINT, %s BIGINT, %s);"
         , tableName, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion, specStr);
-        logger.info("Create table: {}", apiaryTable);
+        logger.debug("Create table: {}", apiaryTable);
         s.execute(apiaryTable);
         s.close();
         conn.close();
@@ -151,7 +151,7 @@ public class MysqlConnection implements ApiarySecondaryConnection {
                 for (String table : writtenKeys.keySet()) {
                     for (String key : writtenKeys.get(table)) {
                         query = String.format("UPDATE %s SET %s = %d WHERE %s = '%s' AND %s < %d AND %s = %d", table, MysqlContext.endVersion, txc.txID, MysqlContext.apiaryID, key, MysqlContext.beginVersion, txc.txID, MysqlContext.endVersion, Long.MAX_VALUE);
-                        logger.info("Validate update query: {}", query);
+                        logger.debug("Validate update query: {}", query);
                         s.execute(query);
                     }
                 }

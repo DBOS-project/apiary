@@ -57,7 +57,7 @@ public class MysqlContext extends ApiaryContext {
             query.append(", ?");
         }
         query.append(");");
-        logger.info(query.toString());
+        logger.debug(query.toString());
         writtenKeys.putIfAbsent(tableName, new ArrayList<>());
         writtenKeys.get(tableName).add(id);
         PreparedStatement pstmt = conn.prepareStatement(query.toString());
@@ -87,7 +87,7 @@ public class MysqlContext extends ApiaryContext {
         }
 
         filterQuery.append("); ");
-        logger.info(filterQuery.toString());
+        logger.debug(filterQuery.toString());
 
         PreparedStatement pstmt = conn.prepareStatement(filterQuery.toString());
         prepareStatement(pstmt, input);

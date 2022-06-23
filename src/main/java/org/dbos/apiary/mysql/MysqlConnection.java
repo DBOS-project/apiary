@@ -15,6 +15,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class MysqlConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(MysqlConnection.class);
@@ -148,9 +149,11 @@ public class MysqlConnection implements ApiarySecondaryConnection {
                 Connection c = ds.getConnection();
                 Statement s = c.createStatement();
                 for (String table : writtenKeys.keySet()) {
-                    for (String key : writtenKeys.get(table)) {
-                        query = String.format("UPDATE %s SET %s = %d WHERE %s = '%s' AND %s < %d AND %s = %d", table, MysqlContext.endVersion, txc.txID, MysqlContext.apiaryID, key, MysqlContext.beginVersion, txc.txID, MysqlContext.endVersion, Long.MAX_VALUE);
+                    String keyString = String.join(",", writtenKeys.get(table).stream().map(name -> ("'" + name + "'")).collect(Collectors.toList()));
+                    if (!keyString.isEmpty()) {
+                        query = String.format("UPDATE %s SET %s = %d WHERE %s IN (%s) AND %s < %d AND %s = %d", table, MysqlContext.endVersion, txc.txID, MysqlContext.apiaryID, keyString, MysqlContext.beginVersion, txc.txID, MysqlContext.endVersion, Long.MAX_VALUE);
                         s.execute(query);
+                        logger.info(query);
                     }
                 }
                 s.close();

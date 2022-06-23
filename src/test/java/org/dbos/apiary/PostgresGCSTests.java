@@ -76,7 +76,7 @@ public class PostgresGCSTests {
 
     @Test
     public void testGCSBasic() throws InvalidProtocolBufferException {
-        logger.info("testMongoBasic");
+        logger.info("testGCSBasic");
 
         GCSConnection conn;
         PostgresConnection pconn;

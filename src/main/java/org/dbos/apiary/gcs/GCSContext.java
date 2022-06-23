@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -21,6 +22,8 @@ import java.util.Map;
 
 public class GCSContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(GCSContext.class);
+
+    private static final String insert = "INSERT INTO VersionTable(Name, Version) VALUES (?, ?);";
 
     public final Storage storage;
     public final TransactionContext txc;
@@ -42,9 +45,11 @@ public class GCSContext extends ApiaryContext {
     }
 
     public void create(BlobInfo blobInfo, byte[] bytes) throws SQLException {
-        Statement s = pg.createStatement();
-        s.execute(String.format("INSERT INTO VersionTable(Name, Version) VALUES (%s, %d);", blobInfo.getName(), txc.txID));
-        s.close();
+        PreparedStatement ps = pg.prepareStatement(insert);
+        ps.setString(1, blobInfo.getName());
+        ps.setLong(2, txc.txID);
+        ps.executeUpdate();
+        ps.close();
         storage.create(blobInfo, bytes);
         writtenKeys.putIfAbsent(blobInfo.getBucket(), new ArrayList<>());
         writtenKeys.get(blobInfo.getBucket()).add(blobInfo.getBlobId().getName());

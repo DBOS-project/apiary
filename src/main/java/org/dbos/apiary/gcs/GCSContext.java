@@ -43,7 +43,7 @@ public class GCSContext extends ApiaryContext {
 
     public void create(BlobInfo blobInfo, byte[] bytes) throws SQLException {
         Statement s = pg.createStatement();
-        s.execute(String.format("INSERT INTO VersionTable (Name, Version) VALUES (%s, %d", blobInfo.getName(), txc.txID));
+        s.execute(String.format("INSERT INTO VersionTable (Name, Version) VALUES (%s, %d);", blobInfo.getName(), txc.txID));
         s.close();
         storage.create(blobInfo, bytes);
         writtenKeys.putIfAbsent(blobInfo.getBucket(), new ArrayList<>());

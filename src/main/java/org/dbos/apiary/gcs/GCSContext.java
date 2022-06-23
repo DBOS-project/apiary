@@ -24,7 +24,7 @@ public class GCSContext extends ApiaryContext {
 
     private static final String insert = "INSERT INTO VersionTable(Name, Version) VALUES (?, ?);";
 
-    private static final String retrieve = "SELECT Version FROM VersionTable(Name, Version) WHERE Name=? AND Version<?;";
+    private static final String retrieve = "SELECT Version FROM VersionTable WHERE Name=? AND Version<?;";
 
     public final Storage storage;
     public final TransactionContext txc;

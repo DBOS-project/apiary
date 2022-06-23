@@ -11,6 +11,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +58,8 @@ public class MysqlContext extends ApiaryContext {
         }
         query.append(");");
         logger.info(query.toString());
+        writtenKeys.putIfAbsent(tableName, new ArrayList<>());
+        writtenKeys.get(tableName).add(id);
         PreparedStatement pstmt = conn.prepareStatement(query.toString());
         Object[] apiaryInput = new Object[input.length + 3];
         apiaryInput[0] = id;

@@ -64,6 +64,7 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     }
 
     public void createTable(String tableName, String specStr) throws SQLException {
+        // TODO: How do we interact with the original primary key columns to avoid conflicts? Add Apiary columns as part of primary key? For now, assume no primary key columns.
         // Automatically add three additional columns: apiaryID, beginVersion, endVersion.
         Connection conn = ds.getConnection();
         Statement s = conn.createStatement();

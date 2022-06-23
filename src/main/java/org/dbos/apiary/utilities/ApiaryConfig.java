@@ -4,6 +4,7 @@ public class ApiaryConfig {
     public static final int voltdbPort = 21212;
     public static final int workerPort = 8000;
     public static final int postgresPort = 5432;
+    public static final int mysqlPort = 3306;
     public static final long statelessTxid = 1L;
     public static final String tableFuncInvocations = "FUNCINVOCATIONS";
 
@@ -28,4 +29,5 @@ public class ApiaryConfig {
 
     // GCS bucket names.
     public static final String gcsTestBucket = "apiary_gcs_test";
+    public static final String mysql = "mysql";
 }

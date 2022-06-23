@@ -10,8 +10,7 @@ import java.nio.charset.StandardCharsets;
 public class GCSReadString extends GCSFunction {
 
     public String runFunction(GCSContext context, String name) {
-        BlobId blobId = BlobId.of(ApiaryConfig.gcsTestBucket, name);
-        byte[] bytes = context.retrive(blobId);
+        byte[] bytes = context.retrive(ApiaryConfig.gcsTestBucket, name);
         return new String(bytes, StandardCharsets.UTF_8);
     }
 }

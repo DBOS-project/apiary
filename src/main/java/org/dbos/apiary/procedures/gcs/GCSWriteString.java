@@ -12,9 +12,7 @@ import java.sql.SQLException;
 public class GCSWriteString extends GCSFunction {
 
     public String runFunction(GCSContext context, String name, String content) throws SQLException {
-        BlobId blobId = BlobId.of(ApiaryConfig.gcsTestBucket, name);
-        BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/plain").build();
-        context.create(blobInfo, content.getBytes(StandardCharsets.UTF_8));
+        context.create(ApiaryConfig.gcsTestBucket, name, content.getBytes(StandardCharsets.UTF_8));
         return name;
     }
 }

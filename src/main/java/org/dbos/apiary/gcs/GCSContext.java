@@ -7,14 +7,13 @@ import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
-import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -44,18 +43,21 @@ public class GCSContext extends ApiaryContext {
         return null;
     }
 
-    public void create(BlobInfo blobInfo, byte[] bytes) throws SQLException {
+    public void create(String bucket, String name, byte[] bytes) throws SQLException {
         PreparedStatement ps = pg.prepareStatement(insert);
-        ps.setString(1, blobInfo.getName());
+        ps.setString(1, name);
         ps.setLong(2, txc.txID);
         ps.executeUpdate();
         ps.close();
+        BlobId blobID = BlobId.of(bucket, name);
+        BlobInfo blobInfo = BlobInfo.newBuilder(blobID).setContentType("text/plain").build();
         storage.create(blobInfo, bytes);
-        writtenKeys.putIfAbsent(blobInfo.getBucket(), new ArrayList<>());
-        writtenKeys.get(blobInfo.getBucket()).add(blobInfo.getBlobId().getName());
+        writtenKeys.putIfAbsent(bucket, new ArrayList<>());
+        writtenKeys.get(bucket).add(name);
     }
 
-    public byte[] retrive(BlobId blobID) {
+    public byte[] retrive(String bucket, String name) {
+        BlobId blobID = BlobId.of(bucket, name);
         return storage.readAllBytes(blobID);
     }
 }

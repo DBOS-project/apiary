@@ -171,7 +171,7 @@ public class PostgresMysqlTests {
                     int localCount = count.getAndIncrement();
                     client.executeFunction("PostgresUpsertPerson", "matei" + localCount, localCount).getInt();
                     String search = "matei" + ThreadLocalRandom.current().nextInt(localCount - 5, localCount + 5);
-                    int res = client.executeFunction("MysqlQueryPerson", search).getInt();
+                    int res = client.executeFunction("PostgresQueryPerson", search).getInt();
                     if (res == -1) {
                         success.set(false);
                     }

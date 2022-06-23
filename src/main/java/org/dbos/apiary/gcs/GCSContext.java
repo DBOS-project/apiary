@@ -22,22 +22,22 @@ import java.util.Map;
 public class GCSContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(GCSContext.class);
 
-    private static final String insert = "INSERT INTO VersionTable(Name, Version) VALUES (?, ?);";
+    private static final String insert = "INSERT INTO VersionTable(Name, BeginVersion, EndVersion) VALUES (?, ?, ?);";
 
-    private static final String retrieve = "SELECT Version FROM VersionTable WHERE Name=? AND Version<?;";
+    private static final String retrieve = "SELECT BeginVersion FROM VersionTable WHERE Name=? AND BeginVersion<?;";
 
     public final Storage storage;
     public final TransactionContext txc;
-    private final Connection pg;
+    private final Connection primary;
 
     final Map<String, List<String>> writtenKeys = new HashMap<>();
 
     public GCSContext(Storage storage, WorkerContext workerContext, TransactionContext txc,
-                      String service, long execID, long functionID, Connection pg) {
+                      String service, long execID, long functionID, Connection primary) {
         super(workerContext, service, execID, functionID);
         this.storage = storage;
         this.txc = txc;
-        this.pg = pg;
+        this.primary = primary;
     }
 
     @Override
@@ -46,9 +46,10 @@ public class GCSContext extends ApiaryContext {
     }
 
     public void create(String bucket, String name, byte[] bytes) throws SQLException {
-        PreparedStatement ps = pg.prepareStatement(insert);
+        PreparedStatement ps = primary.prepareStatement(insert);
         ps.setString(1, name);
         ps.setLong(2, txc.txID);
+        ps.setLong(3, Long.MAX_VALUE);
         ps.executeUpdate();
         ps.close();
         BlobId blobID = BlobId.of(bucket, name + txc.txID);
@@ -59,7 +60,7 @@ public class GCSContext extends ApiaryContext {
     }
 
     public byte[] retrive(String bucket, String name) throws SQLException {
-        PreparedStatement ps = pg.prepareStatement(retrieve);
+        PreparedStatement ps = primary.prepareStatement(retrieve);
         ps.setString(1, name);
         ps.setLong(2, txc.xmax);
         ResultSet rs = ps.executeQuery();

@@ -16,11 +16,11 @@ import org.dbos.apiary.postgres.PostgresConnection;
 public class GCSConnection implements ApiarySecondaryConnection {
 
     public final Storage storage;
-    private final PostgresConnection pg;
+    private final PostgresConnection primary;
 
-    public GCSConnection(PostgresConnection pg) {
+    public GCSConnection(PostgresConnection primary) {
         this.storage = StorageOptions.getDefaultInstance().getService();
-        this.pg = pg;
+        this.primary = primary;
     }
 
     @Override
@@ -28,7 +28,7 @@ public class GCSConnection implements ApiarySecondaryConnection {
                                        TransactionContext txc, String service,
                                        long execID, long functionID,
                                        Object... inputs) throws Exception {
-        GCSContext ctxt = new GCSContext(storage, workerContext, txc, service, execID, functionID, pg.connection.get());
+        GCSContext ctxt = new GCSContext(storage, workerContext, txc, service, execID, functionID, primary.connection.get());
         FunctionOutput f = null;
         try {
             f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);

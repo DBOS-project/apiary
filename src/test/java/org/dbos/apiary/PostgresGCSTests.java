@@ -43,8 +43,8 @@ public class PostgresGCSTests {
             conn.dropTable("StuffTable");
             conn.dropTable("VersionTable");
             conn.createTable("StuffTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Stuff varchar(1000) NOT NULL");
-            conn.createTable("VersionTable", "Name varchar(1000), Version integer NOT NULL");
-            conn.createIndex("CREATE INDEX VersionIndex ON VersionTable (Name, Version);");
+            conn.createTable("VersionTable", "Name varchar(1000), BeginVersion integer NOT NULL, EndVersion integer NOT NULL");
+            conn.createIndex("CREATE INDEX VersionIndex ON VersionTable (Name, BeginVersion, EndVersion);");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
         }

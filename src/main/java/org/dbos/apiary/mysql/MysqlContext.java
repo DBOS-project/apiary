@@ -41,6 +41,8 @@ public class MysqlContext extends ApiaryContext {
                 ps.setInt(i + 1, (Integer) o);
             } else if (o instanceof String) {
                 ps.setString(i + 1, (String) o);
+            } else if (o instanceof Long)  {
+                ps.setLong(i + 1, (Long) o);
             } else {
                 assert (false); // TODO: More types.
             }

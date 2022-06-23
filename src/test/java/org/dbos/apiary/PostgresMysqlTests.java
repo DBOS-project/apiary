@@ -88,4 +88,44 @@ public class PostgresMysqlTests {
         assertEquals(1, res);
     }
 
+    @Test
+    public void testMysqlUpdate() throws InvalidProtocolBufferException {
+        logger.info("testMysqlUpdate");
+
+        MysqlConnection conn;
+        PostgresConnection pconn;
+        try {
+            conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+        } catch (Exception e) {
+            logger.info("No MySQL/Postgres instance! {}", e.getMessage());
+            return;
+        }
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.mysql, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresUpsertPerson", ApiaryConfig.postgres, PostgresUpsertPerson::new);
+        apiaryWorker.registerFunction("PostgresQueryPerson", ApiaryConfig.postgres, PostgresQueryPerson::new);
+        apiaryWorker.registerFunction("MysqlUpsertPerson", ApiaryConfig.mysql, MysqlUpsertPerson::new);
+        apiaryWorker.registerFunction("MysqlQueryPerson", ApiaryConfig.mysql, MysqlQueryPerson::new);
+
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresUpsertPerson", "matei", 1).getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("PostgresQueryPerson", "matei").getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("PostgresUpsertPerson", "matei", 2).getInt();
+        assertEquals(2, res);
+
+        res = client.executeFunction("PostgresQueryPerson", "matei").getInt();
+        assertEquals(1, res);
+    }
+
 }

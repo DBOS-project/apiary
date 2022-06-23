@@ -153,7 +153,6 @@ public class MysqlConnection implements ApiarySecondaryConnection {
                     if (!keyString.isEmpty()) {
                         query = String.format("UPDATE %s SET %s = %d WHERE %s IN (%s) AND %s < %d AND %s = %d", table, MysqlContext.endVersion, txc.txID, MysqlContext.apiaryID, keyString, MysqlContext.beginVersion, txc.txID, MysqlContext.endVersion, Long.MAX_VALUE);
                         s.execute(query);
-                        logger.info(query);
                     }
                 }
                 s.close();

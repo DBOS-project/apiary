@@ -4,7 +4,6 @@ import org.dbos.apiary.mysql.MysqlContext;
 import org.dbos.apiary.mysql.MysqlFunction;
 
 import java.sql.ResultSet;
-import java.sql.SQLException;
 
 public class MysqlQueryPerson extends MysqlFunction {
     private final static String find = "SELECT COUNT(*) FROM PersonTable WHERE Name=? ;";

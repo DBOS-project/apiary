@@ -10,6 +10,6 @@ public class PostgresWriteString extends PostgresFunction {
     public static String runFunction(PostgresContext ctxt, String name, String stuff) throws Exception {
         ctxt.apiaryCallFunction("GCSWriteString", name, stuff);
         ctxt.executeUpdate(insert, name, stuff);
-        return stuff;
+        return name;
     }
 }

@@ -101,7 +101,7 @@ public class PostgresGCSTests {
         assertEquals("matei", res);
 
         int resnum = client.executeFunction("PostgresReadString", "matei").getInt();
-        assertEquals(-1, resnum);
+        assertEquals(0, resnum);
     }
 
     @Test

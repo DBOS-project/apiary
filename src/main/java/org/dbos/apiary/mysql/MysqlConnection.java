@@ -150,6 +150,7 @@ public class MysqlConnection implements ApiarySecondaryConnection {
                 for (String table : writtenKeys.keySet()) {
                     for (String key : writtenKeys.get(table)) {
                         query = String.format("UPDATE %s SET %s = %d WHERE %s = '%s' AND %s < %d AND %s = %d", table, MysqlContext.endVersion, txc.txID, MysqlContext.apiaryID, key, MysqlContext.beginVersion, txc.txID, MysqlContext.endVersion, Long.MAX_VALUE);
+                        s.execute(query);
                     }
                 }
                 s.close();

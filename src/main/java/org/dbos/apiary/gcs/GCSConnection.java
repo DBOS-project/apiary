@@ -1,5 +1,7 @@
 package org.dbos.apiary.gcs;
 
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.BlobId;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
@@ -16,6 +18,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
@@ -54,7 +57,11 @@ public class GCSConnection implements ApiarySecondaryConnection {
 
     @Override
     public void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-
+        for (String bucket: writtenKeys.keySet()) {
+            List<BlobId> blobIDs = writtenKeys.get(bucket).stream().map(i -> BlobId.of(bucket, i + txc.txID)).collect(Collectors.toList());
+            List<Blob> blobs = storage.get(blobIDs);
+            blobs.forEach(Blob::delete);
+        }
     }
 
     @Override

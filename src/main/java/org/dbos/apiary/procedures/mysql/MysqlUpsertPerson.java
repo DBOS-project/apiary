@@ -7,7 +7,7 @@ import java.sql.SQLException;
 
 public class MysqlUpsertPerson extends MysqlFunction {
 
-    public static int runFunction(MysqlContext context, String name, int number) throws SQLException {
+    public static int runFunction(MysqlContext context, String name, int number) throws Exception {
         context.executeUpsert("PersonTable", name, name, number);
         return number;
     }

@@ -47,9 +47,9 @@ public class MysqlContext extends ApiaryContext {
         }
     }
 
-    public void executeUpsert(String tableName, String id, Object... input) throws SQLException {
+    public void executeUpsert(String tableName, String id, Object... input) throws Exception {
         // TODO: This interface is not the natural SQL interface. Figure out a better one? E.g., can we support arbitrary update queries?
-        StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (?, ?, ?"));
+        StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (?, ?, ?", tableName));
         for (int i = 0; i < input.length; i++) {
             query.append(", ?");
         }
@@ -65,7 +65,7 @@ public class MysqlContext extends ApiaryContext {
         pstmt.executeUpdate();
     }
 
-    public ResultSet executeQuery(String procedure, Object... input) throws SQLException {
+    public ResultSet executeQuery(String procedure, Object... input) throws Exception {
         // TODO: This implementation assume predicates at the end. No more group by or others. May find a better solution.
         // Also hard to use prepared statement because the number of active transactions varies.
         String sanitizeQuery = procedure.replaceAll(";+$", "");
@@ -73,9 +73,13 @@ public class MysqlContext extends ApiaryContext {
         String activeTxnString = txc.activeTransactions.stream().map(Object::toString).collect(Collectors.joining(","));
         // Add filters to the end.
         filterQuery.append(String.format(" AND %s < %d ", beginVersion, txc.xmax));
-        filterQuery.append(String.format(" AND %s NOT IN (%s) ", beginVersion, activeTxnString));
+        if (!activeTxnString.isEmpty()) {
+            filterQuery.append(String.format(" AND %s NOT IN (%s) ", beginVersion, activeTxnString));
+        }
         filterQuery.append(String.format(" AND ( %s >= %d ", endVersion, txc.xmax));
-        filterQuery.append(String.format(" OR %s IN (%s) ", endVersion, activeTxnString));
+        if (!activeTxnString.isEmpty()) {
+            filterQuery.append(String.format(" OR %s IN (%s) ", endVersion, activeTxnString));
+        }
 
         filterQuery.append("); ");
         logger.info(filterQuery.toString());

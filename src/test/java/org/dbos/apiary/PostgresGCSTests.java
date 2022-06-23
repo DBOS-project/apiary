@@ -7,16 +7,11 @@ import com.google.cloud.storage.StorageOptions;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.gcs.GCSConnection;
-import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.gcs.GCSReadString;
 import org.dbos.apiary.procedures.gcs.GCSWriteString;
-import org.dbos.apiary.procedures.mongo.MongoAddPerson;
-import org.dbos.apiary.procedures.mongo.MongoFindPerson;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresReadString;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresWriteString;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresFindPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -26,17 +21,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PostgresGCSTests {
-    private static final Logger logger = LoggerFactory.getLogger(PostgresESTests.class);
+    private static final Logger logger = LoggerFactory.getLogger(PostgresGCSTests.class);
 
     private ApiaryWorker apiaryWorker;
 

@@ -10,7 +10,7 @@ import java.sql.SQLException;
 public class GCSReadString extends GCSFunction {
 
     public String runFunction(GCSContext context, String name) throws SQLException {
-        byte[] bytes = context.retrive(ApiaryConfig.gcsTestBucket, name);
+        byte[] bytes = context.retrieve(ApiaryConfig.gcsTestBucket, name);
         if (bytes == null) {
             return "none";
         }

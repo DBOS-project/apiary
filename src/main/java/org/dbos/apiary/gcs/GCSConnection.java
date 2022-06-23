@@ -18,6 +18,8 @@ public class GCSConnection implements ApiarySecondaryConnection {
     public final Storage storage;
     private final PostgresConnection primary;
 
+    private static final String update = "UPDATE VersionTable SET EndVersion=? WHERE Name=? AND EndVersion=?";
+
     public GCSConnection(PostgresConnection primary) {
         this.storage = StorageOptions.getDefaultInstance().getService();
         this.primary = primary;

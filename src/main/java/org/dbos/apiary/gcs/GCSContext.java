@@ -24,7 +24,7 @@ public class GCSContext extends ApiaryContext {
 
     private static final String insert = "INSERT INTO VersionTable(Name, BeginVersion, EndVersion) VALUES (?, ?, ?);";
 
-    private static final String retrieve = "SELECT BeginVersion FROM VersionTable WHERE Name=? AND BeginVersion<?;";
+    private static final String retrieve = "SELECT BeginVersion, EndVersion FROM VersionTable WHERE Name=? AND BeginVersion<?;";
 
     public final Storage storage;
     public final TransactionContext txc;
@@ -59,16 +59,17 @@ public class GCSContext extends ApiaryContext {
         writtenKeys.get(bucket).add(name);
     }
 
-    public byte[] retrive(String bucket, String name) throws SQLException {
+    public byte[] retrieve(String bucket, String name) throws SQLException {
         PreparedStatement ps = primary.prepareStatement(retrieve);
         ps.setString(1, name);
         ps.setLong(2, txc.xmax);
         ResultSet rs = ps.executeQuery();
         long version = -1;
         while (rs.next()) {
-            long v = rs.getLong(1);
-            if (!txc.activeTransactions.contains(v)) {
-                version = v;
+            long beginVersion = rs.getLong(1);
+            long endVersion = rs.getLong(2);
+            if (!txc.activeTransactions.contains(beginVersion) && (endVersion >= txc.xmax || txc.activeTransactions.contains(endVersion))) {
+                version = beginVersion;
                 break;
             }
         }

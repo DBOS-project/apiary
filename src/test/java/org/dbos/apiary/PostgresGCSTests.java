@@ -89,7 +89,7 @@ public class PostgresGCSTests {
         }
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
-        apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.gcs, conn);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerFunction("PostgresWriteString", ApiaryConfig.postgres, PostgresWriteString::new);
         apiaryWorker.registerFunction("PostgresReadString", ApiaryConfig.postgres, PostgresReadString::new);

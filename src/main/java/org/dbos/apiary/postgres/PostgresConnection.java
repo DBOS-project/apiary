@@ -25,7 +25,7 @@ public class PostgresConnection implements ApiaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(PostgresConnection.class);
 
     private final PGSimpleDataSource ds;
-    private final ThreadLocal<Connection> connection;
+    public final ThreadLocal<Connection> connection;
     private final ReadWriteLock activeTransactionsLock = new ReentrantReadWriteLock();
     private long biggestxmin = Long.MIN_VALUE;
     private final Set<TransactionContext> activeTransactions = ConcurrentHashMap.newKeySet();

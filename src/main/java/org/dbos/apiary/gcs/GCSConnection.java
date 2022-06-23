@@ -11,20 +11,24 @@ import java.util.Set;
 
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import org.dbos.apiary.postgres.PostgresConnection;
 
 public class GCSConnection implements ApiarySecondaryConnection {
 
     public final Storage storage;
+    private final PostgresConnection pg;
 
-    public GCSConnection() {
-        storage = StorageOptions.getDefaultInstance().getService();
+    public GCSConnection(PostgresConnection pg) {
+        this.storage = StorageOptions.getDefaultInstance().getService();
+        this.pg = pg;
     }
 
     @Override
     public FunctionOutput callFunction(String functionName, WorkerContext workerContext,
                                        TransactionContext txc, String service,
-                                       long execID, long functionID, Object... inputs) throws Exception {
-        GCSContext ctxt = new GCSContext(storage, workerContext, txc, service, execID, functionID);
+                                       long execID, long functionID,
+                                       Object... inputs) throws Exception {
+        GCSContext ctxt = new GCSContext(storage, workerContext, txc, service, execID, functionID, pg.connection.get());
         FunctionOutput f = null;
         try {
             f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);

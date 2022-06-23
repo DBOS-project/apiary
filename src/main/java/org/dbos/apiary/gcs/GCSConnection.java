@@ -1,16 +1,25 @@
 package org.dbos.apiary.gcs;
 
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
+import org.bson.Document;
 import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import org.dbos.apiary.mongo.MongoContext;
 import org.dbos.apiary.postgres.PostgresConnection;
 
 public class GCSConnection implements ApiarySecondaryConnection {
@@ -18,7 +27,10 @@ public class GCSConnection implements ApiarySecondaryConnection {
     public final Storage storage;
     private final PostgresConnection primary;
 
-    private static final String update = "UPDATE VersionTable SET EndVersion=? WHERE Name=? AND EndVersion=?";
+    private static final String update = "UPDATE VersionTable SET EndVersion=? WHERE Name=? AND BeginVersion<? AND EndVersion=?;";
+
+    private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
+    private final Lock validationLock = new ReentrantLock();
 
     public GCSConnection(PostgresConnection primary) {
         this.storage = StorageOptions.getDefaultInstance().getService();
@@ -47,7 +59,52 @@ public class GCSConnection implements ApiarySecondaryConnection {
 
     @Override
     public boolean validate(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-        return true;
+        Set<Long> activeTransactions = new HashSet<>(txc.activeTransactions);
+        validationLock.lock();
+        boolean valid = true;
+        for (String bucket: writtenKeys.keySet()) {
+            for (String key : writtenKeys.get(bucket)) {
+                // Has the key been modified by a transaction not in the snapshot?
+                Set<Long> writes = committedWrites.getOrDefault(bucket, Collections.emptyMap()).getOrDefault(key, Collections.emptySet());
+                for (Long write : writes) {
+                    if (write >= txc.xmax || activeTransactions.contains(write)) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+        }
+        if (valid) {
+            for (String bucket: writtenKeys.keySet()) {
+                for (String key : writtenKeys.get(bucket)) {
+                    committedWrites.putIfAbsent(bucket, new ConcurrentHashMap<>());
+                    committedWrites.get(bucket).putIfAbsent(key, ConcurrentHashMap.newKeySet());
+                    committedWrites.get(bucket).get(key).add(txc.txID);
+                }
+            }
+        }
+        validationLock.unlock();
+        if (valid) {
+            try {
+                for (String bucket : writtenKeys.keySet()) {
+                    Connection c = primary.connection.get();
+                    PreparedStatement ps = c.prepareStatement(update);
+                    for (String key : writtenKeys.get(bucket)) {
+                        ps.setLong(1, txc.txID);
+                        ps.setString(2, key);
+                        ps.setLong(3, txc.txID);
+                        ps.setLong(4, Long.MAX_VALUE);
+                        ps.executeUpdate();
+                    }
+                    ps.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+        return valid;
+
     }
 
     @Override

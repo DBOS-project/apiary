@@ -7,11 +7,16 @@ import com.google.cloud.storage.StorageOptions;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.gcs.GCSConnection;
+import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.gcs.GCSReadString;
 import org.dbos.apiary.procedures.gcs.GCSWriteString;
+import org.dbos.apiary.procedures.mongo.MongoAddPerson;
+import org.dbos.apiary.procedures.mongo.MongoFindPerson;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresReadString;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresWriteString;
+import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
+import org.dbos.apiary.procedures.postgres.pgmongo.PostgresFindPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -102,6 +107,43 @@ public class PostgresGCSTests {
 
         int resnum = client.executeFunction("PostgresReadString", "matei").getInt();
         assertEquals(0, resnum);
+    }
+
+    @Test
+    public void testGCSUpdate() throws InvalidProtocolBufferException {
+        logger.info("testGCSUpdate");
+
+        GCSConnection conn;
+        PostgresConnection pconn;
+        try {
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            conn = new GCSConnection(pconn);
+        } catch (Exception e) {
+            logger.info("No GCS/Postgres instance! {}", e.getMessage());
+            return;
+        }
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.gcs, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresWriteString", ApiaryConfig.postgres, PostgresWriteString::new);
+        apiaryWorker.registerFunction("PostgresReadString", ApiaryConfig.postgres, PostgresReadString::new);
+        apiaryWorker.registerFunction("GCSWriteString", ApiaryConfig.gcs, GCSWriteString::new);
+        apiaryWorker.registerFunction("GCSReadString", ApiaryConfig.gcs, GCSReadString::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        client.executeFunction("PostgresWriteString", "matei", "matei1");
+
+        res = client.executeFunction("PostgresReadString", "matei").getInt();
+        assertEquals(0, res);
+
+        client.executeFunction("PostgresWriteString", "matei", "matei2");
+
+        res = client.executeFunction("PostgresReadString", "matei").getInt();
+        assertEquals(0, res);
     }
 
     @Test

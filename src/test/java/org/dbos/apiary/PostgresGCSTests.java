@@ -239,8 +239,8 @@ public class PostgresGCSTests {
                 while (System.currentTimeMillis() < start + testDurationMs) {
                     int localTag = ThreadLocalRandom.current().nextInt(maxTag);
                     int localCount = count.getAndIncrement();
-                    client.executeFunction("PostgresWriteString", "matei" + localTag, "matei" + localCount).getInt();
-                    String search = "matei" + localTag;
+                    client.executeFunction("PostgresWriteString", localTag + "matei", "matei" + localCount).getInt();
+                    String search = localTag + "matei";
                     int res = client.executeFunction("PostgresReadString", search).getInt();
                     if (res == -1) {
                         success.set(false);

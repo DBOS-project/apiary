@@ -9,10 +9,14 @@ import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.gcs.GCSConnection;
 import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.gcs.GCSProfileRead;
+import org.dbos.apiary.procedures.gcs.GCSProfileUpdate;
 import org.dbos.apiary.procedures.gcs.GCSReadString;
 import org.dbos.apiary.procedures.gcs.GCSWriteString;
 import org.dbos.apiary.procedures.mongo.MongoAddPerson;
 import org.dbos.apiary.procedures.mongo.MongoFindPerson;
+import org.dbos.apiary.procedures.postgres.pggcs.PostgresProfileRead;
+import org.dbos.apiary.procedures.postgres.pggcs.PostgresProfileUpdate;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresReadString;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresWriteString;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
@@ -47,8 +51,10 @@ public class PostgresGCSTests {
             conn.dropTable("FuncInvocations");
             conn.dropTable("StuffTable");
             conn.dropTable("VersionTable");
+            conn.dropTable("ProfileTable");
             conn.createTable("StuffTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Stuff varchar(1000) NOT NULL");
             conn.createTable("VersionTable", "Name varchar(1000), BeginVersion bigint NOT NULL, EndVersion bigint NOT NULL");
+            conn.createTable("ProfileTable", "UserID integer PRIMARY KEY NOT NULL, Name varchar(1000) NOT NULL, Status varchar(2000) NOT NULL");
             conn.createIndex("CREATE INDEX VersionIndex ON VersionTable (Name, BeginVersion, EndVersion);");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
@@ -74,6 +80,44 @@ public class PostgresGCSTests {
         } catch (Exception e) {
             logger.info("No GCS instance! {}", e.getMessage());
         }
+    }
+
+    @Test
+    public void testGCSProfile() throws InvalidProtocolBufferException {
+        logger.info("testGCSProfile");
+
+        GCSConnection conn;
+        PostgresConnection pconn;
+        try {
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            conn = new GCSConnection(pconn);
+        } catch (Exception e) {
+            logger.info("No GCS/Postgres instance! {}", e.getMessage());
+            return;
+        }
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.gcs, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresProfileUpdate", ApiaryConfig.postgres, PostgresProfileUpdate::new);
+        apiaryWorker.registerFunction("PostgresProfileRead", ApiaryConfig.postgres, PostgresProfileRead::new);
+        apiaryWorker.registerFunction("GCSProfileUpdate", ApiaryConfig.gcs, GCSProfileUpdate::new);
+        apiaryWorker.registerFunction("GCSProfileRead", ApiaryConfig.gcs, GCSProfileRead::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        String res = client.executeFunction("PostgresProfileUpdate", 0, "matei", "sparking", "src/test/resources/matei0.jpg").getString();
+        assertEquals("matei", res);
+
+        int resnum = client.executeFunction("PostgresProfileRead", 0).getInt();
+        assertEquals(0, resnum);
+
+        res = client.executeFunction("PostgresProfileUpdate", 0, "matei", "lakehousing", "src/test/resources/matei1.jpg").getString();
+        assertEquals("matei", res);
+
+        resnum = client.executeFunction("PostgresProfileRead", 0).getInt();
+        assertEquals(0, resnum);
     }
 
 

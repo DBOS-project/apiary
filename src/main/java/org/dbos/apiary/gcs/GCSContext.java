@@ -45,7 +45,7 @@ public class GCSContext extends ApiaryContext {
         return null;
     }
 
-    public void create(String bucket, String name, byte[] bytes) throws SQLException {
+    public void create(String bucket, String name, byte[] bytes, String contentType) throws SQLException {
         PreparedStatement ps = primary.prepareStatement(insert);
         ps.setString(1, name);
         ps.setLong(2, txc.txID);
@@ -53,7 +53,7 @@ public class GCSContext extends ApiaryContext {
         ps.executeUpdate();
         ps.close();
         BlobId blobID = BlobId.of(bucket, name + txc.txID);
-        BlobInfo blobInfo = BlobInfo.newBuilder(blobID).setContentType("text/plain").build();
+        BlobInfo blobInfo = BlobInfo.newBuilder(blobID).setContentType(contentType).build();
         storage.create(blobInfo, bytes);
         writtenKeys.putIfAbsent(bucket, new ArrayList<>());
         writtenKeys.get(bucket).add(name);

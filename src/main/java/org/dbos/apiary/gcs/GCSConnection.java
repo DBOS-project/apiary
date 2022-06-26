@@ -138,6 +138,9 @@ public class GCSConnection implements ApiarySecondaryConnection {
                     bucket.get(name + beginVersion).delete();
                 }
             }
+            psFind.close();
+            psDelete.close();
+            c.commit();
         } catch (SQLException e) {
             e.printStackTrace();
         }

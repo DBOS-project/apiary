@@ -125,22 +125,27 @@ public class GCSConnection implements ApiarySecondaryConnection {
             Connection c = primary.connection.get();
             PreparedStatement psFind = c.prepareStatement(findDeletable);
             PreparedStatement psDelete = c.prepareStatement(delete);
-            for (String bucketName: committedWrites.keySet()) {
-                Bucket bucket = storage.get(bucketName);
-                psFind.setLong(1, globalxmin);
-                ResultSet rs = psFind.executeQuery();
-                while (rs.next()) {
-                    String name = rs.getString(1);
-                    long beginVersion = rs.getLong(2);
-                    psDelete.setString(1, name);
-                    psDelete.setLong(2, beginVersion);
-                    psDelete.executeUpdate();
-                    bucket.get(name + beginVersion).delete();
-                }
+            List<String> deleteNames = new ArrayList<>();
+            List<Long> deleteVersions = new ArrayList<>();
+            psFind.setLong(1, globalxmin);
+            ResultSet rs = psFind.executeQuery();
+            while (rs.next()) {
+                String name = rs.getString(1);
+                long beginVersion = rs.getLong(2);
+                deleteNames.add(name);
+                deleteVersions.add(beginVersion);
+                psDelete.setString(1, name);
+                psDelete.setLong(2, beginVersion);
+                psDelete.executeUpdate();
+
             }
-            psFind.close();
-            psDelete.close();
             c.commit();
+            Bucket bucket = storage.get(ApiaryConfig.gcsTestBucket);  // TODO: More buckets.
+            for (int i = 0; i < deleteNames.size(); i++) {
+                String name = deleteNames.get(i);
+                long beginVersion = deleteVersions.get(i);
+                bucket.get(name + beginVersion).delete();
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }

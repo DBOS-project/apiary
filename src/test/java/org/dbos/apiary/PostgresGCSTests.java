@@ -262,5 +262,9 @@ public class PostgresGCSTests {
             t.join();
         }
         assertTrue(success.get());
+
+        apiaryWorker.garbageCollect = false;
+        Thread.sleep(ApiaryWorker.gcIntervalMs * 2);
+        conn.garbageCollect(pconn.getActiveTransactions());
     }
 }

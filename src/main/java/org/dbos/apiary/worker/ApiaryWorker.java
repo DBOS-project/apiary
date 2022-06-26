@@ -49,8 +49,8 @@ public class ApiaryWorker {
     private final Long defaultTimeNs = 100000L;
 
     private Thread garbageCollectorThread;
-    private boolean garbageCollect = true;
-    private static final long gcIntervalMs = 1000;
+    public boolean garbageCollect = true;
+    public static final long gcIntervalMs = 1000;
 
     public final WorkerContext workerContext;
 

@@ -77,12 +77,12 @@ public class ApiaryWorkerExecutable {
             numThreads = Integer.parseInt(cmd.getOptionValue("t"));
         }
         logger.info("{} worker threads", numThreads);
-        ApiaryWorker worker;
+        ApiaryWorker apiaryWorker;
 
         if (db.equals("voltdb")) {
             throw new IllegalArgumentException("TODO: Implement VoltDB worker");
         } else if (db.equals("elasticsearch")) {
-            worker = new ApiaryWorker(scheduler, numThreads);
+            apiaryWorker = new ApiaryWorker(scheduler, numThreads);
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
             String esAddr = "localhost";
             if (cmd.hasOption("secondaryAddress")) {
@@ -90,25 +90,25 @@ public class ApiaryWorkerExecutable {
                 logger.info("Elasticsearch Address: {}", esAddr);
             }
             ElasticsearchConnection econn = new ElasticsearchConnection(esAddr, 9200, "elastic", "password");
-            worker.registerConnection(ApiaryConfig.elasticsearch, econn);
-            worker.registerConnection(ApiaryConfig.postgres, conn);
-            worker.registerFunction("PostgresIndexPerson", ApiaryConfig.postgres, PostgresIndexPerson::new);
-            worker.registerFunction("PostgresBulkIndexPerson", ApiaryConfig.postgres, PostgresBulkIndexPerson::new);
-            worker.registerFunction("PostgresSearchPerson", ApiaryConfig.postgres, PostgresSearchPerson::new);
-            worker.registerFunction("ElasticsearchIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchIndexPerson::new);
-            worker.registerFunction("ElasticsearchBulkIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchBulkIndexPerson::new);
-            worker.registerFunction("ElasticsearchSearchPerson", ApiaryConfig.elasticsearch, ElasticsearchSearchPerson::new);
-            worker.registerFunction("ShopAddItem", ApiaryConfig.postgres, ShopAddItem::new);
-            worker.registerFunction("ShopBulkAddItem", ApiaryConfig.postgres, ShopBulkAddItem::new);
-            worker.registerFunction("ShopSearchItem", ApiaryConfig.postgres, ShopSearchItem::new);
-            worker.registerFunction("ShopAddCart", ApiaryConfig.postgres, ShopAddCart::new);
-            worker.registerFunction("ShopCheckoutCart", ApiaryConfig.postgres, ShopCheckoutCart::new);
-            worker.registerFunction("ShopGetItem", ApiaryConfig.postgres, ShopGetItem::new);
-            worker.registerFunction("ShopESAddItem", ApiaryConfig.elasticsearch, ShopESAddItem::new);
-            worker.registerFunction("ShopESBulkAddItem", ApiaryConfig.elasticsearch, ShopESBulkAddItem::new);
-            worker.registerFunction("ShopESSearchItem", ApiaryConfig.elasticsearch, ShopESSearchItem::new);
+            apiaryWorker.registerConnection(ApiaryConfig.elasticsearch, econn);
+            apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+            apiaryWorker.registerFunction("PostgresIndexPerson", ApiaryConfig.postgres, PostgresIndexPerson::new);
+            apiaryWorker.registerFunction("PostgresBulkIndexPerson", ApiaryConfig.postgres, PostgresBulkIndexPerson::new);
+            apiaryWorker.registerFunction("PostgresSearchPerson", ApiaryConfig.postgres, PostgresSearchPerson::new);
+            apiaryWorker.registerFunction("ElasticsearchIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchIndexPerson::new);
+            apiaryWorker.registerFunction("ElasticsearchBulkIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchBulkIndexPerson::new);
+            apiaryWorker.registerFunction("ElasticsearchSearchPerson", ApiaryConfig.elasticsearch, ElasticsearchSearchPerson::new);
+            apiaryWorker.registerFunction("ShopAddItem", ApiaryConfig.postgres, ShopAddItem::new);
+            apiaryWorker.registerFunction("ShopBulkAddItem", ApiaryConfig.postgres, ShopBulkAddItem::new);
+            apiaryWorker.registerFunction("ShopSearchItem", ApiaryConfig.postgres, ShopSearchItem::new);
+            apiaryWorker.registerFunction("ShopAddCart", ApiaryConfig.postgres, ShopAddCart::new);
+            apiaryWorker.registerFunction("ShopCheckoutCart", ApiaryConfig.postgres, ShopCheckoutCart::new);
+            apiaryWorker.registerFunction("ShopGetItem", ApiaryConfig.postgres, ShopGetItem::new);
+            apiaryWorker.registerFunction("ShopESAddItem", ApiaryConfig.elasticsearch, ShopESAddItem::new);
+            apiaryWorker.registerFunction("ShopESBulkAddItem", ApiaryConfig.elasticsearch, ShopESBulkAddItem::new);
+            apiaryWorker.registerFunction("ShopESSearchItem", ApiaryConfig.elasticsearch, ShopESSearchItem::new);
         } else if (db.equals("mongo")) {
-            worker = new ApiaryWorker(scheduler, numThreads);
+            apiaryWorker = new ApiaryWorker(scheduler, numThreads);
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
             String mongoAddr = "localhost";
             if (cmd.hasOption("secondaryAddress")) {
@@ -116,20 +116,20 @@ public class ApiaryWorkerExecutable {
                 logger.info("Mongo Address: {}", mongoAddr);
             }
             MongoConnection mconn = new MongoConnection(mongoAddr, 27017);
-            worker.registerConnection(ApiaryConfig.mongo, mconn);
-            worker.registerConnection(ApiaryConfig.postgres, conn);
-            worker.registerFunction("PostgresAddHotel", ApiaryConfig.postgres, PostgresAddHotel::new);
-            worker.registerFunction("PostgresMakeReservation", ApiaryConfig.postgres, PostgresMakeReservation::new);
-            worker.registerFunction("PostgresSearchHotel", ApiaryConfig.postgres, PostgresSearchHotel::new);
-            worker.registerFunction("MongoMakeReservation", ApiaryConfig.mongo, MongoMakeReservation::new);
-            worker.registerFunction("MongoAddHotel", ApiaryConfig.mongo, MongoAddHotel::new);
-            worker.registerFunction("MongoSearchHotel", ApiaryConfig.mongo, MongoSearchHotel::new);
+            apiaryWorker.registerConnection(ApiaryConfig.mongo, mconn);
+            apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+            apiaryWorker.registerFunction("PostgresAddHotel", ApiaryConfig.postgres, PostgresAddHotel::new);
+            apiaryWorker.registerFunction("PostgresMakeReservation", ApiaryConfig.postgres, PostgresMakeReservation::new);
+            apiaryWorker.registerFunction("PostgresSearchHotel", ApiaryConfig.postgres, PostgresSearchHotel::new);
+            apiaryWorker.registerFunction("MongoMakeReservation", ApiaryConfig.mongo, MongoMakeReservation::new);
+            apiaryWorker.registerFunction("MongoAddHotel", ApiaryConfig.mongo, MongoAddHotel::new);
+            apiaryWorker.registerFunction("MongoSearchHotel", ApiaryConfig.mongo, MongoSearchHotel::new);
         } else if (db.equals("gcs")) {
-            worker = new ApiaryWorker(scheduler, numThreads);
+            apiaryWorker = new ApiaryWorker(scheduler, numThreads);
             PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
             GCSConnection gconn = new GCSConnection(pconn);
-            worker.registerConnection(ApiaryConfig.gcs, gconn);
-            worker.registerConnection(ApiaryConfig.postgres, pconn);
+            apiaryWorker.registerConnection(ApiaryConfig.gcs, gconn);
+            apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
             apiaryWorker.registerFunction("PostgresProfileUpdate", ApiaryConfig.postgres, PostgresProfileUpdate::new);
             apiaryWorker.registerFunction("PostgresProfileRead", ApiaryConfig.postgres, PostgresProfileRead::new);
             apiaryWorker.registerFunction("GCSProfileUpdate", ApiaryConfig.gcs, GCSProfileUpdate::new);
@@ -138,12 +138,12 @@ public class ApiaryWorkerExecutable {
             throw new IllegalArgumentException("Option 'db' must be one of (elasticsearch, mongo, gcs).");
         }
 
-        worker.startServing();
+        apiaryWorker.startServing();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.err.println("Stopping Apiary worker server.");
-            worker.shutdown();
+            apiaryWorker.shutdown();
         }));
         Thread.sleep(Long.MAX_VALUE);
-        worker.shutdown();
+        apiaryWorker.shutdown();
     }
 }

@@ -22,14 +22,13 @@ public class ProfileBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(ProfileBenchmark.class);
     private static final int threadPoolSize = 256;
 
-    private static final int numHotels = 100;
-    private static final int numCustomers = 100;
+    private static final int initialProfiles = 100;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
     private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
 
-    public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageRead, int percentageNew, int percentageUpdate) throws SQLException, InterruptedException, IOException {
+    public static void benchmark(Integer interval, Integer duration, int percentageRead, int percentageNew, int percentageUpdate) throws SQLException, InterruptedException, IOException {
         assert (percentageRead + percentageNew + percentageUpdate == 100);
         PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         pconn.dropTable("FuncInvocations");
@@ -46,8 +45,18 @@ public class ProfileBenchmark {
         }
 
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
-
         AtomicInteger profileIDs = new AtomicInteger(0);
+
+        long tLoad = System.currentTimeMillis();
+        for (int i = 0; i < initialProfiles; i++) {
+            int profileID = profileIDs.getAndIncrement();
+            String name = "matei" + profileID;
+            String status = "sparking" + profileID;
+            String image = String.format("src/test/resources/matei%d.jpg", profileID % 2);
+            client.get().executeFunction("PostgresProfileUpdate", profileID, name, status, image).getInt();
+        }
+        logger.info("Loading done: {}ms", System.currentTimeMillis() - tLoad);
+
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);

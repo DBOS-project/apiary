@@ -5,6 +5,7 @@ import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
 import org.apache.commons_voltpatches.cli.Options;
 import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
+import org.dbos.apiary.gcs.GCSConnection;
 import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
@@ -13,6 +14,8 @@ import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESAddItem;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESBulkAddItem;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
+import org.dbos.apiary.procedures.gcs.GCSReadString;
+import org.dbos.apiary.procedures.gcs.GCSWriteString;
 import org.dbos.apiary.procedures.mongo.hotel.MongoAddHotel;
 import org.dbos.apiary.procedures.mongo.hotel.MongoMakeReservation;
 import org.dbos.apiary.procedures.mongo.hotel.MongoSearchHotel;
@@ -22,6 +25,8 @@ import org.dbos.apiary.procedures.postgres.hotel.PostgresSearchHotel;
 import org.dbos.apiary.procedures.postgres.pges.PostgresBulkIndexPerson;
 import org.dbos.apiary.procedures.postgres.pges.PostgresIndexPerson;
 import org.dbos.apiary.procedures.postgres.pges.PostgresSearchPerson;
+import org.dbos.apiary.procedures.postgres.pggcs.PostgresReadString;
+import org.dbos.apiary.procedures.postgres.pggcs.PostgresWriteString;
 import org.dbos.apiary.procedures.postgres.shop.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
@@ -38,7 +43,7 @@ public class ApiaryWorkerExecutable {
         options.addOption("db", true,
                 "The secondary used by this worker.");
         options.addOption("s", true, "Which Scheduler?");
-        options.addOption("t", true, "How many worker threads?  Defaults to 128.");
+        options.addOption("t", true, "How many worker threads?");
         options.addOption("secondaryAddress", true, "Secondary Address.");
 
         CommandLineParser parser = new DefaultParser();
@@ -115,8 +120,18 @@ public class ApiaryWorkerExecutable {
             worker.registerFunction("MongoMakeReservation", ApiaryConfig.mongo, MongoMakeReservation::new);
             worker.registerFunction("MongoAddHotel", ApiaryConfig.mongo, MongoAddHotel::new);
             worker.registerFunction("MongoSearchHotel", ApiaryConfig.mongo, MongoSearchHotel::new);
-        }  else {
-            throw new IllegalArgumentException("Option 'db' must be one of (elasticsearch, mongo).");
+        } else if (db.equals("gcs")) {
+            worker = new ApiaryWorker(scheduler, numThreads);
+            PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            GCSConnection gconn = new GCSConnection(pconn);
+            worker.registerConnection(ApiaryConfig.gcs, gconn);
+            worker.registerConnection(ApiaryConfig.postgres, pconn);
+            worker.registerFunction("PostgresWriteString", ApiaryConfig.postgres, PostgresWriteString::new);
+            worker.registerFunction("PostgresReadString", ApiaryConfig.postgres, PostgresReadString::new);
+            worker.registerFunction("GCSWriteString", ApiaryConfig.gcs, GCSWriteString::new);
+            worker.registerFunction("GCSReadString", ApiaryConfig.gcs, GCSReadString::new);
+        } else {
+            throw new IllegalArgumentException("Option 'db' must be one of (elasticsearch, mongo, gcs).");
         }
 
         worker.startServing();

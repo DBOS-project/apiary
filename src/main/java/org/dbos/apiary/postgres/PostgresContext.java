@@ -118,11 +118,11 @@ public class PostgresContext extends ApiaryContext {
             long timestamp = Utilities.getMicroTimestamp();
             int numCol = rsmd.getColumnCount();
             // Record provenance data.
-            Object[] rowData = new Object[numCol+3];
-            rowData[0] = txc.txID;
-            rowData[1] = timestamp;
-            rowData[2] = exportOperation;
             while (rs.next()) {
+                Object[] rowData = new Object[numCol+3];
+                rowData[0] = txc.txID;
+                rowData[1] = timestamp;
+                rowData[2] = exportOperation;
                 for (int i = 1; i <= numCol; i++) {
                     rowData[i+2] = rs.getObject(i);
                 }
@@ -170,6 +170,7 @@ public class PostgresContext extends ApiaryContext {
                 for (String tableName : tableToRowData.keySet()) {
                     workerContext.provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
                 }
+                tableToRowData.clear();
             }
             rs.beforeFirst();
         }

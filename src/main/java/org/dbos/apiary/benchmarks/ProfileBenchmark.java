@@ -1,9 +1,6 @@
 package org.dbos.apiary.benchmarks;
 
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.Bucket;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.*;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -12,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
@@ -38,11 +36,15 @@ public class ProfileBenchmark {
         pconn.createTable("ProfileTable", "UserID integer PRIMARY KEY NOT NULL, Name varchar(1000) NOT NULL, Status varchar(2000) NOT NULL");
         pconn.createIndex("CREATE INDEX VersionIndex ON VersionTable (Name, BeginVersion, EndVersion);");
 
+        long tDelete = System.currentTimeMillis();
         Storage storage = StorageOptions.getDefaultInstance().getService();
         Bucket bucket = storage.get(ApiaryConfig.gcsTestBucket);
+        List<BlobId> blobIDs = new ArrayList<>();
         for (Blob blob : bucket.list().iterateAll()) {
-            blob.delete();
+            blobIDs.add(blob.getBlobId());
         }
+        storage.delete(blobIDs);
+        logger.info("Cleanup done: {}ms", tDelete);
 
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
         AtomicInteger profileIDs = new AtomicInteger(0);

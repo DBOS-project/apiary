@@ -44,7 +44,7 @@ public class ProfileBenchmark {
             blobIDs.add(blob.getBlobId());
         }
         storage.delete(blobIDs);
-        logger.info("Cleanup done: {}ms", tDelete);
+        logger.info("Cleanup done: {}ms", System.currentTimeMillis() - tDelete);
 
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
         AtomicInteger profileIDs = new AtomicInteger(0);

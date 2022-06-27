@@ -14,6 +14,8 @@ import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESAddItem;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESBulkAddItem;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
+import org.dbos.apiary.procedures.gcs.GCSProfileRead;
+import org.dbos.apiary.procedures.gcs.GCSProfileUpdate;
 import org.dbos.apiary.procedures.gcs.GCSReadString;
 import org.dbos.apiary.procedures.gcs.GCSWriteString;
 import org.dbos.apiary.procedures.mongo.hotel.MongoAddHotel;
@@ -25,6 +27,8 @@ import org.dbos.apiary.procedures.postgres.hotel.PostgresSearchHotel;
 import org.dbos.apiary.procedures.postgres.pges.PostgresBulkIndexPerson;
 import org.dbos.apiary.procedures.postgres.pges.PostgresIndexPerson;
 import org.dbos.apiary.procedures.postgres.pges.PostgresSearchPerson;
+import org.dbos.apiary.procedures.postgres.pggcs.PostgresProfileRead;
+import org.dbos.apiary.procedures.postgres.pggcs.PostgresProfileUpdate;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresReadString;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresWriteString;
 import org.dbos.apiary.procedures.postgres.shop.*;
@@ -126,10 +130,10 @@ public class ApiaryWorkerExecutable {
             GCSConnection gconn = new GCSConnection(pconn);
             worker.registerConnection(ApiaryConfig.gcs, gconn);
             worker.registerConnection(ApiaryConfig.postgres, pconn);
-            worker.registerFunction("PostgresWriteString", ApiaryConfig.postgres, PostgresWriteString::new);
-            worker.registerFunction("PostgresReadString", ApiaryConfig.postgres, PostgresReadString::new);
-            worker.registerFunction("GCSWriteString", ApiaryConfig.gcs, GCSWriteString::new);
-            worker.registerFunction("GCSReadString", ApiaryConfig.gcs, GCSReadString::new);
+            apiaryWorker.registerFunction("PostgresProfileUpdate", ApiaryConfig.postgres, PostgresProfileUpdate::new);
+            apiaryWorker.registerFunction("PostgresProfileRead", ApiaryConfig.postgres, PostgresProfileRead::new);
+            apiaryWorker.registerFunction("GCSProfileUpdate", ApiaryConfig.gcs, GCSProfileUpdate::new);
+            apiaryWorker.registerFunction("GCSProfileRead", ApiaryConfig.gcs, GCSProfileRead::new);
         } else {
             throw new IllegalArgumentException("Option 'db' must be one of (elasticsearch, mongo, gcs).");
         }

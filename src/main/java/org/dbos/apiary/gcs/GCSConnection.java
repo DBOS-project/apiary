@@ -1,7 +1,6 @@
 package org.dbos.apiary.gcs;
 
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.*;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
@@ -13,6 +12,7 @@ import org.dbos.apiary.function.WorkerContext;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,10 +20,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import org.dbos.apiary.mongo.MongoContext;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.utilities.ApiaryConfig;
 
 public class GCSConnection implements ApiarySecondaryConnection {
 
@@ -31,6 +30,8 @@ public class GCSConnection implements ApiarySecondaryConnection {
     private final PostgresConnection primary;
 
     private static final String update = "UPDATE VersionTable SET EndVersion=? WHERE Name=? AND BeginVersion<? AND EndVersion=?;";
+    private static final String findDeletable = "SELECT Name, BeginVersion FROM VersionTable WHERE EndVersion<?";
+    private static final String delete = "DELETE FROM VersionTable WHERE Name=? AND BeginVersion=?";
 
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
@@ -120,6 +121,34 @@ public class GCSConnection implements ApiarySecondaryConnection {
         // No need to keep track of writes that are visible to all active or future transactions.
         committedWrites.values().forEach(i -> i.values().forEach(w -> w.removeIf(txID -> txID < globalxmin)));
         // Delete old versions that are no longer visible to any active or future transaction.
-        // TODO: Garbage collection in Postgres/GCS.
+        try {
+            Connection c = primary.connection.get();
+            PreparedStatement psFind = c.prepareStatement(findDeletable);
+            PreparedStatement psDelete = c.prepareStatement(delete);
+            List<String> deleteNames = new ArrayList<>();
+            List<Long> deleteVersions = new ArrayList<>();
+            psFind.setLong(1, globalxmin);
+            ResultSet rs = psFind.executeQuery();
+            while (rs.next()) {
+                String name = rs.getString(1);
+                long beginVersion = rs.getLong(2);
+                deleteNames.add(name);
+                deleteVersions.add(beginVersion);
+                psDelete.setString(1, name);
+                psDelete.setLong(2, beginVersion);
+                psDelete.executeUpdate();
+
+            }
+            c.commit();
+            Bucket bucket = storage.get(ApiaryConfig.gcsTestBucket);  // TODO: More buckets.
+            for (int i = 0; i < deleteNames.size(); i++) {
+                String name = deleteNames.get(i);
+                long beginVersion = deleteVersions.get(i);
+                bucket.get(name + beginVersion).delete();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
     }
 }

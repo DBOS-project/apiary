@@ -18,6 +18,8 @@ import org.dbos.apiary.procedures.gcs.GCSProfileRead;
 import org.dbos.apiary.procedures.gcs.GCSProfileUpdate;
 import org.dbos.apiary.procedures.gcs.GCSReadString;
 import org.dbos.apiary.procedures.gcs.GCSWriteString;
+import org.dbos.apiary.procedures.mongo.MongoAddPerson;
+import org.dbos.apiary.procedures.mongo.MongoFindPerson;
 import org.dbos.apiary.procedures.mongo.hotel.MongoAddHotel;
 import org.dbos.apiary.procedures.mongo.hotel.MongoMakeReservation;
 import org.dbos.apiary.procedures.mongo.hotel.MongoSearchHotel;
@@ -31,6 +33,8 @@ import org.dbos.apiary.procedures.postgres.pggcs.PostgresProfileRead;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresProfileUpdate;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresReadString;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresWriteString;
+import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
+import org.dbos.apiary.procedures.postgres.pgmongo.PostgresFindPerson;
 import org.dbos.apiary.procedures.postgres.shop.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
@@ -124,6 +128,10 @@ public class ApiaryWorkerExecutable {
             apiaryWorker.registerFunction("MongoMakeReservation", ApiaryConfig.mongo, MongoMakeReservation::new);
             apiaryWorker.registerFunction("MongoAddHotel", ApiaryConfig.mongo, MongoAddHotel::new);
             apiaryWorker.registerFunction("MongoSearchHotel", ApiaryConfig.mongo, MongoSearchHotel::new);
+            apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+            apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
+            apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+            apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
         } else if (db.equals("gcs")) {
             apiaryWorker = new ApiaryWorker(scheduler, numThreads);
             PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");

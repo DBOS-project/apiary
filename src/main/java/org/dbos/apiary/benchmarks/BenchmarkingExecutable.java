@@ -68,6 +68,12 @@ public class BenchmarkingExecutable {
             int percentageReserve = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 20;
             logger.info("Hotel Benchmark {} {}", percentageSearch, percentageReserve);
             HotelBenchmark.benchmark(mainHostAddr, interval, duration, percentageSearch, percentageReserve);
+        } else if (benchmark.equals("mongomicro")) {
+            int percentageRead = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 100;
+            int percentageNew = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 0;
+            int percentageUpdate = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 0;
+            logger.info("Mongo Microbenchmark {} {} {}", percentageRead, percentageNew, percentageUpdate);
+            MongoMicrobenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageNew, percentageUpdate);
         } else if (benchmark.equals("profile")) {
             int percentageRead = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 90;
             int percentageNew = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 10;

@@ -40,8 +40,8 @@ public class MongoMicrobenchmark {
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
 
         long loadStart = System.currentTimeMillis();
-        for (int personID = 0; personID < numPeople; personID++) {
-            client.get().executeFunction("PostgresAddPerson", "matei" + personID, personID);
+        for (int personNum = 0; personNum < numPeople; personNum++) {
+            client.get().executeFunction("PostgresAddPerson", "matei" + personNum, personNum);
         }
         logger.info("Done Loading {} People: {}", numPeople, System.currentTimeMillis() - loadStart);
 
@@ -51,7 +51,7 @@ public class MongoMicrobenchmark {
             mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.apiaryID));
         }
 
-        AtomicInteger personIDs = new AtomicInteger(numPeople);
+        AtomicInteger personNums = new AtomicInteger(numPeople);
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
@@ -61,15 +61,15 @@ public class MongoMicrobenchmark {
                 long t0 = System.nanoTime();
                 int chooser = ThreadLocalRandom.current().nextInt(100);
                 if (chooser < percentageRead) {
-                    int personID = ThreadLocalRandom.current().nextInt(personIDs.get());
-                    client.get().executeFunction("PostgresFindPerson", personID);
+                    int personNum = ThreadLocalRandom.current().nextInt(personNums.get());
+                    client.get().executeFunction("PostgresFindPerson", "matei" + personNum);
                     readTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageAppend) {
-                    int personID = personIDs.getAndIncrement();
+                    int personID = personNums.getAndIncrement();
                     client.get().executeFunction("PostgresAddPerson", "matei" + personID, personID);
                     writeTimes.add(System.nanoTime() - t0);
                 } else {
-                    int personID = ThreadLocalRandom.current().nextInt(personIDs.get());
+                    int personID = ThreadLocalRandom.current().nextInt(personNums.get());
                     int num = ThreadLocalRandom.current().nextInt();
                     client.get().executeFunction("PostgresAddPerson", "matei" + personID, num);
                     writeTimes.add(System.nanoTime() - t0);

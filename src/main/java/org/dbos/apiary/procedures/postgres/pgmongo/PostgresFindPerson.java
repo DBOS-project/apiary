@@ -2,6 +2,7 @@ package org.dbos.apiary.procedures.postgres.pgmongo;
 
 import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +18,7 @@ public class PostgresFindPerson extends PostgresFunction {
         rs.next();
         int pgCount = rs.getInt(1);
         int esCount = ctxt.apiaryCallFunction("MongoFindPerson", search).getInt();
-        if (pgCount == esCount) {
+        if (ApiaryConfig.XDBTransactions || pgCount == esCount) {
             return pgCount;
         } else {
             logger.info("{} {} {} {} {} {} {}", search, pgCount, esCount,

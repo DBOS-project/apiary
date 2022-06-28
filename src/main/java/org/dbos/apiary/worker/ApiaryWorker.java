@@ -208,10 +208,13 @@ public class ApiaryWorker {
                 ApiaryFunction function = workerContext.getFunction(name);
                 ApiaryStatelessContext context = new ApiaryStatelessContext(workerContext, service, execID, functionID);
                 o = function.apiaryRunFunction(context, arguments);
-            } else {
-                assert(workerContext.getPrimaryConnectionType().equals(type));
+            } else if (workerContext.getPrimaryConnectionType().equals(type)) {
                 ApiaryConnection c = workerContext.getPrimaryConnection();
                 o = c.callFunction(name, workerContext, service, execID, functionID, arguments);
+            } else { // Execute a read-only secondary function without primary involvement using a cached txc.
+                ApiarySecondaryConnection c = workerContext.getSecondaryConnection(type);
+                TransactionContext txc = workerContext.getPrimaryConnection().getLatestTransactionContext();
+                o = c.callFunction(name, workerContext, txc, service, execID, functionID, arguments);
             }
         } catch (Exception e) {
             e.printStackTrace();

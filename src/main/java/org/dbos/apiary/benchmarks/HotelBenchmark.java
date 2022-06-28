@@ -35,7 +35,7 @@ public class HotelBenchmark {
         conn.dropTable("HotelsTable");
         conn.createTable("HotelsTable", "HotelID integer PRIMARY KEY NOT NULL, HotelName VARCHAR(1000) NOT NULL, AvailableRooms integer NOT NULL");
 
-        MongoConnection mconn = new MongoConnection(dbAddr, 27017);
+        MongoConnection mconn = new MongoConnection(dbAddr, ApiaryConfig.mongoPort);
         mconn.database.getCollection("hotels").drop();
         mconn.database.getCollection("reservations").drop();
 

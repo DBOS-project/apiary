@@ -24,7 +24,9 @@ public interface ApiaryConnection {
      */
     FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) throws Exception;
 
-    public Set<TransactionContext> getActiveTransactions();
+    Set<TransactionContext> getActiveTransactions();
+
+    TransactionContext getLatestTransactionContext();
 
     // For partition mapping information.
 

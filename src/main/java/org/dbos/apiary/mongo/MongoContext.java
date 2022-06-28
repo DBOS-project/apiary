@@ -5,7 +5,9 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.InsertOneModel;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.dbos.apiary.function.ApiaryContext;
@@ -20,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class MongoContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(MongoConnection.class);
@@ -55,6 +58,21 @@ public class MongoContext extends ApiaryContext {
         }
         MongoCollection<Document> collection = database.getCollection(collectionName);
         collection.insertOne(document);
+    }
+
+    public void insertMany(String collectionName, List<Document> documents, List<String> ids) {
+        if (ApiaryConfig.XDBTransactions) {
+            for (int i = 0; i < documents.size(); i++) {
+                Document d = documents.get(i);
+                d.append(apiaryID, ids.get(i));
+                d.append(beginVersion, txc.txID);
+                d.append(endVersion, Long.MAX_VALUE);
+                writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
+                writtenKeys.get(collectionName).add(ids.get(i));
+            }
+            MongoCollection<Document> collection = database.getCollection(collectionName);
+            collection.bulkWrite(documents.stream().map(InsertOneModel::new).collect(Collectors.toList()), new BulkWriteOptions().ordered(false));
+        }
     }
 
     public FindIterable<Document> find(String collectionName, Bson filter) {
@@ -103,6 +121,7 @@ public class MongoContext extends ApiaryContext {
         MongoCollection<Document> collection = database.getCollection(collectionName);
         aggregations = new ArrayList<>(aggregations);
         aggregations.add(0, filter);
-        return collection.aggregate(aggregations);
+        AggregateIterable<Document> r = collection.aggregate(aggregations);
+        return r;
     }
 }

@@ -149,6 +149,11 @@ public class VoltConnection implements ApiaryConnection {
         return null;
     }
 
+    @Override
+    public TransactionContext getLatestTransactionContext() {
+        return null;
+    }
+
     // Update partition info table: (partitionID, pkey, hostId, hostname, isLeader).
     // Warning: this function is not thread safe.
     @Override

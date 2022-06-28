@@ -30,6 +30,7 @@ public class PostgresConnection implements ApiaryConnection {
     private long biggestxmin = Long.MIN_VALUE;
     private final Set<TransactionContext> activeTransactions = ConcurrentHashMap.newKeySet();
     private final Set<TransactionContext> abortedTransactions = ConcurrentHashMap.newKeySet();
+    private TransactionContext latestTransactionContext;
 
     /**
      * Create a connection to a Postgres database.
@@ -141,6 +142,7 @@ public class PostgresConnection implements ApiaryConnection {
             PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID,
                     new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
             activeTransactions.add(ctxt.txc);
+            latestTransactionContext = ctxt.txc;
             if (ctxt.txc.xmin > biggestxmin) {
                 biggestxmin = ctxt.txc.xmin;
             }
@@ -199,6 +201,11 @@ public class PostgresConnection implements ApiaryConnection {
         }
         activeTransactionsLock.writeLock().unlock();
         return txSnapshot;
+    }
+
+    @Override
+    public TransactionContext getLatestTransactionContext() {
+        return latestTransactionContext;
     }
 
     @Override

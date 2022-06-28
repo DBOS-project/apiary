@@ -40,9 +40,13 @@ public class MongoMicrobenchmark {
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
 
         long loadStart = System.currentTimeMillis();
+        String[] names = new String[numPeople];
+        int[] nums = new int[numPeople];
         for (int personNum = 0; personNum < numPeople; personNum++) {
-            client.get().executeFunction("PostgresAddPerson", "matei" + personNum, personNum);
+            names[personNum] = "matei" + personNum;
+            nums[personNum] = personNum;
         }
+        client.get().executeFunction("PostgresBulkAddPerson", names, nums);
         logger.info("Done Loading {} People: {}", numPeople, System.currentTimeMillis() - loadStart);
 
         if (ApiaryConfig.XDBTransactions) {

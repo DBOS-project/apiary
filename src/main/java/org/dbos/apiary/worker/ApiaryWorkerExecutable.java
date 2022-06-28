@@ -19,6 +19,7 @@ import org.dbos.apiary.procedures.gcs.GCSProfileUpdate;
 import org.dbos.apiary.procedures.gcs.GCSReadString;
 import org.dbos.apiary.procedures.gcs.GCSWriteString;
 import org.dbos.apiary.procedures.mongo.MongoAddPerson;
+import org.dbos.apiary.procedures.mongo.MongoBulkAddPerson;
 import org.dbos.apiary.procedures.mongo.MongoFindPerson;
 import org.dbos.apiary.procedures.mongo.hotel.MongoAddHotel;
 import org.dbos.apiary.procedures.mongo.hotel.MongoMakeReservation;
@@ -34,6 +35,7 @@ import org.dbos.apiary.procedures.postgres.pggcs.PostgresProfileUpdate;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresReadString;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresWriteString;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
+import org.dbos.apiary.procedures.postgres.pgmongo.PostgresBulkAddPerson;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresFindPerson;
 import org.dbos.apiary.procedures.postgres.shop.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -129,8 +131,10 @@ public class ApiaryWorkerExecutable {
             apiaryWorker.registerFunction("MongoAddHotel", ApiaryConfig.mongo, MongoAddHotel::new);
             apiaryWorker.registerFunction("MongoSearchHotel", ApiaryConfig.mongo, MongoSearchHotel::new);
             apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+            apiaryWorker.registerFunction("PostgresBulkAddPerson", ApiaryConfig.postgres, PostgresBulkAddPerson::new);
             apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
             apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+            apiaryWorker.registerFunction("MongoBulkAddPerson", ApiaryConfig.mongo, MongoBulkAddPerson::new);
             apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
         } else if (db.equals("gcs")) {
             apiaryWorker = new ApiaryWorker(scheduler, numThreads);

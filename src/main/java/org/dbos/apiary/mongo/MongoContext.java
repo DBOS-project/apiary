@@ -121,6 +121,8 @@ public class MongoContext extends ApiaryContext {
         MongoCollection<Document> collection = database.getCollection(collectionName);
         aggregations = new ArrayList<>(aggregations);
         aggregations.add(0, filter);
-        return collection.aggregate(aggregations);
+        AggregateIterable<Document> r = collection.aggregate(aggregations);
+        MongoUtilities.prettyPrint(r.explain());
+        return r;
     }
 }

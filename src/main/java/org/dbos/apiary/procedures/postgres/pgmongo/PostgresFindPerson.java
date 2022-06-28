@@ -18,7 +18,7 @@ public class PostgresFindPerson extends PostgresFunction {
         rs.next();
         int pgCount = rs.getInt(1);
         int esCount = ctxt.apiaryCallFunction("MongoFindPerson", search).getInt();
-        if (ApiaryConfig.XDBTransactions || pgCount == esCount) {
+        if (!ApiaryConfig.XDBTransactions || pgCount == esCount) {
             return pgCount;
         } else {
             logger.info("{} {} {} {} {} {} {}", search, pgCount, esCount,

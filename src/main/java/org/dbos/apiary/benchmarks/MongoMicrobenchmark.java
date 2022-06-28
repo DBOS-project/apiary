@@ -47,7 +47,7 @@ public class MongoMicrobenchmark {
             nums[personNum] = personNum;
         }
         client.get().executeFunction("PostgresBulkAddPerson", names, nums);
-        logger.info("Done Loading {} People: {}", numPeople, System.currentTimeMillis() - loadStart);
+        logger.info("Done loading {} people: {}ms", numPeople, System.currentTimeMillis() - loadStart);
 
         if (ApiaryConfig.XDBTransactions) {
             mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.beginVersion));

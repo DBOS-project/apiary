@@ -93,8 +93,10 @@ public class PostgresMongoTests {
         res = client.executeFunction("PostgresAddPerson", "matei", 1).getInt();
         assertEquals(1, res);
 
-
         res = client.executeFunction("PostgresFindPerson", "matei").getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("MongoFindPerson", "matei").getInt();
         assertEquals(1, res);
     }
 

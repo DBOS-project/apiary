@@ -43,7 +43,7 @@ public class MongoMicrobenchmark {
         for (int personID = 0; personID < numPeople; personID++) {
             client.get().executeFunction("PostgresAddPerson", "matei" + personID, personID);
         }
-        logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
+        logger.info("Done Loading {} People: {}", numPeople, System.currentTimeMillis() - loadStart);
 
         if (ApiaryConfig.XDBTransactions) {
             mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.beginVersion));
@@ -51,7 +51,7 @@ public class MongoMicrobenchmark {
             mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.apiaryID));
         }
 
-        AtomicInteger personIDs = new AtomicInteger(0);
+        AtomicInteger personIDs = new AtomicInteger(numPeople);
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);

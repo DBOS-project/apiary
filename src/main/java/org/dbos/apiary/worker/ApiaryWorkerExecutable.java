@@ -37,6 +37,7 @@ import org.dbos.apiary.procedures.postgres.pggcs.PostgresWriteString;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresBulkAddPerson;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresFindPerson;
+import org.dbos.apiary.procedures.postgres.pgmongo.PostgresSoloFindPerson;
 import org.dbos.apiary.procedures.postgres.shop.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
@@ -133,6 +134,7 @@ public class ApiaryWorkerExecutable {
             apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
             apiaryWorker.registerFunction("PostgresBulkAddPerson", ApiaryConfig.postgres, PostgresBulkAddPerson::new);
             apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
+            apiaryWorker.registerFunction("PostgresSoloFindPerson", ApiaryConfig.postgres, PostgresSoloFindPerson::new);
             apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
             apiaryWorker.registerFunction("MongoBulkAddPerson", ApiaryConfig.mongo, MongoBulkAddPerson::new);
             apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);

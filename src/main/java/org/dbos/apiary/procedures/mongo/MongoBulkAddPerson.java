@@ -22,7 +22,7 @@ public class MongoBulkAddPerson extends MongoFunction {
         }
         long t0 = System.currentTimeMillis();
         context.insertMany("people", documents, ids);
-        logger.info("2 {}", System.currentTimeMillis() - t0);
+        logger.info("3 {}", System.currentTimeMillis() - t0);
         return 0;
     }
 }

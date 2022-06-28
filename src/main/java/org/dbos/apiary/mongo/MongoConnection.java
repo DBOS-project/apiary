@@ -83,7 +83,7 @@ public class MongoConnection implements ApiarySecondaryConnection {
         validationLock.unlock();
         if (valid) {
             for (String collection : writtenKeys.keySet()) {
-                if (writtenKeys.get(collection).size() > 10000) {
+                if (writtenKeys.get(collection).size() >= 10000) {
                     continue; // Speed up bulk-loading in benchmarks.
                 }
                 for (String key : writtenKeys.get(collection)) {

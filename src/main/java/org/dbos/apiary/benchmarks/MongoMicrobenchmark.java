@@ -54,6 +54,7 @@ public class MongoMicrobenchmark {
             mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.endVersion));
             mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.apiaryID));
         }
+        mconn.database.getCollection("people").createIndex(Indexes.ascending("name"));
 
         AtomicInteger personNums = new AtomicInteger(numPeople);
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);

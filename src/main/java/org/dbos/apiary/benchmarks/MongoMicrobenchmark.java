@@ -47,6 +47,7 @@ public class MongoMicrobenchmark {
             nums[personNum] = personNum;
         }
         client.get().executeFunction("PostgresBulkAddPerson", names, nums);
+        client.get().executeFunction("PostgresFindPerson", "matei" + 0);
         logger.info("Done loading {} people: {}ms", numPeople, System.currentTimeMillis() - loadStart);
 
         if (ApiaryConfig.XDBTransactions) {
@@ -67,7 +68,7 @@ public class MongoMicrobenchmark {
                 int chooser = ThreadLocalRandom.current().nextInt(100);
                 if (chooser < percentageRead) {
                     int personNum = ThreadLocalRandom.current().nextInt(personNums.get());
-                    client.get().executeFunction("PostgresSoloFindPerson", "matei" + personNum);
+                    client.get().executeFunction("MongoFindPerson", "matei" + personNum);
                     readTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageAppend) {
                     int personID = personNums.getAndIncrement();

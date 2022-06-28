@@ -57,6 +57,21 @@ public class MongoContext extends ApiaryContext {
         collection.insertOne(document);
     }
 
+    public void insertMany(String collectionName, List<Document> documents, List<String> ids) {
+        if (ApiaryConfig.XDBTransactions) {
+            for (int i = 0; i < documents.size(); i++) {
+                Document d = documents.get(i);
+                d.append(apiaryID, ids.get(i));
+                d.append(beginVersion, txc.txID);
+                d.append(endVersion, Long.MAX_VALUE);
+                writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
+                writtenKeys.get(collectionName).add(ids.get(i));
+            }
+            MongoCollection<Document> collection = database.getCollection(collectionName);
+            collection.insertMany(documents);
+        }
+    }
+
     public FindIterable<Document> find(String collectionName, Bson filter) {
         if (!ApiaryConfig.XDBTransactions) {
             return database.getCollection(collectionName).find(filter);

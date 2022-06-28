@@ -34,7 +34,7 @@ public class MongoMicrobenchmark {
         conn.dropTable("PersonTable");
         conn.createTable("PersonTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Number integer NOT NULL");
 
-        MongoConnection mconn = new MongoConnection(dbAddr, 27017);
+        MongoConnection mconn = new MongoConnection(dbAddr, ApiaryConfig.mongoPort);
         mconn.database.getCollection("people").drop();
 
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));

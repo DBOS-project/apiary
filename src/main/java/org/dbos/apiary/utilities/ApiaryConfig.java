@@ -5,6 +5,7 @@ public class ApiaryConfig {
     public static final int workerPort = 8000;
     public static final int postgresPort = 5432;
     public static final int mysqlPort = 3306;
+    public static final int mongoPort = 27017;
     public static final long statelessTxid = 1L;
     public static final String tableFuncInvocations = "FUNCINVOCATIONS";
 

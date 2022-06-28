@@ -56,7 +56,7 @@ public class PostgresMongoTests {
     @BeforeEach
     public void cleanupMongo() {
         try {
-            MongoConnection conn = new MongoConnection("localhost", 27017);
+            MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
             conn.database.getCollection("people").drop();
         } catch (Exception e) {
             logger.info("No Mongo/Postgres instance! {}", e.getMessage());
@@ -71,7 +71,7 @@ public class PostgresMongoTests {
         MongoConnection conn;
         PostgresConnection pconn;
         try {
-            conn = new MongoConnection("localhost", 27017);
+            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
             pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Mongo/Postgres instance! {}", e.getMessage());
@@ -107,7 +107,7 @@ public class PostgresMongoTests {
         MongoConnection conn;
         PostgresConnection pconn;
         try {
-            conn = new MongoConnection("localhost", 27017);
+            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
             pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Mongo/Postgres instance! {}", e.getMessage());
@@ -144,7 +144,7 @@ public class PostgresMongoTests {
         MongoConnection conn;
         PostgresConnection pconn;
         try {
-            conn = new MongoConnection("localhost", 27017);
+            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
             pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Mongo/Postgres instance! {}", e.getMessage());
@@ -183,7 +183,7 @@ public class PostgresMongoTests {
         MongoConnection conn;
         PostgresConnection pconn;
         try {
-            conn = new MongoConnection("localhost", 27017);
+            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
             pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Mongo/Postgres instance! {}", e.getMessage());
@@ -241,7 +241,7 @@ public class PostgresMongoTests {
         MongoConnection conn;
         PostgresConnection pconn;
         try {
-            conn = new MongoConnection("localhost", 27017);
+            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
             pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Mongo/Postgres instance! {}", e.getMessage());

@@ -119,7 +119,7 @@ public class ApiaryWorkerExecutable {
                 mongoAddr = cmd.getOptionValue("secondaryAddress");
                 logger.info("Mongo Address: {}", mongoAddr);
             }
-            MongoConnection mconn = new MongoConnection(mongoAddr, 27017);
+            MongoConnection mconn = new MongoConnection(mongoAddr, ApiaryConfig.mongoPort);
             apiaryWorker.registerConnection(ApiaryConfig.mongo, mconn);
             apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
             apiaryWorker.registerFunction("PostgresAddHotel", ApiaryConfig.postgres, PostgresAddHotel::new);

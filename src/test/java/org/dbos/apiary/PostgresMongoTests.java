@@ -297,7 +297,7 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoConcurrentUpdatesRC() throws InterruptedException {
+    public void testMongoConcurrentUpdatesRC() throws InterruptedException, InvalidProtocolBufferException {
         logger.info("testMongoConcurrentUpdatesRC");
 
         ApiaryConfig.isolationLevel = ApiaryConfig.READ_COMMITTED;
@@ -326,6 +326,10 @@ public class PostgresMongoTests {
         int maxTag = 10;
         AtomicInteger count = new AtomicInteger(0);
         AtomicBoolean success = new AtomicBoolean(true);
+        ApiaryWorkerClient c = new ApiaryWorkerClient("localhost");
+        for (int i = 0; i < maxTag; i++) {
+            c.executeFunction("PostgresAddPerson", "matei" + i, i).getInt();
+        }
         Runnable r = () -> {
             try {
                 ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");

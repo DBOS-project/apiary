@@ -155,7 +155,7 @@ public class MongoContext extends ApiaryContext {
             );
             List<Bson> filterAggregations = new ArrayList<>(aggregations);
             filterAggregations.add(0, filter);
-            return database.getCollection(collectionName).withReadConcern(ReadConcern.SNAPSHOT).aggregate(filterAggregations);
+            return database.getCollection(collectionName).aggregate(filterAggregations);
         }
     }
 }

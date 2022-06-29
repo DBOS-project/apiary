@@ -54,6 +54,7 @@ public class MongoMicrobenchmark {
             mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.beginVersion));
             mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.endVersion));
             mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.apiaryID));
+            mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.committed));
         }
         mconn.database.getCollection("people").createIndex(Indexes.ascending("name"));
 

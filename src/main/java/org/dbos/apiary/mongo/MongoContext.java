@@ -1,14 +1,11 @@
 package org.dbos.apiary.mongo;
 
 import com.google.protobuf.Api;
-import com.mongodb.client.AggregateIterable;
-import com.mongodb.client.FindIterable;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.BulkWriteOptions;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.ReadConcern;
+import com.mongodb.TransactionOptions;
+import com.mongodb.WriteConcern;
+import com.mongodb.client.*;
+import com.mongodb.client.model.*;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.dbos.apiary.function.ApiaryContext;
@@ -33,14 +30,16 @@ public class MongoContext extends ApiaryContext {
     public static final String endVersion = "__endVersion__";
     public static final String committed = "__committed__";
 
+    private final MongoClient client;
     private final MongoDatabase database;
     private final TransactionContext txc;
 
     Map<String, List<String>> writtenKeys = new HashMap<>();
 
-    public MongoContext(MongoDatabase database, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
+    public MongoContext(MongoClient client, MongoDatabase database, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
         this.database = database;
+        this.client = client;
         this.txc = txc;
     }
 
@@ -82,7 +81,7 @@ public class MongoContext extends ApiaryContext {
                 d.append(endVersion, Long.MAX_VALUE);
             } else {
                 assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
-                d.append(committed, true); // Hack for faster benchmarking.
+                d.append(committed, false);
             }
             writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
             writtenKeys.get(collectionName).add(ids.get(i));
@@ -145,15 +144,25 @@ public class MongoContext extends ApiaryContext {
                             Filters.or(endVersionFilter)
                     )
             );
+            MongoCollection<Document> collection = database.getCollection(collectionName);
+            List<Bson> filterAggregations = new ArrayList<>(aggregations);
+            filterAggregations.add(0, filter);
+            return collection.aggregate(filterAggregations);
         } else {
             assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
             filter = Aggregates.match(
                     Filters.eq(committed, true)
             );
+            ClientSession session = client.startSession();
+            TransactionBody<AggregateIterable<Document>> txnBody = () -> {
+                MongoCollection<Document> collection = database.getCollection(collectionName);
+                List<Bson> filterAggregations = new ArrayList<>(aggregations);
+                filterAggregations.add(0, filter);
+                return collection.aggregate(filterAggregations);
+            };
+            AggregateIterable<Document> ret = session.withTransaction(txnBody, TransactionOptions.builder().readConcern(ReadConcern.SNAPSHOT).build());
+            session.close();
+            return ret;
         }
-        MongoCollection<Document> collection = database.getCollection(collectionName);
-        aggregations = new ArrayList<>(aggregations);
-        aggregations.add(0, filter);
-        return collection.aggregate(aggregations);
     }
 }

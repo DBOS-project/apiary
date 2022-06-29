@@ -35,6 +35,7 @@ public class PostgresMongoTests {
 
     @BeforeEach
     public void resetTables() {
+        ApiaryConfig.isolationLevel = ApiaryConfig.REPEATABLE_READ;
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
             conn.dropTable("FuncInvocations");
@@ -48,6 +49,7 @@ public class PostgresMongoTests {
 
     @AfterEach
     public void cleanupWorker() {
+        ApiaryConfig.isolationLevel = ApiaryConfig.REPEATABLE_READ;
         if (apiaryWorker != null) {
             apiaryWorker.shutdown();
         }
@@ -238,6 +240,67 @@ public class PostgresMongoTests {
     public void testMongoConcurrentUpdates() throws InterruptedException {
         logger.info("testMongoConcurrentUpdates");
 
+        MongoConnection conn;
+        PostgresConnection pconn;
+        try {
+            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        } catch (Exception e) {
+            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
+            return;
+        }
+
+        int numThreads = 10;
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numThreads);
+        apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+        apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
+        apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+        apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
+        apiaryWorker.startServing();
+
+        long start = System.currentTimeMillis();
+        long testDurationMs = 5000L;
+        int maxTag = 10;
+        AtomicInteger count = new AtomicInteger(0);
+        AtomicBoolean success = new AtomicBoolean(true);
+        Runnable r = () -> {
+            try {
+                ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+                while (System.currentTimeMillis() < start + testDurationMs) {
+                    int localTag = ThreadLocalRandom.current().nextInt(maxTag);
+                    int localCount = count.getAndIncrement();
+                    client.executeFunction("PostgresAddPerson", "matei" + localTag, localCount).getInt();
+                    String search = "matei" + localTag;
+                    int res = client.executeFunction("PostgresFindPerson", search).getInt();
+                    if (res == -1) {
+                        success.set(false);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                success.set(false);
+            }
+        };
+
+        List<Thread> threads = new ArrayList<>();
+        for (int threadNum = 0; threadNum < numThreads; threadNum++) {
+            Thread t = new Thread(r);
+            threads.add(t);
+            t.start();
+        }
+        for (Thread t: threads) {
+            t.join();
+        }
+        assertTrue(success.get());
+    }
+
+    @Test
+    public void testMongoConcurrentUpdatesRC() throws InterruptedException {
+        logger.info("testMongoConcurrentUpdatesRC");
+
+        ApiaryConfig.isolationLevel = ApiaryConfig.READ_COMMITTED;
         MongoConnection conn;
         PostgresConnection pconn;
         try {

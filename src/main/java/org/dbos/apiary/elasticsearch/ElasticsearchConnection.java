@@ -207,6 +207,11 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
         return valid;
     }
 
+    @Override
+    public void rcCommit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+
+    }
+
     public void garbageCollect(Set<TransactionContext> activeTransactions) {
         long globalxmin = activeTransactions.stream().mapToLong(i -> i.xmin).min().getAsLong();
         // No need to keep track of writes that are visible to all active or future transactions.

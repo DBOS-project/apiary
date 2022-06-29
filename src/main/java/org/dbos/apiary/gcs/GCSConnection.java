@@ -116,6 +116,11 @@ public class GCSConnection implements ApiarySecondaryConnection {
     }
 
     @Override
+    public void rcCommit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+
+    }
+
+    @Override
     public void garbageCollect(Set<TransactionContext> activeTransactions) {
         long globalxmin = activeTransactions.stream().mapToLong(i -> i.xmin).min().getAsLong();
         // No need to keep track of writes that are visible to all active or future transactions.

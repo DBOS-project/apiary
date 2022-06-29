@@ -153,16 +153,9 @@ public class MongoContext extends ApiaryContext {
             filter = Aggregates.match(
                     Filters.eq(committed, true)
             );
-            ClientSession session = client.startSession();
-            TransactionBody<AggregateIterable<Document>> txnBody = () -> {
-                MongoCollection<Document> collection = database.getCollection(collectionName);
-                List<Bson> filterAggregations = new ArrayList<>(aggregations);
-                filterAggregations.add(0, filter);
-                return collection.aggregate(filterAggregations);
-            };
-            AggregateIterable<Document> ret = session.withTransaction(txnBody, TransactionOptions.builder().readConcern(ReadConcern.SNAPSHOT).build());
-            session.close();
-            return ret;
+            List<Bson> filterAggregations = new ArrayList<>(aggregations);
+            filterAggregations.add(0, filter);
+            return database.getCollection(collectionName).withReadConcern(ReadConcern.SNAPSHOT).aggregate(filterAggregations);
         }
     }
 }

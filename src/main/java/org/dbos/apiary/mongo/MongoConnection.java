@@ -1,5 +1,6 @@
 package org.dbos.apiary.mongo;
 
+import com.mongodb.ReadConcern;
 import com.mongodb.TransactionOptions;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.*;
@@ -108,13 +109,13 @@ public class MongoConnection implements ApiarySecondaryConnection {
             for (String collectionName: writtenKeys.keySet()) {
                 MongoCollection<Document> c = database.getCollection(collectionName);
                 for (String key: writtenKeys.get(collectionName)) {
-                    c.updateOne(Filters.and(
+                    c.updateOne(session, Filters.and(
                                     Filters.eq(MongoContext.apiaryID, key),
                                     Filters.eq(MongoContext.beginVersion, txc.txID)
                             ),
                             Updates.set(MongoContext.committed, true)
                     );
-                    c.updateMany(Filters.and(
+                    c.updateMany(session, Filters.and(
                                     Filters.eq(MongoContext.apiaryID, key),
                                     Filters.ne(MongoContext.beginVersion, txc.txID)
                             ),
@@ -124,7 +125,7 @@ public class MongoConnection implements ApiarySecondaryConnection {
             }
             return Boolean.TRUE;
         };
-        session.withTransaction(txnBody, TransactionOptions.builder().writeConcern(WriteConcern.MAJORITY).build());
+        session.withTransaction(txnBody, TransactionOptions.builder().writeConcern(WriteConcern.MAJORITY).readConcern(ReadConcern.SNAPSHOT).build());
         session.close();
     }
 

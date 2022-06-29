@@ -166,7 +166,9 @@ public class PostgresConnection implements ApiaryConnection {
                     if (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED) { // TODO: After postgres commit.
                         for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
                             Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
-                            ctxt.workerContext.getSecondaryConnection(secondary).rcCommit(writtenKeys, ctxt.txc);
+                            if (!writtenKeys.isEmpty()) {
+                                ctxt.workerContext.getSecondaryConnection(secondary).rcCommit(writtenKeys, ctxt.txc);
+                            }
                         }
                     }
                     ctxt.conn.commit();

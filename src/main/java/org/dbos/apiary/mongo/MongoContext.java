@@ -49,30 +49,34 @@ public class MongoContext extends ApiaryContext {
     }
 
     public void insertOne(String collectionName, Document document, String id) {
-        if (ApiaryConfig.XDBTransactions) {
-            document.append(apiaryID, id);
-            document.append(beginVersion, txc.txID);
-            document.append(endVersion, Long.MAX_VALUE);
-            writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
-            writtenKeys.get(collectionName).add(id);
+        if (!ApiaryConfig.XDBTransactions) {
+            database.getCollection(collectionName).insertOne(document);
+            return;
         }
-        MongoCollection<Document> collection = database.getCollection(collectionName);
-        collection.insertOne(document);
+        document.append(apiaryID, id);
+        document.append(beginVersion, txc.txID);
+        document.append(endVersion, Long.MAX_VALUE);
+        writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
+        writtenKeys.get(collectionName).add(id);
+        database.getCollection(collectionName).insertOne(document);
     }
 
     public void insertMany(String collectionName, List<Document> documents, List<String> ids) {
-        if (ApiaryConfig.XDBTransactions) {
-            for (int i = 0; i < documents.size(); i++) {
-                Document d = documents.get(i);
-                d.append(apiaryID, ids.get(i));
-                d.append(beginVersion, txc.txID);
-                d.append(endVersion, Long.MAX_VALUE);
-                writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
-                writtenKeys.get(collectionName).add(ids.get(i));
-            }
+        if (!ApiaryConfig.XDBTransactions) {
             MongoCollection<Document> collection = database.getCollection(collectionName);
             collection.bulkWrite(documents.stream().map(InsertOneModel::new).collect(Collectors.toList()), new BulkWriteOptions().ordered(false));
+            return;
         }
+        for (int i = 0; i < documents.size(); i++) {
+            Document d = documents.get(i);
+            d.append(apiaryID, ids.get(i));
+            d.append(beginVersion, txc.txID);
+            d.append(endVersion, Long.MAX_VALUE);
+            writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
+            writtenKeys.get(collectionName).add(ids.get(i));
+        }
+        MongoCollection<Document> collection = database.getCollection(collectionName);
+        collection.bulkWrite(documents.stream().map(InsertOneModel::new).collect(Collectors.toList()), new BulkWriteOptions().ordered(false));
     }
 
     public FindIterable<Document> find(String collectionName, Bson filter) {

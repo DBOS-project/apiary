@@ -54,7 +54,13 @@ public class PostgresConnection implements ApiaryConnection {
            try {
                Connection conn = ds.getConnection();
                conn.setAutoCommit(false);
-               conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+               if (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED) {
+                   conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+               } else if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
+                   conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+               } else {
+                   logger.info("Invalid isolation level: {}", ApiaryConfig.isolationLevel);
+               }
                return conn;
            } catch (SQLException e) {
                e.printStackTrace();

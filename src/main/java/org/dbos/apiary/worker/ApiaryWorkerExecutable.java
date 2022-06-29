@@ -46,7 +46,8 @@ public class ApiaryWorkerExecutable {
 
     // Ignore the illegal reflective access warning from VoltDB. TODO: Fix it later.
     public static void main(String[] args) throws Exception {
-        logger.info("Starting Apiary worker server.");
+        logger.info("Starting Apiary worker server. XDB transactions: {} Isolation level: {}",
+                ApiaryConfig.XDBTransactions, ApiaryConfig.isolationLevel);
         Options options = new Options();
         options.addOption("db", true,
                 "The secondary used by this worker.");

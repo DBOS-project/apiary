@@ -1,5 +1,6 @@
 package org.dbos.apiary.mongo;
 
+import com.google.protobuf.Api;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
@@ -30,6 +31,7 @@ public class MongoContext extends ApiaryContext {
     public static final String apiaryID = "__apiaryID__";
     public static final String beginVersion = "__beginVersion__";
     public static final String endVersion = "__endVersion__";
+    public static final String committed = "__committed__";
 
     private final MongoDatabase database;
     private final TransactionContext txc;
@@ -54,8 +56,13 @@ public class MongoContext extends ApiaryContext {
             return;
         }
         document.append(apiaryID, id);
-        document.append(beginVersion, txc.txID);
-        document.append(endVersion, Long.MAX_VALUE);
+        if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
+            document.append(beginVersion, txc.txID);
+            document.append(endVersion, Long.MAX_VALUE);
+        } else {
+            assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
+            document.append(committed, false);
+        }
         writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
         writtenKeys.get(collectionName).add(id);
         database.getCollection(collectionName).insertOne(document);
@@ -70,8 +77,13 @@ public class MongoContext extends ApiaryContext {
         for (int i = 0; i < documents.size(); i++) {
             Document d = documents.get(i);
             d.append(apiaryID, ids.get(i));
-            d.append(beginVersion, txc.txID);
-            d.append(endVersion, Long.MAX_VALUE);
+            if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
+                d.append(beginVersion, txc.txID);
+                d.append(endVersion, Long.MAX_VALUE);
+            } else {
+                assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
+                d.append(committed, true); // Hack for faster benchmarking.
+            }
             writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
             writtenKeys.get(collectionName).add(ids.get(i));
         }
@@ -106,26 +118,33 @@ public class MongoContext extends ApiaryContext {
         if (!ApiaryConfig.XDBTransactions) {
             return database.getCollection(collectionName).aggregate(aggregations);
         }
-        List<Bson> beginVersionFilter = new ArrayList<>();
-        beginVersionFilter.add(Filters.lt(beginVersion, txc.xmax));
-        for (long txID: txc.activeTransactions) {
-            beginVersionFilter.add(Filters.ne(beginVersion, txID));
+        Bson filter;
+        if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
+            List<Bson> beginVersionFilter = new ArrayList<>();
+            beginVersionFilter.add(Filters.lt(beginVersion, txc.xmax));
+            for (long txID : txc.activeTransactions) {
+                beginVersionFilter.add(Filters.ne(beginVersion, txID));
+            }
+            List<Bson> endVersionFilter = new ArrayList<>();
+            endVersionFilter.add(Filters.gte(endVersion, txc.xmax));
+            for (long txID : txc.activeTransactions) {
+                endVersionFilter.add(Filters.eq(endVersion, txID));
+            }
+            filter = Aggregates.match(
+                    Filters.and(
+                            Filters.and(beginVersionFilter),
+                            Filters.or(endVersionFilter)
+                    )
+            );
+        } else {
+            assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
+            filter = Aggregates.match(
+                    Filters.eq(committed, true)
+            );
         }
-        List<Bson> endVersionFilter = new ArrayList<>();
-        endVersionFilter.add(Filters.gte(endVersion, txc.xmax));
-        for (long txID: txc.activeTransactions) {
-            endVersionFilter.add(Filters.eq(endVersion, txID));
-        }
-        Bson filter = Aggregates.match(
-                Filters.and(
-                        Filters.and(beginVersionFilter),
-                        Filters.or(endVersionFilter)
-                )
-        );
         MongoCollection<Document> collection = database.getCollection(collectionName);
         aggregations = new ArrayList<>(aggregations);
         aggregations.add(0, filter);
-        AggregateIterable<Document> r = collection.aggregate(aggregations);
-        return r;
+        return collection.aggregate(aggregations);
     }
 }

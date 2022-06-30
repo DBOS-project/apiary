@@ -138,11 +138,24 @@ public class MongoConnection implements ApiarySecondaryConnection {
         // No need to keep track of writes that are visible to all active or future transactions.
         committedWrites.values().forEach(i -> i.values().forEach(w -> w.removeIf(txID -> txID < globalxmin)));
         // Delete old versions that are no longer visible to any active or future transaction.
-        for (String collectionName : committedWrites.keySet()) {
-            MongoCollection<Document> c = database.getCollection(collectionName);
-            c.deleteMany(
-                    Filters.lt(MongoContext.endVersion, globalxmin)
-            );
+        if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
+            for (String collectionName : committedWrites.keySet()) {
+                MongoCollection<Document> c = database.getCollection(collectionName);
+                c.deleteMany(
+                        Filters.lt(MongoContext.endVersion, globalxmin)
+                );
+            }
+        } else {
+            assert (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
+            for (String collectionName : committedWrites.keySet()) {
+                MongoCollection<Document> c = database.getCollection(collectionName);
+                c.deleteMany(
+                        Filters.and(
+                                Filters.eq(MongoContext.beginVersion, globalxmin),
+                                Filters.eq(MongoContext.committed, false)
+                        )
+                );
+            }
         }
     }
 }

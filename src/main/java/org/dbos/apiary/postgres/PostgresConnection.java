@@ -163,7 +163,8 @@ public class PostgresConnection implements ApiaryConnection {
                     }
                 }
                 if (valid) {
-                    if (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED) { // TODO: After postgres commit.
+                    ctxt.conn.commit();
+                    if (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED) {
                         for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
                             Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
                             if (!writtenKeys.isEmpty()) {
@@ -171,7 +172,6 @@ public class PostgresConnection implements ApiaryConnection {
                             }
                         }
                     }
-                    ctxt.conn.commit();
                     activeTransactions.remove(ctxt.txc);
                     break;
                 } else {

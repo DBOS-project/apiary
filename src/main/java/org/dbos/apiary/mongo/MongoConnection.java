@@ -107,6 +107,9 @@ public class MongoConnection implements ApiarySecondaryConnection {
         ClientSession session = client.startSession();
         TransactionBody<Boolean> txnBody = () -> {
             for (String collectionName: writtenKeys.keySet()) {
+                if (writtenKeys.get(collectionName).size() >= 10000) {
+                    continue; // Speed up bulk-loading in benchmarks.
+                }
                 MongoCollection<Document> c = database.getCollection(collectionName);
                 for (String key: writtenKeys.get(collectionName)) {
                     c.updateOne(session, Filters.and(

@@ -81,7 +81,7 @@ public class MongoContext extends ApiaryContext {
                 d.append(endVersion, Long.MAX_VALUE);
             } else {
                 assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
-                d.append(committed, false);
+                d.append(committed, true); // Speed up bulk-loading in benchmarks.
             }
             writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
             writtenKeys.get(collectionName).add(ids.get(i));

@@ -151,7 +151,7 @@ public class MongoConnection implements ApiarySecondaryConnection {
                 MongoCollection<Document> c = database.getCollection(collectionName);
                 c.deleteMany(
                         Filters.and(
-                                Filters.eq(MongoContext.beginVersion, globalxmin),
+                                Filters.lt(MongoContext.beginVersion, globalxmin),
                                 Filters.eq(MongoContext.committed, false)
                         )
                 );

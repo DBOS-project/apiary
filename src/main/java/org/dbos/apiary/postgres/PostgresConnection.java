@@ -54,7 +54,13 @@ public class PostgresConnection implements ApiaryConnection {
            try {
                Connection conn = ds.getConnection();
                conn.setAutoCommit(false);
-               conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+               if (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED) {
+                   conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+               } else if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
+                   conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+               } else {
+                   logger.info("Invalid isolation level: {}", ApiaryConfig.isolationLevel);
+               }
                return conn;
            } catch (SQLException e) {
                e.printStackTrace();
@@ -158,6 +164,14 @@ public class PostgresConnection implements ApiaryConnection {
                 }
                 if (valid) {
                     ctxt.conn.commit();
+                    if (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED) {
+                        for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
+                            Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
+                            if (!writtenKeys.isEmpty()) {
+                                ctxt.workerContext.getSecondaryConnection(secondary).rcCommit(writtenKeys, ctxt.txc);
+                            }
+                        }
+                    }
                     activeTransactions.remove(ctxt.txc);
                     break;
                 } else {

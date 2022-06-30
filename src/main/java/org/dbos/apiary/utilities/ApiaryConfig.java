@@ -13,6 +13,11 @@ public class ApiaryConfig {
     public static final Boolean captureReads = true;
     public static final String provenanceDefaultAddress = "localhost";
 
+    public static final int READ_COMMITTED = 0;
+    public static final int REPEATABLE_READ = 1; // Snapshot isolation.
+
+    public static int isolationLevel = REPEATABLE_READ;
+
     public static final boolean XDBTransactions = true;
     public static final Boolean profile = Boolean.FALSE;
 

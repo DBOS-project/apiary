@@ -15,11 +15,11 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class MongoConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(MongoConnection.class);
@@ -27,8 +27,6 @@ public class MongoConnection implements ApiarySecondaryConnection {
     public MongoClient client;
     public MongoDatabase database;
 
-    private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
-    private final Lock validationLock = new ReentrantLock();
     Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
 
     public MongoConnection(String address, int port) {
@@ -102,11 +100,9 @@ public class MongoConnection implements ApiarySecondaryConnection {
     @Override
     public void garbageCollect(Set<TransactionContext> activeTransactions) {
         long globalxmin = activeTransactions.stream().mapToLong(i -> i.xmin).min().getAsLong();
-        // No need to keep track of writes that are visible to all active or future transactions.
-        committedWrites.values().forEach(i -> i.values().forEach(w -> w.removeIf(txID -> txID < globalxmin)));
         // Delete old versions that are no longer visible to any active or future transaction.
         if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-            for (String collectionName : committedWrites.keySet()) {
+            for (String collectionName : lockManager.keySet()) {
                 MongoCollection<Document> c = database.getCollection(collectionName);
                 c.deleteMany(
                         Filters.lt(MongoContext.endVersion, globalxmin)
@@ -114,7 +110,7 @@ public class MongoConnection implements ApiarySecondaryConnection {
             }
         } else {
             assert (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
-            for (String collectionName : committedWrites.keySet()) {
+            for (String collectionName : lockManager.keySet()) {
                 MongoCollection<Document> c = database.getCollection(collectionName);
                 c.deleteMany(
                         Filters.and(

@@ -41,25 +41,20 @@ public class ElasticsearchContext extends ApiaryContext {
         return null;
     }
 
-    public void executeWrite(String index, ApiaryDocument document, String id) {
-        try {
-            long t0 = System.nanoTime();
-            writtenKeys.putIfAbsent(index, new ArrayList<>());
-            writtenKeys.get(index).add(id);
-            if (ApiaryConfig.XDBTransactions) {
-                document.setApiaryID(id);
-                document.setBeginVersion(txc.txID);
-                document.setEndVersion(Long.MAX_VALUE);
-            }
+    public void executeWrite(String index, ApiaryDocument document, String id) throws IOException {
+        if (!ApiaryConfig.XDBTransactions) {
             IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document);
-            if (!ApiaryConfig.XDBTransactions) {
-                b = b.id(id);
-            }
+            b = b.id(id);
             client.index(b.build());
-            logger.debug("Write: {}", (System.nanoTime() - t0) / 1000L);
-        } catch (IOException e) {
-            e.printStackTrace();
+            return;
         }
+        writtenKeys.putIfAbsent(index, new ArrayList<>());
+        writtenKeys.get(index).add(id);
+        document.setApiaryID(id);
+        document.setBeginVersion(txc.txID);
+        document.setEndVersion(Long.MAX_VALUE);
+        IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document);
+        client.index(b.build());
     }
 
     public void executeBulkWrite(String index, List<ApiaryDocument> documents, List<String> ids) throws IOException {
@@ -84,51 +79,43 @@ public class ElasticsearchContext extends ApiaryContext {
         logger.info("Bulk load: {} {}", documents.size(), rr.errors());
     }
 
-    public SearchResponse executeQuery(String index, Query searchQuery, Class clazz) {
-        try {
-            if (ApiaryConfig.XDBTransactions) {
-                long t0 = System.nanoTime();
-                List<Query> beginVersionFilter = new ArrayList<>();
-                // If beginVersion is an active transaction, it is not in the snapshot.
-                for (long txID : txc.activeTransactions) {
-                    beginVersionFilter.add(TermQuery.of(f -> f.field("beginVersion").value(txID))._toQuery());
-                }
-                List<Query> endVersionFilter = new ArrayList<>();
-                // If endVersion is greater than or equal to xmax, it is not in the snapshot.
-                endVersionFilter.add(RangeQuery.of(f -> f.field("endVersion").gte(JsonData.of(txc.xmax)))._toQuery());
-                // If endVersion is an active transaction, it is not in the snapshot.
-                for (long txID : txc.activeTransactions) {
-                    endVersionFilter.add(TermQuery.of(f -> f.field("endVersion").value(txID))._toQuery());
-                }
-                SearchRequest request = SearchRequest.of(s -> s
-                        .index(index).query(q -> q.bool(b -> b
-                                .must(searchQuery)
-                                .filter(BoolQuery.of(bb -> bb
-                                        .must( // beginVersion must be in the snapshot.
-                                                RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.xmax)))._toQuery()
-                                        ).mustNot( // Therefore, beginVersion must not be an active transaction.
-                                                beginVersionFilter
-                                        ).should( // endVersion must not be in the snapshot.
-                                                endVersionFilter
-                                        )
-                                        .minimumShouldMatch("1")
-                                )._toQuery())
-                        )).profile(ApiaryConfig.profile)
-                );
-                SearchResponse rr =  client.search(request, clazz);
-                if (ApiaryConfig.profile) {
-                    ElasticsearchUtilities.printESProfile(rr.profile());
-                }
-                logger.debug("Read: {} {}", (System.nanoTime() - t0) / 1000L, txc.activeTransactions.size());
-                return rr;
-            } else {
-                SearchRequest request = SearchRequest.of(s -> s
-                        .index(index).query(searchQuery));
-                return client.search(request, clazz);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
+    public SearchResponse executeQuery(String index, Query searchQuery, Class clazz) throws IOException {
+        if (!ApiaryConfig.XDBTransactions) {
+            SearchRequest request = SearchRequest.of(s -> s
+                    .index(index).query(searchQuery));
+            return client.search(request, clazz);
         }
+        List<Query> beginVersionFilter = new ArrayList<>();
+        // If beginVersion is an active transaction, it is not in the snapshot.
+        for (long txID : txc.activeTransactions) {
+            beginVersionFilter.add(TermQuery.of(f -> f.field("beginVersion").value(txID))._toQuery());
+        }
+        List<Query> endVersionFilter = new ArrayList<>();
+        // If endVersion is greater than or equal to xmax, it is not in the snapshot.
+        endVersionFilter.add(RangeQuery.of(f -> f.field("endVersion").gte(JsonData.of(txc.xmax)))._toQuery());
+        // If endVersion is an active transaction, it is not in the snapshot.
+        for (long txID : txc.activeTransactions) {
+            endVersionFilter.add(TermQuery.of(f -> f.field("endVersion").value(txID))._toQuery());
+        }
+        SearchRequest request = SearchRequest.of(s -> s
+                .index(index).query(q -> q.bool(b -> b
+                        .must(searchQuery)
+                        .filter(BoolQuery.of(bb -> bb
+                                .must( // beginVersion must be in the snapshot.
+                                        RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.xmax)))._toQuery()
+                                ).mustNot( // Therefore, beginVersion must not be an active transaction.
+                                        beginVersionFilter
+                                ).should( // endVersion must not be in the snapshot.
+                                        endVersionFilter
+                                )
+                                .minimumShouldMatch("1")
+                        )._toQuery())
+                )).profile(ApiaryConfig.profile)
+        );
+        SearchResponse rr =  client.search(request, clazz);
+        if (ApiaryConfig.profile) {
+            ElasticsearchUtilities.printESProfile(rr.profile());
+        }
+        return rr;
     }
 }

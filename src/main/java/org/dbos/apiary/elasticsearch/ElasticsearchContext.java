@@ -52,14 +52,14 @@ public class ElasticsearchContext extends ApiaryContext {
             client.index(b.build());
             return;
         }
+        writtenKeys.putIfAbsent(index, new ArrayList<>());
+        writtenKeys.get(index).add(id);
         lockManager.putIfAbsent(index, new ConcurrentHashMap<>());
         lockManager.get(index).putIfAbsent(id, new AtomicBoolean(false));
         boolean available = lockManager.get(index).get(id).compareAndSet(false, true);
         if (!available) {
             throw new PSQLException("tuple locked", PSQLState.SERIALIZATION_FAILURE);
         }
-        writtenKeys.putIfAbsent(index, new ArrayList<>());
-        writtenKeys.get(index).add(id);
         document.setApiaryID(id);
         document.setBeginVersion(txc.txID);
         document.setEndVersion(Long.MAX_VALUE);

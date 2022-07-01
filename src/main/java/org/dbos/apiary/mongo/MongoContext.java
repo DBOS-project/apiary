@@ -60,6 +60,8 @@ public class MongoContext extends ApiaryContext {
             database.getCollection(collectionName).insertOne(document);
             return;
         }
+        writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
+        writtenKeys.get(collectionName).add(id);
         lockManager.putIfAbsent(collectionName, new ConcurrentHashMap<>());
         lockManager.get(collectionName).putIfAbsent(id, new AtomicBoolean(false));
         boolean available = lockManager.get(collectionName).get(id).compareAndSet(false, true);
@@ -74,8 +76,6 @@ public class MongoContext extends ApiaryContext {
             assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
             document.append(committed, false);
         }
-        writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
-        writtenKeys.get(collectionName).add(id);
         MongoCollection<Document> c = database.getCollection(collectionName);
         c.insertOne(document);
         c.updateOne(Filters.and(

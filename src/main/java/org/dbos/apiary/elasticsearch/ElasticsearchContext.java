@@ -1,10 +1,8 @@
 package org.dbos.apiary.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
+import co.elastic.clients.elasticsearch._types.StoredScriptId;
+import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.elasticsearch.core.*;
 import co.elastic.clients.json.JsonData;
 import org.dbos.apiary.function.ApiaryContext;
@@ -12,6 +10,8 @@ import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ElasticsearchContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchContext.class);
@@ -28,11 +30,13 @@ public class ElasticsearchContext extends ApiaryContext {
     private final TransactionContext txc;
 
     Map<String, List<String>> writtenKeys = new HashMap<>();
+    Map<String, Map<String, AtomicBoolean>> lockManager;
 
-    public ElasticsearchContext(ElasticsearchClient client, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
+    public ElasticsearchContext(ElasticsearchClient client, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
         this.client = client;
         this.txc = txc;
+        this.lockManager = lockManager;
     }
 
     @Override
@@ -41,12 +45,18 @@ public class ElasticsearchContext extends ApiaryContext {
         return null;
     }
 
-    public void executeWrite(String index, ApiaryDocument document, String id) throws IOException {
+    public void executeWrite(String index, ApiaryDocument document, String id) throws IOException, PSQLException {
         if (!ApiaryConfig.XDBTransactions) {
             IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document);
             b = b.id(id);
             client.index(b.build());
             return;
+        }
+        lockManager.putIfAbsent(index, new ConcurrentHashMap<>());
+        lockManager.get(index).putIfAbsent(id, new AtomicBoolean(false));
+        boolean available = lockManager.get(index).get(id).compareAndSet(false, true);
+        if (!available) {
+            throw new PSQLException("tuple locked", PSQLState.SERIALIZATION_FAILURE);
         }
         writtenKeys.putIfAbsent(index, new ArrayList<>());
         writtenKeys.get(index).add(id);
@@ -55,6 +65,22 @@ public class ElasticsearchContext extends ApiaryContext {
         document.setEndVersion(Long.MAX_VALUE);
         IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document);
         client.index(b.build());
+        client.updateByQuery(ubq -> ubq
+                .index(index)
+                .query(BoolQuery.of(bb -> bb
+                        .must(
+                                MatchQuery.of(t -> t.field("apiaryID").query(id))._toQuery(),
+                                RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.txID)))._toQuery(),
+                                TermQuery.of(t -> t.field("endVersion").value(Long.MAX_VALUE))._toQuery()
+                        )
+                )._toQuery())
+                .script(s -> s
+                        .stored(StoredScriptId.of(ss -> ss
+                                .id(ElasticsearchConnection.updateEndVersionScript).params(Map.of("endV", JsonData.of(txc.txID))))
+                        )
+                )
+        );
+        client.indices().refresh(r -> r.index(index));
     }
 
     public void executeBulkWrite(String index, List<ApiaryDocument> documents, List<String> ids) throws IOException {
@@ -63,8 +89,6 @@ public class ElasticsearchContext extends ApiaryContext {
         for (int i = 0; i < documents.size(); i++) {
             ApiaryDocument document = documents.get(i);
             String id = ids.get(i);
-            writtenKeys.putIfAbsent(index, new ArrayList<>());
-            writtenKeys.get(index).add(id);
             document.setApiaryID(id);
             document.setBeginVersion(txc.txID);
             document.setEndVersion(Long.MAX_VALUE);
@@ -76,6 +100,7 @@ public class ElasticsearchContext extends ApiaryContext {
             );
         }
         BulkResponse rr = client.bulk(br.build());
+        client.indices().refresh(r -> r.index(index));
         logger.info("Bulk load: {} {}", documents.size(), rr.errors());
     }
 

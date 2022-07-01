@@ -59,15 +59,6 @@ public class GCSConnection implements ApiarySecondaryConnection {
             List<BlobId> blobIDs = writtenKeys.get(bucket).stream().map(i -> BlobId.of(bucket, i + txc.txID)).collect(Collectors.toList());
             List<Blob> blobs = storage.get(blobIDs);
             blobs.forEach(Blob::delete);
-            try {
-                PreparedStatement ps = primary.connection.get().prepareStatement(undoUpdate);
-                ps.setLong(1, Long.MAX_VALUE);
-                ps.setLong(2, txc.txID);
-                ps.executeUpdate();
-                ps.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
             for (String key: writtenKeys.get(bucket)) {
                 lockManager.get(bucket).get(key).set(false);
             }

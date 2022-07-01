@@ -117,7 +117,7 @@ public class GCSConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public void rcCommit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+    public void commit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
 
     }
 

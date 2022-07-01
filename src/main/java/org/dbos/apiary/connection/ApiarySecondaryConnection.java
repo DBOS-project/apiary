@@ -20,7 +20,7 @@ public interface ApiarySecondaryConnection {
 
     boolean validate(Map<String, List<String>> writtenKeys, TransactionContext txc);
 
-    void rcCommit(Map<String, List<String>> writtenKeys, TransactionContext txc);
+    void commit(Map<String, List<String>> writtenKeys, TransactionContext txc);
 
     void garbageCollect(Set<TransactionContext> activeTransactions);
 }

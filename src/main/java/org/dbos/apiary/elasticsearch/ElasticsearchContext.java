@@ -110,11 +110,12 @@ public class ElasticsearchContext extends ApiaryContext {
                     .index(index).query(searchQuery));
             return client.search(request, clazz);
         }
-        List<Query> beginVersionFilter = new ArrayList<>();
+        List<Query> mustNotFilter = new ArrayList<>();
         // If beginVersion is an active transaction, it is not in the snapshot.
         for (long txID : txc.activeTransactions) {
-            beginVersionFilter.add(TermQuery.of(f -> f.field("beginVersion").value(txID))._toQuery());
+            mustNotFilter.add(TermQuery.of(f -> f.field("beginVersion").value(txID))._toQuery());
         }
+        mustNotFilter.add(TermQuery.of(t -> t.field("endVersion").value(txc.txID))._toQuery());
         List<Query> endVersionFilter = new ArrayList<>();
         // If endVersion is greater than or equal to xmax, it is not in the snapshot.
         endVersionFilter.add(RangeQuery.of(f -> f.field("endVersion").gte(JsonData.of(txc.xmax)))._toQuery());
@@ -127,9 +128,14 @@ public class ElasticsearchContext extends ApiaryContext {
                         .must(searchQuery)
                         .filter(BoolQuery.of(bb -> bb
                                 .must( // beginVersion must be in the snapshot.
-                                        RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.xmax)))._toQuery()
+                                        BoolQuery.of(m -> m
+                                                        .should(
+                                                                RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.xmax)))._toQuery(),
+                                                                TermQuery.of(t -> t.field("beginVersion").value(txc.txID))._toQuery()
+                                                        ).minimumShouldMatch("1")
+                                        )._toQuery()
                                 ).mustNot( // Therefore, beginVersion must not be an active transaction.
-                                        beginVersionFilter
+                                        mustNotFilter
                                 ).should( // endVersion must not be in the snapshot.
                                         endVersionFilter
                                 )

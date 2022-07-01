@@ -39,6 +39,7 @@ public class GCSConnection implements ApiarySecondaryConnection {
     public GCSConnection(PostgresConnection primary) {
         this.storage = StorageOptions.getDefaultInstance().getService();
         this.primary = primary;
+        storage.get(ApiaryConfig.gcsTestBucket);
     }
 
     @Override

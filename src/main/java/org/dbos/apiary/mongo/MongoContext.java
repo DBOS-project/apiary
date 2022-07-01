@@ -13,6 +13,8 @@ import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +22,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class MongoContext extends ApiaryContext {
@@ -33,14 +37,16 @@ public class MongoContext extends ApiaryContext {
     private final MongoClient client;
     private final MongoDatabase database;
     private final TransactionContext txc;
+    private final Map<String, Map<String, AtomicBoolean>> lockManager;
 
     Map<String, List<String>> writtenKeys = new HashMap<>();
 
-    public MongoContext(MongoClient client, MongoDatabase database, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
+    public MongoContext(MongoClient client, MongoDatabase database, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
         this.database = database;
         this.client = client;
         this.txc = txc;
+        this.lockManager = lockManager;
     }
 
     @Override
@@ -49,10 +55,16 @@ public class MongoContext extends ApiaryContext {
         return null;
     }
 
-    public void insertOne(String collectionName, Document document, String id) {
+    public void insertOne(String collectionName, Document document, String id) throws PSQLException {
         if (!ApiaryConfig.XDBTransactions) {
             database.getCollection(collectionName).insertOne(document);
             return;
+        }
+        lockManager.putIfAbsent(collectionName, new ConcurrentHashMap<>());
+        lockManager.get(collectionName).putIfAbsent(id, new AtomicBoolean(false));
+        boolean available = lockManager.get(collectionName).get(id).compareAndSet(false, true);
+        if (!available) {
+            throw new PSQLException("tuple locked", PSQLState.SERIALIZATION_FAILURE);
         }
         document.append(apiaryID, id);
         document.append(beginVersion, txc.txID);
@@ -64,7 +76,15 @@ public class MongoContext extends ApiaryContext {
         }
         writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
         writtenKeys.get(collectionName).add(id);
-        database.getCollection(collectionName).insertOne(document);
+        MongoCollection<Document> c = database.getCollection(collectionName);
+        c.insertOne(document);
+        c.updateOne(Filters.and(
+                        Filters.eq(MongoContext.apiaryID, id),
+                        Filters.lt(MongoContext.beginVersion, txc.txID),
+                        Filters.eq(MongoContext.endVersion, Long.MAX_VALUE)
+                ),
+                Updates.set(MongoContext.endVersion, txc.txID)
+        );
     }
 
     public void insertMany(String collectionName, List<Document> documents, List<String> ids) {
@@ -83,8 +103,6 @@ public class MongoContext extends ApiaryContext {
                 assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
                 d.append(committed, true); // Speed up bulk-loading in benchmarks.
             }
-            writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
-            writtenKeys.get(collectionName).add(ids.get(i));
         }
         MongoCollection<Document> collection = database.getCollection(collectionName);
         collection.bulkWrite(documents.stream().map(InsertOneModel::new).collect(Collectors.toList()), new BulkWriteOptions().ordered(false));
@@ -107,8 +125,12 @@ public class MongoContext extends ApiaryContext {
                 endVersionFilter.add(Filters.eq(endVersion, txID));
             }
             query = Filters.and(
-                    Filters.and(beginVersionFilter),
+                    Filters.or(
+                            Filters.and(beginVersionFilter),
+                            Filters.eq(beginVersion, txc.txID)
+                    ),
                     Filters.or(endVersionFilter),
+                    Filters.ne(endVersion, txc.txID),
                     filter
             );
         } else {
@@ -140,8 +162,12 @@ public class MongoContext extends ApiaryContext {
             }
             filter = Aggregates.match(
                     Filters.and(
-                            Filters.and(beginVersionFilter),
-                            Filters.or(endVersionFilter)
+                            Filters.or(
+                                    Filters.and(beginVersionFilter),
+                                    Filters.eq(beginVersion, txc.txID)
+                            ),
+                            Filters.or(endVersionFilter),
+                            Filters.ne(endVersion, txc.txID)
                     )
             );
             MongoCollection<Document> collection = database.getCollection(collectionName);

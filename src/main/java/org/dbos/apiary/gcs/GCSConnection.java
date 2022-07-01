@@ -16,6 +16,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -29,12 +30,13 @@ public class GCSConnection implements ApiarySecondaryConnection {
     public final Storage storage;
     private final PostgresConnection primary;
 
-    private static final String update = "UPDATE VersionTable SET EndVersion=? WHERE Name=? AND BeginVersion<? AND EndVersion=?;";
     private static final String findDeletable = "SELECT Name, BeginVersion FROM VersionTable WHERE EndVersion<?";
     private static final String delete = "DELETE FROM VersionTable WHERE Name=? AND BeginVersion=?";
+    private static final String undoUpdate = "UPDATE VersionTable SET EndVersion=? WHERE EndVersion=?;";
 
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
+    private final Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
 
     public GCSConnection(PostgresConnection primary) {
         this.storage = StorageOptions.getDefaultInstance().getService();
@@ -47,14 +49,8 @@ public class GCSConnection implements ApiarySecondaryConnection {
                                        TransactionContext txc, String service,
                                        long execID, long functionID,
                                        Object... inputs) throws Exception {
-        GCSContext ctxt = new GCSContext(storage, workerContext, txc, service, execID, functionID, primary.connection.get());
-        FunctionOutput f = null;
-        try {
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return f;
+        GCSContext ctxt = new GCSContext(storage, lockManager, workerContext, txc, service, execID, functionID, primary.connection.get());
+        return workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
 }
 
     @Override
@@ -63,6 +59,18 @@ public class GCSConnection implements ApiarySecondaryConnection {
             List<BlobId> blobIDs = writtenKeys.get(bucket).stream().map(i -> BlobId.of(bucket, i + txc.txID)).collect(Collectors.toList());
             List<Blob> blobs = storage.get(blobIDs);
             blobs.forEach(Blob::delete);
+            try {
+                PreparedStatement ps = primary.connection.get().prepareStatement(undoUpdate);
+                ps.setLong(1, Long.MAX_VALUE);
+                ps.setLong(2, txc.txID);
+                ps.executeUpdate();
+                ps.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            for (String key: writtenKeys.get(bucket)) {
+                lockManager.get(bucket).get(key).set(false);
+            }
         }
     }
 
@@ -93,32 +101,17 @@ public class GCSConnection implements ApiarySecondaryConnection {
             }
         }
         validationLock.unlock();
-        if (valid) {
-            try {
-                for (String bucket : writtenKeys.keySet()) {
-                    Connection c = primary.connection.get();
-                    PreparedStatement ps = c.prepareStatement(update);
-                    for (String key : writtenKeys.get(bucket)) {
-                        ps.setLong(1, txc.txID);
-                        ps.setString(2, key);
-                        ps.setLong(3, txc.txID);
-                        ps.setLong(4, Long.MAX_VALUE);
-                        ps.executeUpdate();
-                    }
-                    ps.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
         return valid;
 
     }
 
     @Override
     public void commit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-
+        for (String bucket: writtenKeys.keySet()) {
+            for (String key : writtenKeys.get(bucket)) {
+                lockManager.get(bucket).get(key).set(false);
+            }
+        }
     }
 
     @Override

@@ -8,6 +8,8 @@ import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,26 +21,30 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class GCSContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(GCSContext.class);
 
     private static final String insert = "INSERT INTO VersionTable(Name, BeginVersion, EndVersion) VALUES (?, ?, ?);";
-
     private static final String retrieve = "SELECT BeginVersion, EndVersion FROM VersionTable WHERE Name=? AND BeginVersion<?;";
+    private static final String update = "UPDATE VersionTable SET EndVersion=? WHERE Name=? AND BeginVersion<? AND EndVersion=?;";
 
     public final Storage storage;
     public final TransactionContext txc;
     private final Connection primary;
 
     final Map<String, List<String>> writtenKeys = new HashMap<>();
+    private final Map<String, Map<String, AtomicBoolean>> lockManager;
 
-    public GCSContext(Storage storage, WorkerContext workerContext, TransactionContext txc,
-                      String service, long execID, long functionID, Connection primary) {
+    public GCSContext(Storage storage, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext,
+                      TransactionContext txc, String service, long execID, long functionID, Connection primary) {
         super(workerContext, service, execID, functionID);
         this.storage = storage;
         this.txc = txc;
         this.primary = primary;
+        this.lockManager = lockManager;
     }
 
     @Override
@@ -52,6 +58,12 @@ public class GCSContext extends ApiaryContext {
             BlobInfo blobInfo = BlobInfo.newBuilder(blobID).setContentType(contentType).build();
             storage.create(blobInfo, bytes);
         }
+        lockManager.putIfAbsent(bucket, new ConcurrentHashMap<>());
+        lockManager.get(bucket).putIfAbsent(name, new AtomicBoolean(false));
+        boolean available = lockManager.get(bucket).get(name).compareAndSet(false, true);
+        if (!available) {
+            throw new PSQLException("tuple locked", PSQLState.SERIALIZATION_FAILURE);
+        }
         PreparedStatement ps = primary.prepareStatement(insert);
         ps.setString(1, name);
         ps.setLong(2, txc.txID);
@@ -63,6 +75,13 @@ public class GCSContext extends ApiaryContext {
         storage.create(blobInfo, bytes);
         writtenKeys.putIfAbsent(bucket, new ArrayList<>());
         writtenKeys.get(bucket).add(name);
+        ps = primary.prepareStatement(update);
+        ps.setLong(1, txc.txID);
+        ps.setString(2, name);
+        ps.setLong(3, txc.txID);
+        ps.setLong(4, Long.MAX_VALUE);
+        ps.executeUpdate();
+        ps.close();
     }
 
     public byte[] retrieve(String bucket, String name) throws SQLException {

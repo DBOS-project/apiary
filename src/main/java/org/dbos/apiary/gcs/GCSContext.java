@@ -18,7 +18,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,16 +34,17 @@ public class GCSContext extends ApiaryContext {
     public final TransactionContext txc;
     private final Connection primary;
 
-    final Map<String, List<String>> writtenKeys = new HashMap<>();
+    final Map<String, List<String>> writtenKeys;
     private final Map<String, Map<String, AtomicBoolean>> lockManager;
 
-    public GCSContext(Storage storage, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext,
+    public GCSContext(Storage storage, Map<String, List<String>> writtenKeys, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext,
                       TransactionContext txc, String service, long execID, long functionID, Connection primary) {
         super(workerContext, service, execID, functionID);
         this.storage = storage;
         this.txc = txc;
         this.primary = primary;
         this.lockManager = lockManager;
+        this.writtenKeys = writtenKeys;
     }
 
     @Override

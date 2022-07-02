@@ -1,14 +1,14 @@
 package org.dbos.apiary.gcs;
 
 import com.google.cloud.storage.*;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Updates;
-import org.bson.Document;
 import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.utilities.ApiaryConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -21,11 +21,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import org.dbos.apiary.mongo.MongoContext;
-import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.utilities.ApiaryConfig;
-
 public class GCSConnection implements ApiarySecondaryConnection {
+    private static final Logger logger = LoggerFactory.getLogger(GCSConnection.class);
 
     public final Storage storage;
     private final PostgresConnection primary;
@@ -49,7 +46,7 @@ public class GCSConnection implements ApiarySecondaryConnection {
                                        TransactionContext txc, String service,
                                        long execID, long functionID,
                                        Object... inputs) throws Exception {
-        GCSContext ctxt = new GCSContext(storage, lockManager, workerContext, txc, service, execID, functionID, primary.connection.get());
+        GCSContext ctxt = new GCSContext(storage, writtenKeys, lockManager, workerContext, txc, service, execID, functionID, primary.connection.get());
         return workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
 }
 

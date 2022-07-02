@@ -27,7 +27,7 @@ public class GCSContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(GCSContext.class);
 
     private static final String insert = "INSERT INTO VersionTable(Name, BeginVersion, EndVersion) VALUES (?, ?, ?);";
-    private static final String retrieve = "SELECT BeginVersion, EndVersion FROM VersionTable WHERE Name=? AND BeginVersion<?;";
+    private static final String retrieve = "SELECT BeginVersion, EndVersion FROM VersionTable WHERE Name=? AND (BeginVersion<? OR BeginVersion=?);";
     private static final String update = "UPDATE VersionTable SET EndVersion=? WHERE Name=? AND BeginVersion<? AND EndVersion=?;";
 
     public final Storage storage;
@@ -92,12 +92,13 @@ public class GCSContext extends ApiaryContext {
         PreparedStatement ps = primary.prepareStatement(retrieve);
         ps.setString(1, name);
         ps.setLong(2, txc.xmax);
+        ps.setLong(3, txc.txID);
         ResultSet rs = ps.executeQuery();
         long version = -1;
         while (rs.next()) {
             long beginVersion = rs.getLong(1);
             long endVersion = rs.getLong(2);
-            if (!txc.activeTransactions.contains(beginVersion) && (endVersion >= txc.xmax || txc.activeTransactions.contains(endVersion))) {
+            if (!txc.activeTransactions.contains(beginVersion) && endVersion != txc.txID && (endVersion >= txc.xmax || txc.activeTransactions.contains(endVersion))) {
                 version = beginVersion;
                 break;
             }

@@ -6,6 +6,7 @@ import com.mongodb.TransactionOptions;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.*;
 import com.mongodb.client.model.*;
+import com.mongodb.client.result.UpdateResult;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.dbos.apiary.function.ApiaryContext;
@@ -39,14 +40,15 @@ public class MongoContext extends ApiaryContext {
     private final TransactionContext txc;
     private final Map<String, Map<String, AtomicBoolean>> lockManager;
 
-    Map<String, List<String>> writtenKeys = new HashMap<>();
+    final Map<String, List<String>> writtenKeys;
 
-    public MongoContext(MongoClient client, MongoDatabase database, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
+    public MongoContext(MongoClient client, Map<String, List<String>> writtenKeys, MongoDatabase database, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
         this.database = database;
         this.client = client;
         this.txc = txc;
         this.lockManager = lockManager;
+        this.writtenKeys = writtenKeys;
     }
 
     @Override
@@ -60,8 +62,6 @@ public class MongoContext extends ApiaryContext {
             database.getCollection(collectionName).insertOne(document);
             return;
         }
-        writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
-        writtenKeys.get(collectionName).add(id);
         lockManager.putIfAbsent(collectionName, new ConcurrentHashMap<>());
         lockManager.get(collectionName).putIfAbsent(id, new AtomicBoolean(false));
         boolean available = lockManager.get(collectionName).get(id).compareAndSet(false, true);
@@ -78,13 +78,15 @@ public class MongoContext extends ApiaryContext {
         }
         MongoCollection<Document> c = database.getCollection(collectionName);
         c.insertOne(document);
-        c.updateOne(Filters.and(
+        c.updateMany(Filters.and(
                         Filters.eq(MongoContext.apiaryID, id),
-                        Filters.lt(MongoContext.beginVersion, txc.txID),
+                        Filters.ne(MongoContext.beginVersion, txc.txID),
                         Filters.eq(MongoContext.endVersion, Long.MAX_VALUE)
                 ),
                 Updates.set(MongoContext.endVersion, txc.txID)
         );
+        writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
+        writtenKeys.get(collectionName).add(id);
     }
 
     public void insertMany(String collectionName, List<Document> documents, List<String> ids) {

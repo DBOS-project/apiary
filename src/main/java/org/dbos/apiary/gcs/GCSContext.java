@@ -58,14 +58,14 @@ public class GCSContext extends ApiaryContext {
             BlobInfo blobInfo = BlobInfo.newBuilder(blobID).setContentType(contentType).build();
             storage.create(blobInfo, bytes);
         }
-        writtenKeys.putIfAbsent(bucket, new ArrayList<>());
-        writtenKeys.get(bucket).add(name);
         lockManager.putIfAbsent(bucket, new ConcurrentHashMap<>());
         lockManager.get(bucket).putIfAbsent(name, new AtomicBoolean(false));
         boolean available = lockManager.get(bucket).get(name).compareAndSet(false, true);
         if (!available) {
             throw new PSQLException("tuple locked", PSQLState.SERIALIZATION_FAILURE);
         }
+        writtenKeys.putIfAbsent(bucket, new ArrayList<>());
+        writtenKeys.get(bucket).add(name);
         PreparedStatement ps = primary.prepareStatement(insert);
         ps.setString(1, name);
         ps.setLong(2, txc.txID);

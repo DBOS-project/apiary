@@ -29,14 +29,15 @@ public class ElasticsearchContext extends ApiaryContext {
     private final ElasticsearchClient client;
     private final TransactionContext txc;
 
-    Map<String, List<String>> writtenKeys = new HashMap<>();
-    Map<String, Map<String, AtomicBoolean>> lockManager;
+    public final Map<String, List<String>> writtenKeys;
+    private final Map<String, Map<String, AtomicBoolean>> lockManager;
 
-    public ElasticsearchContext(ElasticsearchClient client, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
+    public ElasticsearchContext(ElasticsearchClient client, Map<String, List<String>> writtenKeys, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
         this.client = client;
         this.txc = txc;
         this.lockManager = lockManager;
+        this.writtenKeys = writtenKeys;
     }
 
     @Override
@@ -52,8 +53,6 @@ public class ElasticsearchContext extends ApiaryContext {
             client.index(b.build());
             return;
         }
-        writtenKeys.putIfAbsent(index, new ArrayList<>());
-        writtenKeys.get(index).add(id);
         lockManager.putIfAbsent(index, new ConcurrentHashMap<>());
         lockManager.get(index).putIfAbsent(id, new AtomicBoolean(false));
         boolean available = lockManager.get(index).get(id).compareAndSet(false, true);
@@ -81,6 +80,8 @@ public class ElasticsearchContext extends ApiaryContext {
                 )
         );
         client.indices().refresh(r -> r.index(index));
+        writtenKeys.putIfAbsent(index, new ArrayList<>());
+        writtenKeys.get(index).add(id);
     }
 
     public void executeBulkWrite(String index, List<ApiaryDocument> documents, List<String> ids) throws IOException {

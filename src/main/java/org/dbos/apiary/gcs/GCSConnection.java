@@ -45,7 +45,7 @@ public class GCSConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext,
+    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext,
                                        TransactionContext txc, String service,
                                        long execID, long functionID,
                                        Object... inputs) throws Exception {

@@ -30,7 +30,7 @@ public class MongoConnection implements ApiarySecondaryConnection {
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
 
-    Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
 
     public MongoConnection(String address, int port) {
         String uri = String.format("mongodb://%s:%d", address, port);
@@ -39,8 +39,8 @@ public class MongoConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
-        MongoContext ctxt = new MongoContext(client, database, lockManager, workerContext, txc, service, execID, functionID);
+    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
+        MongoContext ctxt = new MongoContext(client, writtenKeys, database, lockManager, workerContext, txc, service, execID, functionID);
         return workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
     }
 
@@ -92,11 +92,6 @@ public class MongoConnection implements ApiarySecondaryConnection {
 
     @Override
     public void commit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-        for (String collection : writtenKeys.keySet()) {
-            for (String key : writtenKeys.get(collection)) {
-                lockManager.get(collection).get(key).set(false);
-            }
-        }
         if (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED) {
             ClientSession session = client.startSession();
             TransactionBody<Boolean> txnBody = () -> {
@@ -124,6 +119,11 @@ public class MongoConnection implements ApiarySecondaryConnection {
             };
             session.withTransaction(txnBody, TransactionOptions.builder().writeConcern(WriteConcern.MAJORITY).readConcern(ReadConcern.SNAPSHOT).build());
             session.close();
+        }
+        for (String collection : writtenKeys.keySet()) {
+            for (String key : writtenKeys.get(collection)) {
+                lockManager.get(collection).get(key).set(false);
+            }
         }
     }
 

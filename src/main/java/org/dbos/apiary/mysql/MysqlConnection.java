@@ -86,7 +86,7 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
+    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
         MysqlContext ctxt = new MysqlContext(this.connection.get(), workerContext, txc, service, execID, functionID);
         FunctionOutput f = null;
         try {

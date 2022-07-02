@@ -97,8 +97,8 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
-        ApiaryContext ctxt = new ElasticsearchContext(client, lockManager, workerContext, txc, service, execID, functionID);
+    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
+        ApiaryContext ctxt = new ElasticsearchContext(client, writtenKeys, lockManager, workerContext, txc, service, execID, functionID);
         return workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
     }
 

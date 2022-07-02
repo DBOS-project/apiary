@@ -13,7 +13,7 @@ import java.util.Set;
  */
 public interface ApiarySecondaryConnection {
 
-    FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext transactionContext, String service, long execID, long functionID, Object... inputs) throws Exception;
+    FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext transactionContext, String service, long execID, long functionID, Object... inputs) throws Exception;
 
     // Map is from a table/index to a list of written keys for that index.
     void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc);

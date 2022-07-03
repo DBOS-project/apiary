@@ -66,19 +66,24 @@ public class PostgresContext extends ApiaryContext {
         if (functionType.equals(ApiaryConfig.postgres) || functionType.equals(ApiaryConfig.stateless)) {
             return f.apiaryRunFunction(this, inputs);
         } else {
+            ApiarySecondaryConnection c = workerContext.getSecondaryConnection(functionType);
+            long newID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
+            Map<String, List<String>> writtenKeys = new HashMap<>();
             try {
-                ApiarySecondaryConnection c = workerContext.getSecondaryConnection(functionType);
-                long newID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
-                FunctionOutput fo = c.callFunction(name, workerContext, txc, service, execID, newID, inputs);
+                FunctionOutput fo = c.callFunction(name, writtenKeys, workerContext, txc, service, execID, newID, inputs);
                 secondaryWrittenKeys.putIfAbsent(functionType, new HashMap<>());
-                for (String table: fo.getWrittenKeys().keySet()) {
+                for (String table: writtenKeys.keySet()) {
                     secondaryWrittenKeys.get(functionType).putIfAbsent(table, new ArrayList<>());
-                    secondaryWrittenKeys.get(functionType).get(table).addAll(fo.getWrittenKeys().get(table));
+                    secondaryWrittenKeys.get(functionType).get(table).addAll(writtenKeys.get(table));
                 }
                 return fo;
             } catch (Exception e) {
-                e.printStackTrace();
-                return null;
+                secondaryWrittenKeys.putIfAbsent(functionType, new HashMap<>());
+                for (String table: writtenKeys.keySet()) {
+                    secondaryWrittenKeys.get(functionType).putIfAbsent(table, new ArrayList<>());
+                    secondaryWrittenKeys.get(functionType).get(table).addAll(writtenKeys.get(table));
+                }
+                throw e;
             }
         }
     }

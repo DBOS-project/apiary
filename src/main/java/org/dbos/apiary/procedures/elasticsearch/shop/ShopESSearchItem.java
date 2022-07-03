@@ -10,12 +10,13 @@ import co.elastic.clients.json.JsonData;
 import org.dbos.apiary.elasticsearch.ElasticsearchContext;
 import org.dbos.apiary.elasticsearch.ElasticsearchFunction;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ShopESSearchItem extends ElasticsearchFunction {
 
-    public String[] runFunction(ElasticsearchContext context, String searchText, int maxCost) {
+    public String[] runFunction(ElasticsearchContext context, String searchText, int maxCost) throws IOException {
         Query q = BoolQuery.of(b ->
                 b.must(
                         MatchQuery.of(t -> t.field("itemName").query(searchText))._toQuery()

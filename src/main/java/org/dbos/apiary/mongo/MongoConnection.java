@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -29,6 +30,8 @@ public class MongoConnection implements ApiarySecondaryConnection {
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
 
+    private final Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
+
     public MongoConnection(String address, int port) {
         String uri = String.format("mongodb://%s:%d", address, port);
         this.client = MongoClients.create(uri);
@@ -36,15 +39,9 @@ public class MongoConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
-        MongoContext ctxt = new MongoContext(client, database, workerContext, txc, service, execID, functionID);
-        FunctionOutput f = null;
-        try {
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return f;
+    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
+        MongoContext ctxt = new MongoContext(client, writtenKeys, database, lockManager, workerContext, txc, service, execID, functionID);
+        return workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
     }
 
     @Override
@@ -52,6 +49,14 @@ public class MongoConnection implements ApiarySecondaryConnection {
         for (String collection: writtenKeys.keySet()) {
             MongoCollection<Document> c = database.getCollection(collection);
             c.deleteMany(Filters.eq(MongoContext.beginVersion, txc.txID));
+            c.updateMany(Filters.and(
+                            Filters.eq(MongoContext.endVersion, txc.txID)
+                    ),
+                    Updates.set(MongoContext.endVersion, Long.MAX_VALUE)
+            );
+            for (String key: writtenKeys.get(collection)) {
+                lockManager.get(collection).get(key).set(false);
+            }
         }
     }
 
@@ -82,54 +87,44 @@ public class MongoConnection implements ApiarySecondaryConnection {
             }
         }
         validationLock.unlock();
-        if (valid && ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-            for (String collection : writtenKeys.keySet()) {
-                if (writtenKeys.get(collection).size() >= 10000) {
-                    continue; // Speed up bulk-loading in benchmarks.
-                }
-                for (String key : writtenKeys.get(collection)) {
-                    MongoCollection<Document> c = database.getCollection(collection);
-                    c.updateMany(Filters.and(
-                                    Filters.eq(MongoContext.apiaryID, key),
-                                    Filters.lt(MongoContext.beginVersion, txc.txID),
-                                    Filters.eq(MongoContext.endVersion, Long.MAX_VALUE)
-                            ),
-                            Updates.set(MongoContext.endVersion, txc.txID)
-                    );
-                }
-            }
-        }
         return valid;
     }
 
     @Override
-    public void rcCommit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-        ClientSession session = client.startSession();
-        TransactionBody<Boolean> txnBody = () -> {
-            for (String collectionName: writtenKeys.keySet()) {
-                if (writtenKeys.get(collectionName).size() >= 10000) {
-                    continue; // Speed up bulk-loading in benchmarks.
+    public void commit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+        if (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED) {
+            ClientSession session = client.startSession();
+            TransactionBody<Boolean> txnBody = () -> {
+                for (String collectionName : writtenKeys.keySet()) {
+                    if (writtenKeys.get(collectionName).size() >= 10000) {
+                        continue; // Speed up bulk-loading in benchmarks.
+                    }
+                    MongoCollection<Document> c = database.getCollection(collectionName);
+                    for (String key : writtenKeys.get(collectionName)) {
+                        c.updateOne(session, Filters.and(
+                                        Filters.eq(MongoContext.apiaryID, key),
+                                        Filters.eq(MongoContext.beginVersion, txc.txID)
+                                ),
+                                Updates.set(MongoContext.committed, true)
+                        );
+                        c.updateMany(session, Filters.and(
+                                        Filters.eq(MongoContext.apiaryID, key),
+                                        Filters.ne(MongoContext.beginVersion, txc.txID)
+                                ),
+                                Updates.set(MongoContext.committed, false)
+                        );
+                    }
                 }
-                MongoCollection<Document> c = database.getCollection(collectionName);
-                for (String key: writtenKeys.get(collectionName)) {
-                    c.updateOne(session, Filters.and(
-                                    Filters.eq(MongoContext.apiaryID, key),
-                                    Filters.eq(MongoContext.beginVersion, txc.txID)
-                            ),
-                            Updates.set(MongoContext.committed, true)
-                    );
-                    c.updateMany(session, Filters.and(
-                                    Filters.eq(MongoContext.apiaryID, key),
-                                    Filters.ne(MongoContext.beginVersion, txc.txID)
-                            ),
-                            Updates.set(MongoContext.committed, false)
-                    );
-                }
+                return Boolean.TRUE;
+            };
+            session.withTransaction(txnBody, TransactionOptions.builder().writeConcern(WriteConcern.MAJORITY).readConcern(ReadConcern.SNAPSHOT).build());
+            session.close();
+        }
+        for (String collection : writtenKeys.keySet()) {
+            for (String key : writtenKeys.get(collection)) {
+                lockManager.get(collection).get(key).set(false);
             }
-            return Boolean.TRUE;
-        };
-        session.withTransaction(txnBody, TransactionOptions.builder().writeConcern(WriteConcern.MAJORITY).readConcern(ReadConcern.SNAPSHOT).build());
-        session.close();
+        }
     }
 
     @Override
@@ -139,7 +134,7 @@ public class MongoConnection implements ApiarySecondaryConnection {
         committedWrites.values().forEach(i -> i.values().forEach(w -> w.removeIf(txID -> txID < globalxmin)));
         // Delete old versions that are no longer visible to any active or future transaction.
         if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-            for (String collectionName : committedWrites.keySet()) {
+            for (String collectionName : lockManager.keySet()) {
                 MongoCollection<Document> c = database.getCollection(collectionName);
                 c.deleteMany(
                         Filters.lt(MongoContext.endVersion, globalxmin)
@@ -147,7 +142,7 @@ public class MongoConnection implements ApiarySecondaryConnection {
             }
         } else {
             assert (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
-            for (String collectionName : committedWrites.keySet()) {
+            for (String collectionName : lockManager.keySet()) {
                 MongoCollection<Document> c = database.getCollection(collectionName);
                 c.deleteMany(
                         Filters.and(

@@ -7,9 +7,11 @@ import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.mongo.MongoAddPerson;
 import org.dbos.apiary.procedures.mongo.MongoBulkAddPerson;
 import org.dbos.apiary.procedures.mongo.MongoFindPerson;
+import org.dbos.apiary.procedures.mongo.MongoWriteReadPerson;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresBulkAddPerson;
 import org.dbos.apiary.procedures.postgres.pgmongo.PostgresFindPerson;
+import org.dbos.apiary.procedures.postgres.pgmongo.PostgresWriteReadPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -65,7 +67,6 @@ public class PostgresMongoTests {
         }
     }
 
-
     @Test
     public void testMongoBasic() throws InvalidProtocolBufferException {
         logger.info("testMongoBasic");
@@ -99,6 +100,37 @@ public class PostgresMongoTests {
         assertEquals(1, res);
 
         res = client.executeFunction("MongoFindPerson", "matei").getInt();
+        assertEquals(1, res);
+    }
+
+    @Test
+    public void testMongoWriteRead() throws InvalidProtocolBufferException {
+        logger.info("testMongoWriteRead");
+
+        MongoConnection conn;
+        PostgresConnection pconn;
+        try {
+            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        } catch (Exception e) {
+            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
+            return;
+        }
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresWriteReadPerson", ApiaryConfig.postgres, PostgresWriteReadPerson::new);
+        apiaryWorker.registerFunction("MongoWriteReadPerson", ApiaryConfig.mongo, MongoWriteReadPerson::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresWriteReadPerson", "matei", 1).getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("PostgresWriteReadPerson", "matei", 2).getInt();
         assertEquals(1, res);
     }
 

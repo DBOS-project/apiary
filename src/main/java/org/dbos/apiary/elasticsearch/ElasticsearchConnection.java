@@ -5,6 +5,7 @@ import co.elastic.clients.elasticsearch._types.StoredScriptId;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
 import co.elastic.clients.elasticsearch.core.UpdateByQueryRequest;
 import co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import co.elastic.clients.json.JsonData;
@@ -43,6 +44,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -52,7 +54,9 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
 
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
-    private static final String updateEndVersionScript = "updateEndVersion";
+    public static final String updateEndVersionScript = "updateEndVersion";
+
+    Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
 
     public ElasticsearchConnection(String hostname, int port, String username, String password) {
         try {
@@ -93,15 +97,9 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
-        ApiaryContext ctxt = new ElasticsearchContext(client, workerContext, txc, service, execID, functionID);
-        FunctionOutput f = null;
-        try {
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return f;
+    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
+        ApiaryContext ctxt = new ElasticsearchContext(client, writtenKeys, lockManager, workerContext, txc, service, execID, functionID);
+        return workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
     }
 
     @Override
@@ -118,13 +116,26 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
                     client.deleteByQuery(ubq -> ubq
                             .index(index)
                             .query(MatchQuery.of(t -> t.field("beginVersion").query(txc.txID))._toQuery())
-                            .refresh(Boolean.TRUE)
                     );
+                    client.updateByQuery(ubq -> ubq
+                            .index(index)
+                            .query(
+                                    TermQuery.of(t -> t.field("endVersion").value(txc.txID))._toQuery()
+                            ).script(s -> s
+                                    .stored(StoredScriptId.of(ss -> ss
+                                            .id(ElasticsearchConnection.updateEndVersionScript).params(Map.of("endV", JsonData.of(Long.MAX_VALUE))))
+                                    )
+                            )
+                    );
+                    client.indices().refresh(r -> r.index(index));
                     break;
                 } catch (IOException e) {
                     // Retry on version conflict.
                     continue;
                 }
+            }
+            for (String key: writtenKeys.get(index)) {
+                lockManager.get(index).get(key).set(false);
             }
         }
     }
@@ -166,50 +177,16 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
             }
         }
         validationLock.unlock();
-        if (valid) {
-            for (String index : writtenKeys.keySet()) {
-                if (writtenKeys.get(index).size() > 10000) {
-                    continue; // Speed up bulk-loading in benchmarks.
-                }
-                for (String key : writtenKeys.get(index)) {
-                    while (true) {
-                        try {
-                            long t0 = System.nanoTime();
-                            UpdateByQueryResponse r = client.updateByQuery(ubq -> ubq
-                                    .index(index)
-                                    .query(BoolQuery.of(bb -> bb
-                                            .must(
-                                                    MatchQuery.of(t -> t.field("apiaryID").query(key))._toQuery(),
-                                                    RangeQuery.of(f -> f.field("beginVersion").lt(JsonData.of(txc.txID)))._toQuery()
-                                            )
-                                    )._toQuery())
-                                    .script(s -> s
-                                            .stored(StoredScriptId.of(b -> b
-                                                    .id(updateEndVersionScript).params(Map.of("endV", JsonData.of(txc.txID))))
-                                            )
-                                    )
-                            );
-                            logger.debug("Update: {} {} {}", txc.txID, r.updated(), (System.nanoTime() - t0) / 1000);
-                            break;
-                        } catch (IOException e) {
-                            // Retry on version conflict.
-                            continue;
-                        }
-                    }
-                }
-                try {
-                    client.indices().refresh(r -> r.index(index));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
         return valid;
     }
 
     @Override
-    public void rcCommit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-
+    public void commit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+        for (String index: writtenKeys.keySet()) {
+            for (String key : writtenKeys.get(index)) {
+                lockManager.get(index).get(key).set(false);
+            }
+        }
     }
 
     public void garbageCollect(Set<TransactionContext> activeTransactions) {

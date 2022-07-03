@@ -1,14 +1,14 @@
 package org.dbos.apiary.gcs;
 
 import com.google.cloud.storage.*;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Updates;
-import org.bson.Document;
 import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.utilities.ApiaryConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -16,44 +16,38 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import org.dbos.apiary.mongo.MongoContext;
-import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.utilities.ApiaryConfig;
-
 public class GCSConnection implements ApiarySecondaryConnection {
+    private static final Logger logger = LoggerFactory.getLogger(GCSConnection.class);
 
     public final Storage storage;
     private final PostgresConnection primary;
 
-    private static final String update = "UPDATE VersionTable SET EndVersion=? WHERE Name=? AND BeginVersion<? AND EndVersion=?;";
     private static final String findDeletable = "SELECT Name, BeginVersion FROM VersionTable WHERE EndVersion<?";
     private static final String delete = "DELETE FROM VersionTable WHERE Name=? AND BeginVersion=?";
+    private static final String undoUpdate = "UPDATE VersionTable SET EndVersion=? WHERE EndVersion=?;";
 
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
+    private final Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
 
     public GCSConnection(PostgresConnection primary) {
         this.storage = StorageOptions.getDefaultInstance().getService();
         this.primary = primary;
+        storage.get(ApiaryConfig.gcsTestBucket);
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext,
+    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext,
                                        TransactionContext txc, String service,
                                        long execID, long functionID,
                                        Object... inputs) throws Exception {
-        GCSContext ctxt = new GCSContext(storage, workerContext, txc, service, execID, functionID, primary.connection.get());
-        FunctionOutput f = null;
-        try {
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return f;
+        GCSContext ctxt = new GCSContext(storage, writtenKeys, lockManager, workerContext, txc, service, execID, functionID, primary.connection.get());
+        return workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
 }
 
     @Override
@@ -62,6 +56,9 @@ public class GCSConnection implements ApiarySecondaryConnection {
             List<BlobId> blobIDs = writtenKeys.get(bucket).stream().map(i -> BlobId.of(bucket, i + txc.txID)).collect(Collectors.toList());
             List<Blob> blobs = storage.get(blobIDs);
             blobs.forEach(Blob::delete);
+            for (String key: writtenKeys.get(bucket)) {
+                lockManager.get(bucket).get(key).set(false);
+            }
         }
     }
 
@@ -92,32 +89,17 @@ public class GCSConnection implements ApiarySecondaryConnection {
             }
         }
         validationLock.unlock();
-        if (valid) {
-            try {
-                for (String bucket : writtenKeys.keySet()) {
-                    Connection c = primary.connection.get();
-                    PreparedStatement ps = c.prepareStatement(update);
-                    for (String key : writtenKeys.get(bucket)) {
-                        ps.setLong(1, txc.txID);
-                        ps.setString(2, key);
-                        ps.setLong(3, txc.txID);
-                        ps.setLong(4, Long.MAX_VALUE);
-                        ps.executeUpdate();
-                    }
-                    ps.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
         return valid;
 
     }
 
     @Override
-    public void rcCommit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-
+    public void commit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+        for (String bucket: writtenKeys.keySet()) {
+            for (String key : writtenKeys.get(bucket)) {
+                lockManager.get(bucket).get(key).set(false);
+            }
+        }
     }
 
     @Override

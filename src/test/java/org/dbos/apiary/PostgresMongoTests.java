@@ -11,7 +11,6 @@ import org.dbos.apiary.procedures.mongo.hotel.MongoMakeReservation;
 import org.dbos.apiary.procedures.mongo.hotel.MongoSearchHotel;
 import org.dbos.apiary.procedures.postgres.hotel.PostgresAddHotel;
 import org.dbos.apiary.procedures.postgres.hotel.PostgresMakeReservation;
-import org.dbos.apiary.procedures.postgres.hotel.PostgresSearchHotel;
 import org.dbos.apiary.procedures.postgres.pgmongo.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
@@ -425,7 +424,6 @@ public class PostgresMongoTests {
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerFunction("PostgresAddHotel", ApiaryConfig.postgres, PostgresAddHotel::new);
         apiaryWorker.registerFunction("PostgresMakeReservation", ApiaryConfig.postgres, PostgresMakeReservation::new);
-        apiaryWorker.registerFunction("PostgresSearchHotel", ApiaryConfig.postgres, PostgresSearchHotel::new);
         apiaryWorker.registerFunction("MongoMakeReservation", ApiaryConfig.mongo, MongoMakeReservation::new);
         apiaryWorker.registerFunction("MongoAddHotel", ApiaryConfig.mongo, MongoAddHotel::new);
         apiaryWorker.registerFunction("MongoSearchHotel", ApiaryConfig.mongo, MongoSearchHotel::new);
@@ -441,10 +439,10 @@ public class PostgresMongoTests {
 
         conn.database.getCollection("hotels").createIndex(Indexes.geo2dsphere("point"));
 
-        res = client.executeFunction("PostgresSearchHotel", 6, 6).getInt();
+        res = client.executeFunction("MongoSearchHotel", 6, 6).getInt();
         assertEquals(0, res);
 
-        res = client.executeFunction("PostgresSearchHotel", 11, 11).getInt();
+        res = client.executeFunction("MongoSearchHotel", 11, 11).getInt();
         assertEquals(1, res);
 
         res = client.executeFunction("PostgresMakeReservation", 0, 0, 0).getInt();

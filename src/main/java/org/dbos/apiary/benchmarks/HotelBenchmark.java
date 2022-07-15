@@ -71,7 +71,7 @@ public class HotelBenchmark {
                 if (chooser < percentageSearch) {
                     int longitude = ThreadLocalRandom.current().nextInt(0, 90);
                     int latitude = ThreadLocalRandom.current().nextInt(0, 90);
-                    client.get().executeFunction("PostgresSearchHotel", longitude, latitude).getInt();
+                    client.get().executeFunction("MongoSearchHotel", longitude, latitude).getInt();
                     searchTimes.add(System.nanoTime() - t0);
                 } else {
                     int reservationID = reservationIDs.getAndIncrement();

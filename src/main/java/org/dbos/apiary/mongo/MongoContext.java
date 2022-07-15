@@ -1,12 +1,7 @@
 package org.dbos.apiary.mongo;
 
-import com.google.protobuf.Api;
-import com.mongodb.ReadConcern;
-import com.mongodb.TransactionOptions;
-import com.mongodb.WriteConcern;
 import com.mongodb.client.*;
 import com.mongodb.client.model.*;
-import com.mongodb.client.result.UpdateResult;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.dbos.apiary.function.ApiaryContext;
@@ -20,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,6 +33,8 @@ public class MongoContext extends ApiaryContext {
     private final MongoDatabase database;
     private final TransactionContext txc;
     private final Map<String, Map<String, AtomicBoolean>> lockManager;
+
+    private boolean mongoUpdated = false;
 
     final Map<String, List<String>> writtenKeys;
 
@@ -84,6 +80,7 @@ public class MongoContext extends ApiaryContext {
         }
         writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
         writtenKeys.get(collectionName).add(id);
+        mongoUpdated = true;
     }
 
     public void replaceOne(String collectionName, Document document, String id) throws PSQLException {
@@ -117,6 +114,7 @@ public class MongoContext extends ApiaryContext {
         );
         writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
         writtenKeys.get(collectionName).add(id);
+        mongoUpdated = true;
     }
 
     public void insertMany(String collectionName, List<Document> documents, List<String> ids) {
@@ -141,6 +139,7 @@ public class MongoContext extends ApiaryContext {
         }
         MongoCollection<Document> collection = database.getCollection(collectionName);
         collection.bulkWrite(documents.stream().map(InsertOneModel::new).collect(Collectors.toList()), new BulkWriteOptions().ordered(false));
+        mongoUpdated = true;
     }
 
     public FindIterable<Document> find(String collectionName, Bson filter) {
@@ -159,15 +158,23 @@ public class MongoContext extends ApiaryContext {
             for (long txID : txc.activeTransactions) {
                 endVersionFilter.add(Filters.eq(endVersion, txID));
             }
-            query = Filters.and(
-                    Filters.or(
-                            Filters.and(beginVersionFilter),
-                            Filters.eq(beginVersion, txc.txID)
-                    ),
-                    Filters.or(endVersionFilter),
-                    Filters.ne(endVersion, txc.txID),
-                    filter
-            );
+            if (mongoUpdated) {
+                query = Filters.and(
+                        Filters.or(
+                                Filters.and(beginVersionFilter),
+                                Filters.eq(beginVersion, txc.txID)
+                        ),
+                        Filters.or(endVersionFilter),
+                        Filters.ne(endVersion, txc.txID),
+                        filter
+                );
+            } else {
+                query = Filters.and(
+                        Filters.and(beginVersionFilter),
+                        Filters.or(endVersionFilter),
+                        filter
+                );
+            }
         } else {
             assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
             query = Filters.and(
@@ -195,16 +202,25 @@ public class MongoContext extends ApiaryContext {
             for (long txID : txc.activeTransactions) {
                 endVersionFilter.add(Filters.eq(endVersion, txID));
             }
-            filter = Aggregates.match(
-                    Filters.and(
-                            Filters.or(
-                                    Filters.and(beginVersionFilter),
-                                    Filters.eq(beginVersion, txc.txID)
-                            ),
-                            Filters.or(endVersionFilter),
-                            Filters.ne(endVersion, txc.txID)
-                    )
-            );
+            if (mongoUpdated) {
+                filter = Aggregates.match(
+                        Filters.and(
+                                Filters.or(
+                                        Filters.and(beginVersionFilter),
+                                        Filters.eq(beginVersion, txc.txID)
+                                ),
+                                Filters.or(endVersionFilter),
+                                Filters.ne(endVersion, txc.txID)
+                        )
+                );
+            } else {
+                filter = Aggregates.match(
+                        Filters.and(
+                                Filters.and(beginVersionFilter),
+                                Filters.or(endVersionFilter)
+                        )
+                );
+            }
             MongoCollection<Document> collection = database.getCollection(collectionName);
             List<Bson> filterAggregations = new ArrayList<>(aggregations);
             filterAggregations.add(0, filter);

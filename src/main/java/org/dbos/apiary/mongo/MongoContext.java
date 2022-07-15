@@ -78,14 +78,10 @@ public class MongoContext extends ApiaryContext {
             document.append(committed, false);
         }
         MongoCollection<Document> c = database.getCollection(collectionName);
-        c.insertOne(document);
-        c.updateMany(Filters.and(
-                        Filters.eq(MongoContext.apiaryID, id),
-                        Filters.ne(MongoContext.beginVersion, txc.txID),
-                        Filters.eq(MongoContext.endVersion, Long.MAX_VALUE)
-                ),
-                Updates.set(MongoContext.endVersion, txc.txID)
-        );
+        boolean exists = c.find(Filters.eq(MongoContext.apiaryID, id)).first() != null;
+        if (!exists) {
+            c.insertOne(document);
+        }
         writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
         writtenKeys.get(collectionName).add(id);
     }

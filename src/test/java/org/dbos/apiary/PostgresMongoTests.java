@@ -133,7 +133,7 @@ public class PostgresMongoTests {
         res = client.executeFunction("PostgresWriteReadPerson", "matei", 1).getInt();
         assertEquals(1, res);
 
-        res = client.executeFunction("PostgresWriteReadPerson", "matei", 2).getInt();
+        res = client.executeFunction("PostgresWriteReadPerson", "matei2", 2).getInt();
         assertEquals(1, res);
     }
 

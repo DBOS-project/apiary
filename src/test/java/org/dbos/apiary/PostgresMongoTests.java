@@ -65,6 +65,7 @@ public class PostgresMongoTests {
         try {
             MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
             conn.database.getCollection("people").drop();
+            conn.database.getCollection("hotels").drop();
         } catch (Exception e) {
             logger.info("No Mongo/Postgres instance! {}", e.getMessage());
         }
@@ -441,11 +442,12 @@ public class PostgresMongoTests {
 
         conn.database.getCollection("hotels").createIndex(Indexes.geo2dsphere("point"));
 
-        res = client.executeFunction("PostgresSearchHotel", 6, 6).getInt();
-        assertEquals(0, res);
+        int[] resArray;
+        resArray = client.executeFunction("PostgresSearchHotel", 6, 6).getIntArray();
+        assertEquals(0, resArray[0]);
 
-        res = client.executeFunction("PostgresSearchHotel", 11, 11).getInt();
-        assertEquals(1, res);
+        resArray = client.executeFunction("PostgresSearchHotel", 11, 11).getIntArray();
+        assertEquals(1, resArray[0]);
 
         res = client.executeFunction("PostgresMakeReservation", 0, 0, 0).getInt();
         assertEquals(0, res);

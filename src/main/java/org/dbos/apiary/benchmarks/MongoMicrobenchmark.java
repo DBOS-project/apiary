@@ -76,9 +76,9 @@ public class MongoMicrobenchmark {
                     client.get().executeFunction("PostgresSoloAddPerson", "matei" + personID, personID);
                     writeTimes.add(System.nanoTime() - t0);
                 } else {
-                    int personID = ThreadLocalRandom.current().nextInt(personNums.get());
+                    int personID = ThreadLocalRandom.current().nextInt(personNums.get() - 100);
                     int num = ThreadLocalRandom.current().nextInt();
-                    client.get().executeFunction("PostgresSoloAddPerson", "matei" + personID, num);
+                    client.get().executeFunction("PostgresSoloReplacePerson", "matei" + personID, num);
                     writeTimes.add(System.nanoTime() - t0);
                 }
             } catch (Exception e) {

@@ -21,6 +21,7 @@ import org.dbos.apiary.procedures.gcs.GCSWriteString;
 import org.dbos.apiary.procedures.mongo.MongoAddPerson;
 import org.dbos.apiary.procedures.mongo.MongoBulkAddPerson;
 import org.dbos.apiary.procedures.mongo.MongoFindPerson;
+import org.dbos.apiary.procedures.mongo.MongoReplacePerson;
 import org.dbos.apiary.procedures.mongo.hotel.MongoAddHotel;
 import org.dbos.apiary.procedures.mongo.hotel.MongoMakeReservation;
 import org.dbos.apiary.procedures.mongo.hotel.MongoSearchHotel;
@@ -130,11 +131,14 @@ public class ApiaryWorkerExecutable {
             apiaryWorker.registerFunction("MongoAddHotel", ApiaryConfig.mongo, MongoAddHotel::new);
             apiaryWorker.registerFunction("MongoSearchHotel", ApiaryConfig.mongo, MongoSearchHotel::new);
             apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+            apiaryWorker.registerFunction("PostgresReplacePerson", ApiaryConfig.postgres, PostgresReplacePerson::new);
             apiaryWorker.registerFunction("PostgresBulkAddPerson", ApiaryConfig.postgres, PostgresBulkAddPerson::new);
             apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
             apiaryWorker.registerFunction("PostgresSoloFindPerson", ApiaryConfig.postgres, PostgresSoloFindPerson::new);
             apiaryWorker.registerFunction("PostgresSoloAddPerson", ApiaryConfig.postgres, PostgresSoloAddPerson::new);
+            apiaryWorker.registerFunction("PostgresSoloReplacePerson", ApiaryConfig.postgres, PostgresReplacePerson::new);
             apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+            apiaryWorker.registerFunction("MongoReplacePerson", ApiaryConfig.mongo, MongoReplacePerson::new);
             apiaryWorker.registerFunction("MongoBulkAddPerson", ApiaryConfig.mongo, MongoBulkAddPerson::new);
             apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
         } else if (db.equals("gcs")) {

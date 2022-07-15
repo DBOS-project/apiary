@@ -73,12 +73,20 @@ public class MongoMicrobenchmark {
                     readTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageAppend) {
                     int personID = personNums.getAndIncrement();
-                    client.get().executeFunction("PostgresSoloAddPerson", "matei" + personID, personID);
+                    if (ApiaryConfig.XDBTransactions) {
+                        client.get().executeFunction("PostgresSoloAddPerson", "matei" + personID, personID);
+                    } else {
+                        client.get().executeFunction("MongoAddPerson", "matei" + personID, personID);
+                    }
                     writeTimes.add(System.nanoTime() - t0);
                 } else {
                     int personID = ThreadLocalRandom.current().nextInt(personNums.get() - 100);
                     int num = ThreadLocalRandom.current().nextInt();
-                    client.get().executeFunction("PostgresSoloReplacePerson", "matei" + personID, num);
+                    if (ApiaryConfig.XDBTransactions) {
+                        client.get().executeFunction("PostgresSoloReplacePerson", "matei" + personID, num);
+                    } else {
+                        client.get().executeFunction("MongoReplacePerson", "matei" + personID, personID);
+                    }
                     writeTimes.add(System.nanoTime() - t0);
                 }
             } catch (Exception e) {

@@ -85,7 +85,7 @@ public class MongoMicrobenchmark {
                     if (ApiaryConfig.XDBTransactions) {
                         client.get().executeFunction("PostgresSoloReplacePerson", "matei" + personID, num);
                     } else {
-                        client.get().executeFunction("MongoReplacePerson", "matei" + personID, personID);
+                        client.get().executeFunction("MongoReplacePerson", "matei" + personID, num);
                     }
                     writeTimes.add(System.nanoTime() - t0);
                 }

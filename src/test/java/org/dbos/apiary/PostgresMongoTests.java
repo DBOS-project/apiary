@@ -1,17 +1,18 @@
 package org.dbos.apiary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.mongodb.client.model.Indexes;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.mongo.MongoAddPerson;
-import org.dbos.apiary.procedures.mongo.MongoBulkAddPerson;
-import org.dbos.apiary.procedures.mongo.MongoFindPerson;
-import org.dbos.apiary.procedures.mongo.MongoWriteReadPerson;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresBulkAddPerson;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresFindPerson;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresWriteReadPerson;
+import org.dbos.apiary.procedures.mongo.*;
+import org.dbos.apiary.procedures.mongo.hotel.MongoAddHotel;
+import org.dbos.apiary.procedures.mongo.hotel.MongoMakeReservation;
+import org.dbos.apiary.procedures.mongo.hotel.MongoSearchHotel;
+import org.dbos.apiary.procedures.postgres.hotel.PostgresAddHotel;
+import org.dbos.apiary.procedures.postgres.hotel.PostgresMakeReservation;
+import org.dbos.apiary.procedures.postgres.hotel.PostgresSearchHotel;
+import org.dbos.apiary.procedures.postgres.pgmongo.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -43,6 +44,8 @@ public class PostgresMongoTests {
             conn.dropTable("FuncInvocations");
             conn.dropTable("PersonTable");
             conn.createTable("PersonTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Number integer NOT NULL");
+            conn.dropTable("HotelsTable");
+            conn.createTable("HotelsTable", "HotelID integer PRIMARY KEY NOT NULL, HotelName VARCHAR(1000) NOT NULL, AvailableRooms integer NOT NULL");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
         }
@@ -62,6 +65,7 @@ public class PostgresMongoTests {
         try {
             MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
             conn.database.getCollection("people").drop();
+            conn.database.getCollection("hotels").drop();
         } catch (Exception e) {
             logger.info("No Mongo/Postgres instance! {}", e.getMessage());
         }
@@ -130,7 +134,7 @@ public class PostgresMongoTests {
         res = client.executeFunction("PostgresWriteReadPerson", "matei", 1).getInt();
         assertEquals(1, res);
 
-        res = client.executeFunction("PostgresWriteReadPerson", "matei", 2).getInt();
+        res = client.executeFunction("PostgresWriteReadPerson", "matei2", 2).getInt();
         assertEquals(1, res);
     }
 
@@ -189,8 +193,10 @@ public class PostgresMongoTests {
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+        apiaryWorker.registerFunction("PostgresReplacePerson", ApiaryConfig.postgres, PostgresReplacePerson::new);
         apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
         apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+        apiaryWorker.registerFunction("MongoReplacePerson", ApiaryConfig.mongo, MongoReplacePerson::new);
         apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
         apiaryWorker.startServing();
 
@@ -203,7 +209,7 @@ public class PostgresMongoTests {
         res = client.executeFunction("PostgresFindPerson", "matei").getInt();
         assertEquals(1, res);
 
-        res = client.executeFunction("PostgresAddPerson", "matei", 2).getInt();
+        res = client.executeFunction("PostgresReplacePerson", "matei", 2).getInt();
         assertEquals(2, res);
 
         res = client.executeFunction("PostgresFindPerson", "matei").getInt();
@@ -269,7 +275,7 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoConcurrentUpdates() throws InterruptedException {
+    public void testMongoConcurrentUpdates() throws InterruptedException, InvalidProtocolBufferException {
         logger.info("testMongoConcurrentUpdates");
 
         MongoConnection conn;
@@ -287,8 +293,10 @@ public class PostgresMongoTests {
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+        apiaryWorker.registerFunction("PostgresReplacePerson", ApiaryConfig.postgres, PostgresReplacePerson::new);
         apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
         apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+        apiaryWorker.registerFunction("MongoReplacePerson", ApiaryConfig.mongo, MongoReplacePerson::new);
         apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
         apiaryWorker.startServing();
 
@@ -297,13 +305,17 @@ public class PostgresMongoTests {
         int maxTag = 10;
         AtomicInteger count = new AtomicInteger(0);
         AtomicBoolean success = new AtomicBoolean(true);
+        ApiaryWorkerClient c = new ApiaryWorkerClient("localhost");
+        for (int i = 0; i < maxTag; i++) {
+            c.executeFunction("PostgresAddPerson", "matei" + i, i).getInt();
+        }
         Runnable r = () -> {
             try {
                 ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
                 while (System.currentTimeMillis() < start + testDurationMs) {
                     int localTag = ThreadLocalRandom.current().nextInt(maxTag);
                     int localCount = count.getAndIncrement();
-                    client.executeFunction("PostgresAddPerson", "matei" + localTag, localCount).getInt();
+                    client.executeFunction("PostgresReplacePerson", "matei" + localTag, localCount).getInt();
                     String search = "matei" + localTag;
                     int res = client.executeFunction("PostgresFindPerson", search).getInt();
                     if (res == -1) {
@@ -348,8 +360,10 @@ public class PostgresMongoTests {
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+        apiaryWorker.registerFunction("PostgresReplacePerson", ApiaryConfig.postgres, PostgresReplacePerson::new);
         apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
         apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+        apiaryWorker.registerFunction("MongoReplacePerson", ApiaryConfig.mongo, MongoReplacePerson::new);
         apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
         apiaryWorker.startServing();
 
@@ -368,7 +382,7 @@ public class PostgresMongoTests {
                 while (System.currentTimeMillis() < start + testDurationMs) {
                     int localTag = ThreadLocalRandom.current().nextInt(maxTag);
                     int localCount = count.getAndIncrement();
-                    client.executeFunction("PostgresAddPerson", "matei" + localTag, localCount).getInt();
+                    client.executeFunction("PostgresReplacePerson", "matei" + localTag, localCount).getInt();
                     String search = "matei" + localTag;
                     int res = client.executeFunction("PostgresFindPerson", search).getInt();
                     if (res == -1) {
@@ -391,5 +405,55 @@ public class PostgresMongoTests {
             t.join();
         }
         assertTrue(success.get());
+    }
+
+    @Test
+    public void testMongoHotel() throws InvalidProtocolBufferException {
+        logger.info("testMongoHotel");
+
+        MongoConnection conn;
+        PostgresConnection pconn;
+        try {
+            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        } catch (Exception e) {
+            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
+            return;
+        }
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresAddHotel", ApiaryConfig.postgres, PostgresAddHotel::new);
+        apiaryWorker.registerFunction("PostgresMakeReservation", ApiaryConfig.postgres, PostgresMakeReservation::new);
+        apiaryWorker.registerFunction("PostgresSearchHotel", ApiaryConfig.postgres, PostgresSearchHotel::new);
+        apiaryWorker.registerFunction("MongoMakeReservation", ApiaryConfig.mongo, MongoMakeReservation::new);
+        apiaryWorker.registerFunction("MongoAddHotel", ApiaryConfig.mongo, MongoAddHotel::new);
+        apiaryWorker.registerFunction("MongoSearchHotel", ApiaryConfig.mongo, MongoSearchHotel::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresAddHotel", 0, "hotel0", 1, 5, 5).getInt();
+        assertEquals(0, res);
+        res = client.executeFunction("PostgresAddHotel", 1, "hotel1", 10, 10, 10).getInt();
+        assertEquals(1, res);
+
+        conn.database.getCollection("hotels").createIndex(Indexes.geo2dsphere("point"));
+
+        int[] resArray;
+        resArray = client.executeFunction("PostgresSearchHotel", 6, 6).getIntArray();
+        assertEquals(0, resArray[0]);
+
+        resArray = client.executeFunction("PostgresSearchHotel", 11, 11).getIntArray();
+        assertEquals(1, resArray[0]);
+
+        res = client.executeFunction("PostgresMakeReservation", 0, 0, 0).getInt();
+        assertEquals(0, res);
+        res = client.executeFunction("PostgresMakeReservation", 1, 0, 0).getInt();
+        assertEquals(1, res);
+        res = client.executeFunction("PostgresMakeReservation", 2, 1, 1).getInt();
+        assertEquals(0, res);
     }
 }

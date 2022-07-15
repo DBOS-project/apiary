@@ -5,20 +5,14 @@ import com.mongodb.client.model.Indexes;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.mongo.MongoAddPerson;
-import org.dbos.apiary.procedures.mongo.MongoBulkAddPerson;
-import org.dbos.apiary.procedures.mongo.MongoFindPerson;
-import org.dbos.apiary.procedures.mongo.MongoWriteReadPerson;
+import org.dbos.apiary.procedures.mongo.*;
 import org.dbos.apiary.procedures.mongo.hotel.MongoAddHotel;
 import org.dbos.apiary.procedures.mongo.hotel.MongoMakeReservation;
 import org.dbos.apiary.procedures.mongo.hotel.MongoSearchHotel;
 import org.dbos.apiary.procedures.postgres.hotel.PostgresAddHotel;
 import org.dbos.apiary.procedures.postgres.hotel.PostgresMakeReservation;
 import org.dbos.apiary.procedures.postgres.hotel.PostgresSearchHotel;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresAddPerson;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresBulkAddPerson;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresFindPerson;
-import org.dbos.apiary.procedures.postgres.pgmongo.PostgresWriteReadPerson;
+import org.dbos.apiary.procedures.postgres.pgmongo.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -198,8 +192,10 @@ public class PostgresMongoTests {
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+        apiaryWorker.registerFunction("PostgresReplacePerson", ApiaryConfig.postgres, PostgresReplacePerson::new);
         apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
         apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+        apiaryWorker.registerFunction("MongoReplacePerson", ApiaryConfig.mongo, MongoReplacePerson::new);
         apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
         apiaryWorker.startServing();
 
@@ -212,7 +208,7 @@ public class PostgresMongoTests {
         res = client.executeFunction("PostgresFindPerson", "matei").getInt();
         assertEquals(1, res);
 
-        res = client.executeFunction("PostgresAddPerson", "matei", 2).getInt();
+        res = client.executeFunction("PostgresReplacePerson", "matei", 2).getInt();
         assertEquals(2, res);
 
         res = client.executeFunction("PostgresFindPerson", "matei").getInt();
@@ -278,7 +274,7 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoConcurrentUpdates() throws InterruptedException {
+    public void testMongoConcurrentUpdates() throws InterruptedException, InvalidProtocolBufferException {
         logger.info("testMongoConcurrentUpdates");
 
         MongoConnection conn;
@@ -296,8 +292,10 @@ public class PostgresMongoTests {
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+        apiaryWorker.registerFunction("PostgresReplacePerson", ApiaryConfig.postgres, PostgresReplacePerson::new);
         apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
         apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+        apiaryWorker.registerFunction("MongoReplacePerson", ApiaryConfig.mongo, MongoReplacePerson::new);
         apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
         apiaryWorker.startServing();
 
@@ -306,13 +304,17 @@ public class PostgresMongoTests {
         int maxTag = 10;
         AtomicInteger count = new AtomicInteger(0);
         AtomicBoolean success = new AtomicBoolean(true);
+        ApiaryWorkerClient c = new ApiaryWorkerClient("localhost");
+        for (int i = 0; i < maxTag; i++) {
+            c.executeFunction("PostgresAddPerson", "matei" + i, i).getInt();
+        }
         Runnable r = () -> {
             try {
                 ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
                 while (System.currentTimeMillis() < start + testDurationMs) {
                     int localTag = ThreadLocalRandom.current().nextInt(maxTag);
                     int localCount = count.getAndIncrement();
-                    client.executeFunction("PostgresAddPerson", "matei" + localTag, localCount).getInt();
+                    client.executeFunction("PostgresReplacePerson", "matei" + localTag, localCount).getInt();
                     String search = "matei" + localTag;
                     int res = client.executeFunction("PostgresFindPerson", search).getInt();
                     if (res == -1) {
@@ -357,8 +359,10 @@ public class PostgresMongoTests {
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+        apiaryWorker.registerFunction("PostgresReplacePerson", ApiaryConfig.postgres, PostgresReplacePerson::new);
         apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
         apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+        apiaryWorker.registerFunction("MongoReplacePerson", ApiaryConfig.mongo, MongoReplacePerson::new);
         apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
         apiaryWorker.startServing();
 
@@ -377,7 +381,7 @@ public class PostgresMongoTests {
                 while (System.currentTimeMillis() < start + testDurationMs) {
                     int localTag = ThreadLocalRandom.current().nextInt(maxTag);
                     int localCount = count.getAndIncrement();
-                    client.executeFunction("PostgresAddPerson", "matei" + localTag, localCount).getInt();
+                    client.executeFunction("PostgresReplacePerson", "matei" + localTag, localCount).getInt();
                     String search = "matei" + localTag;
                     int res = client.executeFunction("PostgresFindPerson", search).getInt();
                     if (res == -1) {

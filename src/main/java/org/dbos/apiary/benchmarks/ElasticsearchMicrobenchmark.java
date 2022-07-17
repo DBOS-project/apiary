@@ -71,13 +71,21 @@ public class ElasticsearchMicrobenchmark {
                 } else if (chooser < percentageAppend) {
                     long t0 = System.nanoTime();
                     int localCount = count.getAndIncrement();
-                    client.get().executeFunction("PostgresSoloIndexPerson", "matei" + localCount, localCount).getInt();
+                    if (ApiaryConfig.XDBTransactions) {
+                        client.get().executeFunction("PostgresSoloIndexPerson", "matei" + localCount, localCount).getInt();
+                    } else {
+                        client.get().executeFunction("ElasticsearchIndexPerson", "matei" + localCount, localCount).getInt();
+                    }
                     writeTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageUpdate) {
                     long t0 = System.nanoTime();
                     int localCount = ThreadLocalRandom.current().nextInt(count.get() - 100);
                     int number = ThreadLocalRandom.current().nextInt(1000000);
-                    client.get().executeFunction("PostgresSoloIndexPerson", "matei" + localCount, number).getInt();
+                    if (ApiaryConfig.XDBTransactions) {
+                        client.get().executeFunction("PostgresSoloIndexPerson", "matei" + localCount, number).getInt();
+                    } else {
+                        client.get().executeFunction("ElasticsearchIndexPerson", "matei" + localCount, number).getInt();
+                    }
                     writeTimes.add(System.nanoTime() - t0);
                 }
             } catch (Exception e) {

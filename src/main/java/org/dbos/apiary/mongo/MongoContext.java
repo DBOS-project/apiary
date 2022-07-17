@@ -76,12 +76,13 @@ public class MongoContext extends ApiaryContext {
         MongoCollection<Document> c = database.getCollection(collectionName);
         boolean exists = c.find(Filters.eq(MongoContext.apiaryID, id)).first() != null;
         if (!exists) {
-            logger.info("Insert failed, exists: {}", id);
             c.insertOne(document);
+            writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
+            writtenKeys.get(collectionName).add(id);
+            mongoUpdated = true;
+        } else {
+            logger.info("Insert failed, exists: {}", id);
         }
-        writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
-        writtenKeys.get(collectionName).add(id);
-        mongoUpdated = true;
     }
 
     public void replaceOne(String collectionName, Document document, String id) throws PSQLException {

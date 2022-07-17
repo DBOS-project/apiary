@@ -66,6 +66,7 @@ public class PostgresMongoTests {
             MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
             conn.database.getCollection("people").drop();
             conn.database.getCollection("hotels").drop();
+            conn.database.getCollection("reservations").drop();
         } catch (Exception e) {
             logger.info("No Mongo/Postgres instance! {}", e.getMessage());
         }

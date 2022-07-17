@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
@@ -50,12 +51,15 @@ public class ElasticsearchMicrobenchmark {
         long loadStart = System.currentTimeMillis();
         assert (initialDocs % chunkSize == 0);
         int numChunks = initialDocs / chunkSize;
+        List<String> names = new ArrayList<>();
         for (int chunkNum = 0; chunkNum < numChunks; chunkNum++) {
             String[] initialNames = new String[chunkSize];
             int[] initialNumbers = new int[chunkSize];
             for (int i = 0; i < chunkSize; i++) {
                 int num = count.getAndIncrement();
-                initialNames[i] = "matei" + num;
+                String name = generateRandomWord(10);
+                names.add(name);
+                initialNames[i] = name;
                 initialNumbers[i] = num;
             }
             client.get().executeFunction("PostgresBulkIndexPerson", initialNames, initialNumbers);
@@ -71,26 +75,27 @@ public class ElasticsearchMicrobenchmark {
                 int chooser = ThreadLocalRandom.current().nextInt(100);
                 if (chooser < percentageRead) {
                     long t0 = System.nanoTime();
-                    String search = "matei" + ThreadLocalRandom.current().nextInt(count.get());
+                    String search = names.get(ThreadLocalRandom.current().nextInt(names.size()));
                     client.get().executeFunction("ElasticsearchSearchPerson", search).getInt();
                     readTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageRead + percentageAppend) {
                     long t0 = System.nanoTime();
                     int localCount = count.getAndIncrement();
+                    String name = generateRandomWord(10);
                     if (ApiaryConfig.XDBTransactions) {
-                        client.get().executeFunction("PostgresSoloIndexPerson", "matei" + localCount, localCount).getInt();
+                        client.get().executeFunction("PostgresSoloIndexPerson", name, localCount).getInt();
                     } else {
-                        client.get().executeFunction("ElasticsearchIndexPerson", "matei" + localCount, localCount).getInt();
+                        client.get().executeFunction("ElasticsearchIndexPerson", name, localCount).getInt();
                     }
                     writeTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageRead + percentageAppend + percentageUpdate) {
                     long t0 = System.nanoTime();
-                    int localCount = ThreadLocalRandom.current().nextInt(count.get() - 100);
                     int number = ThreadLocalRandom.current().nextInt(1000000);
+                    String name = names.get(ThreadLocalRandom.current().nextInt(names.size()));
                     if (ApiaryConfig.XDBTransactions) {
-                        client.get().executeFunction("PostgresSoloIndexPerson", "matei" + localCount, number).getInt();
+                        client.get().executeFunction("PostgresSoloIndexPerson", name, number).getInt();
                     } else {
-                        client.get().executeFunction("ElasticsearchIndexPerson", "matei" + localCount, number).getInt();
+                        client.get().executeFunction("ElasticsearchIndexPerson", name, number).getInt();
                     }
                     writeTimes.add(System.nanoTime() - t0);
                 }
@@ -141,5 +146,14 @@ public class ElasticsearchMicrobenchmark {
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
         System.exit(0); // ES client is bugged and won't exit.
+    }
+
+    private static String generateRandomWord(int length) {
+        char[] word = new char[length];
+        for(int j = 0; j < word.length; j++)
+        {
+            word[j] = (char)('a' + ThreadLocalRandom.current().nextInt(26));
+        }
+        return new String(word);
     }
 }

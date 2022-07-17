@@ -53,9 +53,12 @@ public class BenchmarkingExecutable {
         } else if (benchmark.equals("retwis")) {
             logger.info("Retwis Benchmark");
             RetwisBenchmark.benchmark(mainHostAddr, service, interval, duration);
-        } else if (benchmark.equals("es")) {
-            logger.info("PostgresESBenchmark");
-            PostgresESBenchmark.benchmark(mainHostAddr, service, interval, duration);
+        } else if (benchmark.equals("esmicro")) {
+            int percentageRead = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 100;
+            int percentageNew = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 0;
+            int percentageUpdate = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 0;
+            logger.info("Elasticsearch Microbenchmark {} {} {}", percentageRead, percentageNew, percentageUpdate);
+            ElasticsearchMicrobenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageNew, percentageUpdate);
         } else if (benchmark.equals("shop")) {
             int percentageGetItem = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 80;
             int percentageCheckout = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 10;

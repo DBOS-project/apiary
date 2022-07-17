@@ -60,10 +60,10 @@ public class BenchmarkingExecutable {
             logger.info("Elasticsearch Microbenchmark {} {} {}", percentageRead, percentageNew, percentageUpdate);
             ElasticsearchMicrobenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageNew, percentageUpdate);
         } else if (benchmark.equals("shop")) {
-            int percentageGetItem = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 80;
-            int percentageCheckout = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 10;
-            int percentageAppend = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 10;
-            int percentageUpdate = cmd.hasOption("p4") ? Integer.parseInt(cmd.getOptionValue("p4")) : 0;
+            int percentageGetItem = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 90;
+            int percentageCheckout = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 8;
+            int percentageAppend = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 1;
+            int percentageUpdate = cmd.hasOption("p4") ? Integer.parseInt(cmd.getOptionValue("p4")) : 1;
             logger.info("ShopBenchmark {} {} {} {}", percentageGetItem, percentageCheckout, percentageAppend, percentageUpdate);
             ShopBenchmark.benchmark(mainHostAddr, interval, duration, percentageGetItem, percentageCheckout, percentageAppend, percentageUpdate);
         } else if (benchmark.equals("hotel")) {

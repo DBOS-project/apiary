@@ -50,8 +50,8 @@ public class ElasticsearchContext extends ApiaryContext {
         if (!ApiaryConfig.XDBTransactions) {
             IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document);
             b = b.id(id);
-            b = b.refresh(Refresh.True);
             client.index(b.build());
+            client.indices().refresh(r -> r.index(index));
             return;
         }
         lockManager.putIfAbsent(index, new ConcurrentHashMap<>());

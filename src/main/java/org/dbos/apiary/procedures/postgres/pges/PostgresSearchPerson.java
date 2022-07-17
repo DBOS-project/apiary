@@ -2,6 +2,7 @@ package org.dbos.apiary.procedures.postgres.pges;
 
 import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +18,7 @@ public class PostgresSearchPerson extends PostgresFunction {
         rs.next();
         int pgCount = rs.getInt(1);
         int esCount = context.apiaryCallFunction("ElasticsearchSearchPerson", searchText).getInt();
-        if (pgCount == esCount) {
+        if (!ApiaryConfig.XDBTransactions || pgCount == esCount) {
             return pgCount;
         } else {
             logger.info("{} {} {} {} {} {} {}", searchText, pgCount, esCount,

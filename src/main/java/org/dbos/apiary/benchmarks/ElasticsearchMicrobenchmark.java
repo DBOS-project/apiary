@@ -74,7 +74,7 @@ public class ElasticsearchMicrobenchmark {
                     String search = "matei" + ThreadLocalRandom.current().nextInt(count.get());
                     client.get().executeFunction("ElasticsearchSearchPerson", search).getInt();
                     readTimes.add(System.nanoTime() - t0);
-                } else if (chooser < percentageAppend) {
+                } else if (chooser < percentageRead + percentageAppend) {
                     long t0 = System.nanoTime();
                     int localCount = count.getAndIncrement();
                     if (ApiaryConfig.XDBTransactions) {
@@ -83,7 +83,7 @@ public class ElasticsearchMicrobenchmark {
                         client.get().executeFunction("ElasticsearchIndexPerson", "matei" + localCount, localCount).getInt();
                     }
                     writeTimes.add(System.nanoTime() - t0);
-                } else if (chooser < percentageUpdate) {
+                } else if (chooser < percentageRead + percentageAppend + percentageUpdate) {
                     long t0 = System.nanoTime();
                     int localCount = ThreadLocalRandom.current().nextInt(count.get() - 100);
                     int number = ThreadLocalRandom.current().nextInt(1000000);

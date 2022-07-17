@@ -54,7 +54,7 @@ public class ElasticsearchMicrobenchmark {
             String[] initialNames = new String[chunkSize];
             int[] initialNumbers = new int[chunkSize];
             for (int i = 0; i < chunkSize; i++) {
-                int num = count.incrementAndGet();
+                int num = count.getAndIncrement();
                 initialNames[i] = "matei" + num;
                 initialNumbers[i] = num;
             }

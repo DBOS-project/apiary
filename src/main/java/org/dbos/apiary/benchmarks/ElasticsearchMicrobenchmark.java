@@ -21,7 +21,8 @@ public class ElasticsearchMicrobenchmark {
     private static final Logger logger = LoggerFactory.getLogger(ElasticsearchMicrobenchmark.class);
     private static final int threadPoolSize = 256;
 
-    private static final int initialDocs = 100000;
+    private static final int initialDocs = 1000000;
+    private static final int chunkSize = 100000;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
     private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();
@@ -44,18 +45,23 @@ public class ElasticsearchMicrobenchmark {
         esClient.shutdown();
 
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
+        AtomicInteger count = new AtomicInteger(0);
 
         long loadStart = System.currentTimeMillis();
-        String[] initialNames = new String[initialDocs];
-        int[] initialNumbers = new int[initialDocs];
-        for (int i = 0; i < initialDocs; i++) {
-            initialNames[i] = "matei" + i;
-            initialNumbers[i] = i;
+        assert (initialDocs % chunkSize == 0);
+        int numChunks = initialDocs / chunkSize;
+        for (int chunkNum = 0; chunkNum < numChunks; chunkNum++) {
+            String[] initialNames = new String[chunkSize];
+            int[] initialNumbers = new int[chunkSize];
+            for (int i = 0; i < chunkSize; i++) {
+                int num = count.incrementAndGet();
+                initialNames[i] = "matei" + num;
+                initialNumbers[i] = num;
+            }
+            client.get().executeFunction("PostgresBulkIndexPerson", initialNames, initialNumbers);
         }
-        client.get().executeFunction("PostgresBulkIndexPerson", initialNames, initialNumbers);
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
 
-        AtomicInteger count = new AtomicInteger(initialDocs);
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);

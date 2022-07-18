@@ -71,14 +71,14 @@ public class ProfileBenchmark {
                     int profileID = ThreadLocalRandom.current().nextInt(profileIDs.get());
                     client.get().executeFunction("PostgresProfileRead", profileID);
                     readTimes.add(System.nanoTime() - t0);
-                } else if (chooser < percentageNew) {
+                } else if (chooser < percentageRead + percentageNew) {
                     int profileID = profileIDs.getAndIncrement();
                     String name = "stanford" + profileID;
                     String status = "sparking" + profileID;
                     String image = String.format("src/test/resources/stanford%d.jpg", profileID % 2);
                     client.get().executeFunction("PostgresProfileUpdate", profileID, name, status, image).getInt();
                     writeTimes.add(System.nanoTime() - t0);
-                } else {
+                } else if (chooser < percentageRead + percentageNew + percentageUpdate) {
                     int profileID = ThreadLocalRandom.current().nextInt(profileIDs.get());
                     int newID = ThreadLocalRandom.current().nextInt(profileIDs.get());
                     String name = "stanford" + profileID;

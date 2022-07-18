@@ -2,12 +2,9 @@ package org.dbos.apiary.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.StoredScriptId;
-import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
-import co.elastic.clients.elasticsearch.core.UpdateByQueryRequest;
-import co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
@@ -143,13 +140,6 @@ public class ElasticsearchConnection implements ApiarySecondaryConnection {
     @Override
     public boolean validate(Map<String, List<String>> writtenKeys, TransactionContext txc) {
         if (!ApiaryConfig.XDBTransactions) {
-            for (String index: writtenKeys.keySet()) {
-                try {
-                    client.indices().refresh(r -> r.index(index));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
             return true;
         }
         Set<Long> activeTransactions = new HashSet<>(txc.activeTransactions);

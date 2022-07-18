@@ -1,6 +1,7 @@
 package org.dbos.apiary.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch._types.StoredScriptId;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.elasticsearch.core.*;
@@ -17,7 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,6 +51,7 @@ public class ElasticsearchContext extends ApiaryContext {
             IndexRequest.Builder b = new IndexRequest.Builder().index(index).document(document);
             b = b.id(id);
             client.index(b.build());
+            client.indices().refresh(r -> r.index(index));
             return;
         }
         lockManager.putIfAbsent(index, new ConcurrentHashMap<>());

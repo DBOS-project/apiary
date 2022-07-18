@@ -176,7 +176,7 @@ public class ShopBenchmark {
             ShopItem item = new ShopItem();
             item.setItemID(entries[0]);
             item.setItemDesc(entries[8]);
-            item.setItemName(entries[1]);
+            item.setItemName(entries[1].replaceAll("\\s+","")); // So each name is a unique "word."
             item.setCost((int) Double.parseDouble(entries[7]));
             items.add(item);
         }

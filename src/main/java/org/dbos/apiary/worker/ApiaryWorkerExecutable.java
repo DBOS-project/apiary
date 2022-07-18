@@ -31,6 +31,7 @@ import org.dbos.apiary.procedures.postgres.hotel.PostgresSearchHotel;
 import org.dbos.apiary.procedures.postgres.pges.PostgresBulkIndexPerson;
 import org.dbos.apiary.procedures.postgres.pges.PostgresIndexPerson;
 import org.dbos.apiary.procedures.postgres.pges.PostgresSearchPerson;
+import org.dbos.apiary.procedures.postgres.pges.PostgresSoloIndexPerson;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresProfileRead;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresProfileUpdate;
 import org.dbos.apiary.procedures.postgres.pggcs.PostgresReadString;
@@ -99,6 +100,7 @@ public class ApiaryWorkerExecutable {
             apiaryWorker.registerConnection(ApiaryConfig.elasticsearch, econn);
             apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
             apiaryWorker.registerFunction("PostgresIndexPerson", ApiaryConfig.postgres, PostgresIndexPerson::new);
+            apiaryWorker.registerFunction("PostgresSoloIndexPerson", ApiaryConfig.postgres, PostgresSoloIndexPerson::new);
             apiaryWorker.registerFunction("PostgresBulkIndexPerson", ApiaryConfig.postgres, PostgresBulkIndexPerson::new);
             apiaryWorker.registerFunction("PostgresSearchPerson", ApiaryConfig.postgres, PostgresSearchPerson::new);
             apiaryWorker.registerFunction("ElasticsearchIndexPerson", ApiaryConfig.elasticsearch, ElasticsearchIndexPerson::new);

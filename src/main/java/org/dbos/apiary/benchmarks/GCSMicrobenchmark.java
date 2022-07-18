@@ -16,8 +16,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public class ProfileBenchmark {
-    private static final Logger logger = LoggerFactory.getLogger(ProfileBenchmark.class);
+public class GCSMicrobenchmark {
+    private static final Logger logger = LoggerFactory.getLogger(GCSMicrobenchmark.class);
     private static final int threadPoolSize = 256;
 
     private static final int initialProfiles = 100;
@@ -28,13 +28,6 @@ public class ProfileBenchmark {
 
     public static void benchmark(Integer interval, Integer duration, int percentageRead, int percentageNew, int percentageUpdate) throws SQLException, InterruptedException, IOException {
         assert (percentageRead + percentageNew + percentageUpdate == 100);
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        pconn.dropTable("FuncInvocations");
-        pconn.dropTable("VersionTable");
-        pconn.dropTable("ProfileTable");
-        pconn.createTable("VersionTable", "Name varchar(1000), BeginVersion bigint NOT NULL, EndVersion bigint NOT NULL");
-        pconn.createTable("ProfileTable", "UserID integer PRIMARY KEY NOT NULL, Name varchar(1000) NOT NULL, Status varchar(2000) NOT NULL");
-        pconn.createIndex("CREATE INDEX VersionIndex ON VersionTable (Name, BeginVersion, EndVersion);");
 
         long tDelete = System.currentTimeMillis();
         Storage storage = StorageOptions.getDefaultInstance().getService();
@@ -52,10 +45,8 @@ public class ProfileBenchmark {
         long tLoad = System.currentTimeMillis();
         for (int i = 0; i < initialProfiles; i++) {
             int profileID = profileIDs.getAndIncrement();
-            String name = "stanford" + profileID;
-            String status = "sparking" + profileID;
             String image = String.format("src/test/resources/stanford%d.jpg", profileID % 2);
-            client.get().executeFunction("PostgresProfileUpdate", profileID, name, status, image).getInt();
+            client.get().executeFunction("PostgresSoloProfileUpdate", profileID, image).getInt();
         }
         logger.info("Loading done: {}ms", System.currentTimeMillis() - tLoad);
 
@@ -69,22 +60,26 @@ public class ProfileBenchmark {
                 int chooser = ThreadLocalRandom.current().nextInt(100);
                 if (chooser < percentageRead) {
                     int profileID = ThreadLocalRandom.current().nextInt(profileIDs.get());
-                    client.get().executeFunction("PostgresProfileRead", profileID);
+                    client.get().executeFunction("GCSProfileRead", profileID);
                     readTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageNew) {
                     int profileID = profileIDs.getAndIncrement();
-                    String name = "stanford" + profileID;
-                    String status = "sparking" + profileID;
                     String image = String.format("src/test/resources/stanford%d.jpg", profileID % 2);
-                    client.get().executeFunction("PostgresProfileUpdate", profileID, name, status, image).getInt();
+                    if (ApiaryConfig.XDBTransactions) {
+                        client.get().executeFunction("PostgresSoloProfileUpdate", profileID, image).getInt();
+                    } else {
+                        client.get().executeFunction("GCSProfileUpdate", profileID, image).getInt();
+                    }
                     writeTimes.add(System.nanoTime() - t0);
                 } else {
                     int profileID = ThreadLocalRandom.current().nextInt(profileIDs.get());
                     int newID = ThreadLocalRandom.current().nextInt(profileIDs.get());
-                    String name = "stanford" + profileID;
-                    String status = "sparking" + newID;
                     String image = String.format("src/test/resources/stanford%d.jpg", newID % 2);
-                    client.get().executeFunction("PostgresProfileUpdate", profileID, name, status, image).getInt();
+                    if (ApiaryConfig.XDBTransactions) {
+                        client.get().executeFunction("PostgresSoloProfileUpdate", profileID, image).getInt();
+                    } else {
+                        client.get().executeFunction("GCSProfileUpdate", profileID, image).getInt();
+                    }
                     writeTimes.add(System.nanoTime() - t0);
                 }
             } catch (Exception e) {

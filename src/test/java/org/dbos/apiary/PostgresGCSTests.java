@@ -102,13 +102,13 @@ public class PostgresGCSTests {
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
-        String res = client.executeFunction("PostgresProfileUpdate", 0, "matei", "sparking", "src/test/resources/matei0.jpg").getString();
+        String res = client.executeFunction("PostgresProfileUpdate", 0, "matei", "sparking", "src/test/resources/stanford0.jpg").getString();
         assertEquals("matei", res);
 
         int resnum = client.executeFunction("PostgresProfileRead", 0).getInt();
         assertEquals(0, resnum);
 
-        res = client.executeFunction("PostgresProfileUpdate", 0, "matei", "lakehousing", "src/test/resources/matei1.jpg").getString();
+        res = client.executeFunction("PostgresProfileUpdate", 0, "matei", "lakehousing", "src/test/resources/stanford1.jpg").getString();
         assertEquals("matei", res);
 
         resnum = client.executeFunction("PostgresProfileRead", 0).getInt();

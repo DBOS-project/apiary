@@ -57,6 +57,7 @@ public class GCSContext extends ApiaryContext {
             BlobId blobID = BlobId.of(bucket, name);
             BlobInfo blobInfo = BlobInfo.newBuilder(blobID).setContentType(contentType).build();
             storage.create(blobInfo, bytes);
+            return;
         }
         lockManager.putIfAbsent(bucket, new ConcurrentHashMap<>());
         lockManager.get(bucket).putIfAbsent(name, new AtomicBoolean(false));

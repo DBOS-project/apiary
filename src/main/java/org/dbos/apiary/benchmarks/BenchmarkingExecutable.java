@@ -89,6 +89,11 @@ public class BenchmarkingExecutable {
             int percentageUpdate = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 0;
             logger.info("GCS Microbenchmark Benchmark {} {} {}", percentageRead, percentageNew, percentageUpdate);
             GCSMicrobenchmark.benchmark(interval, duration, percentageRead, percentageNew, percentageUpdate);
+        } else if (benchmark.equals("superbenchmark")) {
+            int percentageRead = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 99;
+            int percentageUpdate = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 1;
+            logger.info("Superbenchmark {} {}", percentageRead, percentageUpdate);
+            Superbenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageUpdate);
         }
     }
 }

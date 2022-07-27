@@ -42,7 +42,7 @@ public class Superbenchmark {
             logger.info("Failed to connect to Postgres.");
         }
         try {
-            ElasticsearchClient client = new ElasticsearchConnection("localhost", 9200, "elastic", "password").client;
+            ElasticsearchClient client = new ElasticsearchConnection(dbAddr, 9200, "elastic", "password").client;
             DeleteIndexRequest request;
             request = new DeleteIndexRequest.Builder().index("superbenchmark").ignoreUnavailable(true).build();
             client.indices().delete(request);
@@ -50,7 +50,7 @@ public class Superbenchmark {
             logger.info("Index Not Deleted {}", e.getMessage());
         }
         try {
-            MongoConnection mconn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+            MongoConnection mconn = new MongoConnection(dbAddr, ApiaryConfig.mongoPort);
             mconn.database.getCollection("superbenchmark").drop();
         } catch (Exception e) {
             logger.info("No Mongo instance! {}", e.getMessage());

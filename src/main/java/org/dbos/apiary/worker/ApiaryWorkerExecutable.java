@@ -1,5 +1,6 @@
 package org.dbos.apiary.worker;
 
+import com.mongodb.client.model.Indexes;
 import org.apache.commons_voltpatches.cli.CommandLine;
 import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
@@ -191,6 +192,7 @@ public class ApiaryWorkerExecutable {
             apiaryWorker.registerFunction("MongoSBBulkWrite", ApiaryConfig.mongo, MongoSBBulkWrite::new);
             apiaryWorker.registerFunction("MongoSBUpdate", ApiaryConfig.mongo, MongoSBUpdate::new);
             apiaryWorker.registerFunction("MongoSBRead", ApiaryConfig.mongo, MongoSBRead::new);
+            mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending("itemID"));
         } else {
             throw new IllegalArgumentException("Option 'db' must be one of (elasticsearch, mongo, gcs).");
         }

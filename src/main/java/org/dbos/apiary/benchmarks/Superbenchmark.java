@@ -88,8 +88,8 @@ public class Superbenchmark {
         if (ApiaryConfig.XDBTransactions) {
             mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending(MongoContext.beginVersion));
             mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending(MongoContext.endVersion));
-            mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending(MongoContext.apiaryID));
         }
+        mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending(MongoContext.apiaryID));
         mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending("itemID"));
 
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);

@@ -15,12 +15,14 @@ import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
 import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBRead;
 import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBWrite;
 import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBRead;
+import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBUpdate;
 import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBWrite;
 import org.dbos.apiary.procedures.postgres.pges.PostgresBulkIndexPerson;
 import org.dbos.apiary.procedures.postgres.pges.PostgresIndexPerson;
 import org.dbos.apiary.procedures.postgres.pges.PostgresSearchPerson;
 import org.dbos.apiary.procedures.postgres.shop.*;
 import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBRead;
+import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBUpdate;
 import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBWrite;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
@@ -108,10 +110,12 @@ public class SuperbenchmarkTests {
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerConnection(ApiaryConfig.mongo, mconn);
         apiaryWorker.registerFunction("PostgresSBWrite", ApiaryConfig.postgres, PostgresSBWrite::new);
+        apiaryWorker.registerFunction("PostgresSBUpdate", ApiaryConfig.postgres, PostgresSBUpdate::new);
         apiaryWorker.registerFunction("PostgresSBRead", ApiaryConfig.postgres, PostgresSBRead::new);
         apiaryWorker.registerFunction("ElasticsearchSBWrite", ApiaryConfig.elasticsearch, ElasticsearchSBWrite::new);
         apiaryWorker.registerFunction("ElasticsearchSBRead", ApiaryConfig.elasticsearch, ElasticsearchSBRead::new);
         apiaryWorker.registerFunction("MongoSBWrite", ApiaryConfig.mongo, MongoSBWrite::new);
+        apiaryWorker.registerFunction("MongoSBUpdate", ApiaryConfig.mongo, MongoSBUpdate::new);
         apiaryWorker.registerFunction("MongoSBRead", ApiaryConfig.mongo, MongoSBRead::new);
         apiaryWorker.startServing();
 
@@ -126,5 +130,13 @@ public class SuperbenchmarkTests {
         assertEquals(1, resIntArray[0]);
         assertEquals(3, resIntArray[1]);
         assertEquals(2, resIntArray[2]);
+
+        resInt = client.executeFunction("PostgresSBUpdate", 1, "spark", 4, 5).getInt();
+        assertEquals(0, resInt);
+
+        resIntArray = client.executeFunction("PostgresSBRead", "spark").getIntArray();
+        assertEquals(1, resIntArray[0]);
+        assertEquals(5, resIntArray[1]);
+        assertEquals(4, resIntArray[2]);
     }
 }

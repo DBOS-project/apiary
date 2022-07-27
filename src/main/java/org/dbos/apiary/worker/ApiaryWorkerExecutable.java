@@ -14,6 +14,9 @@ import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESAddItem;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESBulkAddItem;
 import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
+import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBBulkWrite;
+import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBRead;
+import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBWrite;
 import org.dbos.apiary.procedures.gcs.GCSProfileRead;
 import org.dbos.apiary.procedures.gcs.GCSProfileUpdate;
 import org.dbos.apiary.procedures.gcs.GCSReadString;
@@ -25,6 +28,10 @@ import org.dbos.apiary.procedures.mongo.MongoReplacePerson;
 import org.dbos.apiary.procedures.mongo.hotel.MongoAddHotel;
 import org.dbos.apiary.procedures.mongo.hotel.MongoMakeReservation;
 import org.dbos.apiary.procedures.mongo.hotel.MongoSearchHotel;
+import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBBulkWrite;
+import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBRead;
+import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBUpdate;
+import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBWrite;
 import org.dbos.apiary.procedures.postgres.hotel.PostgresAddHotel;
 import org.dbos.apiary.procedures.postgres.hotel.PostgresMakeReservation;
 import org.dbos.apiary.procedures.postgres.hotel.PostgresSearchHotel;
@@ -35,6 +42,10 @@ import org.dbos.apiary.procedures.postgres.pges.PostgresSoloIndexPerson;
 import org.dbos.apiary.procedures.postgres.pggcs.*;
 import org.dbos.apiary.procedures.postgres.pgmongo.*;
 import org.dbos.apiary.procedures.postgres.shop.*;
+import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBBulkWrite;
+import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBRead;
+import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBUpdate;
+import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBWrite;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -151,6 +162,35 @@ public class ApiaryWorkerExecutable {
             apiaryWorker.registerFunction("PostgresProfileRead", ApiaryConfig.postgres, PostgresProfileRead::new);
             apiaryWorker.registerFunction("GCSProfileUpdate", ApiaryConfig.gcs, GCSProfileUpdate::new);
             apiaryWorker.registerFunction("GCSProfileRead", ApiaryConfig.gcs, GCSProfileRead::new);
+        } else if (db.equals("superbenchmark")) {
+            apiaryWorker = new ApiaryWorker(scheduler, numThreads);
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            String esAddr = "localhost";
+            if (cmd.hasOption("secondaryAddress")) {
+                esAddr = cmd.getOptionValue("secondaryAddress");
+                logger.info("Elasticsearch Address: {}", esAddr);
+            }
+            ElasticsearchConnection econn = new ElasticsearchConnection(esAddr, 9200, "elastic", "password");
+            String mongoAddr = "localhost";
+            if (cmd.hasOption("secondaryAddress")) {
+                mongoAddr = cmd.getOptionValue("secondaryAddress");
+                logger.info("Mongo Address: {}", mongoAddr);
+            }
+            MongoConnection mconn = new MongoConnection(mongoAddr, ApiaryConfig.mongoPort);
+            apiaryWorker.registerConnection(ApiaryConfig.mongo, mconn);
+            apiaryWorker.registerConnection(ApiaryConfig.elasticsearch, econn);
+            apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+            apiaryWorker.registerFunction("PostgresSBWrite", ApiaryConfig.postgres, PostgresSBWrite::new);
+            apiaryWorker.registerFunction("PostgresSBBulkWrite", ApiaryConfig.postgres, PostgresSBBulkWrite::new);
+            apiaryWorker.registerFunction("PostgresSBUpdate", ApiaryConfig.postgres, PostgresSBUpdate::new);
+            apiaryWorker.registerFunction("PostgresSBRead", ApiaryConfig.postgres, PostgresSBRead::new);
+            apiaryWorker.registerFunction("ElasticsearchSBWrite", ApiaryConfig.elasticsearch, ElasticsearchSBWrite::new);
+            apiaryWorker.registerFunction("ElasticsearchSBBulkWrite", ApiaryConfig.elasticsearch, ElasticsearchSBBulkWrite::new);
+            apiaryWorker.registerFunction("ElasticsearchSBRead", ApiaryConfig.elasticsearch, ElasticsearchSBRead::new);
+            apiaryWorker.registerFunction("MongoSBWrite", ApiaryConfig.mongo, MongoSBWrite::new);
+            apiaryWorker.registerFunction("MongoSBBulkWrite", ApiaryConfig.mongo, MongoSBBulkWrite::new);
+            apiaryWorker.registerFunction("MongoSBUpdate", ApiaryConfig.mongo, MongoSBUpdate::new);
+            apiaryWorker.registerFunction("MongoSBRead", ApiaryConfig.mongo, MongoSBRead::new);
         } else {
             throw new IllegalArgumentException("Option 'db' must be one of (elasticsearch, mongo, gcs).");
         }

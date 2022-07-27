@@ -137,10 +137,15 @@ public class SuperbenchmarkTests {
         assertEquals(3, resIntArray[1]);
         assertEquals(2, resIntArray[2]);
 
-        resInt = client.executeFunction("PostgresSBUpdate", 1, "spark", 4, 5).getInt();
+        resInt = client.executeFunction("PostgresSBUpdate", 1, "spark2", 4, 5).getInt();
         assertEquals(0, resInt);
 
         resIntArray = client.executeFunction("PostgresSBRead", "spark").getIntArray();
+        assertEquals(-1, resIntArray[0]);
+        assertEquals(-1, resIntArray[1]);
+        assertEquals(-1, resIntArray[2]);
+
+        resIntArray = client.executeFunction("PostgresSBRead", "spark2").getIntArray();
         assertEquals(1, resIntArray[0]);
         assertEquals(5, resIntArray[1]);
         assertEquals(4, resIntArray[2]);

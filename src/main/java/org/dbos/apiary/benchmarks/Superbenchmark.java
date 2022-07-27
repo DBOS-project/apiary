@@ -7,6 +7,7 @@ import com.mongodb.client.model.Indexes;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
 import org.dbos.apiary.mongo.MongoConnection;
+import org.dbos.apiary.mongo.MongoContext;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
@@ -84,6 +85,11 @@ public class Superbenchmark {
         }
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
 
+        if (ApiaryConfig.XDBTransactions) {
+            mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending(MongoContext.beginVersion));
+            mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending(MongoContext.endVersion));
+            mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending(MongoContext.apiaryID));
+        }
         mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending("itemID"));
 
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);

@@ -3,6 +3,7 @@ package org.dbos.apiary.benchmarks;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.mongodb.client.model.Indexes;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
 import org.dbos.apiary.mongo.MongoConnection;
@@ -49,11 +50,13 @@ public class Superbenchmark {
         } catch (Exception e) {
             logger.info("Index Not Deleted {}", e.getMessage());
         }
+        MongoConnection mconn;
         try {
-            MongoConnection mconn = new MongoConnection(dbAddr, ApiaryConfig.mongoPort);
+            mconn = new MongoConnection(dbAddr, ApiaryConfig.mongoPort);
             mconn.database.getCollection("superbenchmark").drop();
         } catch (Exception e) {
             logger.info("No Mongo instance! {}", e.getMessage());
+            return;
         }
 
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
@@ -80,6 +83,8 @@ public class Superbenchmark {
             client.get().executeFunction("PostgresSBBulkWrite", initialIDs, initialNames, initialCosts, initialInventories);
         }
         logger.info("Done Loading: {}", System.currentTimeMillis() - loadStart);
+
+        mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending("itemID"));
 
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
         long startTime = System.currentTimeMillis();

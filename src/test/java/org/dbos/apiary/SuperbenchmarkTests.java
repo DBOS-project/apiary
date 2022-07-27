@@ -124,7 +124,6 @@ public class SuperbenchmarkTests {
         apiaryWorker.registerFunction("MongoSBBulkWrite", ApiaryConfig.mongo, MongoSBBulkWrite::new);
         apiaryWorker.registerFunction("MongoSBUpdate", ApiaryConfig.mongo, MongoSBUpdate::new);
         apiaryWorker.registerFunction("MongoSBRead", ApiaryConfig.mongo, MongoSBRead::new);
-        mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending("itemID"));
         apiaryWorker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
@@ -132,6 +131,9 @@ public class SuperbenchmarkTests {
         int resInt;
         resInt = client.executeFunction("PostgresSBWrite", 1, "spark", 2, 3).getInt();
         assertEquals(0, resInt);
+
+        mconn.database.getCollection("superbenchmark").createIndex(Indexes.ascending("itemID"));
+
         int[] resIntArray;
         resIntArray = client.executeFunction("PostgresSBRead", "spark").getIntArray();
         assertEquals(1, resIntArray[0]);

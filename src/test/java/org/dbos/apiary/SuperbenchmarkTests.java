@@ -1,0 +1,130 @@
+package org.dbos.apiary;
+
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
+import com.google.protobuf.InvalidProtocolBufferException;
+import org.dbos.apiary.client.ApiaryWorkerClient;
+import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
+import org.dbos.apiary.mongo.MongoConnection;
+import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
+import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
+import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
+import org.dbos.apiary.procedures.elasticsearch.shop.ShopESAddItem;
+import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
+import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBRead;
+import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBWrite;
+import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBRead;
+import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBWrite;
+import org.dbos.apiary.procedures.postgres.pges.PostgresBulkIndexPerson;
+import org.dbos.apiary.procedures.postgres.pges.PostgresIndexPerson;
+import org.dbos.apiary.procedures.postgres.pges.PostgresSearchPerson;
+import org.dbos.apiary.procedures.postgres.shop.*;
+import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBRead;
+import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBWrite;
+import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.worker.ApiaryNaiveScheduler;
+import org.dbos.apiary.worker.ApiaryWorker;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class SuperbenchmarkTests {
+    private static final Logger logger = LoggerFactory.getLogger(SuperbenchmarkTests.class);
+
+    private ApiaryWorker apiaryWorker;
+
+    @BeforeEach
+    public void resetTables() {
+        try {
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            conn.dropTable("FuncInvocations");
+            conn.dropTable("SuperbenchmarkTable");
+            conn.createTable("SuperbenchmarkTable", "ItemID integer PRIMARY KEY NOT NULL, Inventory integer NOT NULL");
+        } catch (Exception e) {
+            logger.info("Failed to connect to Postgres.");
+        }
+        apiaryWorker = null;
+    }
+
+    @AfterEach
+    public void cleanupWorker() {
+        if (apiaryWorker != null) {
+            apiaryWorker.shutdown();
+        }
+    }
+
+    @BeforeEach
+    public void cleanupElasticsearch() {
+        try {
+            ElasticsearchClient client = new ElasticsearchConnection("localhost", 9200, "elastic", "password").client;
+            DeleteIndexRequest request;
+            request = new DeleteIndexRequest.Builder().index("superbenchmark").ignoreUnavailable(true).build();
+            client.indices().delete(request);
+        } catch (Exception e) {
+            logger.info("Index Not Deleted {}", e.getMessage());
+        }
+    }
+
+    @BeforeEach
+    public void cleanupMongo() {
+        try {
+            MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+            conn.database.getCollection("superbenchmark").drop();
+        } catch (Exception e) {
+            logger.info("No Mongo instance! {}", e.getMessage());
+        }
+    }
+
+    @Test
+    public void testSuperbenchmark() throws InvalidProtocolBufferException, InterruptedException {
+        logger.info("testSuperbenchmark");
+
+        ElasticsearchConnection econn;
+        PostgresConnection pconn;
+        MongoConnection mconn;
+        try {
+            econn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
+            mconn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        } catch (Exception e) {
+            logger.info("No Elasticsearch/Postgres instance! {}", e.getMessage());
+            return;
+        }
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.elasticsearch, econn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerConnection(ApiaryConfig.mongo, mconn);
+        apiaryWorker.registerFunction("PostgresSBWrite", ApiaryConfig.postgres, PostgresSBWrite::new);
+        apiaryWorker.registerFunction("PostgresSBRead", ApiaryConfig.postgres, PostgresSBRead::new);
+        apiaryWorker.registerFunction("ElasticsearchSBWrite", ApiaryConfig.elasticsearch, ElasticsearchSBWrite::new);
+        apiaryWorker.registerFunction("ElasticsearchSBRead", ApiaryConfig.elasticsearch, ElasticsearchSBRead::new);
+        apiaryWorker.registerFunction("MongoSBWrite", ApiaryConfig.mongo, MongoSBWrite::new);
+        apiaryWorker.registerFunction("MongoSBRead", ApiaryConfig.mongo, MongoSBRead::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int resInt;
+        resInt = client.executeFunction("PostgresSBWrite", 1, "spark", 2, 3).getInt();
+        assertEquals(0, resInt);
+
+        int[] resIntArray;
+        resIntArray = client.executeFunction("PostgresSBRead", "spark").getIntArray();
+        assertEquals(1, resIntArray[0]);
+        assertEquals(3, resIntArray[1]);
+        assertEquals(2, resIntArray[2]);
+    }
+}

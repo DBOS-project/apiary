@@ -32,9 +32,14 @@ public class VoltDBTests {
     private ApiaryWorker apiaryWorker;
 
     @BeforeEach
-    public void reset() throws IOException, ProcCallException {
-        VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        ctxt.client.callProcedure("TruncateTables");
+    public void reset() {
+        try {
+            VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+            ctxt.client.callProcedure("TruncateTables");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.info("Failed to connect to VoltDB.");
+        }
         apiaryWorker = null;
     }
 
@@ -48,7 +53,14 @@ public class VoltDBTests {
     @Test
     public void testVoltProvenance() throws IOException, SQLException, InterruptedException {
         logger.info("testVoltProvenance");
-        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+        VoltConnection c;
+        try {
+            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+        } catch (Exception e) {
+            logger.info("No VoltDB instance!");
+            return;
+        }
+
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.voltdb, c);
         apiaryWorker.registerFunction("VoltProvenanceBasic", ApiaryConfig.voltdb, VoltProvenanceBasic::new);

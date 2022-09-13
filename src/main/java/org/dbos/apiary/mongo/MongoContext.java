@@ -107,7 +107,7 @@ public class MongoContext extends ApiaryContext {
         }
         MongoCollection<Document> c = database.getCollection(collectionName);
         c.insertOne(document);
-        c.updateMany(Filters.and(
+        c.updateOne(Filters.and(
                         Filters.eq(MongoContext.apiaryID, id),
                         Filters.ne(MongoContext.beginVersion, txc.txID),
                         Filters.eq(MongoContext.endVersion, Long.MAX_VALUE)

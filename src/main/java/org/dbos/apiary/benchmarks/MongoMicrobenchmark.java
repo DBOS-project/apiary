@@ -21,7 +21,7 @@ public class MongoMicrobenchmark {
     private static final Logger logger = LoggerFactory.getLogger(MongoMicrobenchmark.class);
     private static final int threadPoolSize = 256;
 
-    private static final int numPeople = 10000;
+    private static final int numPeople = 100000;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
@@ -52,8 +52,6 @@ public class MongoMicrobenchmark {
 
         if (ApiaryConfig.XDBTransactions) {
             mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.beginVersion));
-            mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.endVersion));
-            mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.committed));
         }
         mconn.database.getCollection("people").createIndex(Indexes.ascending(MongoContext.apiaryID));
         mconn.database.getCollection("people").createIndex(Indexes.ascending("name"));

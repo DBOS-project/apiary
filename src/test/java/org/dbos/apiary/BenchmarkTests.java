@@ -1,7 +1,6 @@
 package org.dbos.apiary;
 
 import org.dbos.apiary.client.ApiaryWorkerClient;
-import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.increment.IncrementProcedure;
 import org.dbos.apiary.procedures.voltdb.retwis.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -23,14 +22,25 @@ public class BenchmarkTests {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkTests.class);
     @BeforeEach
     public void truncateTables() throws IOException, ProcCallException {
-        VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        ctxt.client.callProcedure("TruncateTables");
+        try {
+            VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+            ctxt.client.callProcedure("TruncateTables");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.info("Failed to connect to VoltDB.");
+        }
     }
 
     @Test
     public void testRetwis() throws IOException {
         logger.info("testRetwis");
-        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+        VoltConnection c;
+        try {
+            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+        } catch (Exception e) {
+            logger.info("No VoltDB instance!");
+            return;
+        }
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(scheduler, 128);
         worker.registerConnection(ApiaryConfig.voltdb, c);
@@ -75,7 +85,13 @@ public class BenchmarkTests {
     @Test
     public void testStatelessRetwis() throws IOException {
         logger.info("testStatelessRetwis");
-        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+        VoltConnection c;
+        try {
+            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+        } catch (Exception e) {
+            logger.info("No VoltDB instance!");
+            return;
+        }
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(scheduler, 128);
         worker.registerConnection(ApiaryConfig.voltdb, c);
@@ -111,9 +127,15 @@ public class BenchmarkTests {
     }
 
     @Test
-    public void testIncrement() throws IOException, InterruptedException {
+    public void testIncrement() throws IOException {
         logger.info("testIncrement");
-        ApiaryConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+        VoltConnection c;
+        try {
+            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+        } catch (Exception e) {
+            logger.info("No VoltDB instance!");
+            return;
+        }
         ApiaryWFQScheduler scheduler = new ApiaryWFQScheduler();
         ApiaryWorker worker = new ApiaryWorker(scheduler, 128);
         worker.registerConnection(ApiaryConfig.voltdb, c);

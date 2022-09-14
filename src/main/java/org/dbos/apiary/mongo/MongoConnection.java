@@ -33,7 +33,7 @@ public class MongoConnection implements ApiarySecondaryConnection {
     private final Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
 
     public MongoConnection(String address, int port) {
-        String uri = String.format("mongodb://%s:%d/?connectTimeoutMS=3000", address, port);
+        String uri = String.format("mongodb://%s:%d/?maxWaitTime=3000", address, port);
         this.client = MongoClients.create(uri);
         this.database = client.getDatabase("dbos");
     }

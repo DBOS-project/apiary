@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PostgresMongoTests {
-    private static final Logger logger = LoggerFactory.getLogger(PostgresESTests.class);
+    private static final Logger logger = LoggerFactory.getLogger(PostgresMongoTests.class);
 
     private ApiaryWorker apiaryWorker;
 

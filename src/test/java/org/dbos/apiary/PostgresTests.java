@@ -2,7 +2,6 @@ package org.dbos.apiary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
-import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.retwis.*;
@@ -15,7 +14,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zeromq.ZContext;
 
 import java.sql.Connection;
 import java.sql.ResultSet;

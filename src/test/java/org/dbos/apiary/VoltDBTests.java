@@ -1,8 +1,6 @@
 package org.dbos.apiary;
 
 import org.dbos.apiary.client.ApiaryWorkerClient;
-import org.dbos.apiary.client.InternalApiaryWorkerClient;
-import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.procedures.voltdb.tests.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -14,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.voltdb.client.ProcCallException;
 import org.zeromq.ZContext;
 import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
@@ -260,7 +257,7 @@ public class VoltDBTests {
 
         worker.shutdown();
     }
-    
+
     @Test
     public void testVoltProvenance() throws IOException, SQLException, InterruptedException {
         logger.info("testVoltProvenance");

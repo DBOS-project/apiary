@@ -1,6 +1,5 @@
 package org.dbos.apiary;
 
-import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.voltdb.VoltConnection;
 import org.junit.jupiter.api.BeforeEach;

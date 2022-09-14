@@ -1,30 +1,14 @@
 package org.dbos.apiary;
 
-import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.procedures.voltdb.tests.*;
-import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
-import org.dbos.apiary.voltdb.VoltConnection;
-import org.dbos.apiary.worker.ApiaryNaiveScheduler;
-import org.dbos.apiary.worker.ApiaryWorker;
-import org.dbos.apiary.client.ApiaryWorkerClient;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.voltdb.client.ProcCallException;
-import org.zeromq.ZContext;
-import org.zeromq.ZFrame;
-import org.zeromq.ZMQ;
-import org.zeromq.ZMsg;
-
-import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class WorkerTests {
-    private static final Logger logger = LoggerFactory.getLogger(WorkerTests.class);
+public class UtilTests {
+    private static final Logger logger = LoggerFactory.getLogger(UtilTests.class);
 
     @Test
     public void testSerialization() {
@@ -43,5 +27,4 @@ public class WorkerTests {
         }
     }
 
-    // TODO: add more tests with Postgres as the backend.
 }

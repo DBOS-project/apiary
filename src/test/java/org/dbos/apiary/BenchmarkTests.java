@@ -1,8 +1,6 @@
 package org.dbos.apiary;
 
-import com.sun.jdi.request.ExceptionRequest;
 import org.dbos.apiary.client.ApiaryWorkerClient;
-import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.procedures.voltdb.increment.IncrementProcedure;
 import org.dbos.apiary.procedures.voltdb.retwis.*;
 import org.dbos.apiary.utilities.ApiaryConfig;

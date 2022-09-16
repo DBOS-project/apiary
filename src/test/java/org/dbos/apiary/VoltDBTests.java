@@ -19,10 +19,13 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -61,6 +64,37 @@ public class VoltDBTests {
         if (apiaryWorker != null) {
             apiaryWorker.shutdown();
         }
+    }
+
+    @Test
+    public void testVoltPartitionInfo() throws IOException {
+        logger.info("testVoltPartitionInfo");
+        VoltConnection ctxt;
+        try {
+            ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+        } catch (Exception e) {
+            logger.info("No VoltDB instance!");
+            return;
+        }
+        int numPartitions = ctxt.getNumPartitions();
+        logger.info("Detected {} partitions.", numPartitions);
+        assertTrue(numPartitions > 0);
+
+        HashMap<Integer, String> partitionHostMap = (HashMap)((HashMap)ctxt.getPartitionHostMap()).clone();
+        String localhost = InetAddress.getLocalHost().getHostName();
+        for (int p : partitionHostMap.keySet()) {
+            String hn = partitionHostMap.get(p);
+            assertEquals(localhost, hn);
+            logger.info("partition {} --> host {}", p, hn);
+        }
+        assertEquals(numPartitions, partitionHostMap.size());
+
+        // Update and test again.
+        ctxt.updatePartitionInfo();
+        int numPartitions2 = ctxt.getNumPartitions();
+        assertEquals(numPartitions, numPartitions2);
+        Map<Integer, String> partitionHostMap2 = ctxt.getPartitionHostMap();
+        assertTrue(partitionHostMap.equals(partitionHostMap2));
     }
 
     @Test

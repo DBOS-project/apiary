@@ -4,6 +4,10 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mongodb.client.model.Indexes;
+import org.bson.BsonDocument;
+import org.bson.BsonInt64;
+import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
 import org.dbos.apiary.mongo.MongoConnection;
@@ -32,6 +36,7 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -45,11 +50,38 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class SuperbenchmarkTests {
     private static final Logger logger = LoggerFactory.getLogger(SuperbenchmarkTests.class);
 
     private ApiaryWorker apiaryWorker;
+
+    @BeforeAll
+    public static void testConnection() {
+        try {
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        } catch (Exception e) {
+            logger.info("Failed to connect to Postgres.");
+            assumeTrue(false);
+        }
+
+        try {
+            ElasticsearchClient client = new ElasticsearchConnection("localhost", 9200, "elastic", "password").client;
+        } catch (Exception e) {
+            logger.info("Failed to connect to ElasticSearch.");
+            assumeTrue(false);
+        }
+
+        try {
+            MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+            Bson command = new BsonDocument("ping", new BsonInt64(1));
+            Document commandResult = conn.database.runCommand(command);
+        } catch (Exception e) {
+            logger.info("No Mongo instance! {}", e.getMessage());
+            assumeTrue(false);
+        }
+    }
 
     @BeforeEach
     public void resetTables() {
@@ -60,6 +92,7 @@ public class SuperbenchmarkTests {
             conn.createTable("SuperbenchmarkTable", "ItemID integer PRIMARY KEY NOT NULL, Inventory integer NOT NULL");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
+            assumeTrue(false);
         }
         apiaryWorker = null;
     }
@@ -80,6 +113,7 @@ public class SuperbenchmarkTests {
             client.indices().delete(request);
         } catch (Exception e) {
             logger.info("Index Not Deleted {}", e.getMessage());
+            assumeTrue(false);
         }
     }
 
@@ -90,6 +124,7 @@ public class SuperbenchmarkTests {
             conn.database.getCollection("superbenchmark").drop();
         } catch (Exception e) {
             logger.info("No Mongo instance! {}", e.getMessage());
+            assumeTrue(false);
         }
     }
 

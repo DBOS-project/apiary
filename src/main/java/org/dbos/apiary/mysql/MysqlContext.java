@@ -27,10 +27,11 @@ public class MysqlContext extends ApiaryContext {
 
     private final TransactionContext txc;
 
-    Map<String, List<String>> writtenKeys = new HashMap<>();
+    Map<String, List<String>> writtenKeys;
 
-    public MysqlContext(Connection conn, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
+    public MysqlContext(Connection conn, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
         super(workerContext, service, execID, functionID);
+        this.writtenKeys = writtenKeys;
         this.conn = conn;
         this.txc = txc;
     }

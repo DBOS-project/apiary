@@ -8,6 +8,7 @@ import org.dbos.apiary.voltdb.VoltConnection;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -30,6 +31,16 @@ public class VoltDBTests {
     private static final Logger logger = LoggerFactory.getLogger(VoltDBTests.class);
 
     private ApiaryWorker apiaryWorker;
+
+    @BeforeAll
+    public void testConnection() {
+        try {
+            VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
+        } catch (Exception e) {
+            logger.info("Failed to connect to VoltDB. Skipping tests.");
+            assertTrue(false);
+        }
+    }
 
     @BeforeEach
     public void reset() {

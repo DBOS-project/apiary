@@ -26,6 +26,7 @@ import java.sql.Statement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class VoltDBTests {
     private static final Logger logger = LoggerFactory.getLogger(VoltDBTests.class);
@@ -33,12 +34,12 @@ public class VoltDBTests {
     private ApiaryWorker apiaryWorker;
 
     @BeforeAll
-    public void testConnection() {
+    public static void testConnection() {
         try {
             VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         } catch (Exception e) {
             logger.info("Failed to connect to VoltDB. Skipping tests.");
-            assertTrue(false);
+            assumeTrue(false);
         }
     }
 
@@ -50,6 +51,7 @@ public class VoltDBTests {
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to VoltDB.");
+            assumeTrue(false);
         }
         apiaryWorker = null;
     }
@@ -65,13 +67,7 @@ public class VoltDBTests {
     public void testFib() throws IOException {
         logger.info("testFib");
         for (int i = 0; i < 10; i++) {
-            VoltConnection c;
-            try {
-                c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-            } catch (Exception e) {
-                logger.info("No VoltDB instance!");
-                return;
-            }
+            VoltConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
             ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
             worker.registerConnection(ApiaryConfig.voltdb, c);
             worker.registerFunction("FibonacciFunction", ApiaryConfig.voltdb, FibonacciFunction::new);
@@ -97,13 +93,7 @@ public class VoltDBTests {
     @Test
     public void testAddition() throws IOException {
         logger.info("testAddition");
-        VoltConnection c;
-        try {
-            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        } catch (Exception e) {
-            logger.info("No VoltDB instance!");
-            return;
-        }
+        VoltConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
         worker.registerConnection(ApiaryConfig.voltdb, c);
         worker.registerFunction("AdditionFunction", ApiaryConfig.voltdb, AdditionFunction::new);
@@ -120,13 +110,7 @@ public class VoltDBTests {
     @Test
     public void testAsyncClientAddition() throws IOException {
         logger.info("testAsyncClientAddition");
-        VoltConnection c;
-        try {
-            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        } catch (Exception e) {
-            logger.info("No VoltDB instance!");
-            return;
-        }
+        VoltConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
         worker.registerConnection(ApiaryConfig.voltdb, c);
         worker.registerFunction("AdditionFunction", ApiaryConfig.voltdb, AdditionFunction::new);
@@ -181,13 +165,7 @@ public class VoltDBTests {
     @Test
     public void testStatelessCounter() throws IOException, InterruptedException {
         logger.info("testStatelessCounter");
-        VoltConnection c;
-        try {
-            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        } catch (Exception e) {
-            logger.info("No VoltDB instance!");
-            return;
-        }
+        VoltConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
         worker.registerConnection(ApiaryConfig.voltdb, c);
         worker.registerFunction("StatelessIncrement", ApiaryConfig.stateless, StatelessIncrement::new);
@@ -213,13 +191,7 @@ public class VoltDBTests {
     @Test
     public void testStatelessDriver() throws IOException {
         logger.info("testStatelessDriver");
-        VoltConnection c;
-        try {
-            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        } catch (Exception e) {
-            logger.info("No VoltDB instance!");
-            return;
-        }
+        VoltConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
         worker.registerConnection(ApiaryConfig.voltdb, c);
         worker.registerFunction("FibonacciFunction", ApiaryConfig.voltdb, FibonacciFunction::new);
@@ -242,13 +214,7 @@ public class VoltDBTests {
     @Test
     public void testSynchronousCounter() throws IOException {
         logger.info("testSynchronousCounter");
-        VoltConnection c;
-        try {
-            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        } catch (Exception e) {
-            logger.info("No VoltDB instance!");
-            return;
-        }
+        VoltConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         ApiaryWorker worker = new ApiaryWorker(new ApiaryNaiveScheduler(), 128);
         worker.registerConnection(ApiaryConfig.voltdb, c);
         worker.registerFunction("SynchronousCounter", ApiaryConfig.voltdb, SynchronousCounter::new);
@@ -272,14 +238,7 @@ public class VoltDBTests {
     @Test
     public void testVoltProvenance() throws IOException, SQLException, InterruptedException {
         logger.info("testVoltProvenance");
-        VoltConnection c;
-        try {
-            c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        } catch (Exception e) {
-            logger.info("No VoltDB instance!");
-            return;
-        }
-
+        VoltConnection c = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.voltdb, c);
         apiaryWorker.registerFunction("VoltProvenanceBasic", ApiaryConfig.voltdb, VoltProvenanceBasic::new);

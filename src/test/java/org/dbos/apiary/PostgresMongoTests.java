@@ -2,10 +2,6 @@ package org.dbos.apiary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mongodb.client.model.Indexes;
-import org.bson.BsonDocument;
-import org.bson.BsonInt64;
-import org.bson.Document;
-import org.bson.conversions.Bson;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
@@ -21,11 +17,13 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -34,11 +32,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class PostgresMongoTests {
     private static final Logger logger = LoggerFactory.getLogger(PostgresMongoTests.class);
 
     private ApiaryWorker apiaryWorker;
+
+    @BeforeAll
+    public static void testConnection() {
+        assumeTrue(TestUtils.testMongoConnection());
+        assumeTrue(TestUtils.testPostgresConnection());
+    }
 
     @BeforeEach
     public void resetTables() {
@@ -77,21 +82,11 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoBasic() throws InvalidProtocolBufferException {
+    public void testMongoBasic() throws InvalidProtocolBufferException, SQLException {
         logger.info("testMongoBasic");
 
-        MongoConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-            // Test Mongo connection.
-            Bson command = new BsonDocument("ping", new BsonInt64(1));
-            Document commandResult = conn.database.runCommand(command);
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
@@ -116,21 +111,11 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoWriteRead() throws InvalidProtocolBufferException {
+    public void testMongoWriteRead() throws InvalidProtocolBufferException, SQLException {
         logger.info("testMongoWriteRead");
 
-        MongoConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-            // Test Mongo connection.
-            Bson command = new BsonDocument("ping", new BsonInt64(1));
-            Document commandResult = conn.database.runCommand(command);
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
@@ -150,21 +135,11 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoBulk() throws InvalidProtocolBufferException {
+    public void testMongoBulk() throws InvalidProtocolBufferException, SQLException {
         logger.info("testMongoBulk");
 
-        MongoConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-            // Test Mongo connection.
-            Bson command = new BsonDocument("ping", new BsonInt64(1));
-            Document commandResult = conn.database.runCommand(command);
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
@@ -190,21 +165,11 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoUpdate() throws InvalidProtocolBufferException, InterruptedException {
+    public void testMongoUpdate() throws InvalidProtocolBufferException, SQLException {
         logger.info("testMongoUpdate");
 
-        MongoConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-            // Test Mongo connection.
-            Bson command = new BsonDocument("ping", new BsonInt64(1));
-            Document commandResult = conn.database.runCommand(command);
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
@@ -234,21 +199,11 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoConcurrent() throws InterruptedException {
+    public void testMongoConcurrent() throws InterruptedException, SQLException {
         logger.info("testMongoConcurrent");
 
-        MongoConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-            // Test Mongo connection.
-            Bson command = new BsonDocument("ping", new BsonInt64(1));
-            Document commandResult = conn.database.runCommand(command);
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         int numThreads = 10;
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numThreads);
@@ -295,21 +250,11 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoConcurrentUpdates() throws InterruptedException, InvalidProtocolBufferException {
+    public void testMongoConcurrentUpdates() throws InterruptedException, InvalidProtocolBufferException, SQLException {
         logger.info("testMongoConcurrentUpdates");
 
-        MongoConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-            // Test Mongo connection.
-            Bson command = new BsonDocument("ping", new BsonInt64(1));
-            Document commandResult = conn.database.runCommand(command);
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         int numThreads = 10;
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numThreads);
@@ -364,22 +309,12 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoConcurrentUpdatesRC() throws InterruptedException, InvalidProtocolBufferException {
+    public void testMongoConcurrentUpdatesRC() throws InterruptedException, InvalidProtocolBufferException, SQLException {
         logger.info("testMongoConcurrentUpdatesRC");
 
         ApiaryConfig.isolationLevel = ApiaryConfig.READ_COMMITTED;
-        MongoConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-            // Test Mongo connection.
-            Bson command = new BsonDocument("ping", new BsonInt64(1));
-            Document commandResult = conn.database.runCommand(command);
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         int numThreads = 10;
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numThreads);
@@ -434,21 +369,11 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoHotel() throws InvalidProtocolBufferException {
+    public void testMongoHotel() throws InvalidProtocolBufferException, SQLException {
         logger.info("testMongoHotel");
 
-        MongoConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-            // Test Mongo connection.
-            Bson command = new BsonDocument("ping", new BsonInt64(1));
-            Document commandResult = conn.database.runCommand(command);
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Mongo/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);

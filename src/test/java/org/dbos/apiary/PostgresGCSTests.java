@@ -20,11 +20,13 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -33,11 +35,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class PostgresGCSTests {
     private static final Logger logger = LoggerFactory.getLogger(PostgresGCSTests.class);
 
     private ApiaryWorker apiaryWorker;
+
+    @BeforeAll
+    public static void testConnection() {
+        assumeTrue(TestUtils.testGCSConnection());
+        assumeTrue(TestUtils.testPostgresConnection());
+    }
 
     @BeforeEach
     public void resetTables() {
@@ -74,22 +83,16 @@ public class PostgresGCSTests {
             }
         } catch (Exception e) {
             logger.info("No GCS instance! {}", e.getMessage());
+            assumeTrue(false);
         }
     }
 
     @Test
-    public void testGCSProfile() throws InvalidProtocolBufferException {
+    public void testGCSProfile() throws InvalidProtocolBufferException, SQLException {
         logger.info("testGCSProfile");
 
-        GCSConnection conn;
-        PostgresConnection pconn;
-        try {
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-            conn = new GCSConnection(pconn);
-        } catch (Exception e) {
-            logger.info("No GCS/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        GCSConnection conn = new GCSConnection(pconn);
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.gcs, conn);
@@ -117,18 +120,11 @@ public class PostgresGCSTests {
 
 
     @Test
-    public void testGCSBasic() throws InvalidProtocolBufferException {
+    public void testGCSBasic() throws InvalidProtocolBufferException, SQLException {
         logger.info("testGCSBasic");
 
-        GCSConnection conn;
-        PostgresConnection pconn;
-        try {
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-            conn = new GCSConnection(pconn);
-        } catch (Exception e) {
-            logger.info("No GCS/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        GCSConnection conn = new GCSConnection(pconn);
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.gcs, conn);
@@ -149,18 +145,11 @@ public class PostgresGCSTests {
     }
 
     @Test
-    public void testGCSUpdate() throws InvalidProtocolBufferException {
+    public void testGCSUpdate() throws InvalidProtocolBufferException, SQLException {
         logger.info("testGCSUpdate");
 
-        GCSConnection conn;
-        PostgresConnection pconn;
-        try {
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-            conn = new GCSConnection(pconn);
-        } catch (Exception e) {
-            logger.info("No GCS/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        GCSConnection conn = new GCSConnection(pconn);
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.gcs, conn);
@@ -186,18 +175,11 @@ public class PostgresGCSTests {
     }
 
     @Test
-    public void testGCSConcurrent() throws InterruptedException {
+    public void testGCSConcurrent() throws InterruptedException, SQLException {
         logger.info("testGCSConcurrent");
 
-        GCSConnection conn;
-        PostgresConnection pconn;
-        try {
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-            conn = new GCSConnection(pconn);
-        } catch (Exception e) {
-            logger.info("No GCS/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        GCSConnection conn = new GCSConnection(pconn);
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.gcs, conn);
@@ -244,18 +226,11 @@ public class PostgresGCSTests {
     }
 
     @Test
-    public void testGCSConcurrentUpdates() throws InterruptedException {
+    public void testGCSConcurrentUpdates() throws InterruptedException, SQLException {
         logger.info("testGCSConcurrentUpdates");
 
-        GCSConnection conn;
-        PostgresConnection pconn;
-        try {
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-            conn = new GCSConnection(pconn);
-        } catch (Exception e) {
-            logger.info("No GCS/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        GCSConnection conn = new GCSConnection(pconn);
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.gcs, conn);

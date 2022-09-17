@@ -59,28 +59,9 @@ public class SuperbenchmarkTests {
 
     @BeforeAll
     public static void testConnection() {
-        try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("Failed to connect to Postgres.");
-            assumeTrue(false);
-        }
-
-        try {
-            ElasticsearchClient client = new ElasticsearchConnection("localhost", 9200, "elastic", "password").client;
-        } catch (Exception e) {
-            logger.info("Failed to connect to ElasticSearch.");
-            assumeTrue(false);
-        }
-
-        try {
-            MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-            Bson command = new BsonDocument("ping", new BsonInt64(1));
-            Document commandResult = conn.database.runCommand(command);
-        } catch (Exception e) {
-            logger.info("No Mongo instance! {}", e.getMessage());
-            assumeTrue(false);
-        }
+        assumeTrue(TestUtils.testPostgresConnection());
+        assumeTrue(TestUtils.testMongoConnection());
+        assumeTrue(TestUtils.testESConnection());
     }
 
     @BeforeEach

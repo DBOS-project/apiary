@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.voltdb.client.ProcCallException;
 
 import java.io.IOException;
 
@@ -25,12 +24,7 @@ public class VoltDBBenchmarkTests {
 
     @BeforeAll
     public static void testConnection() {
-        try {
-            VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        } catch (Exception e) {
-            logger.info("Failed to connect to VoltDB. Skipping tests.");
-            assumeTrue(false);
-        }
+        assumeTrue(TestUtils.testVoltConnection());
     }
 
     @BeforeEach

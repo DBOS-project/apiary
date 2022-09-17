@@ -19,6 +19,7 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -32,11 +33,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class PostgresESTests {
     private static final Logger logger = LoggerFactory.getLogger(PostgresESTests.class);
 
     private ApiaryWorker apiaryWorker;
+
+    @BeforeAll
+    public static void testConnection() {
+        assumeTrue(TestUtils.testPostgresConnection());
+        assumeTrue(TestUtils.testESConnection());
+    }
 
     @BeforeEach
     public void resetTables() {
@@ -56,6 +64,7 @@ public class PostgresESTests {
             conn.createIndex("CREATE INDEX CartIndex ON ShopCart (PersonID);");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
+            assumeTrue(false);
         }
         apiaryWorker = null;
     }
@@ -78,6 +87,7 @@ public class PostgresESTests {
             client.indices().delete(request);
         } catch (Exception e) {
             logger.info("Index Not Deleted {}", e.getMessage());
+            assumeTrue(false);
         }
     }
 

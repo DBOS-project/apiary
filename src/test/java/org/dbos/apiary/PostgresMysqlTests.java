@@ -13,11 +13,13 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -26,11 +28,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class PostgresMysqlTests {
     private static final Logger logger = LoggerFactory.getLogger(PostgresMysqlTests.class);
 
     private ApiaryWorker apiaryWorker;
+
+    public PostgresMysqlTests() throws SQLException {
+    }
+
+    @BeforeAll
+    public static void testConnection() {
+        assumeTrue(TestUtils.testMysqlConnection());
+        assumeTrue(TestUtils.testPostgresConnection());
+    }
+
+
     @BeforeEach
     public void resetTables() {
         try {
@@ -40,6 +54,7 @@ public class PostgresMysqlTests {
             conn.createTable("PersonTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Number integer NOT NULL");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
+            assumeTrue(false);
         }
 
         try {
@@ -49,6 +64,7 @@ public class PostgresMysqlTests {
             conn.createTable("PersonTable", "Name varchar(1000) NOT NULL, Number integer NOT NULL");
         } catch (Exception e) {
             logger.info("Failed to connect to MySQL.");
+            assumeTrue(false);
         }
 
         apiaryWorker = null;
@@ -62,18 +78,12 @@ public class PostgresMysqlTests {
     }
 
     @Test
-    public void testMysqlBasic() throws InvalidProtocolBufferException {
+    public void testMysqlBasic() throws SQLException, InvalidProtocolBufferException {
         logger.info("testMysqlBasic");
 
-        MysqlConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
-        } catch (Exception e) {
-            logger.info("No MySQL/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
+
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mysql, conn);
@@ -96,18 +106,11 @@ public class PostgresMysqlTests {
     }
 
     @Test
-    public void testMysqlUpdate() throws InvalidProtocolBufferException {
+    public void testMysqlUpdate() throws InvalidProtocolBufferException, SQLException {
         logger.info("testMysqlUpdate");
+        MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
 
-        MysqlConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
-        } catch (Exception e) {
-            logger.info("No MySQL/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mysql, conn);
@@ -136,18 +139,12 @@ public class PostgresMysqlTests {
     }
 
     @Test
-    public void testMysqlConcurrentInsert() throws InterruptedException {
+    public void testMysqlConcurrentInsert() throws InterruptedException, SQLException {
         logger.info("testMysqlConcurrentInsert");
 
-        MysqlConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
-        } catch (Exception e) {
-            logger.info("No MySQL/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
+
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
 
         int numThreads = 10;
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numThreads);
@@ -196,18 +193,12 @@ public class PostgresMysqlTests {
     }
 
     @Test
-    public void testMysqlConcurrentUpdates() throws InterruptedException {
+    public void testMysqlConcurrentUpdates() throws InterruptedException, SQLException {
         logger.info("testMysqlConcurrentUpdates");
 
-        MysqlConnection conn;
-        PostgresConnection pconn;
-        try {
-            conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
-        } catch (Exception e) {
-            logger.info("No MySQL/Postgres instance! {}", e.getMessage());
-            return;
-        }
+        MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
+
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
 
         int numThreads = 10;
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numThreads);

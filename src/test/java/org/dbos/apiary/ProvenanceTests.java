@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,9 +14,28 @@ import java.sql.Statement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class ProvenanceTests {
     private static final Logger logger = LoggerFactory.getLogger(ProvenanceTests.class);
+
+    @BeforeAll
+    public static void testConnection() {
+        ProvenanceBuffer buf;
+        try {
+            buf = new ProvenanceBuffer(ApiaryConfig.vertica, "localhost");
+            if (buf.conn.get() == null) {
+                logger.info("Provenance buffer (Vertica) not available.");
+                assumeTrue(false);
+            }
+        } catch (Exception e) {
+            logger.info("Provenance buffer (Vertica) not available.");
+            assumeTrue(false);
+        } catch (NoClassDefFoundError e) {
+            logger.info("Provenance buffer (Vertica) not available.");
+            assumeTrue(false);
+        }
+    }
 
     @Test
     public void testProvenanceBuffer() throws InterruptedException, ClassNotFoundException, SQLException {

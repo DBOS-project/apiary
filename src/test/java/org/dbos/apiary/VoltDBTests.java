@@ -38,12 +38,7 @@ public class VoltDBTests {
 
     @BeforeAll
     public static void testConnection() {
-        try {
-            VoltConnection ctxt = new VoltConnection("localhost", ApiaryConfig.voltdbPort);
-        } catch (Exception e) {
-            logger.info("Failed to connect to VoltDB. Skipping tests.");
-            assumeTrue(false);
-        }
+        assumeTrue(TestUtils.testVoltConnection());
     }
 
     @BeforeEach

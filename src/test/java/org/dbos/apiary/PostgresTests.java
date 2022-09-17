@@ -10,6 +10,7 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -22,11 +23,17 @@ import java.sql.Statement;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class PostgresTests {
     private static final Logger logger = LoggerFactory.getLogger(PostgresTests.class);
 
     private ApiaryWorker apiaryWorker;
+
+    @BeforeAll
+    public static void testConnection() {
+        assumeTrue(TestUtils.testPostgresConnection());
+    }
 
     @BeforeEach
     public void resetTables() {
@@ -44,6 +51,7 @@ public class PostgresTests {
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");
+            assumeTrue(false);
         }
         apiaryWorker = null;
     }
@@ -56,16 +64,10 @@ public class PostgresTests {
     }
 
     @Test
-    public void testFibPostgres() throws InvalidProtocolBufferException {
+    public void testFibPostgres() throws InvalidProtocolBufferException, SQLException {
         logger.info("testFibPostgres");
 
-        PostgresConnection conn;
-        try {
-            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Postgres instance!");
-            return;
-        }
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
@@ -87,16 +89,10 @@ public class PostgresTests {
     }
 
     @Test
-    public void testRetwisPostgres() throws InvalidProtocolBufferException {
+    public void testRetwisPostgres() throws InvalidProtocolBufferException, SQLException {
         logger.info("testRetwisPostgres");
 
-        PostgresConnection conn;
-        try {
-            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Postgres instance!");
-            return;
-        }
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
@@ -138,13 +134,7 @@ public class PostgresTests {
     public void testPostgresProvenance() throws InvalidProtocolBufferException, SQLException, InterruptedException {
         logger.info("testPostgresProvenance");
 
-        PostgresConnection conn;
-        try {
-            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Postgres instance!");
-            return;
-        }
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
@@ -270,13 +260,7 @@ public class PostgresTests {
     public void testPostgresProvenanceJoins() throws InvalidProtocolBufferException, SQLException, InterruptedException {
         logger.info("testPostgresProvenanceJoins");
 
-        PostgresConnection conn;
-        try {
-            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Postgres instance!");
-            return;
-        }
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
@@ -349,13 +333,7 @@ public class PostgresTests {
     public void testPostgresProvenanceMultiRows() throws InvalidProtocolBufferException, SQLException, InterruptedException {
         logger.info("testPostgresProvenanceMultiRows");
 
-        PostgresConnection conn;
-        try {
-            conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-        } catch (Exception e) {
-            logger.info("No Postgres instance!");
-            return;
-        }
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);

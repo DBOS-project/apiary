@@ -120,7 +120,7 @@ public class PostgresTests {
         apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
         apiaryWorker.startServing();
 
-        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+        ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
 
         // Start a thread pool.
         ExecutorService threadPool = Executors.newFixedThreadPool(4);
@@ -138,8 +138,8 @@ public class PostgresTests {
             public Integer call() {
                 int res = -1;
                 try {
-                    res = client.executeFunction("PostgresIsSubscribed", userId, forumId).getInt();
-                } catch (InvalidProtocolBufferException e) {
+                    res = client.get().executeFunction("PostgresIsSubscribed", userId, forumId).getInt();
+                } catch (Exception e) {
                     res = -1;
                 }
                 return res;
@@ -153,8 +153,9 @@ public class PostgresTests {
             List<SubsTask> tasks = new ArrayList<>();
             tasks.add(new SubsTask(i, i+maxTry));
             tasks.add(new SubsTask(i, i+maxTry));
+            logger.info("Invoking all.");
             List<Future<Integer>> futures = threadPool.invokeAll(tasks);
-            logger.info("Invoked all");
+            logger.info("Invoked all.");
             for (Future<Integer> future : futures) {
                 if (!future.isCancelled()) {
                     logger.info("Get future");
@@ -164,13 +165,14 @@ public class PostgresTests {
                 }
             }
             // Check subscriptions.
-            int[] resList = client.executeFunction("PostgresFetchSubscribers", i+maxTry).getIntArray();
+            int[] resList = client.get().executeFunction("PostgresFetchSubscribers", i+maxTry).getIntArray();
             if (resList.length > 1) {
                 logger.info("Found duplications! User: {}, Forum: {}", i, i+maxTry);
                 break;
             }
         }
 
+        threadPool.shutdown();
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 4);
     }

@@ -33,6 +33,8 @@ public class PostgresTests {
     @BeforeAll
     public static void testConnection() {
         assumeTrue(TestUtils.testPostgresConnection());
+        // Set the isolation level to serializable.
+        ApiaryConfig.isolationLevel = ApiaryConfig.SERIALIZABLE;
     }
 
     @BeforeEach

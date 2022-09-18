@@ -56,8 +56,13 @@ public class PostgresConnection implements ApiaryConnection {
                conn.setAutoCommit(false);
                if (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED) {
                    conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+                   logger.info("Postgres isolation level: READ COMMITTED");
                } else if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
                    conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+                   logger.info("Postgres isolation level: REPEATABLE READ");
+               } else if (ApiaryConfig.isolationLevel == ApiaryConfig.SERIALIZABLE) {
+                   conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+                   logger.info("Postgres isolation level: SERIALIZABLE");
                } else {
                    logger.info("Invalid isolation level: {}", ApiaryConfig.isolationLevel);
                }

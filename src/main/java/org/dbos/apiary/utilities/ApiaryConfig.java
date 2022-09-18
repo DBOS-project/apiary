@@ -20,7 +20,7 @@ public class ApiaryConfig {
 
     public static int isolationLevel = REPEATABLE_READ;
 
-    public static final boolean XDBTransactions = true;
+    public static boolean XDBTransactions = true;
     public static final Boolean profile = Boolean.FALSE;
 
     // For system functions.

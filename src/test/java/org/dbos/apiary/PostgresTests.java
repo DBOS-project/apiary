@@ -35,6 +35,9 @@ public class PostgresTests {
         assumeTrue(TestUtils.testPostgresConnection());
         // Set the isolation level to serializable.
         ApiaryConfig.isolationLevel = ApiaryConfig.SERIALIZABLE;
+
+        // Disable XDB transactions.
+        ApiaryConfig.XDBTransactions = false;
     }
 
     @BeforeEach

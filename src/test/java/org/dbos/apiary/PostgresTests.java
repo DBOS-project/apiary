@@ -23,7 +23,10 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -99,6 +102,71 @@ public class PostgresTests {
         int[] resList = client.executeFunction("PostgresFetchSubscribers",555).getIntArray();
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);
+
+        // Check provenance.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 4);
+    }
+
+    @Test
+    public void testForumSubscribeConcurrent() throws SQLException, InvalidProtocolBufferException, InterruptedException, ExecutionException {
+        // Run until duplications happen.
+        logger.info("testForumSubscribeConcurrent");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
+        apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
+        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        // Start a thread pool.
+        ExecutorService threadPool = Executors.newFixedThreadPool(4);
+
+        class SubsTask implements Callable<Integer> {
+            private final int userId;
+            private final int forumId;
+
+            public SubsTask(int userId, int forumId) {
+                this.userId = userId;
+                this.forumId = forumId;
+            }
+
+            @Override
+            public Integer call() {
+                int res = -1;
+                try {
+                    res = client.executeFunction("PostgresIsSubscribed", userId, forumId).getInt();
+                } catch (InvalidProtocolBufferException e) {
+                    res = -1;
+                }
+                return res;
+            }
+        }
+
+        // Try many times until we find duplications.
+        int maxTry = 10000;
+        for (int i = 0; i < maxTry; i++) {
+            // Push two concurrent tasks.
+            List<SubsTask> tasks = new ArrayList<>();
+            tasks.add(new SubsTask(i, i+maxTry));
+            tasks.add(new SubsTask(i, i+maxTry));
+            List<Future<Integer>> futures = threadPool.invokeAll(tasks);
+            for (Future<Integer> future : futures) {
+                if (!future.isCancelled()) {
+                    int res = future.get();
+                    assertTrue(res != -1);
+                }
+            }
+            // Check subscriptions.
+            int[] resList = client.executeFunction("PostgresFetchSubscribers", i+maxTry).getIntArray();
+            if (resList.length > 1) {
+                logger.info("Found duplications! User: {}, Forum: {}", i, i+maxTry);
+                break;
+            }
+        }
 
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 4);

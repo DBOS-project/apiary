@@ -74,7 +74,7 @@ public class PostgresTests {
     }
 
     @Test
-    public void testForumSubscribe() throws SQLException, InvalidProtocolBufferException {
+    public void testForumSubscribe() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         logger.info("testForumSubscribe");
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
@@ -99,6 +99,9 @@ public class PostgresTests {
         int[] resList = client.executeFunction("PostgresFetchSubscribers",555).getIntArray();
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);
+
+        // Check provenance.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 4);
     }
 
     @Test

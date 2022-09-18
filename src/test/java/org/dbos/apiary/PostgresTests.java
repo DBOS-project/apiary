@@ -4,6 +4,9 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.postgres.replay.PostgresFetchSubscribers;
+import org.dbos.apiary.procedures.postgres.replay.PostgresForumSubscribe;
+import org.dbos.apiary.procedures.postgres.replay.PostgresIsSubscribed;
 import org.dbos.apiary.procedures.postgres.retwis.*;
 import org.dbos.apiary.procedures.postgres.tests.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -53,6 +56,8 @@ public class PostgresTests {
             conn.createTable("RetwisPosts", "UserID integer NOT NULL, PostID integer NOT NULL, Timestamp integer NOT NULL, Post varchar(1000) NOT NULL");
             conn.dropTable("RetwisFollowees");
             conn.createTable("RetwisFollowees", "UserID integer NOT NULL, FolloweeID integer NOT NULL");
+            conn.dropTable("ForumSubscription");
+            conn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");
@@ -66,6 +71,34 @@ public class PostgresTests {
         if (apiaryWorker != null) {
             apiaryWorker.shutdown();
         }
+    }
+
+    @Test
+    public void testForumSubscribe() throws SQLException, InvalidProtocolBufferException {
+        logger.info("testForumSubscribe");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
+        apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
+        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresIsSubscribed", 123, 555).getInt();
+        assertEquals(123, res);
+
+        // Subscribe again, should return the same userId.
+        res = client.executeFunction("PostgresIsSubscribed", 123, 555).getInt();
+        assertEquals(123, res);
+
+        // Get a list of subscribers, should only contain one user entry.
+        int[] resList = client.executeFunction("PostgresFetchSubscribers",555).getIntArray();
+        assertEquals(1, resList.length);
+        assertEquals(123, resList[0]);
     }
 
     @Test

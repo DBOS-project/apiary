@@ -104,7 +104,7 @@ public class PostgresTests {
         assertEquals(123, resList[0]);
 
         // Check provenance.
-        Thread.sleep(ProvenanceBuffer.exportInterval * 4);
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 
     @Test
@@ -136,7 +136,7 @@ public class PostgresTests {
 
             @Override
             public Integer call() {
-                int res = -1;
+                int res;
                 try {
                     res = client.get().executeFunction("PostgresIsSubscribed", userId, forumId).getInt();
                 } catch (Exception e) {
@@ -147,20 +147,16 @@ public class PostgresTests {
         }
 
         // Try many times until we find duplications.
-        int maxTry = 10000;
+        int maxTry = 1000;
         for (int i = 0; i < maxTry; i++) {
             // Push two concurrent tasks.
             List<SubsTask> tasks = new ArrayList<>();
             tasks.add(new SubsTask(i, i+maxTry));
             tasks.add(new SubsTask(i, i+maxTry));
-            logger.info("Invoking all.");
             List<Future<Integer>> futures = threadPool.invokeAll(tasks);
-            logger.info("Invoked all.");
             for (Future<Integer> future : futures) {
                 if (!future.isCancelled()) {
-                    logger.info("Get future");
                     int res = future.get();
-                    logger.info("Future result: {}", res);
                     assertTrue(res != -1);
                 }
             }
@@ -174,7 +170,7 @@ public class PostgresTests {
 
         threadPool.shutdown();
         // Check provenance.
-        Thread.sleep(ProvenanceBuffer.exportInterval * 4);
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 
     @Test

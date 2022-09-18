@@ -154,9 +154,12 @@ public class PostgresTests {
             tasks.add(new SubsTask(i, i+maxTry));
             tasks.add(new SubsTask(i, i+maxTry));
             List<Future<Integer>> futures = threadPool.invokeAll(tasks);
+            logger.info("Invoked all");
             for (Future<Integer> future : futures) {
                 if (!future.isCancelled()) {
+                    logger.info("Get future");
                     int res = future.get();
+                    logger.info("Future result: {}", res);
                     assertTrue(res != -1);
                 }
             }

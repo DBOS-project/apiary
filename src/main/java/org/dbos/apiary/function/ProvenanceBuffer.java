@@ -153,10 +153,10 @@ public class ProvenanceBuffer {
             Map<Integer, Integer> colTypeMap = getColTypeMap(table);
             if ((colTypeMap == null) || colTypeMap.isEmpty()) {
                 // Do not capture provenance.
-                tableBufferMap.put(table, new TableBuffer(null, null));
+                tableBufferMap.putIfAbsent(table, new TableBuffer(null, null));
             } else {
                 String preparedQuery = getPreparedQuery(table, colTypeMap.size());
-                tableBufferMap.put(table, new TableBuffer(preparedQuery, colTypeMap));
+                tableBufferMap.putIfAbsent(table, new TableBuffer(preparedQuery, colTypeMap));
             }
         }
         if (tableBufferMap.get(table).preparedQuery != null) {

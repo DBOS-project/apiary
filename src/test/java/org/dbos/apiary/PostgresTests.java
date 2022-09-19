@@ -424,8 +424,8 @@ public class PostgresTests {
 
         // Should be an insert for key=1.
         resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
-        resKey = rs.getInt("KVKey");
-        resValue = rs.getInt("KVValue");
+        resKey = rs.getInt("KVKeyTwo");
+        resValue = rs.getInt("KVValueTwo");
         assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
         assertEquals(1, resKey);
         assertEquals(3, resValue);
@@ -433,8 +433,8 @@ public class PostgresTests {
         // Should be a read.
         rs.next();
         resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
-        resKey = rs.getInt("KVKey");
-        resValue = rs.getInt("KVValue");
+        resKey = rs.getInt("KVKeyTwo");
+        resValue = rs.getInt("KVValueTwo");
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(3, resValue);
     }

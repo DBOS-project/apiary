@@ -23,16 +23,16 @@ public class ProvenanceTests {
     public static void testConnection() {
         ProvenanceBuffer buf;
         try {
-            buf = new ProvenanceBuffer(ApiaryConfig.vertica, "localhost");
+            buf = new ProvenanceBuffer(ApiaryConfig.postgres, "localhost");
             if (buf.conn.get() == null) {
-                logger.info("Provenance buffer (Vertica) not available.");
+                logger.info("Provenance buffer (Postgres) not available.");
                 assumeTrue(false);
             }
         } catch (Exception e) {
-            logger.info("Provenance buffer (Vertica) not available.");
+            logger.info("Provenance buffer (Postgres) not available.");
             assumeTrue(false);
         } catch (NoClassDefFoundError e) {
-            logger.info("Provenance buffer (Vertica) not available.");
+            logger.info("Provenance buffer (Postgres) not available.");
             assumeTrue(false);
         }
     }
@@ -40,12 +40,8 @@ public class ProvenanceTests {
     @Test
     public void testProvenanceBuffer() throws InterruptedException, ClassNotFoundException, SQLException {
         logger.info("testProvenanceBuffer");
-        ProvenanceBuffer buf = new ProvenanceBuffer(ApiaryConfig.vertica, "localhost");
-        if (buf.conn.get() == null) {
-            logger.info("Provenance buffer (Vertica) not available.");
-            return;
-        }
-        String table = "FUNCINVOCATIONS";
+        ProvenanceBuffer buf = new ProvenanceBuffer(ApiaryConfig.postgres, "localhost");
+        String table = ProvenanceBuffer.PROV_FuncInvocations;
 
         // Wait until previous exporter finished.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
@@ -67,14 +63,14 @@ public class ProvenanceTests {
         buf.addEntry(table, txid2, timestamp2, executionID2, service /*don't provide function name, test padding*/);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TRANSACTION_ID;", table));
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
         int cnt = 0;
         while (rs.next()) {
-            long resTxid = rs.getLong(1);
-            long resTimestamp = rs.getLong(2);
-            long resExecId = rs.getLong(3);
-            String resService = rs.getString(4);
-            String resFuncName = rs.getString(5);
+            long resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            long resTimestamp = rs.getLong(ProvenanceBuffer.PROV_APIARY_TIMESTAMP);
+            long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+            String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
+            String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
             if (cnt == 0) {
                 assertEquals(txid, resTxid);
                 assertEquals(timestamp, resTimestamp);

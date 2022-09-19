@@ -124,12 +124,13 @@ public class PostgresContext extends ApiaryContext {
             int numCol = rsmd.getColumnCount();
             // Record provenance data.
             while (rs.next()) {
-                Object[] rowData = new Object[numCol+3];
+                Object[] rowData = new Object[numCol+4];
                 rowData[0] = txc.txID;
                 rowData[1] = timestamp;
                 rowData[2] = exportOperation;
+                rowData[3] = pstmt.toString();
                 for (int i = 1; i <= numCol; i++) {
-                    rowData[i+2] = rs.getObject(i);
+                    rowData[i+3] = rs.getObject(i);
                 }
                 workerContext.provBuff.addEntry(tableName + "Events", rowData);
             }
@@ -159,17 +160,18 @@ public class PostgresContext extends ApiaryContext {
                     String tableName = rs.getMetaData().getTableName(colNum);
                     Map<String, Integer> schemaMap = getSchemaMap(tableName);
                     if (!tableToRowData.containsKey(tableName)) {
-                        Object[] rowData = new Object[3 + schemaMap.size()];
+                        Object[] rowData = new Object[4 + schemaMap.size()];
                         rowData[0] = txc.txID;
                         rowData[1] = timestamp;
                         rowData[2] = Utilities.getQueryType(procedure);
+                        rowData[3] = pstmt.toString();
                         tableToRowData.put(tableName, rowData);
                     }
                     Object[] rowData = tableToRowData.get(tableName);
                     String columnName = rs.getMetaData().getColumnName(colNum);
                     if (schemaMap.containsKey(columnName)) {
                         int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
-                        rowData[3 + index] = rs.getObject(colNum);
+                        rowData[4 + index] = rs.getObject(colNum);
                     }
                 }
                 for (String tableName : tableToRowData.keySet()) {

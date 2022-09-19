@@ -21,6 +21,17 @@ public class ProvenanceBuffer {
     public static final String padding = "0";
     public static final int exportInterval = 1000;
 
+    // Constant variables.
+    public static final String PROV_FuncInvocations = "FuncInvocations";
+    public static final String PROV_ApiaryMetadata = "ApiaryMetadata";
+    public static final String PROV_APIARY_TRANSACTION_ID = "APIARY_TRANSACTION_ID";
+    public static final String PROV_APIARY_TIMESTAMP = "APIARY_TIMESTAMP";
+    public static final String PROV_EXECUTIONID = "EXECUTIONID";
+    public static final String PROV_SERVICE = "SERVICE";
+    public static final String PROV_PROCEDURENAME = "PROCEDURENAME";
+    public static final String PROV_APIARY_OPERATION_TYPE = "APIARY_OPERATION_TYPE";
+    public static final String PROV_QUERY_STRING = "QUERY_STRING";
+
     /**
      * Enum class for provenance operations.
      */
@@ -153,10 +164,10 @@ public class ProvenanceBuffer {
             Map<Integer, Integer> colTypeMap = getColTypeMap(table);
             if ((colTypeMap == null) || colTypeMap.isEmpty()) {
                 // Do not capture provenance.
-                tableBufferMap.put(table, new TableBuffer(null, null));
+                tableBufferMap.putIfAbsent(table, new TableBuffer(null, null));
             } else {
                 String preparedQuery = getPreparedQuery(table, colTypeMap.size());
-                tableBufferMap.put(table, new TableBuffer(preparedQuery, colTypeMap));
+                tableBufferMap.putIfAbsent(table, new TableBuffer(preparedQuery, colTypeMap));
             }
         }
         if (tableBufferMap.get(table).preparedQuery != null) {

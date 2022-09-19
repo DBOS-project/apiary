@@ -14,11 +14,29 @@ public class ApiaryConfig {
     public static final String provenanceDefaultAddress = "localhost";
 
     public static final int READ_COMMITTED = 0;
-    public static final int REPEATABLE_READ = 1; // Snapshot isolation.
+    public static final int REPEATABLE_READ = 1;
+
+    public static final int SERIALIZABLE = 2;
+
+    public enum IsolationLevel {
+        READ_COMMITTED(0),
+        REPEATABLE_READ(1), // Snapshot isolation.
+        SERIALIZABLE(2); // Serializable Snapshot Isolation (SSI).
+
+        private int value;
+
+        IsolationLevel(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return this.value;
+        }
+    }
 
     public static int isolationLevel = REPEATABLE_READ;
 
-    public static final boolean XDBTransactions = true;
+    public static boolean XDBTransactions = true;
     public static final Boolean profile = Boolean.FALSE;
 
     // For system functions.

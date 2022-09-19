@@ -120,9 +120,10 @@ public class PostgresConnection implements ApiaryConnection {
             ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
             ResultSetMetaData rsmd = r.getMetaData();
             StringBuilder provTable = new StringBuilder(String.format(
-                    "CREATE TABLE IF NOT EXISTS %sEvents (%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL",
+                    "CREATE TABLE IF NOT EXISTS %sEvents (%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL, %s VARCHAR(2048) NOT NULL",
                     tableName, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
-                    ProvenanceBuffer.PROV_APIARY_TIMESTAMP, ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE));
+                    ProvenanceBuffer.PROV_APIARY_TIMESTAMP, ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE,
+                    ProvenanceBuffer.PROV_QUERY_STRING));
             for (int i = 0; i < rsmd.getColumnCount(); i++) {
                 provTable.append(",");
                 provTable.append(rsmd.getColumnLabel(i + 1));

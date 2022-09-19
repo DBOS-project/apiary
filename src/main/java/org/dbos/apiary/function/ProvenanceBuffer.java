@@ -216,7 +216,7 @@ public class ProvenanceBuffer {
             }
             // Pad the rest with zeros.
             for (int j = numVals; j < numColumns; j++) {
-                setColumn(pstmt, j+1, Types.VARCHAR, padding);
+                setColumn(pstmt, j+1, Types.NULL, padding);
             }
             pstmt.addBatch();
             rowCnt++;

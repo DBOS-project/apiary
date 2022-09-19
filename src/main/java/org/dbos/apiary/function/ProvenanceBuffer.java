@@ -214,9 +214,13 @@ public class ProvenanceBuffer {
                 // Column index starts with 1.
                 setColumn(pstmt, j+1, tableBuffer.colTypeMap.get(j+1), listVals[j]);
             }
-            // Pad the rest with zeros.
+            // Pad the rest with zeros if it's Vertica, because it doesn't support NULL very well.
             for (int j = numVals; j < numColumns; j++) {
-                setColumn(pstmt, j+1, Types.NULL, padding);
+                if (databaseName.equals(ApiaryConfig.vertica)) {
+                    setColumn(pstmt, j + 1, Types.VARCHAR, padding);
+                } else {
+                    setColumn(pstmt, j + 1, Types.NULL, null);
+                }
             }
             pstmt.addBatch();
             rowCnt++;

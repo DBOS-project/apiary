@@ -274,21 +274,21 @@ public class PostgresTests {
 
         // Check provenance tables.
         // Check function invocation table.
-        String table = "FUNCINVOCATIONS";
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP DESC;", table));
+        String table = ProvenanceBuffer.PROV_FuncInvocations;
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s DESC;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
         rs.next();
-        long txid1 = rs.getLong(1);
-        long resExecId = rs.getLong(3);
-        String resService = rs.getString(4);
-        String resFuncName = rs.getString(5);
+        long txid1 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
+        String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertEquals("DefaultService", resService);
         assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
 
         rs.next();
-        long txid2 = rs.getLong(1);
-        resExecId = rs.getLong(3);
-        resService = rs.getString(4);
-        resFuncName = rs.getString(5);
+        long txid2 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
+        resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertEquals("DefaultService", resService);
         assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
 
@@ -297,14 +297,14 @@ public class PostgresTests {
 
         // Check KVTable.
         table = "KVTableEvents";
-        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP;", table));
+        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
         rs.next();
 
         // Should be an insert for key=1.
-        long resTxid = rs.getLong(1);
-        int resExportOp = rs.getInt(3);
-        int resKey = rs.getInt(4);
-        int resValue = rs.getInt(5);
+        long resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        int resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        int resKey = rs.getInt("KVKey");
+        int resValue = rs.getInt("KVValue");
         assertEquals(txid2, resTxid);
         assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
         assertEquals(1, resKey);
@@ -312,55 +312,55 @@ public class PostgresTests {
 
         // Should be an insert for the key value.
         rs.next();
-        resTxid = rs.getLong(1);
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         assertEquals(txid1, resTxid);
-        resExportOp = rs.getInt(3);
-        resKey = rs.getInt(4);
-        resValue = rs.getInt(5);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(value, resValue);
 
         // Should be a read.
         rs.next();
-        resTxid = rs.getLong(1);
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         assertEquals(txid1, resTxid);
-        resExportOp = rs.getInt(3);
-        resKey = rs.getInt(4);
-        resValue = rs.getInt(5);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(100, resValue);
 
         // Should be an update.
         rs.next();
-        resTxid = rs.getLong(1);
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         assertEquals(txid1, resTxid);
-        resExportOp = rs.getInt(3);
-        resKey = rs.getInt(4);
-        resValue = rs.getInt(5);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.UPDATE.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(value+1, resValue);
 
         // Should be a read again.
         rs.next();
-        resTxid = rs.getLong(1);
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         assertEquals(txid1, resTxid);
-        resExportOp = rs.getInt(3);
-        resKey = rs.getInt(4);
-        resValue = rs.getInt(5);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(101, resValue);
 
         // Should be a delete.
         rs.next();
-        resTxid = rs.getLong(1);
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         assertEquals(txid1, resTxid);
-        resExportOp = rs.getInt(3);
-        resKey = rs.getInt(4);
-        resValue = rs.getInt(5);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.DELETE.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(value+1, resValue);
@@ -398,43 +398,43 @@ public class PostgresTests {
 
         // Check KVTable.
         String table = "KVTableEvents";
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP;", table));
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
         rs.next();
 
         // Should be an insert for key=1.
-        int resExportOp = rs.getInt(3);
-        int resKey = rs.getInt(4);
-        int resValue = rs.getInt(5);
+        int resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        int resKey = rs.getInt("KVKey");
+        int resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
         assertEquals(1, resKey);
         assertEquals(2, resValue);
 
         // Should be a read.
         rs.next();
-        resExportOp = rs.getInt(3);
-        resKey = rs.getInt(4);
-        resValue = rs.getInt(5);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(2, resValue);
 
         // Check KVTable.
         table = "KVTableTwoEvents";
-        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP;", table));
+        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
         rs.next();
 
         // Should be an insert for key=1.
-        resExportOp = rs.getInt(3);
-        resKey = rs.getInt(4);
-        resValue = rs.getInt(5);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
         assertEquals(1, resKey);
         assertEquals(3, resValue);
 
         // Should be a read.
         rs.next();
-        resExportOp = rs.getInt(3);
-        resKey = rs.getInt(4);
-        resValue = rs.getInt(5);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(3, resValue);
     }
@@ -475,25 +475,25 @@ public class PostgresTests {
         // Check provenance tables.
         // Check function invocation table.
         String table = "FUNCINVOCATIONS";
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP DESC;", table));
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s DESC;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
         rs.next();
-        long txid1 = rs.getLong(1);
-        long resExecId = rs.getLong(3);
-        String resService = rs.getString(4);
-        String resFuncName = rs.getString(5);
+        long txid1 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
+        String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertEquals("DefaultService", resService);
         assertEquals(PostgresProvenanceMultiRows.class.getName(), resFuncName);
 
         // Check KVTable.
         table = "KVTableEvents";
-        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY APIARY_TIMESTAMP, KVKEY;", table));
+        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s, KVKEY;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
         rs.next();
 
         // Should be an insert for key1.
-        long resTxid = rs.getLong(1);
-        int resExportOp = rs.getInt(3);
-        int resKey = rs.getInt(4);
-        int resValue = rs.getInt(5);
+        long resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        int resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        int resKey = rs.getInt("KVKey");
+        int resValue = rs.getInt("KVValue");
         assertEquals(txid1, resTxid);
         assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
         assertEquals(key1, resKey);
@@ -501,33 +501,33 @@ public class PostgresTests {
 
         // Should be an insert for the key2.
         rs.next();
-        resTxid = rs.getLong(1);
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         assertEquals(txid1, resTxid);
-        resExportOp = rs.getInt(3);
-        resKey = rs.getInt(4);
-        resValue = rs.getInt(5);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
         assertEquals(key2, resKey);
         assertEquals(value2, resValue);
 
         // Should be a read for key1.
         rs.next();
-        resTxid = rs.getLong(1);
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         assertEquals(txid1, resTxid);
-        resExportOp = rs.getInt(3);
-        resKey = rs.getInt(4);
-        resValue = rs.getInt(5);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key1, resKey);
         assertEquals(value1, resValue);
 
         // Should be a read again for key2.
         rs.next();
-        resTxid = rs.getLong(1);
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         assertEquals(txid1, resTxid);
-        resExportOp = rs.getInt(3);
-        resKey = rs.getInt(4);
-        resValue = rs.getInt(5);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key2, resKey);
         assertEquals(value2, resValue);

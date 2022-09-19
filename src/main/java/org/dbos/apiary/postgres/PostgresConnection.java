@@ -2,6 +2,7 @@ package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -79,9 +80,16 @@ public class PostgresConnection implements ApiaryConnection {
             logger.info("Failed to connect to Postgres");
             throw new RuntimeException("Failed to connect to Postgres");
         }
-        createTable("RecordedOutputs", "ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID)");
-        createTable("FuncInvocations", "APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_TIMESTAMP BIGINT NOT NULL, EXECUTIONID BIGINT NOT NULL, SERVICE VARCHAR(1024) NOT NULL, PROCEDURENAME VARCHAR(1024) NOT NULL");
-        createTable("ApiaryMetadata", "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
+        createTable(ProvenanceBuffer.PROV_FuncInvocations,
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
+                + ProvenanceBuffer.PROV_APIARY_TIMESTAMP + " BIGINT NOT NULL, "
+                + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
+                + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(1024) NOT NULL, "
+                + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(1024) NOT NULL");
+        createTable(ProvenanceBuffer.PROV_ApiaryMetadata,
+                "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
+        // TODO: add back recorded outputs later for fault tolerance.
+        // createTable("RecordedOutputs", "ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID)");
     }
 
     /**
@@ -111,7 +119,10 @@ public class PostgresConnection implements ApiaryConnection {
         if (!specStr.contains("APIARY_TRANSACTION_ID")) {
             ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
             ResultSetMetaData rsmd = r.getMetaData();
-            StringBuilder provTable = new StringBuilder(String.format("CREATE TABLE IF NOT EXISTS %sEvents (APIARY_TRANSACTION_ID BIGINT NOT NULL, APIARY_TIMESTAMP BIGINT NOT NULL, APIARY_OPERATION_TYPE BIGINT NOT NULL", tableName));
+            StringBuilder provTable = new StringBuilder(String.format(
+                    "CREATE TABLE IF NOT EXISTS %sEvents (%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL",
+                    tableName, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
+                    ProvenanceBuffer.PROV_APIARY_TIMESTAMP, ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE));
             for (int i = 0; i < rsmd.getColumnCount(); i++) {
                 provTable.append(",");
                 provTable.append(rsmd.getColumnLabel(i + 1));

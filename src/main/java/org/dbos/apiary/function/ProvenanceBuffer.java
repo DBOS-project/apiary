@@ -21,6 +21,16 @@ public class ProvenanceBuffer {
     public static final String padding = "0";
     public static final int exportInterval = 1000;
 
+    // Constant variables.
+    public static final String PROV_FuncInvocations = "FuncInvocations";
+    public static final String PROV_ApiaryMetadata = "ApiaryMetadata";
+    public static final String PROV_APIARY_TRANSACTION_ID = "APIARY_TRANSACTION_ID";
+    public static final String PROV_APIARY_TIMESTAMP = "APIARY_TIMESTAMP";
+    public static final String PROV_EXECUTIONID = "EXECUTIONID";
+    public static final String PROV_SERVICE = "SERVICE";
+    public static final String PROV_PROCEDURENAME = "PROCEDURENAME";
+    public static final String PROV_APIARY_OPERATION_TYPE = "APIARY_OPERATION_TYPE";
+
     /**
      * Enum class for provenance operations.
      */

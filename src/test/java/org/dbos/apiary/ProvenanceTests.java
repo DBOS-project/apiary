@@ -63,7 +63,7 @@ public class ProvenanceTests {
         buf.addEntry(table, txid2, timestamp2, executionID2, service /*don't provide function name, test padding*/);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
         int cnt = 0;
         while (rs.next()) {
             long resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);

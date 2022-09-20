@@ -185,7 +185,7 @@ public class PostgresContext extends ApiaryContext {
                 }
                 tableToRowData.clear();
             } else {
-                while (rs.next()) {
+                do {
                     for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
                         String tableName = rs.getMetaData().getTableName(colNum);
                         Map<String, Integer> schemaMap = getSchemaMap(tableName);
@@ -208,7 +208,7 @@ public class PostgresContext extends ApiaryContext {
                         workerContext.provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
                     }
                     tableToRowData.clear();
-                }
+                } while (rs.next());
             }
             rs.beforeFirst();
         }

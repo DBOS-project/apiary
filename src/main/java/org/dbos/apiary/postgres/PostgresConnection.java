@@ -56,9 +56,7 @@ public class PostgresConnection implements ApiaryConnection {
            try {
                Connection conn = ds.getConnection();
                conn.setAutoCommit(false);
-               if (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED) {
-                   conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
-               } else if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
+               if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
                    conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
                } else if (ApiaryConfig.isolationLevel == ApiaryConfig.SERIALIZABLE) {
                    conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);

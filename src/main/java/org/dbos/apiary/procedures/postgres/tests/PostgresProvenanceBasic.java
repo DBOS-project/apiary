@@ -14,6 +14,9 @@ public class PostgresProvenanceBasic extends PostgresFunction {
 
     public static int runFunction(PostgresContext ctxt, int key, int baseValue) throws Exception {
         if (key == 1) {
+            // The first query should return null.
+            ResultSet r = ctxt.executeQuery(getValue, key);
+            assert (!r.next());
             ctxt.executeUpdate(addEntry, key, baseValue);
             return baseValue+1;
         } else {

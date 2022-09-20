@@ -1,8 +1,10 @@
 package org.dbos.apiary;
 
 import org.dbos.apiary.function.ProvenanceBuffer;
+import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +38,19 @@ public class ProvenanceTests {
         }
     }
 
+    @BeforeEach
+    public void resetTables() {
+        try {
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            conn.dropTable("FuncInvocations");
+            conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.info("Failed to connect to Postgres.");
+            assumeTrue(false);
+        }
+    }
+
     @Test
     public void testProvenanceBuffer() throws InterruptedException, ClassNotFoundException, SQLException {
         logger.info("testProvenanceBuffer");
@@ -46,7 +61,6 @@ public class ProvenanceTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
         Connection conn = buf.conn.get();
         Statement stmt = conn.createStatement();
-        stmt.execute(String.format("TRUNCATE TABLE %s;", table));
 
         // Add something to function invocation log table.
         long txid = 1234l;

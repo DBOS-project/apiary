@@ -12,8 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class ProvenanceTests {
@@ -55,12 +54,12 @@ public class ProvenanceTests {
         long executionID = 456l;
         String service = "testService";
         String funcName = "testFunction";
-        buf.addEntry(table, txid, timestamp, executionID, service, funcName);
+        buf.addEntry(table, txid, timestamp, executionID, 0, service, funcName);
 
         long txid2 = 2222l;
         long timestamp2 = 456789l;
         long executionID2 = 789l;
-        buf.addEntry(table, txid2, timestamp2, executionID2, service, funcName);
+        buf.addEntry(table, txid2, timestamp2, executionID2, 1, service, funcName);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
@@ -71,16 +70,19 @@ public class ProvenanceTests {
             long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
             String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
             String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
+            int isreplayed = rs.getShort(ProvenanceBuffer.PROV_ISREPLAY);
             if (cnt == 0) {
                 assertEquals(txid, resTxid);
                 assertEquals(timestamp, resTimestamp);
                 assertEquals(executionID, resExecId);
                 assertTrue(funcName.equals(resFuncName));
+                assertEquals(0, isreplayed);
             } else {
                 assertEquals(txid2, resTxid);
                 assertEquals(timestamp2, resTimestamp);
                 assertEquals(executionID2, resExecId);
                 assertTrue(funcName.equals(resFuncName));
+                assertEquals(1, isreplayed);
             }
             assertTrue(service.equals(resService));
 

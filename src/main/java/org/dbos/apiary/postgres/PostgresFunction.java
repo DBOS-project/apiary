@@ -15,12 +15,14 @@ public class PostgresFunction implements ApiaryFunction {
 
     @Override
     public void recordInvocation(ApiaryContext ctxt, String funcName) {
+        // TODO: add replay flag.
+        short isreplay = 0;
         if (ctxt.workerContext.provBuff == null) {
             // If no OLAP DB available.
             return;
         }
         long timestamp = Utilities.getMicroTimestamp();
         long txid = ((PostgresContext) ctxt).txc.txID;
-        ctxt.workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txid, timestamp, ctxt.execID, ctxt.service, funcName);
+        ctxt.workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txid, timestamp, ctxt.execID, isreplay, ctxt.service, funcName);
     }
 }

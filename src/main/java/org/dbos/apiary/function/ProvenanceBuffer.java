@@ -29,6 +29,7 @@ public class ProvenanceBuffer {
     public static final String PROV_EXECUTIONID = "EXECUTIONID";
     public static final String PROV_SERVICE = "SERVICE";
     public static final String PROV_PROCEDURENAME = "PROCEDURENAME";
+    public static final String PROV_ISREPLAY = "ISREPLAY";
     public static final String PROV_APIARY_OPERATION_TYPE = "APIARY_OPERATION_TYPE";
     public static final String PROV_QUERY_STRING = "QUERY_STRING";
     public static final String PROV_QUERY_SEQNUM = "QUERY_SEQNUM";

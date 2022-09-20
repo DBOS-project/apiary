@@ -60,7 +60,7 @@ public class ProvenanceTests {
         long txid2 = 2222l;
         long timestamp2 = 456789l;
         long executionID2 = 789l;
-        buf.addEntry(table, txid2, timestamp2, executionID2, service /*don't provide function name, test padding*/);
+        buf.addEntry(table, txid2, timestamp2, executionID2, service, funcName);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
@@ -80,7 +80,7 @@ public class ProvenanceTests {
                 assertEquals(txid2, resTxid);
                 assertEquals(timestamp2, resTimestamp);
                 assertEquals(executionID2, resExecId);
-                assertTrue(resFuncName.equals("0"));
+                assertTrue(funcName.equals(resFuncName));
             }
             assertTrue(service.equals(resService));
 

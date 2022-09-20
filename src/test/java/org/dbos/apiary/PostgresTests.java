@@ -117,7 +117,7 @@ public class PostgresTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         String table = ProvenanceBuffer.PROV_FuncInvocations;
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s DESC;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s ASC;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
         rs.next();
         long txid1 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);

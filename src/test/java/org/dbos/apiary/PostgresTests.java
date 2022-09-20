@@ -298,14 +298,32 @@ public class PostgresTests {
 
         // Check KVTable.
         table = "KVTableEvents";
+        int expectedSeqNum = 0;
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
         rs.next();
 
-        // Should be an insert for key=1.
+        // Should be a lookup for key=1. But with NULL data.
         long resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         int resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
         int resKey = rs.getInt("KVKey");
+        assertTrue(rs.wasNull());
         int resValue = rs.getInt("KVValue");
+        assertTrue(rs.wasNull());
+        int resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
+        assertEquals(txid2, resTxid);
+        assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
+
+        rs.next();
+        // Should be an insert for key=1.
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        resKey = rs.getInt("KVKey");
+        resValue = rs.getInt("KVValue");
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
         assertEquals(txid2, resTxid);
         assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
         assertEquals(1, resKey);
@@ -318,6 +336,9 @@ public class PostgresTests {
         resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
         resKey = rs.getInt("KVKey");
         resValue = rs.getInt("KVValue");
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
         assertEquals(ProvenanceBuffer.ExportOperation.INSERT.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(value, resValue);
@@ -329,6 +350,9 @@ public class PostgresTests {
         resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
         resKey = rs.getInt("KVKey");
         resValue = rs.getInt("KVValue");
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(100, resValue);
@@ -340,6 +364,9 @@ public class PostgresTests {
         resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
         resKey = rs.getInt("KVKey");
         resValue = rs.getInt("KVValue");
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
         assertEquals(ProvenanceBuffer.ExportOperation.UPDATE.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(value+1, resValue);
@@ -351,6 +378,9 @@ public class PostgresTests {
         resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
         resKey = rs.getInt("KVKey");
         resValue = rs.getInt("KVValue");
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
         assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(101, resValue);
@@ -362,6 +392,8 @@ public class PostgresTests {
         resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
         resKey = rs.getInt("KVKey");
         resValue = rs.getInt("KVValue");
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        assertEquals(expectedSeqNum, resSeqNum);
         assertEquals(ProvenanceBuffer.ExportOperation.DELETE.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(value+1, resValue);

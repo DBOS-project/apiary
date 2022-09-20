@@ -81,7 +81,7 @@ public class ApiaryWorkerClient {
     }
 
     /**
-     * Replay a function synchronously and block waiting for the result.
+     * Replay a function synchronously and block waiting for the result. The replay will not generate new provenance data.
      * @param execId    the original execution ID of the invoked function.
      * @param name      the name of the invoked function.
      * @param arguments the original arguments of the invoked function.

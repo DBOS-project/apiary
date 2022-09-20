@@ -89,6 +89,15 @@ public class PostgresTests {
         apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
         apiaryWorker.startServing();
 
+        ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
+        assert(provBuff != null);
+        Connection provConn = provBuff.conn.get();
+        Statement stmt = provConn.createStatement();
+        String[] tables = {ProvenanceBuffer.PROV_FuncInvocations, "forumsubscriptionevents"};
+        for (String table : tables) {
+            stmt.execute(String.format("TRUNCATE TABLE %s;", table));
+        }
+
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int res;
@@ -104,13 +113,25 @@ public class PostgresTests {
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);
 
-        // Check provenance.
+        // Check provenance and get executionID.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
+        String table = ProvenanceBuffer.PROV_FuncInvocations;
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s DESC;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
+        rs.next();
+        long txid1 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
+        assertTrue(resExecId >= 0);
+        assertEquals(PostgresIsSubscribed.class.getName(), resFuncName);
+
         // Replay the execution of the first one.
-        // TODO: add more replay features. Find a better way to get execution ID.
-        res = client.replayFunction(((long)client.getClientID() << 48),"PostgresIsSubscribed", 123, 555).getInt();
+        // TODO: add more replay features.
+        res = client.replayFunction(resExecId,"PostgresIsSubscribed", 123, 555).getInt();
         assertEquals(123, res);
+
+        // Check provenance.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 
     @Test

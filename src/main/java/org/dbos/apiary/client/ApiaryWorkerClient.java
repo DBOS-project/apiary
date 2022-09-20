@@ -81,6 +81,18 @@ public class ApiaryWorkerClient {
     }
 
     /**
+     * Replay a function synchronously and block waiting for the result.
+     * @param execId    the original execution ID of the invoked function.
+     * @param name      the name of the invoked function.
+     * @param arguments the original arguments of the invoked function.
+     * @return          the output of the invoked function, which should be identical to the original one.
+     * @throws InvalidProtocolBufferException
+     */
+    public FunctionOutput replayFunction(long execId, String name, Object... arguments) throws InvalidProtocolBufferException {
+        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, arguments);
+    }
+
+    /**
      * Get the globally unique clientID of this current client.
      * @return  the unique ID of this client.
      */

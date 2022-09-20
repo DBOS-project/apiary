@@ -106,6 +106,11 @@ public class PostgresTests {
 
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
+        // Replay the execution of the first one.
+        // TODO: add more replay features. Find a better way to get execution ID.
+        res = client.replayFunction(((long)client.getClientID() << 48),"PostgresIsSubscribed", 123, 555).getInt();
+        assertEquals(123, res);
     }
 
     @Test

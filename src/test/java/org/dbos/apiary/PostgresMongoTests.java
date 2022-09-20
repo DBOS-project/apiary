@@ -309,66 +309,6 @@ public class PostgresMongoTests {
     }
 
     @Test
-    public void testMongoConcurrentUpdatesRC() throws InterruptedException, InvalidProtocolBufferException, SQLException {
-        logger.info("testMongoConcurrentUpdatesRC");
-
-        ApiaryConfig.isolationLevel = ApiaryConfig.READ_COMMITTED;
-        MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-
-        int numThreads = 10;
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numThreads);
-        apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
-        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
-        apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
-        apiaryWorker.registerFunction("PostgresReplacePerson", ApiaryConfig.postgres, PostgresReplacePerson::new);
-        apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
-        apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
-        apiaryWorker.registerFunction("MongoReplacePerson", ApiaryConfig.mongo, MongoReplacePerson::new);
-        apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
-        apiaryWorker.startServing();
-
-        long start = System.currentTimeMillis();
-        long testDurationMs = 5000L;
-        int maxTag = 10;
-        AtomicInteger count = new AtomicInteger(0);
-        AtomicBoolean success = new AtomicBoolean(true);
-        ApiaryWorkerClient c = new ApiaryWorkerClient("localhost");
-        for (int i = 0; i < maxTag; i++) {
-            c.executeFunction("PostgresAddPerson", "matei" + i, i).getInt();
-        }
-        Runnable r = () -> {
-            try {
-                ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
-                while (System.currentTimeMillis() < start + testDurationMs) {
-                    int localTag = ThreadLocalRandom.current().nextInt(maxTag);
-                    int localCount = count.getAndIncrement();
-                    client.executeFunction("PostgresReplacePerson", "matei" + localTag, localCount).getInt();
-                    String search = "matei" + localTag;
-                    int res = client.executeFunction("PostgresFindPerson", search).getInt();
-                    if (res == -1) {
-                        success.set(false);
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                success.set(false);
-            }
-        };
-
-        List<Thread> threads = new ArrayList<>();
-        for (int threadNum = 0; threadNum < numThreads; threadNum++) {
-            Thread t = new Thread(r);
-            threads.add(t);
-            t.start();
-        }
-        for (Thread t: threads) {
-            t.join();
-        }
-        assertTrue(success.get());
-    }
-
-    @Test
     public void testMongoHotel() throws InvalidProtocolBufferException, SQLException {
         logger.info("testMongoHotel");
 

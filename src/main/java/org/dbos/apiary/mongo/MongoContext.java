@@ -67,12 +67,7 @@ public class MongoContext extends ApiaryContext {
         }
         document.append(apiaryID, id);
         document.append(beginVersion, txc.txID);
-        if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-            document.append(endVersion, Long.MAX_VALUE);
-        } else {
-            assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
-            document.append(committed, false);
-        }
+        document.append(endVersion, Long.MAX_VALUE);
         MongoCollection<Document> c = database.getCollection(collectionName);
         boolean exists = c.find(Filters.eq(MongoContext.apiaryID, id)).first() != null;
         if (!exists) {
@@ -99,12 +94,7 @@ public class MongoContext extends ApiaryContext {
         }
         document.append(apiaryID, id);
         document.append(beginVersion, txc.txID);
-        if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-            document.append(endVersion, Long.MAX_VALUE);
-        } else {
-            assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
-            document.append(committed, false);
-        }
+        document.append(endVersion, Long.MAX_VALUE);
         MongoCollection<Document> c = database.getCollection(collectionName);
         c.insertOne(document);
         c.updateOne(Filters.and(
@@ -132,12 +122,7 @@ public class MongoContext extends ApiaryContext {
             Document d = documents.get(i);
             d.append(apiaryID, ids.get(i));
             d.append(beginVersion, txc.txID);
-            if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-                d.append(endVersion, Long.MAX_VALUE);
-            } else {
-                assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
-                d.append(committed, true); // Speed up bulk-loading in benchmarks.
-            }
+            d.append(endVersion, Long.MAX_VALUE);
         }
         MongoCollection<Document> collection = database.getCollection(collectionName);
         collection.bulkWrite(documents.stream().map(InsertOneModel::new).collect(Collectors.toList()), new BulkWriteOptions().ordered(false));
@@ -149,38 +134,30 @@ public class MongoContext extends ApiaryContext {
             return database.getCollection(collectionName).find(filter);
         }
         Bson query;
-        if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-            List<Bson> beginVersionFilter = new ArrayList<>();
-            beginVersionFilter.add(Filters.lt(beginVersion, txc.xmax));
-            for (long txID : txc.activeTransactions) {
-                beginVersionFilter.add(Filters.ne(beginVersion, txID));
-            }
-            List<Bson> endVersionFilter = new ArrayList<>();
-            endVersionFilter.add(Filters.gte(endVersion, txc.xmax));
-            for (long txID : txc.activeTransactions) {
-                endVersionFilter.add(Filters.eq(endVersion, txID));
-            }
-            if (mongoUpdated) {
-                query = Filters.and(
-                        Filters.or(
-                                Filters.and(beginVersionFilter),
-                                Filters.eq(beginVersion, txc.txID)
-                        ),
-                        Filters.or(endVersionFilter),
-                        Filters.ne(endVersion, txc.txID),
-                        filter
-                );
-            } else {
-                query = Filters.and(
-                        Filters.and(beginVersionFilter),
-                        Filters.or(endVersionFilter),
-                        filter
-                );
-            }
-        } else {
-            assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
+        List<Bson> beginVersionFilter = new ArrayList<>();
+        beginVersionFilter.add(Filters.lt(beginVersion, txc.xmax));
+        for (long txID : txc.activeTransactions) {
+            beginVersionFilter.add(Filters.ne(beginVersion, txID));
+        }
+        List<Bson> endVersionFilter = new ArrayList<>();
+        endVersionFilter.add(Filters.gte(endVersion, txc.xmax));
+        for (long txID : txc.activeTransactions) {
+            endVersionFilter.add(Filters.eq(endVersion, txID));
+        }
+        if (mongoUpdated) {
             query = Filters.and(
-                    Filters.eq(committed, true),
+                    Filters.or(
+                            Filters.and(beginVersionFilter),
+                            Filters.eq(beginVersion, txc.txID)
+                    ),
+                    Filters.or(endVersionFilter),
+                    Filters.ne(endVersion, txc.txID),
+                    filter
+            );
+        } else {
+            query = Filters.and(
+                    Filters.and(beginVersionFilter),
+                    Filters.or(endVersionFilter),
                     filter
             );
         }
@@ -193,48 +170,38 @@ public class MongoContext extends ApiaryContext {
             return database.getCollection(collectionName).aggregate(aggregations);
         }
         Bson filter;
-        if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-            List<Bson> beginVersionFilter = new ArrayList<>();
-            beginVersionFilter.add(Filters.lt(beginVersion, txc.xmax));
-            for (long txID : txc.activeTransactions) {
-                beginVersionFilter.add(Filters.ne(beginVersion, txID));
-            }
-            List<Bson> endVersionFilter = new ArrayList<>();
-            endVersionFilter.add(Filters.gte(endVersion, txc.xmax));
-            for (long txID : txc.activeTransactions) {
-                endVersionFilter.add(Filters.eq(endVersion, txID));
-            }
-            if (mongoUpdated) {
-                filter = Aggregates.match(
-                        Filters.and(
-                                Filters.or(
-                                        Filters.and(beginVersionFilter),
-                                        Filters.eq(beginVersion, txc.txID)
-                                ),
-                                Filters.or(endVersionFilter),
-                                Filters.ne(endVersion, txc.txID)
-                        )
-                );
-            } else {
-                filter = Aggregates.match(
-                        Filters.and(
-                                Filters.and(beginVersionFilter),
-                                Filters.or(endVersionFilter)
-                        )
-                );
-            }
-            MongoCollection<Document> collection = database.getCollection(collectionName);
-            List<Bson> filterAggregations = new ArrayList<>(aggregations);
-            filterAggregations.add(0, filter);
-            return collection.aggregate(filterAggregations);
-        } else {
-            assert(ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
-            filter = Aggregates.match(
-                    Filters.eq(committed, true)
-            );
-            List<Bson> filterAggregations = new ArrayList<>(aggregations);
-            filterAggregations.add(0, filter);
-            return database.getCollection(collectionName).aggregate(filterAggregations);
+        List<Bson> beginVersionFilter = new ArrayList<>();
+        beginVersionFilter.add(Filters.lt(beginVersion, txc.xmax));
+        for (long txID : txc.activeTransactions) {
+            beginVersionFilter.add(Filters.ne(beginVersion, txID));
         }
+        List<Bson> endVersionFilter = new ArrayList<>();
+        endVersionFilter.add(Filters.gte(endVersion, txc.xmax));
+        for (long txID : txc.activeTransactions) {
+            endVersionFilter.add(Filters.eq(endVersion, txID));
+        }
+        if (mongoUpdated) {
+            filter = Aggregates.match(
+                    Filters.and(
+                            Filters.or(
+                                    Filters.and(beginVersionFilter),
+                                    Filters.eq(beginVersion, txc.txID)
+                            ),
+                            Filters.or(endVersionFilter),
+                            Filters.ne(endVersion, txc.txID)
+                    )
+            );
+        } else {
+            filter = Aggregates.match(
+                    Filters.and(
+                            Filters.and(beginVersionFilter),
+                            Filters.or(endVersionFilter)
+                    )
+            );
+        }
+        MongoCollection<Document> collection = database.getCollection(collectionName);
+        List<Bson> filterAggregations = new ArrayList<>(aggregations);
+        filterAggregations.add(0, filter);
+        return collection.aggregate(filterAggregations);
     }
 }

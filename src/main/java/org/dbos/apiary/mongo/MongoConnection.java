@@ -92,34 +92,6 @@ public class MongoConnection implements ApiarySecondaryConnection {
 
     @Override
     public void commit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-        if (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED) {
-            ClientSession session = client.startSession();
-            TransactionBody<Boolean> txnBody = () -> {
-                for (String collectionName : writtenKeys.keySet()) {
-                    if (writtenKeys.get(collectionName).size() >= 10000) {
-                        continue; // Speed up bulk-loading in benchmarks.
-                    }
-                    MongoCollection<Document> c = database.getCollection(collectionName);
-                    for (String key : writtenKeys.get(collectionName)) {
-                        c.updateOne(session, Filters.and(
-                                        Filters.eq(MongoContext.apiaryID, key),
-                                        Filters.eq(MongoContext.beginVersion, txc.txID)
-                                ),
-                                Updates.set(MongoContext.committed, true)
-                        );
-                        c.updateMany(session, Filters.and(
-                                        Filters.eq(MongoContext.apiaryID, key),
-                                        Filters.ne(MongoContext.beginVersion, txc.txID)
-                                ),
-                                Updates.set(MongoContext.committed, false)
-                        );
-                    }
-                }
-                return Boolean.TRUE;
-            };
-            session.withTransaction(txnBody, TransactionOptions.builder().writeConcern(WriteConcern.MAJORITY).readConcern(ReadConcern.SNAPSHOT).build());
-            session.close();
-        }
         for (String collection : writtenKeys.keySet()) {
             for (String key : writtenKeys.get(collection)) {
                 lockManager.get(collection).get(key).set(false);
@@ -133,24 +105,11 @@ public class MongoConnection implements ApiarySecondaryConnection {
         // No need to keep track of writes that are visible to all active or future transactions.
         committedWrites.values().forEach(i -> i.values().forEach(w -> w.removeIf(txID -> txID < globalxmin)));
         // Delete old versions that are no longer visible to any active or future transaction.
-        if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-            for (String collectionName : lockManager.keySet()) {
-                MongoCollection<Document> c = database.getCollection(collectionName);
-                c.deleteMany(
-                        Filters.lt(MongoContext.endVersion, globalxmin)
-                );
-            }
-        } else {
-            assert (ApiaryConfig.isolationLevel == ApiaryConfig.READ_COMMITTED);
-            for (String collectionName : lockManager.keySet()) {
-                MongoCollection<Document> c = database.getCollection(collectionName);
-                c.deleteMany(
-                        Filters.and(
-                                Filters.lt(MongoContext.beginVersion, globalxmin),
-                                Filters.eq(MongoContext.committed, false)
-                        )
-                );
-            }
+        for (String collectionName : lockManager.keySet()) {
+            MongoCollection<Document> c = database.getCollection(collectionName);
+            c.deleteMany(
+                    Filters.lt(MongoContext.endVersion, globalxmin)
+            );
         }
     }
 }

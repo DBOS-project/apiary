@@ -80,7 +80,7 @@ public class PostgresConnection implements ApiaryConnection {
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_APIARY_TIMESTAMP + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_ISREPLAY + "SMALLINT NOT NULL, "
+                + ProvenanceBuffer.PROV_ISREPLAY + " SMALLINT NOT NULL, "
                 + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(1024) NOT NULL, "
                 + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(1024) NOT NULL");
         createTable(ProvenanceBuffer.PROV_ApiaryMetadata,

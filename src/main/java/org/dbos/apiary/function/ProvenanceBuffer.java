@@ -266,6 +266,18 @@ public class ProvenanceBuffer {
                 longval = ((Byte) val).longValue();
             }
             pstmt.setLong(colIndex, longval);
+        } else if (colType == Types.SMALLINT) {
+            short smallVal = 0;
+            if (val instanceof Long) {
+                smallVal = ((Long) val).shortValue();
+            } else if (val instanceof Integer) {
+                smallVal = ((Integer) val).shortValue();
+            } else if (val instanceof Short) {
+                smallVal = (Short) val;
+            } else if (val instanceof Byte) {
+                smallVal = ((Byte) val).shortValue();
+            }
+            pstmt.setLong(colIndex, smallVal);
         } else if (colType == Types.VARCHAR) {
             pstmt.setString(colIndex, val.toString());
         } else {

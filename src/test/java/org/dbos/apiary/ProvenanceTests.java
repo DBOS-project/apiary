@@ -59,7 +59,8 @@ public class ProvenanceTests {
 
         // Wait until previous exporter finished.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
-        Connection conn = buf.conn.get();
+        PostgresConnection pgconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        Connection conn = pgconn.connection.get();
         Statement stmt = conn.createStatement();
 
         // Add something to function invocation log table.

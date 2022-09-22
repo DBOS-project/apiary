@@ -26,14 +26,14 @@ public class ProvenanceBuffer {
     public static final String PROV_ApiaryMetadata = "ApiaryMetadata";
     public static final String PROV_APIARY_TRANSACTION_ID = "APIARY_TRANSACTION_ID";
     public static final String PROV_APIARY_TIMESTAMP = "APIARY_TIMESTAMP";
-    public static final String PROV_EXECUTIONID = "EXECUTIONID";
-    public static final String PROV_FUNCID ="FUNCID";
-    public static final String PROV_SERVICE = "SERVICE";
-    public static final String PROV_PROCEDURENAME = "PROCEDURENAME";
-    public static final String PROV_ISREPLAY = "ISREPLAY";
+    public static final String PROV_EXECUTIONID = "APIARY_EXECUTIONID";
+    public static final String PROV_FUNCID ="APIARY_FUNCID";
+    public static final String PROV_SERVICE = "APIARY_SERVICE";
+    public static final String PROV_PROCEDURENAME = "APIARY_PROCEDURENAME";
+    public static final String PROV_ISREPLAY = "APIARY_ISREPLAY";
     public static final String PROV_APIARY_OPERATION_TYPE = "APIARY_OPERATION_TYPE";
-    public static final String PROV_QUERY_STRING = "QUERY_STRING";
-    public static final String PROV_QUERY_SEQNUM = "QUERY_SEQNUM";
+    public static final String PROV_QUERY_STRING = "APIARY_QUERY_STRING";
+    public static final String PROV_QUERY_SEQNUM = "APIARY_QUERY_SEQNUM";
 
     /**
      * Enum class for provenance operations.

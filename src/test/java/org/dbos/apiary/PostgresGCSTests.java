@@ -52,14 +52,23 @@ public class PostgresGCSTests {
     public void resetTables() {
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            logger.debug("Start resetting PG tables.");
             conn.dropTable("FuncInvocations");
+            logger.debug("Dropped 1");
             conn.dropTable("StuffTable");
+            logger.debug("Dropped 2");
             conn.dropTable("VersionTable");
+            logger.debug("Dropped 3");
             conn.dropTable("ProfileTable");
+            logger.debug("Dropped 4");
             conn.createTable("StuffTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Stuff varchar(1000) NOT NULL");
+            logger.debug("Created 1");
             conn.createTable("VersionTable", "Name varchar(1000), BeginVersion bigint NOT NULL, EndVersion bigint NOT NULL");
+            logger.debug("Created 2");
             conn.createTable("ProfileTable", "UserID integer PRIMARY KEY NOT NULL, Name varchar(1000) NOT NULL, Status varchar(2000) NOT NULL");
+            logger.debug("Created 3");
             conn.createIndex("CREATE INDEX VersionIndex ON VersionTable (Name, BeginVersion, EndVersion);");
+            logger.debug("Created index");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
         }

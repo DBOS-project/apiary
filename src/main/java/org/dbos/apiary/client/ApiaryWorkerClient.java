@@ -89,7 +89,7 @@ public class ApiaryWorkerClient {
      * @throws InvalidProtocolBufferException
      */
     public FunctionOutput replayFunction(long execId, String name, Object... arguments) throws InvalidProtocolBufferException {
-        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, false, arguments);
+        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, true, arguments);
     }
 
     /**

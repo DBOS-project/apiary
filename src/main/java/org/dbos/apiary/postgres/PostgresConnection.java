@@ -86,6 +86,11 @@ public class PostgresConnection implements ApiaryConnection {
                 + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(1024) NOT NULL");
         createTable(ProvenanceBuffer.PROV_ApiaryMetadata,
                 "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
+        createTable(ProvenanceBuffer.PROV_QueryMetadata,
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
+                + ProvenanceBuffer.PROV_QUERY_SEQNUM + " BIGINT NOT NULL, "
+                + ProvenanceBuffer.PROV_QUERY_STRING + " VARCHAR(2048) NOT NULL"
+        );
         // TODO: add back recorded outputs later for fault tolerance.
         // createTable("RecordedOutputs", "ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID)");
     }
@@ -118,10 +123,9 @@ public class PostgresConnection implements ApiaryConnection {
             ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
             ResultSetMetaData rsmd = r.getMetaData();
             StringBuilder provTable = new StringBuilder(String.format(
-                    "CREATE TABLE IF NOT EXISTS %sEvents (%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL, %s VARCHAR(2048) NOT NULL, %s BIGINT NOT NULL",
+                    "CREATE TABLE IF NOT EXISTS %sEvents (%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL ",
                     tableName, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
-                    ProvenanceBuffer.PROV_APIARY_TIMESTAMP, ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE,
-                    ProvenanceBuffer.PROV_QUERY_STRING, ProvenanceBuffer.PROV_QUERY_SEQNUM));
+                    ProvenanceBuffer.PROV_APIARY_TIMESTAMP, ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE));
             for (int i = 0; i < rsmd.getColumnCount(); i++) {
                 provTable.append(",");
                 provTable.append(rsmd.getColumnLabel(i + 1));

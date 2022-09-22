@@ -24,6 +24,7 @@ public class ProvenanceBuffer {
     // Constant variables.
     public static final String PROV_FuncInvocations = "FuncInvocations";
     public static final String PROV_ApiaryMetadata = "ApiaryMetadata";
+    public static final String PROV_QueryMetadata = "ApiaryQueryMetadata";
     public static final String PROV_APIARY_TRANSACTION_ID = "APIARY_TRANSACTION_ID";
     public static final String PROV_APIARY_TIMESTAMP = "APIARY_TIMESTAMP";
     public static final String PROV_EXECUTIONID = "APIARY_EXECUTIONID";

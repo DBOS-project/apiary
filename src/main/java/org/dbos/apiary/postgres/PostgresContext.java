@@ -109,6 +109,11 @@ public class PostgresContext extends ApiaryContext {
      */
     public void executeUpdate(String procedure, Object... input) throws SQLException {
         int querySeqNum = txc.querySeqNum.getAndIncrement();
+        // Replay.
+        // TODO: add support to query the provenance data and insert.
+        if (this.isReplay) {
+            return;
+        }
         if (ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) {
             // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
             String interceptedQuery = interceptUpdate((String) procedure);
@@ -164,8 +169,14 @@ public class PostgresContext extends ApiaryContext {
     public ResultSet executeQuery(String procedure, Object... input) throws SQLException {
         PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
         prepareStatement(pstmt, input);
-        ResultSet rs = pstmt.executeQuery();
         int querySeqNum = txc.querySeqNum.getAndIncrement();
+        ResultSet rs = pstmt.executeQuery();
+        // Replay
+        if (this.isReplay) {
+            // TODO: implement this part.
+            rs.afterLast();
+            return rs;
+        }
         if (ApiaryConfig.captureReads && workerContext.provBuff != null) {
             long timestamp = Utilities.getMicroTimestamp();
             int exportOperation = Utilities.getQueryType(procedure);

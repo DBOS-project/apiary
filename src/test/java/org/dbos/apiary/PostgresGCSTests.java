@@ -76,11 +76,14 @@ public class PostgresGCSTests {
     @BeforeEach
     public void cleanupGCS() {
         try {
+            logger.debug("Start cleaning up GCS.");
             Storage storage = StorageOptions.getDefaultInstance().getService();
             Bucket bucket = storage.get(ApiaryConfig.gcsTestBucket);
             for (Blob blob : bucket.list().iterateAll()) {
+                logger.debug("Deleting blob {}", blob.getName());
                 blob.delete();
             }
+            logger.debug("Finished cleaning up GCS");
         } catch (Exception e) {
             logger.info("No GCS instance! {}", e.getMessage());
             assumeTrue(false);

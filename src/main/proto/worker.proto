@@ -19,6 +19,7 @@ message ExecuteFunctionRequest {
   int64 senderTimestampNano = 6;
   string service = 7;
   int64 executionId = 8;  // Unique global IDs for an entire workflow.
+  bool isReplay = 9;  // false: not replay, true: isReplay.
 }
 
 message ExecuteFunctionReply {

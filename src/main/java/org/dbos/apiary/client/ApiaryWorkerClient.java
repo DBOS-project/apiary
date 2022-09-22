@@ -42,7 +42,7 @@ public class ApiaryWorkerClient {
         this.internalClient = new InternalApiaryWorkerClient(zContext);
         int tmpID = 0;
         try {
-            tmpID = internalClient.executeFunction(this.apiaryWorkerAddress, getApiaryClientID, "ApiarySystem", 0L).getInt();
+            tmpID = internalClient.executeFunction(this.apiaryWorkerAddress, getApiaryClientID, "ApiarySystem", 0L, false).getInt();
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }
@@ -66,7 +66,7 @@ public class ApiaryWorkerClient {
      * @return          serialized byte array of the request.
      */
     public byte[] serializeExecuteRequest(String name, String service, Object... arguments) {
-        return InternalApiaryWorkerClient.serializeExecuteRequest(name, service, getExecutionId(), 0L, 0L, arguments);
+        return InternalApiaryWorkerClient.serializeExecuteRequest(name, service, getExecutionId(), false, 0L, 0L, arguments);
     }
 
     /**
@@ -77,7 +77,7 @@ public class ApiaryWorkerClient {
      * @throws InvalidProtocolBufferException
      */
     public FunctionOutput executeFunction(String name, Object... arguments) throws InvalidProtocolBufferException {
-        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", getExecutionId(), arguments);
+        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", getExecutionId(), false, arguments);
     }
 
     /**
@@ -89,7 +89,7 @@ public class ApiaryWorkerClient {
      * @throws InvalidProtocolBufferException
      */
     public FunctionOutput replayFunction(long execId, String name, Object... arguments) throws InvalidProtocolBufferException {
-        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, arguments);
+        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, false, arguments);
     }
 
     /**

@@ -22,7 +22,8 @@ public interface ApiaryConnection {
      * @return
      * @throws Exception
      */
-    FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) throws Exception;
+    FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID,
+                                boolean isReplay, Object... inputs) throws Exception;
 
     Set<TransactionContext> getActiveTransactions();
 

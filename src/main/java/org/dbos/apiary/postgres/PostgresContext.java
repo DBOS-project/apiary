@@ -29,8 +29,9 @@ public class PostgresContext extends ApiaryContext {
     Map<String, Map<String, List<String>>> secondaryWrittenKeys = new HashMap<>();
 
     public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID,
+                           boolean isReplay,
                            Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions) {
-        super(workerContext, service, execID, functionID);
+        super(workerContext, service, execID, functionID, isReplay);
         this.conn = c;
         try {
             Statement stmt = conn.createStatement();

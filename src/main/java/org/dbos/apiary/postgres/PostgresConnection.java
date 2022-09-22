@@ -154,12 +154,13 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID, Object... inputs) {
+    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID,
+                                       long functionID, boolean isReplay, Object... inputs) {
         Connection c = connection.get();
         FunctionOutput f = null;
         while (true) {
             activeTransactionsLock.readLock().lock();
-            PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID,
+            PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID, isReplay,
                     new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
             activeTransactions.add(ctxt.txc);
             latestTransactionContext = ctxt.txc;

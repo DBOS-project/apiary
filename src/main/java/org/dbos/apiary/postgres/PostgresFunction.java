@@ -17,6 +17,9 @@ public class PostgresFunction implements ApiaryFunction {
     public void recordInvocation(ApiaryContext ctxt, String funcName) {
         // TODO: add replay flag.
         short isreplay = 0;
+        if (ctxt.isReplay) {
+            isreplay = 1;
+        }
         if (ctxt.workerContext.provBuff == null) {
             // If no OLAP DB available.
             return;

@@ -25,11 +25,17 @@ public abstract class ApiaryContext {
      */
     public final long execID, functionID;
 
-    public ApiaryContext(WorkerContext workerContext, String service, long execID, long functionID) {
+    /**
+     * For internal use only.
+     */
+    public final boolean isReplay;
+
+    public ApiaryContext(WorkerContext workerContext, String service, long execID, long functionID, boolean isReplay) {
         this.workerContext = workerContext;
         this.service = service;
         this.execID = execID;
         this.functionID = functionID;
+        this.isReplay = isReplay;
     }
 
     /** Public Interface for functions. **/

@@ -132,20 +132,22 @@ public class PostgresContext extends ApiaryContext {
             // Record provenance data.
             if (!rs.next()) {
                 // Still record an empty entry for the query.
-                Object[] rowData = new Object[3];
+                Object[] rowData = new Object[4];
                 rowData[0] = txc.txID;
                 rowData[1] = timestamp;
                 rowData[2] = exportOperation;
+                rowData[3] = querySeqNum;
                 workerContext.provBuff.addEntry(tableName + "Events", rowData);
             } else {
                 // Record each returned entry.
                 do {
-                    Object[] rowData = new Object[numCol + 3];
+                    Object[] rowData = new Object[numCol + 4];
                     rowData[0] = txc.txID;
                     rowData[1] = timestamp;
                     rowData[2] = exportOperation;
+                    rowData[3] = querySeqNum;
                     for (int i = 1; i <= numCol; i++) {
-                        rowData[i + 2] = rs.getObject(i);
+                        rowData[i + 3] = rs.getObject(i);
                     }
                     workerContext.provBuff.addEntry(tableName + "Events", rowData);
                 } while (rs.next());
@@ -184,10 +186,11 @@ public class PostgresContext extends ApiaryContext {
                 for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
                     String tableName = rs.getMetaData().getTableName(colNum);
                     if (!tableToRowData.containsKey(tableName)) {
-                        Object[] rowData = new Object[3];
+                        Object[] rowData = new Object[4];
                         rowData[0] = txc.txID;
                         rowData[1] = timestamp;
                         rowData[2] = exportOperation;
+                        rowData[3] = querySeqNum;
                         tableToRowData.put(tableName, rowData);
                     }
                 }
@@ -201,17 +204,18 @@ public class PostgresContext extends ApiaryContext {
                         String tableName = rs.getMetaData().getTableName(colNum);
                         Map<String, Integer> schemaMap = getSchemaMap(tableName);
                         if (!tableToRowData.containsKey(tableName)) {
-                            Object[] rowData = new Object[3 + schemaMap.size()];
+                            Object[] rowData = new Object[4 + schemaMap.size()];
                             rowData[0] = txc.txID;
                             rowData[1] = timestamp;
                             rowData[2] = exportOperation;
+                            rowData[3] = querySeqNum;
                             tableToRowData.put(tableName, rowData);
                         }
                         Object[] rowData = tableToRowData.get(tableName);
                         String columnName = rs.getMetaData().getColumnName(colNum);
                         if (schemaMap.containsKey(columnName)) {
                             int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
-                            rowData[3 + index] = rs.getObject(colNum);
+                            rowData[4 + index] = rs.getObject(colNum);
                         }
                     }
                     for (String tableName : tableToRowData.keySet()) {

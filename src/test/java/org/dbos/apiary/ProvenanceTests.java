@@ -105,6 +105,7 @@ public class ProvenanceTests {
         }
         assertEquals(2, cnt);
         buf.close();
+        conn.close();
     }
 
 }

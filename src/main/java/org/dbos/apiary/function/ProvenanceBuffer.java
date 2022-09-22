@@ -27,6 +27,7 @@ public class ProvenanceBuffer {
     public static final String PROV_APIARY_TRANSACTION_ID = "APIARY_TRANSACTION_ID";
     public static final String PROV_APIARY_TIMESTAMP = "APIARY_TIMESTAMP";
     public static final String PROV_EXECUTIONID = "EXECUTIONID";
+    public static final String PROV_FUNCID ="FUNCID";
     public static final String PROV_SERVICE = "SERVICE";
     public static final String PROV_PROCEDURENAME = "PROCEDURENAME";
     public static final String PROV_ISREPLAY = "ISREPLAY";

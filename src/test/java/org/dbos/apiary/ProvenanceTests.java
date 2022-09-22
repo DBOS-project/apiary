@@ -67,14 +67,16 @@ public class ProvenanceTests {
         long txid = 1234l;
         long timestamp = 3456789l;
         long executionID = 456l;
+        long funcID = 1l;
         String service = "testService";
         String funcName = "testFunction";
-        buf.addEntry(table, txid, timestamp, executionID, 0, service, funcName);
+        buf.addEntry(table, txid, timestamp, executionID, funcID, 0, service, funcName);
 
         long txid2 = 2222l;
         long timestamp2 = 456789l;
         long executionID2 = 789l;
-        buf.addEntry(table, txid2, timestamp2, executionID2, 1, service, funcName);
+        long funcID2 = 2l;
+        buf.addEntry(table, txid2, timestamp2, executionID2, funcID2, 1, service, funcName);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
@@ -86,18 +88,21 @@ public class ProvenanceTests {
             String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
             String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
             int isreplayed = rs.getShort(ProvenanceBuffer.PROV_ISREPLAY);
+            long funcId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
             if (cnt == 0) {
                 assertEquals(txid, resTxid);
                 assertEquals(timestamp, resTimestamp);
                 assertEquals(executionID, resExecId);
                 assertTrue(funcName.equals(resFuncName));
                 assertEquals(0, isreplayed);
+                assertEquals(1l, funcId);
             } else {
                 assertEquals(txid2, resTxid);
                 assertEquals(timestamp2, resTimestamp);
                 assertEquals(executionID2, resExecId);
                 assertTrue(funcName.equals(resFuncName));
                 assertEquals(1, isreplayed);
+                assertEquals(2l, funcId);
             }
             assertTrue(service.equals(resService));
 

@@ -333,7 +333,7 @@ public class PostgresContext extends ApiaryContext {
             if (rs.next()) {
                 originalQuery = rs.getString(1);
                 assert (currentQuery.equalsIgnoreCase(originalQuery));
-                logger.info("Replay original update: {}", originalQuery);
+                logger.info("Replay original update: {}", originalQuery.split(" RETURNING")[0]);
             } else {
                 throw new RuntimeException("Failed to find original update.");
             }

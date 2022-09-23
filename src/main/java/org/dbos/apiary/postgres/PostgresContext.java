@@ -131,11 +131,12 @@ public class PostgresContext extends ApiaryContext {
             int numCol = rsmd.getColumnCount();
             // Record query metadata.
             // TODO: maybe we should record metaata before query execution. So we know what happened even if the query failed.
-            Object[] metaData = new Object[4];
+            Object[] metaData = new Object[5];
             metaData[0] = txc.txID;
             metaData[1] = querySeqNum;
             metaData[2] = pstmt.toString();
             metaData[3] = tableName;
+            metaData[4] = "*";
             workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
 
             // Record provenance data.

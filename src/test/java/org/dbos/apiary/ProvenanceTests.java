@@ -142,12 +142,12 @@ public class ProvenanceTests {
         assertEquals(1, resIsReplay);
 
         // Replay the next execution. Which should skip the subscribe function.
-        res = client.replayFunction(resFuncId3, "PostgresIsSubscribed", 123, 555).getInt();
+        res = client.replayFunction(resExecId3, "PostgresIsSubscribed", 123, 555).getInt();
         assertEquals(123, res);
+        rs.close();
 
         // Check provenance data again.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
-        rs.close();
         rs = stmt.executeQuery(provQuery);
         rs.next();
         // The reversed first one should be the isSubscribed function.

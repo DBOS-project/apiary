@@ -24,6 +24,11 @@ public class PostgresContext extends ApiaryContext {
     private AtomicLong functionIDCounter = new AtomicLong(0);
     private long currentID = functionID;
 
+    private final long replayTxID;  // The replayed transaction ID.
+
+    private static final String checkReplayTxID = String.format("SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=0", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
+            ProvenanceBuffer.PROV_FuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY);
+
     public TransactionContext txc;
 
     Map<String, Map<String, List<String>>> secondaryWrittenKeys = new HashMap<>();
@@ -33,6 +38,7 @@ public class PostgresContext extends ApiaryContext {
                            Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions) {
         super(workerContext, service, execID, functionID, isReplay);
         this.conn = c;
+        long tmpReplayTxID = -1;
         try {
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("select txid_current();");
@@ -55,9 +61,24 @@ public class PostgresContext extends ApiaryContext {
                 }
             }
             this.txc = new TransactionContext(txID, xmin, xmax, activeTxIDs);
+
+            // Look up the original transaction ID if it's a replay.
+            if (isReplay) {
+                PreparedStatement pstmt = conn.prepareStatement(checkReplayTxID);
+                pstmt.setLong(1, execID);
+                pstmt.setLong(2, functionID);
+                rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    tmpReplayTxID = rs.getLong(1);
+                    logger.info("Current transaction {} is a replay of executionID: {}, functionID: {}, original tranasction ID: {}", txID, execID, functionID, tmpReplayTxID);
+                } else {
+                    throw new RuntimeException("Cannot find the original transaction ID for this replay!");
+                }
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
+        this.replayTxID = tmpReplayTxID;
     }
 
     @Override

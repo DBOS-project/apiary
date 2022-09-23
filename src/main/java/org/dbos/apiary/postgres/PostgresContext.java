@@ -324,7 +324,7 @@ public class PostgresContext extends ApiaryContext {
 
             // Check the original query.
             String checkMetadata = String.format("SELECT %s FROM %s WHERE %s=? AND %s=?", ProvenanceBuffer.PROV_QUERY_STRING,
-                    ProvenanceBuffer.PROV_ApiaryMetadata, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_QUERY_SEQNUM);
+                    ProvenanceBuffer.PROV_QueryMetadata, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_QUERY_SEQNUM);
             pstmt = conn.prepareStatement(checkMetadata);
             pstmt.setLong(1, this.replayTxID);
             pstmt.setLong(2, seqNum);

@@ -203,7 +203,7 @@ public class PostgresContext extends ApiaryContext {
     public ResultSet executeQuery(String procedure, Object... input) throws SQLException {
         // Replay
         if (this.isReplay) {
-
+            return replayQuery(procedure, input);
         }
         PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
         prepareStatement(pstmt, input);
@@ -361,7 +361,7 @@ public class PostgresContext extends ApiaryContext {
         } else {
             throw new RuntimeException("Failed to find original query.");
         }
-
-        return null;
+        rs.afterLast();
+        return rs;
     }
 }

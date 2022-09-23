@@ -164,29 +164,17 @@ public class PostgresContext extends ApiaryContext {
             workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
 
             // Record provenance data.
-            if (!rs.next()) {
-                // Still record an empty entry for the query.
-                Object[] rowData = new Object[4];
+            while (rs.next()) {
+                Object[] rowData = new Object[numCol + 4];
                 rowData[0] = txc.txID;
                 rowData[1] = timestamp;
                 rowData[2] = exportOperation;
                 rowData[3] = querySeqNum;
+                for (int i = 1; i <= numCol; i++) {
+                    rowData[i + 3] = rs.getObject(i);
+                }
                 workerContext.provBuff.addEntry(tableName + "Events", rowData);
-            } else {
-                // Record each returned entry.
-                do {
-                    Object[] rowData = new Object[numCol + 4];
-                    rowData[0] = txc.txID;
-                    rowData[1] = timestamp;
-                    rowData[2] = exportOperation;
-                    rowData[3] = querySeqNum;
-                    for (int i = 1; i <= numCol; i++) {
-                        rowData[i + 3] = rs.getObject(i);
-                    }
-                    workerContext.provBuff.addEntry(tableName + "Events", rowData);
-                } while (rs.next());
             }
-
         } else {
             // First, prepare statement. Then, execute.
             PreparedStatement pstmt = conn.prepareStatement(procedure);
@@ -217,25 +205,15 @@ public class PostgresContext extends ApiaryContext {
             List<String> tableNames = new ArrayList<>();
             List<String> projection = new ArrayList<>();
             if (!rs.next()) {
-                // Still record the query itself even if it retrieved nothing.
+                // Still need to record the table name and projection.
                 for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
                     String tableName = rs.getMetaData().getTableName(colNum);
                     if (!tableToRowData.containsKey(tableName)) {
-                        Object[] rowData = new Object[4];
-                        rowData[0] = txc.txID;
-                        rowData[1] = timestamp;
-                        rowData[2] = exportOperation;
-                        rowData[3] = querySeqNum;
-                        tableToRowData.put(tableName, rowData);
+                        tableToRowData.put(tableName, null);
                     }
                     projection.add(rs.getMetaData().getColumnName(colNum));
                 }
-                for (String tableName : tableToRowData.keySet()) {
-                    workerContext.provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
-                }
-                if (tableNames.isEmpty()) {
-                    tableNames.addAll(tableToRowData.keySet());
-                }
+                tableNames.addAll(tableToRowData.keySet());
                 tableToRowData.clear();
             } else {
                 do {
@@ -358,10 +336,24 @@ public class PostgresContext extends ApiaryContext {
             originalQuery = rs.getString(ProvenanceBuffer.PROV_QUERY_STRING);
             assert (currentQuery.equalsIgnoreCase(originalQuery));
             logger.info("Replay original query: {}", originalQuery);
+            String tableString = rs.getString(ProvenanceBuffer.PROV_QUERY_TABLENAMES);
+            tables = List.of(tableString.split(","));
+            projection = rs.getString(ProvenanceBuffer.PROV_QUERY_PROJECTION);
         } else {
             throw new RuntimeException("Failed to find original query.");
         }
-        rs.afterLast();
+
+        // Query the corresponding provenance table for replay.
+        // TODO: for now, it does not support Joins. Only one table.
+        if (tables.size() > 1) {
+            throw new RuntimeException("Currently do not support more than one table in the query.");
+        }
+        String provQuery = String.format("SELECT %s FROM %sEvents WHERE %s=? AND %s=?", projection, tables.get(0), ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        pstmt = conn.prepareStatement(provQuery, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        pstmt.setLong(1, this.replayTxID);
+        pstmt.setLong(2, seqNum);
+        rs.close();
+        rs = pstmt.executeQuery();
         return rs;
     }
 }

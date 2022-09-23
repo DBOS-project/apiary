@@ -8,8 +8,8 @@ import org.dbos.apiary.utilities.ApiaryConfig;
  */
 public class ApiaryStatelessContext extends ApiaryContext {
 
-    public ApiaryStatelessContext(WorkerContext workerContext, String service, long execID, long functionID) {
-        super(workerContext, service, execID, functionID);
+    public ApiaryStatelessContext(WorkerContext workerContext, String service, long execID, long functionID, boolean isReplay) {
+        super(workerContext, service, execID, functionID, isReplay);
     }
 
     @Override
@@ -33,7 +33,7 @@ public class ApiaryStatelessContext extends ApiaryContext {
             try {
                 assert(type.equals(workerContext.getPrimaryConnectionType()));
                 ApiaryConnection c = workerContext.getPrimaryConnection();
-                return c.callFunction(name, workerContext, service, execID, functionID, inputs);
+                return c.callFunction(name, workerContext, service, execID, functionID, isReplay, inputs);
             } catch (Exception e) {
                 e.printStackTrace();
                 return null;

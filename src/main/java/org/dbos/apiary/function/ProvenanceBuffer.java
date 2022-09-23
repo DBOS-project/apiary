@@ -24,14 +24,19 @@ public class ProvenanceBuffer {
     // Constant variables.
     public static final String PROV_FuncInvocations = "FuncInvocations";
     public static final String PROV_ApiaryMetadata = "ApiaryMetadata";
+    public static final String PROV_QueryMetadata = "ApiaryQueryMetadata";
     public static final String PROV_APIARY_TRANSACTION_ID = "APIARY_TRANSACTION_ID";
     public static final String PROV_APIARY_TIMESTAMP = "APIARY_TIMESTAMP";
-    public static final String PROV_EXECUTIONID = "EXECUTIONID";
-    public static final String PROV_SERVICE = "SERVICE";
-    public static final String PROV_PROCEDURENAME = "PROCEDURENAME";
+    public static final String PROV_EXECUTIONID = "APIARY_EXECUTIONID";
+    public static final String PROV_FUNCID ="APIARY_FUNCID";
+    public static final String PROV_SERVICE = "APIARY_SERVICE";
+    public static final String PROV_PROCEDURENAME = "APIARY_PROCEDURENAME";
+    public static final String PROV_ISREPLAY = "APIARY_ISREPLAY";
     public static final String PROV_APIARY_OPERATION_TYPE = "APIARY_OPERATION_TYPE";
-    public static final String PROV_QUERY_STRING = "QUERY_STRING";
-    public static final String PROV_QUERY_SEQNUM = "QUERY_SEQNUM";
+    public static final String PROV_QUERY_STRING = "APIARY_QUERY_STRING";
+    public static final String PROV_QUERY_SEQNUM = "APIARY_QUERY_SEQNUM";
+    public static final String PROV_QUERY_TABLENAMES = "APIARY_QUERY_TABLENAMES";
+    public static final String PROV_QUERY_PROJECTION = "APIARY_QUERY_PROJECTION";
 
     /**
      * Enum class for provenance operations.
@@ -265,6 +270,18 @@ public class ProvenanceBuffer {
                 longval = ((Byte) val).longValue();
             }
             pstmt.setLong(colIndex, longval);
+        } else if (colType == Types.SMALLINT) {
+            short smallVal = 0;
+            if (val instanceof Long) {
+                smallVal = ((Long) val).shortValue();
+            } else if (val instanceof Integer) {
+                smallVal = ((Integer) val).shortValue();
+            } else if (val instanceof Short) {
+                smallVal = (Short) val;
+            } else if (val instanceof Byte) {
+                smallVal = ((Byte) val).shortValue();
+            }
+            pstmt.setLong(colIndex, smallVal);
         } else if (colType == Types.VARCHAR) {
             pstmt.setString(colIndex, val.toString());
         } else {

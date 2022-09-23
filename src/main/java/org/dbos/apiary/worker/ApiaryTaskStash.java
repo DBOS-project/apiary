@@ -21,15 +21,17 @@ public class ApiaryTaskStash {
     public final long senderTimestampNano;
     public final String service;
     public final long execId;
+    public final boolean isReplay;
 
     public int totalQueuedTasks;
     public Object output;
 
-    public ApiaryTaskStash(String service, long execId, long callerId, long functionID, ZFrame replyAddr, long senderTimestampNano) {
+    public ApiaryTaskStash(String service, long execId, long callerId, long functionID, boolean isReplay, ZFrame replyAddr, long senderTimestampNano) {
         this.service = service;
         this.execId = execId;
         this.callerId = callerId;
         this.functionID = functionID;
+        this.isReplay = isReplay;
         this.replyAddr = replyAddr;
         this.senderTimestampNano = senderTimestampNano;
         functionIDToValue = new ConcurrentHashMap<>();

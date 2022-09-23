@@ -39,7 +39,7 @@ public class GCSContext extends ApiaryContext {
 
     public GCSContext(Storage storage, Map<String, List<String>> writtenKeys, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext,
                       TransactionContext txc, String service, long execID, long functionID, Connection primary) {
-        super(workerContext, service, execID, functionID);
+        super(workerContext, service, execID, functionID, false);
         this.storage = storage;
         this.txc = txc;
         this.primary = primary;

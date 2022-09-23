@@ -49,7 +49,8 @@ public class InternalApiaryWorkerClient {
         }
     }
 
-    public static byte[] serializeExecuteRequest(String name, String service, long execID, long callerID, long functionID, Object... arguments) {
+    public static byte[] serializeExecuteRequest(String name, String service, long execID, boolean isReplay,
+                                                 long callerID, long functionID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
         for (Object o: arguments) {
@@ -83,13 +84,15 @@ public class InternalApiaryWorkerClient {
                 .setService(service)
                 .setExecutionId(execID)
                 .setSenderTimestampNano(sendTime)
+                .setIsReplay(isReplay)
                 .build();
         return req.toByteArray();
     }
 
-    public FunctionOutput executeFunction(String address, String name, String service, long execID, Object... arguments) throws InvalidProtocolBufferException {
+    public FunctionOutput executeFunction(String address, String name, String service, long execID, boolean isReplay,
+                                          Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
-        byte[] reqBytes = serializeExecuteRequest(name, service, execID, 0l, 0, arguments);
+        byte[] reqBytes = serializeExecuteRequest(name, service, execID, isReplay, 0l, 0, arguments);
         socket.send(reqBytes, 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);

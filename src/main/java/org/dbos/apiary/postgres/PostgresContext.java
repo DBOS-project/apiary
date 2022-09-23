@@ -29,8 +29,9 @@ public class PostgresContext extends ApiaryContext {
     Map<String, Map<String, List<String>>> secondaryWrittenKeys = new HashMap<>();
 
     public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID,
+                           boolean isReplay,
                            Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions) {
-        super(workerContext, service, execID, functionID);
+        super(workerContext, service, execID, functionID, isReplay);
         this.conn = c;
         try {
             Statement stmt = conn.createStatement();
@@ -108,6 +109,11 @@ public class PostgresContext extends ApiaryContext {
      */
     public void executeUpdate(String procedure, Object... input) throws SQLException {
         int querySeqNum = txc.querySeqNum.getAndIncrement();
+        // Replay.
+        // TODO: add support to query the provenance data and insert.
+        if (this.isReplay) {
+            return;
+        }
         if (ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) {
             // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
             String interceptedQuery = interceptUpdate((String) procedure);
@@ -123,30 +129,40 @@ public class PostgresContext extends ApiaryContext {
             tableName = rsmd.getTableName(1);
             long timestamp = Utilities.getMicroTimestamp();
             int numCol = rsmd.getColumnCount();
+            // Record query metadata.
+            // TODO: maybe we should record metaata before query execution. So we know what happened even if the query failed.
+            Object[] metaData = new Object[5];
+            metaData[0] = txc.txID;
+            metaData[1] = querySeqNum;
+            metaData[2] = pstmt.toString();
+            metaData[3] = tableName;
+            metaData[4] = "*";
+            workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
+
             // Record provenance data.
             if (!rs.next()) {
                 // Still record an empty entry for the query.
-                Object[] rowData = new Object[5];
+                Object[] rowData = new Object[4];
+                rowData[0] = txc.txID;
                 rowData[1] = timestamp;
                 rowData[2] = exportOperation;
-                rowData[3] = pstmt.toString();
-                rowData[4] = querySeqNum;
+                rowData[3] = querySeqNum;
                 workerContext.provBuff.addEntry(tableName + "Events", rowData);
             } else {
                 // Record each returned entry.
                 do {
-                    Object[] rowData = new Object[numCol + 5];
+                    Object[] rowData = new Object[numCol + 4];
                     rowData[0] = txc.txID;
                     rowData[1] = timestamp;
                     rowData[2] = exportOperation;
-                    rowData[3] = pstmt.toString();
-                    rowData[4] = querySeqNum;
+                    rowData[3] = querySeqNum;
                     for (int i = 1; i <= numCol; i++) {
-                        rowData[i + 4] = rs.getObject(i);
+                        rowData[i + 3] = rs.getObject(i);
                     }
                     workerContext.provBuff.addEntry(tableName + "Events", rowData);
                 } while (rs.next());
             }
+
         } else {
             // First, prepare statement. Then, execute.
             PreparedStatement pstmt = conn.prepareStatement(procedure);
@@ -163,29 +179,40 @@ public class PostgresContext extends ApiaryContext {
     public ResultSet executeQuery(String procedure, Object... input) throws SQLException {
         PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
         prepareStatement(pstmt, input);
-        ResultSet rs = pstmt.executeQuery();
         int querySeqNum = txc.querySeqNum.getAndIncrement();
+        ResultSet rs = pstmt.executeQuery();
+        // Replay
+        if (this.isReplay) {
+            // TODO: implement this part.
+            rs.afterLast();
+            return rs;
+        }
         if (ApiaryConfig.captureReads && workerContext.provBuff != null) {
             long timestamp = Utilities.getMicroTimestamp();
             int exportOperation = Utilities.getQueryType(procedure);
             // Record provenance data.
             Map<String, Object[]> tableToRowData = new HashMap<>();
+            List<String> tableNames = new ArrayList<>();
+            List<String> projection = new ArrayList<>();
             if (!rs.next()) {
                 // Still record the query itself even if it retrieved nothing.
                 for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
                     String tableName = rs.getMetaData().getTableName(colNum);
                     if (!tableToRowData.containsKey(tableName)) {
-                        Object[] rowData = new Object[5];
+                        Object[] rowData = new Object[4];
                         rowData[0] = txc.txID;
                         rowData[1] = timestamp;
                         rowData[2] = exportOperation;
-                        rowData[3] = pstmt.toString();
-                        rowData[4] = querySeqNum;
+                        rowData[3] = querySeqNum;
                         tableToRowData.put(tableName, rowData);
                     }
+                    projection.add(rs.getMetaData().getColumnName(colNum));
                 }
                 for (String tableName : tableToRowData.keySet()) {
                     workerContext.provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
+                }
+                if (tableNames.isEmpty()) {
+                    tableNames.addAll(tableToRowData.keySet());
                 }
                 tableToRowData.clear();
             } else {
@@ -194,27 +221,42 @@ public class PostgresContext extends ApiaryContext {
                         String tableName = rs.getMetaData().getTableName(colNum);
                         Map<String, Integer> schemaMap = getSchemaMap(tableName);
                         if (!tableToRowData.containsKey(tableName)) {
-                            Object[] rowData = new Object[5 + schemaMap.size()];
+                            Object[] rowData = new Object[4 + schemaMap.size()];
                             rowData[0] = txc.txID;
                             rowData[1] = timestamp;
                             rowData[2] = exportOperation;
-                            rowData[3] = pstmt.toString();
-                            rowData[4] = querySeqNum;
+                            rowData[3] = querySeqNum;
                             tableToRowData.put(tableName, rowData);
                         }
                         Object[] rowData = tableToRowData.get(tableName);
                         String columnName = rs.getMetaData().getColumnName(colNum);
                         if (schemaMap.containsKey(columnName)) {
                             int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
-                            rowData[5 + index] = rs.getObject(colNum);
+                            rowData[4 + index] = rs.getObject(colNum);
+                        }
+                        if (tableNames.isEmpty()) {
+                            // Only add it once.
+                            projection.add(columnName);
                         }
                     }
                     for (String tableName : tableToRowData.keySet()) {
                         workerContext.provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
                     }
+                    if (tableNames.isEmpty()) {
+                        tableNames.addAll(tableToRowData.keySet());
+                    }
                     tableToRowData.clear();
                 } while (rs.next());
             }
+            // Record query metadata.
+            // TODO: maybe find ways to parse SQL qeury and record metadata before execution.
+            Object[] metaData = new Object[5];
+            metaData[0] = txc.txID;
+            metaData[1] = querySeqNum;
+            metaData[2] = pstmt.toString();
+            metaData[3] = String.join(",", tableNames);
+            metaData[4] = String.join(",", projection);
+            workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
             rs.beforeFirst();
         }
         return rs;

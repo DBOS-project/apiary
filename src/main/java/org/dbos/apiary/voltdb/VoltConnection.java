@@ -110,7 +110,8 @@ public class VoltConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext context, String service, long execID, long functionID, Object... inputs) throws IOException, ProcCallException {
+    public FunctionOutput callFunction(String functionName, WorkerContext context, String service, long execID, long functionID,
+                                       boolean isReplay, Object... inputs) throws IOException, ProcCallException {
         if (functionName.startsWith(getApiaryClientID)) {
             // Add input value for the procedure.
             inputs = new Integer[1];

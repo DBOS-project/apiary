@@ -430,7 +430,7 @@ public class PostgresTests {
         String metatable = ProvenanceBuffer.PROV_QueryMetadata;
         String projection = "kvvalue,kvkey";
         expectedSeqNum = 0;
-        rs = stmt.executeQuery(String.format("SELECT * FROM %s WHERE %s != 'apiarymetadata' ORDER BY %s;", table, ProvenanceBuffer.PROV_QUERY_TABLENAMES, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
+        rs = stmt.executeQuery(String.format("SELECT * FROM %s WHERE %s != 'apiarymetadata' ORDER BY %s;", metatable, ProvenanceBuffer.PROV_QUERY_TABLENAMES, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
         rs.next();
 
         resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);

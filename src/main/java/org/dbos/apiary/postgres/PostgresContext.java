@@ -29,6 +29,8 @@ public class PostgresContext extends ApiaryContext {
     private static final String checkReplayTxID = String.format("SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=0", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
             ProvenanceBuffer.PROV_FuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY);
 
+    private static final String checkMetadata = String.format("SELECT * FROM %s WHERE %s=? AND %s=?", ProvenanceBuffer.PROV_QueryMetadata, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_QUERY_SEQNUM);
+
     public TransactionContext txc;
 
     Map<String, Map<String, List<String>>> secondaryWrittenKeys = new HashMap<>();
@@ -199,17 +201,15 @@ public class PostgresContext extends ApiaryContext {
      * @param input     input parameters for the SQL statement.
      */
     public ResultSet executeQuery(String procedure, Object... input) throws SQLException {
-        PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        prepareStatement(pstmt, input);
-        int querySeqNum = txc.querySeqNum.getAndIncrement();
-        ResultSet rs = pstmt.executeQuery();
         // Replay
         if (this.isReplay) {
-            // TODO: implement this part.
-            rs.afterLast();
-            return rs;
+
         }
+        PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        prepareStatement(pstmt, input);
+        ResultSet rs = pstmt.executeQuery();
         if (ApiaryConfig.captureReads && workerContext.provBuff != null) {
+            int querySeqNum = txc.querySeqNum.getAndIncrement();
             long timestamp = Utilities.getMicroTimestamp();
             int exportOperation = Utilities.getQueryType(procedure);
             // Record provenance data.
@@ -308,39 +308,60 @@ public class PostgresContext extends ApiaryContext {
         return schemaMapCache.get(tableName);
     }
 
-    private void replayUpdate(String procedure, Object... input) {
+    private void replayUpdate(String procedure, Object... input) throws SQLException {
         // TODO: support multiple replay modes. The current mode skips the insert during replay.
         int seqNum = this.txc.querySeqNum.getAndIncrement();
         logger.info("Replay update. Original transaction: {} querySeqNum: {}",
                 this.replayTxID, seqNum);
 
-        PreparedStatement pstmt = null;
+        PreparedStatement pstmt;
         String interceptedQuery = interceptUpdate(procedure);
         String currentQuery;
         String originalQuery;
-        try {
-            pstmt = conn.prepareStatement(interceptedQuery);
-            prepareStatement(pstmt, input);
-            currentQuery = pstmt.toString();
+        pstmt = conn.prepareStatement(interceptedQuery);
+        prepareStatement(pstmt, input);
+        currentQuery = pstmt.toString();
 
-            // Check the original query.
-            String checkMetadata = String.format("SELECT %s FROM %s WHERE %s=? AND %s=?", ProvenanceBuffer.PROV_QUERY_STRING,
-                    ProvenanceBuffer.PROV_QueryMetadata, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_QUERY_SEQNUM);
-            pstmt = conn.prepareStatement(checkMetadata);
-            pstmt.setLong(1, this.replayTxID);
-            pstmt.setLong(2, seqNum);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                originalQuery = rs.getString(1);
-                assert (currentQuery.equalsIgnoreCase(originalQuery));
-                logger.info("Replay original update: {}", originalQuery.split(" RETURNING")[0]);
-            } else {
-                throw new RuntimeException("Failed to find original update.");
-            }
+        // Check the original query.
+        pstmt = conn.prepareStatement(checkMetadata);
+        pstmt.setLong(1, this.replayTxID);
+        pstmt.setLong(2, seqNum);
+        ResultSet rs = pstmt.executeQuery();
+        if (rs.next()) {
+            originalQuery = rs.getString(ProvenanceBuffer.PROV_QUERY_STRING);
+            assert (currentQuery.equalsIgnoreCase(originalQuery));
+            logger.info("Replay original update: {}", originalQuery.split(" RETURNING")[0]);
+        } else {
+            throw new RuntimeException("Failed to find original update.");
+        }
+    }
 
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+    private ResultSet replayQuery(String procedure, Object... input) throws SQLException {
+        // TODO: support multiple replay modes. The current mode queries the original provenance data and returns the results.
+        int seqNum = this.txc.querySeqNum.getAndIncrement();
+        logger.info("Replay query. Original transaction: {} querySeqNum: {}",
+                this.replayTxID, seqNum);
+
+        PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        prepareStatement(pstmt, input);
+        String currentQuery = pstmt.toString();
+        String originalQuery;
+        List<String> tables;
+        String projection;
+
+        // Check the original query.
+        pstmt = conn.prepareStatement(checkMetadata);
+        pstmt.setLong(1, this.replayTxID);
+        pstmt.setLong(2, seqNum);
+        ResultSet rs = pstmt.executeQuery();
+        if (rs.next()) {
+            originalQuery = rs.getString(ProvenanceBuffer.PROV_QUERY_STRING);
+            assert (currentQuery.equalsIgnoreCase(originalQuery));
+            logger.info("Replay original query: {}", originalQuery);
+        } else {
+            throw new RuntimeException("Failed to find original query.");
         }
 
+        return null;
     }
 }

@@ -79,21 +79,12 @@ public class PostgresTests {
         logger.info("testForumSubscribe");
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
         apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
         apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
         apiaryWorker.startServing();
-
-        ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
-        assert(provBuff != null);
-        Connection provConn = provBuff.conn.get();
-        Statement stmt = provConn.createStatement();
-        String[] tables = {ProvenanceBuffer.PROV_FuncInvocations, "forumsubscriptionevents"};
-        for (String table : tables) {
-            stmt.execute(String.format("TRUNCATE TABLE %s;", table));
-        }
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
@@ -109,26 +100,6 @@ public class PostgresTests {
         int[] resList = client.executeFunction("PostgresFetchSubscribers",555).getIntArray();
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);
-
-        // Check provenance and get executionID.
-        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
-
-        String table = ProvenanceBuffer.PROV_FuncInvocations;
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s ASC;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
-        rs.next();
-        long txid1 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-        long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-        String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
-        assertTrue(resExecId >= 0);
-        assertEquals(PostgresIsSubscribed.class.getName(), resFuncName);
-
-        // Replay the execution of the first one.
-        // TODO: add more replay features.
-        res = client.replayFunction(resExecId,"PostgresIsSubscribed", 123, 555).getInt();
-        assertEquals(123, res);
-
-        // Check provenance.
-        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 
     @Test

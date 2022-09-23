@@ -4,6 +4,9 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.postgres.replay.PostgresFetchSubscribers;
+import org.dbos.apiary.procedures.postgres.replay.PostgresForumSubscribe;
+import org.dbos.apiary.procedures.postgres.replay.PostgresIsSubscribed;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceBasic;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceJoins;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceMultiRows;
@@ -46,6 +49,8 @@ public class ProvenanceTests {
             conn.createTable("KVTable", "KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL");
             conn.dropTable("KVTableTwo");
             conn.createTable("KVTableTwo", "KVKeyTwo integer PRIMARY KEY NOT NULL, KVValueTwo integer NOT NULL");
+            conn.dropTable("ForumSubscription");
+            conn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");
@@ -59,6 +64,58 @@ public class ProvenanceTests {
         if (apiaryWorker != null) {
             apiaryWorker.shutdown();
         }
+    }
+
+    @Test
+    public void testForumSubscribeReplay() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        logger.info("testForumSubscribeReplay");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
+        apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
+        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.startServing();
+
+        ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
+        assert(provBuff != null);
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresIsSubscribed", 123, 555).getInt();
+        assertEquals(123, res);
+
+        // Subscribe again, should return the same userId.
+        res = client.executeFunction("PostgresIsSubscribed", 123, 555).getInt();
+        assertEquals(123, res);
+
+        // Get a list of subscribers, should only contain one user entry.
+        int[] resList = client.executeFunction("PostgresFetchSubscribers",555).getIntArray();
+        assertEquals(1, resList.length);
+        assertEquals(123, resList[0]);
+
+        // Check provenance and get executionID.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        Connection provConn = provBuff.conn.get();
+        Statement stmt = provConn.createStatement();
+
+        String table = ProvenanceBuffer.PROV_FuncInvocations;
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s ASC;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
+        rs.next();
+        long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
+        assertTrue(resExecId >= 0);
+        assertEquals(PostgresIsSubscribed.class.getName(), resFuncName);
+
+        // Replay the execution of the first one.
+        // TODO: add more replay features.
+        res = client.replayFunction(resExecId,"PostgresIsSubscribed", 123, 555).getInt();
+        assertEquals(123, res);
+
+        // Check provenance.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 
     @Test

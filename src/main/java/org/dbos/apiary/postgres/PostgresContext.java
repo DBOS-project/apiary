@@ -131,8 +131,8 @@ public class PostgresContext extends ApiaryContext {
     public void executeUpdate(String procedure, Object... input) throws SQLException {
         int querySeqNum = txc.querySeqNum.getAndIncrement();
         // Replay.
-        // TODO: add support to query the provenance data and insert.
         if (this.isReplay) {
+            replayUpdate(procedure, input);
             return;
         }
         if (ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) {
@@ -305,5 +305,41 @@ public class PostgresContext extends ApiaryContext {
             schemaMapCache.put(tableName, schemaMap);
         }
         return schemaMapCache.get(tableName);
+    }
+
+    private void replayUpdate(String procedure, Object... input) {
+        // TODO: support multiple replay modes. The current mode skips the insert during replay.
+        int seqNum = this.txc.querySeqNum.get();
+        logger.info("Replay update. Original transaction: {} querySeqNum: {}",
+                this.replayTxID, seqNum);
+
+        PreparedStatement pstmt = null;
+        String interceptedQuery = interceptUpdate(procedure);
+        String currentQuery;
+        String originalQuery;
+        try {
+            pstmt = conn.prepareStatement(interceptedQuery);
+            prepareStatement(pstmt, input);
+            currentQuery = pstmt.toString();
+
+            // Check the original query.
+            String checkMetadata = String.format("SELECT %s FROM %s WHERE %s=? AND %s=?", ProvenanceBuffer.PROV_QUERY_STRING,
+                    ProvenanceBuffer.PROV_ApiaryMetadata, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_QUERY_SEQNUM);
+            pstmt = conn.prepareStatement(checkMetadata);
+            pstmt.setLong(1, this.replayTxID);
+            pstmt.setLong(2, seqNum);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                originalQuery = rs.getString(1);
+                assert (currentQuery.equalsIgnoreCase(originalQuery));
+                logger.info("Replay original update: {}", originalQuery);
+            } else {
+                throw new RuntimeException("Failed to find original update.");
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 }

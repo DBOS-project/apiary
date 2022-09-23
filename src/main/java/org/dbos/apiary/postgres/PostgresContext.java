@@ -350,7 +350,7 @@ public class PostgresContext extends ApiaryContext {
         String projection;
 
         // Check the original query.
-        pstmt = conn.prepareStatement(checkMetadata);
+        pstmt = conn.prepareStatement(checkMetadata, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
         pstmt.setLong(1, this.replayTxID);
         pstmt.setLong(2, seqNum);
         ResultSet rs = pstmt.executeQuery();

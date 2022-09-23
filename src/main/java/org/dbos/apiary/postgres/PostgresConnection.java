@@ -89,7 +89,9 @@ public class PostgresConnection implements ApiaryConnection {
         createTable(ProvenanceBuffer.PROV_QueryMetadata,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_QUERY_SEQNUM + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_QUERY_STRING + " VARCHAR(2048) NOT NULL"
+                + ProvenanceBuffer.PROV_QUERY_STRING + " VARCHAR(2048) NOT NULL, "
+                + ProvenanceBuffer.PROV_QUERY_TABLENAMES + " VARCHAR(1024) NOT NULL, "
+                + ProvenanceBuffer.PROV_QUERY_PROJECTION + " VARCHAR(1024) NOT NULL "
         );
         // TODO: add back recorded outputs later for fault tolerance.
         // createTable("RecordedOutputs", "ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID)");

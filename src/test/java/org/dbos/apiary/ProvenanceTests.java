@@ -123,6 +123,7 @@ public class ProvenanceTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
         // Check the replay record.
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s DESC;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
+        rs.next();
         // The reversed first one should be the replay of an insert.
         long replayExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
         long replayFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);

@@ -112,7 +112,7 @@ public class ProvenanceTests {
         // The second function should be subscribe.
         rs.next();
         long resExecId2 = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-        long resFuncId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
         assertEquals(resExecId, resExecId2);
 
         // Replay the execution of the first one.

@@ -42,8 +42,9 @@ public class ProvenanceTests {
     public void resetTables() {
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-            conn.dropTable("FuncInvocations");
+            conn.dropTable(ProvenanceBuffer.PROV_FuncInvocations);
             conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
+            conn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");

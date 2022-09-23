@@ -62,6 +62,7 @@ public class PostgresTests {
             conn.dropTable("ForumSubscription");
             conn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");
             conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
+            conn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");

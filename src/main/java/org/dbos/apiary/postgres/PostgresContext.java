@@ -129,6 +129,15 @@ public class PostgresContext extends ApiaryContext {
             tableName = rsmd.getTableName(1);
             long timestamp = Utilities.getMicroTimestamp();
             int numCol = rsmd.getColumnCount();
+            // Record query metadata.
+            // TODO: maybe we should record metaata before query execution. So we know what happened even if the query failed.
+            Object[] metaData = new Object[4];
+            metaData[0] = txc.txID;
+            metaData[1] = querySeqNum;
+            metaData[2] = pstmt.toString();
+            metaData[3] = tableName;
+            workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
+
             // Record provenance data.
             if (!rs.next()) {
                 // Still record an empty entry for the query.
@@ -152,6 +161,7 @@ public class PostgresContext extends ApiaryContext {
                     workerContext.provBuff.addEntry(tableName + "Events", rowData);
                 } while (rs.next());
             }
+
         } else {
             // First, prepare statement. Then, execute.
             PreparedStatement pstmt = conn.prepareStatement(procedure);
@@ -181,6 +191,8 @@ public class PostgresContext extends ApiaryContext {
             int exportOperation = Utilities.getQueryType(procedure);
             // Record provenance data.
             Map<String, Object[]> tableToRowData = new HashMap<>();
+            List<String> tableNames = new ArrayList<>();
+            List<String> projection = new ArrayList<>();
             if (!rs.next()) {
                 // Still record the query itself even if it retrieved nothing.
                 for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
@@ -193,9 +205,13 @@ public class PostgresContext extends ApiaryContext {
                         rowData[3] = querySeqNum;
                         tableToRowData.put(tableName, rowData);
                     }
+                    projection.add(rs.getMetaData().getColumnName(colNum));
                 }
                 for (String tableName : tableToRowData.keySet()) {
                     workerContext.provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
+                }
+                if (tableNames.isEmpty()) {
+                    tableNames.addAll(tableToRowData.keySet());
                 }
                 tableToRowData.clear();
             } else {
@@ -217,13 +233,29 @@ public class PostgresContext extends ApiaryContext {
                             int index = schemaMap.get(rs.getMetaData().getColumnName(colNum));
                             rowData[4 + index] = rs.getObject(colNum);
                         }
+                        if (tableNames.isEmpty()) {
+                            // Only add it once.
+                            projection.add(columnName);
+                        }
                     }
                     for (String tableName : tableToRowData.keySet()) {
                         workerContext.provBuff.addEntry(tableName + "Events", tableToRowData.get(tableName));
                     }
+                    if (tableNames.isEmpty()) {
+                        tableNames.addAll(tableToRowData.keySet());
+                    }
                     tableToRowData.clear();
                 } while (rs.next());
             }
+            // Record query metadata.
+            // TODO: maybe find ways to parse SQL qeury and record metadata before execution.
+            Object[] metaData = new Object[5];
+            metaData[0] = txc.txID;
+            metaData[1] = querySeqNum;
+            metaData[2] = pstmt.toString();
+            metaData[3] = String.join(",", tableNames);
+            metaData[4] = String.join(",", projection);
+            workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
             rs.beforeFirst();
         }
         return rs;

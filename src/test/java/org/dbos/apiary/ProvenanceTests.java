@@ -105,15 +105,23 @@ public class ProvenanceTests {
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s ASC;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
         rs.next();
         long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertTrue(resExecId >= 0);
         assertEquals(PostgresIsSubscribed.class.getName(), resFuncName);
 
-        // The second function should be subscribe.
+        // The second function should be a subscribe function.
         rs.next();
         long resExecId2 = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-        long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        long resFuncId2 = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
         assertEquals(resExecId, resExecId2);
+
+        // The third function should be a new execution.
+        rs.next();
+        long resExecId3 = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long resFuncId3 = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        assertNotEquals(resExecId, resExecId3);
+        assertEquals(resFuncId, resFuncId3);
 
         // Replay the execution of the first one.
         res = client.replayFunction(resExecId,"PostgresIsSubscribed", 123, 555).getInt();
@@ -121,14 +129,35 @@ public class ProvenanceTests {
 
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        String provQuery = String.format("SELECT * FROM %s ORDER BY %s DESC;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         // Check the replay record.
-        rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s DESC;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
+        rs = stmt.executeQuery(provQuery);
         rs.next();
         // The reversed first one should be the replay of an insert.
         long replayExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
         long replayFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        short resIsReplay = rs.getShort(ProvenanceBuffer.PROV_ISREPLAY);
         assertEquals(resExecId, replayExecId);
-        assertEquals(resFuncId, replayFuncId);
+        assertEquals(resFuncId2, replayFuncId);
+        assertEquals(1, resIsReplay);
+
+        // Replay the next execution. Which should skip the subscribe function.
+        res = client.replayFunction(resFuncId3, "PostgresIsSubscribed", 123, 555).getInt();
+        assertEquals(123, res);
+
+        // Check provenance data again.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        rs.close();
+        rs = stmt.executeQuery(provQuery);
+        rs.next();
+        // The reversed first one should be the isSubscribed function.
+        replayExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        replayFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        resIsReplay = rs.getShort(ProvenanceBuffer.PROV_ISREPLAY);
+        assertEquals(resExecId3, replayExecId);
+        assertEquals(resFuncId3, replayFuncId);
+        assertEquals(1, resIsReplay);
+
     }
 
     @Test

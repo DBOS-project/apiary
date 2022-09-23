@@ -424,6 +424,95 @@ public class PostgresTests {
         assertEquals(ProvenanceBuffer.ExportOperation.DELETE.getValue(), resExportOp);
         assertEquals(key, resKey);
         assertEquals(value+1, resValue);
+
+        // Check Query Metadata table.
+        table = "kvtable";
+        String metatable = ProvenanceBuffer.PROV_QueryMetadata;
+        String projection = "kvvalue,kvkey";
+        expectedSeqNum = 0;
+        rs = stmt.executeQuery(String.format("SELECT * FROM %s WHERE %s != 'apiarymetadata' ORDER BY %s;", table, ProvenanceBuffer.PROV_QUERY_TABLENAMES, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
+        rs.next();
+
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        String resTableName = rs.getString(ProvenanceBuffer.PROV_QUERY_TABLENAMES);
+        String resProjection = rs.getString(ProvenanceBuffer.PROV_QUERY_PROJECTION);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
+        assertEquals(txid2, resTxid);
+        assertEquals(table, resTableName);
+        assertEquals(projection, resProjection);
+
+
+        rs.next();
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        resTableName = rs.getString(ProvenanceBuffer.PROV_QUERY_TABLENAMES);
+        resProjection = rs.getString(ProvenanceBuffer.PROV_QUERY_PROJECTION);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
+        assertEquals(txid2, resTxid);
+        assertEquals(table, resTableName);
+        assertEquals("*", resProjection);
+
+        rs.next();
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        resTableName = rs.getString(ProvenanceBuffer.PROV_QUERY_TABLENAMES);
+        resProjection = rs.getString(ProvenanceBuffer.PROV_QUERY_PROJECTION);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
+        assertEquals(txid2, resTxid);
+        assertEquals(table, resTableName);
+        assertEquals("*", resProjection);
+
+        // Should be a read.
+        rs.next();
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        resTableName = rs.getString(ProvenanceBuffer.PROV_QUERY_TABLENAMES);
+        resProjection = rs.getString(ProvenanceBuffer.PROV_QUERY_PROJECTION);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
+        assertEquals(txid2, resTxid);
+        assertEquals(table, resTableName);
+        assertEquals(projection, resProjection);
+
+        // Should be an update.
+        rs.next();
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        resTableName = rs.getString(ProvenanceBuffer.PROV_QUERY_TABLENAMES);
+        resProjection = rs.getString(ProvenanceBuffer.PROV_QUERY_PROJECTION);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
+        assertEquals(txid2, resTxid);
+        assertEquals(table, resTableName);
+        assertEquals("*", resProjection);
+
+        // Should be a read again.
+        rs.next();
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        resTableName = rs.getString(ProvenanceBuffer.PROV_QUERY_TABLENAMES);
+        resProjection = rs.getString(ProvenanceBuffer.PROV_QUERY_PROJECTION);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
+        assertEquals(txid2, resTxid);
+        assertEquals(table, resTableName);
+        assertEquals(projection, resProjection);
+
+        // Should be a delete.
+        rs.next();
+        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        resTableName = rs.getString(ProvenanceBuffer.PROV_QUERY_TABLENAMES);
+        resProjection = rs.getString(ProvenanceBuffer.PROV_QUERY_PROJECTION);
+        assertEquals(expectedSeqNum, resSeqNum);
+        expectedSeqNum += 1;
+        assertEquals(txid2, resTxid);
+        assertEquals(table, resTableName);
+        assertEquals("*", resProjection);
     }
 
     @Test

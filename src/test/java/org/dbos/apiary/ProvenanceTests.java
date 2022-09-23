@@ -389,7 +389,7 @@ public class ProvenanceTests {
         expectedSeqNum += 1;
         assertEquals("kvtabletwo", resTableName);
         assertEquals("*", resProjection);
-        assertTrue(resQueryString.startsWith("INSERT INTO KVTABLETWO(KVKEY, KVVALUE)"));
+        assertTrue(resQueryString.startsWith("INSERT INTO KVTABLETWO(KVKEYTWO, KVVALUETWO)"));
 
         rs.next();
         // The next one should be a read to both tables.

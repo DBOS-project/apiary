@@ -129,14 +129,15 @@ public class PostgresContext extends ApiaryContext {
      * @param input     input parameters for the SQL statement.
      */
     public void executeUpdate(String procedure, Object... input) throws SQLException {
-        int querySeqNum = txc.querySeqNum.getAndIncrement();
         // Replay.
         if (this.isReplay) {
             replayUpdate(procedure, input);
             return;
         }
+
         if (ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) {
             // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
+            int querySeqNum = txc.querySeqNum.getAndIncrement();
             String interceptedQuery = interceptUpdate((String) procedure);
             ResultSet rs;
             ResultSetMetaData rsmd;
@@ -309,7 +310,7 @@ public class PostgresContext extends ApiaryContext {
 
     private void replayUpdate(String procedure, Object... input) {
         // TODO: support multiple replay modes. The current mode skips the insert during replay.
-        int seqNum = this.txc.querySeqNum.get();
+        int seqNum = this.txc.querySeqNum.getAndIncrement();
         logger.info("Replay update. Original transaction: {} querySeqNum: {}",
                 this.replayTxID, seqNum);
 

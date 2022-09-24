@@ -279,7 +279,7 @@ public class ProvenanceTests {
 
         // Check KVTable.
         table = "KVTableEvents";
-        int expectedSeqNum = 0;
+        int expectedSeqNum = 1;  // The first one returns no value.
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
 
         rs.next();

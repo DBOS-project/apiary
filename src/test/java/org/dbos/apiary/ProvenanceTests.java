@@ -281,28 +281,14 @@ public class ProvenanceTests {
         table = "KVTableEvents";
         int expectedSeqNum = 0;
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
-        rs.next();
-
-        // Should be a lookup for key=1. But with NULL data.
-        long resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-        int resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
-        int resKey = rs.getInt("KVKey");
-        assertTrue(rs.wasNull());
-        int resValue = rs.getInt("KVValue");
-        assertTrue(rs.wasNull());
-        int resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
-        assertEquals(expectedSeqNum, resSeqNum);
-        expectedSeqNum += 1;
-        assertEquals(txid2, resTxid);
-        assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
 
         rs.next();
         // Should be an insert for key=1.
-        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
-        resKey = rs.getInt("KVKey");
-        resValue = rs.getInt("KVValue");
-        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        long resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        int resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        int resKey = rs.getInt("KVKey");
+        int resValue = rs.getInt("KVValue");
+        int resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
         assertEquals(expectedSeqNum, resSeqNum);
         expectedSeqNum += 1;
         assertEquals(txid2, resTxid);

@@ -4,6 +4,9 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.postgres.replay.PostgresFetchSubscribers;
+import org.dbos.apiary.procedures.postgres.replay.PostgresForumSubscribe;
+import org.dbos.apiary.procedures.postgres.replay.PostgresIsSubscribed;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceBasic;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceJoins;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceMultiRows;
@@ -46,6 +49,8 @@ public class ProvenanceTests {
             conn.createTable("KVTable", "KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL");
             conn.dropTable("KVTableTwo");
             conn.createTable("KVTableTwo", "KVKeyTwo integer PRIMARY KEY NOT NULL, KVValueTwo integer NOT NULL");
+            conn.dropTable("ForumSubscription");
+            conn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");
@@ -59,6 +64,100 @@ public class ProvenanceTests {
         if (apiaryWorker != null) {
             apiaryWorker.shutdown();
         }
+    }
+
+    @Test
+    public void testForumSubscribeReplay() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        logger.info("testForumSubscribeReplay");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
+        apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
+        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.startServing();
+
+        ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
+        assert(provBuff != null);
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresIsSubscribed", 123, 555).getInt();
+        assertEquals(123, res);
+
+        // Subscribe again, should return the same userId.
+        res = client.executeFunction("PostgresIsSubscribed", 123, 555).getInt();
+        assertEquals(123, res);
+
+        // Get a list of subscribers, should only contain one user entry.
+        int[] resList = client.executeFunction("PostgresFetchSubscribers",555).getIntArray();
+        assertEquals(1, resList.length);
+        assertEquals(123, resList[0]);
+
+        // Check provenance and get executionID.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        Connection provConn = provBuff.conn.get();
+        Statement stmt = provConn.createStatement();
+
+        String table = ProvenanceBuffer.PROV_FuncInvocations;
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s ASC;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
+        rs.next();
+        long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
+        assertTrue(resExecId >= 0);
+        assertEquals(PostgresIsSubscribed.class.getName(), resFuncName);
+
+        // The second function should be a subscribe function.
+        rs.next();
+        long resExecId2 = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long resFuncId2 = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        assertEquals(resExecId, resExecId2);
+
+        // The third function should be a new execution.
+        rs.next();
+        long resExecId3 = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long resFuncId3 = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        assertNotEquals(resExecId, resExecId3);
+        assertEquals(resFuncId, resFuncId3);
+
+        // Replay the execution of the first one.
+        res = client.replayFunction(resExecId,"PostgresIsSubscribed", 123, 555).getInt();
+        assertEquals(123, res);
+
+        // Check provenance.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        String provQuery = String.format("SELECT * FROM %s ORDER BY %s DESC;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        // Check the replay record.
+        rs = stmt.executeQuery(provQuery);
+        rs.next();
+        // The reversed first one should be the replay of an insert.
+        long replayExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long replayFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        short resIsReplay = rs.getShort(ProvenanceBuffer.PROV_ISREPLAY);
+        assertEquals(resExecId, replayExecId);
+        assertEquals(resFuncId2, replayFuncId);
+        assertEquals(1, resIsReplay);
+
+        // Replay the next execution. Which should skip the subscribe function.
+        res = client.replayFunction(resExecId3, "PostgresIsSubscribed", 123, 555).getInt();
+        assertEquals(123, res);
+        rs.close();
+
+        // Check provenance data again.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        rs = stmt.executeQuery(provQuery);
+        rs.next();
+        // The reversed first one should be the isSubscribed function.
+        replayExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        replayFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        resIsReplay = rs.getShort(ProvenanceBuffer.PROV_ISREPLAY);
+        assertEquals(resExecId3, replayExecId);
+        assertEquals(resFuncId3, replayFuncId);
+        assertEquals(1, resIsReplay);
+
     }
 
     @Test
@@ -180,30 +279,16 @@ public class ProvenanceTests {
 
         // Check KVTable.
         table = "KVTableEvents";
-        int expectedSeqNum = 0;
+        int expectedSeqNum = 1;  // The first one returns no value.
         rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
-        rs.next();
-
-        // Should be a lookup for key=1. But with NULL data.
-        long resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-        int resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
-        int resKey = rs.getInt("KVKey");
-        assertTrue(rs.wasNull());
-        int resValue = rs.getInt("KVValue");
-        assertTrue(rs.wasNull());
-        int resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
-        assertEquals(expectedSeqNum, resSeqNum);
-        expectedSeqNum += 1;
-        assertEquals(txid2, resTxid);
-        assertEquals(ProvenanceBuffer.ExportOperation.READ.getValue(), resExportOp);
 
         rs.next();
         // Should be an insert for key=1.
-        resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-        resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
-        resKey = rs.getInt("KVKey");
-        resValue = rs.getInt("KVValue");
-        resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
+        long resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        int resExportOp = rs.getInt(ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE);
+        int resKey = rs.getInt("KVKey");
+        int resValue = rs.getInt("KVValue");
+        int resSeqNum = rs.getInt(ProvenanceBuffer.PROV_QUERY_SEQNUM);
         assertEquals(expectedSeqNum, resSeqNum);
         expectedSeqNum += 1;
         assertEquals(txid2, resTxid);

@@ -25,8 +25,8 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(MysqlConnection.class);
     
     public Percentile upserts = new Percentile();
-    public Percentile queries = new Percentile();;
-    public Percentile commits = new Percentile();;
+    public Percentile queries = new Percentile();
+    public Percentile commits = new Percentile();
 
     private final MysqlDataSource ds;
     private final ThreadLocal<Connection> connection;
@@ -148,8 +148,11 @@ public class MysqlConnection implements ApiarySecondaryConnection {
             Statement s = c.createStatement();
             for (String table : writtenKeys.keySet()) {
                 query = String.format("DELETE FROM %s WHERE %s = %d", table, MysqlContext.beginVersion, txc.txID);
-                s.execute(query);
+                s.addBatch(query);
+                query = String.format("UPDATE %s SET %s = %d where %s = %d", table, MysqlContext.endVersion, Long.MAX_VALUE, MysqlContext.endVersion, txc.txID);
+                s.addBatch(query);
             }
+            s.executeBatch();
             s.close();
             c.close();
         } catch (Exception e) {
@@ -194,51 +197,7 @@ public class MysqlConnection implements ApiarySecondaryConnection {
             try {
                 c = commitConnection.get();
                 s = c.createStatement();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            while (true) {
-                try {
-                    s.clearBatch();
-                    for (String table : writtenKeys.keySet()) {
-                        String keyString = String.join(",", writtenKeys.get(table).stream().map(name -> ("'" + name + "'")).collect(Collectors.toList()));
-                        if (!keyString.isEmpty()) {
-                            query = String.format("UPDATE %s SET %s = %d WHERE %s IN (%s) AND %s < %d AND %s = %d", table, MysqlContext.endVersion, txc.txID, MysqlContext.apiaryID, keyString, MysqlContext.beginVersion, txc.txID, MysqlContext.endVersion, Long.MAX_VALUE);
-                            //s.execute(query);
-                            s.addBatch(query);
-                        }
-                    }
-                    s.executeBatch();
-                    if (delayLogFlush) {
-                        s.execute("FLUSH ENGINE LOGS;");
-                    }
-                } catch(BatchUpdateException e) {
-                    Throwable innerException = e.getCause();
-                    if (innerException instanceof MySQLTransactionRollbackException) {
-                        MySQLTransactionRollbackException m = (MySQLTransactionRollbackException)innerException;
-                        if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
-                            continue; // Deadlock or lock timed out
-                        }
-                    }
-                    e.printStackTrace();
-                    logger.error("1. Failed to update valid txn {}", txc.txID);
-                    logger.info("1. Validate update query: {}", query);
-                } catch (MySQLTransactionRollbackException m) {
-                    if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
-                        continue; // Deadlock or lock timed out
-                    } else {
-                        m.printStackTrace();
-                        logger.error("2. Failed to update valid txn {}", txc.txID);
-                        logger.info("2. Validate update query: {}", query);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    logger.error("3. Failed to update valid txn {}", txc.txID);
-                    logger.info("3. Validate update query: {}", query);
-                }
-                break;
-            }
-            try {
+                s.execute("FLUSH ENGINE LOGS;");
                 s.close();
             } catch (Exception e) {
                 e.printStackTrace();

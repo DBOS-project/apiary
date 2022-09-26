@@ -82,6 +82,14 @@ public class MysqlContext extends ApiaryContext {
         System.arraycopy(input, 0, apiaryInput, 3, input.length);
         prepareStatement(pstmt, apiaryInput);
         pstmt.executeUpdate();
+
+        // make writes visible
+        String updateVisibility = String.format("UPDATE %s SET %s = ? WHERE %s = ? AND %s < ? AND %s = ?", tableName, MysqlContext.endVersion, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion);
+        // UPDATE table SET __endVersion__ = ? WHERE __apiaryID__ = ? and __beginVersion__ < ? and __endVersion__ == infinity
+        pstmt = conn.prepareStatement(updateVisibility);
+        prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
+        pstmt.executeUpdate();
+
         Long time = System.nanoTime() - t0;
         upserts.add(time / 1000);
     }

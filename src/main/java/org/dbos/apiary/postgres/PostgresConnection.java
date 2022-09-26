@@ -262,6 +262,11 @@ public class PostgresConnection implements ApiaryConnection {
     @Override
     public Map<Integer, String> getPartitionHostMap() {
         return Map.of(0, "localhost");
+
+        // Map<Integer, String> myMap = new TreeMap<Integer, String>() {{
+        //     put(0, "localhost");
+        // }};
+        // return myMap;
     }
 
 }

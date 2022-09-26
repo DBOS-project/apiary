@@ -119,6 +119,12 @@ public class PostgresContext extends ApiaryContext {
                 ps.setInt(i + 1, (Integer) o);
             } else if (o instanceof String) {
                 ps.setString(i + 1, (String) o);
+            } else if (o instanceof Float) {
+                ps.setFloat(i + 1, (Float) o);
+            } else if (o instanceof Double) {
+                ps.setDouble(i + 1, (Double) o);
+            } else if (o instanceof Timestamp) {
+                ps.setTimestamp(i + 1, (Timestamp) o);
             } else {
                 assert (false); // TODO: More types.
             }

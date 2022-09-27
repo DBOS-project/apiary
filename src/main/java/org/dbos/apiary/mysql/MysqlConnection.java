@@ -197,7 +197,9 @@ public class MysqlConnection implements ApiarySecondaryConnection {
             try {
                 c = commitConnection.get();
                 s = c.createStatement();
-                s.execute("FLUSH ENGINE LOGS;");
+                if (delayLogFlush) {
+                    s.execute("FLUSH ENGINE LOGS;");
+                }
                 s.close();
             } catch (Exception e) {
                 e.printStackTrace();

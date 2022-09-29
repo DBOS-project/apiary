@@ -69,9 +69,13 @@ public class MongoContext extends ApiaryContext {
         document.append(beginVersion, txc.txID);
         document.append(endVersion, Long.MAX_VALUE);
         MongoCollection<Document> c = database.getCollection(collectionName);
+        long t0 = System.nanoTime();
         boolean exists = c.find(Filters.eq(MongoContext.apiaryID, id)).first() != null;
+        logger.info("Existence: {}", (System.nanoTime() - t0) / 1000);
         if (!exists) {
+            long t1 = System.nanoTime();
             c.insertOne(document);
+            logger.info("Insert: {}", (System.nanoTime() - t1) / 1000);
             writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
             writtenKeys.get(collectionName).add(id);
             mongoUpdated = true;

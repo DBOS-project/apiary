@@ -135,6 +135,9 @@ public class MongoContext extends ApiaryContext {
         }
     }
 
+    public static final Collection<Long> replaceInsertTime = new ConcurrentLinkedQueue<>();
+    public static final Collection<Long> replaceUpdateTime = new ConcurrentLinkedQueue<>();
+
     public void replaceOne(String collectionName, Document document, String id) throws PSQLException {
         if (!ApiaryConfig.XDBTransactions) {
             document.append(apiaryID, id);
@@ -151,7 +154,10 @@ public class MongoContext extends ApiaryContext {
         document.append(beginVersion, txc.txID);
         document.append(endVersion, Long.MAX_VALUE);
         MongoCollection<Document> c = database.getCollection(collectionName);
+        long t0 = System.nanoTime();
         c.insertOne(document);
+        replaceInsertTime.add(System.nanoTime() - t0);
+        long t1 = System.nanoTime();
         c.updateOne(Filters.and(
                         Filters.eq(MongoContext.apiaryID, id),
                         Filters.ne(MongoContext.beginVersion, txc.txID),
@@ -159,9 +165,38 @@ public class MongoContext extends ApiaryContext {
                 ),
                 Updates.set(MongoContext.endVersion, txc.txID)
         );
+        replaceUpdateTime.add(System.nanoTime() - t1);
         writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
         writtenKeys.get(collectionName).add(id);
         mongoUpdated = true;
+
+        if (replaceInsertTime.size() % 10000 == 0) {
+            List<Long> queryTimes;
+            int numQueries;
+            queryTimes = MongoContext.replaceInsertTime.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+            numQueries = queryTimes.size();
+            if (numQueries > 0) {
+                long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
+                long p50 = queryTimes.get(numQueries / 2);
+                long p99 = queryTimes.get((numQueries * 99) / 100);
+                logger.info("Insert: Queries: {} Average: {}μs p50: {}μs p99: {}μs", numQueries, average, p50, p99);
+            } else {
+                logger.info("No writes");
+            }
+            MongoContext.replaceInsertTime.clear();
+
+            queryTimes = MongoContext.replaceUpdateTime.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+            numQueries = queryTimes.size();
+            if (numQueries > 0) {
+                long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
+                long p50 = queryTimes.get(numQueries / 2);
+                long p99 = queryTimes.get((numQueries * 99) / 100);
+                logger.info("Update: Queries: {} Average: {}μs p50: {}μs p99: {}μs", numQueries, average, p50, p99);
+            } else {
+                logger.info("No writes");
+            }
+            MongoContext.replaceUpdateTime.clear();
+        }
     }
 
     public void insertMany(String collectionName, List<Document> documents, List<String> ids) {

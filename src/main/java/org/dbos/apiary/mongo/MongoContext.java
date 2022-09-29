@@ -15,9 +15,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -53,6 +55,10 @@ public class MongoContext extends ApiaryContext {
         return null;
     }
 
+
+    public static final Collection<Long> insertTimes = new ConcurrentLinkedQueue<>();
+    public static final Collection<Long> existenceTimes = new ConcurrentLinkedQueue<>();
+
     public void insertOne(String collectionName, Document document, String id) throws PSQLException {
         if (!ApiaryConfig.XDBTransactions) {
             document.append(apiaryID, id);
@@ -71,11 +77,11 @@ public class MongoContext extends ApiaryContext {
         MongoCollection<Document> c = database.getCollection(collectionName);
         long t0 = System.nanoTime();
         boolean exists = c.find(Filters.eq(MongoContext.apiaryID, id)).first() != null;
-        logger.info("Existence: {}", (System.nanoTime() - t0) / 1000);
+        existenceTimes.add(System.nanoTime() - t0);
         if (!exists) {
             long t1 = System.nanoTime();
             c.insertOne(document);
-            logger.info("Insert: {}", (System.nanoTime() - t1) / 1000);
+            insertTimes.add(System.nanoTime() - t1);
             writtenKeys.putIfAbsent(collectionName, new ArrayList<>());
             writtenKeys.get(collectionName).add(id);
             mongoUpdated = true;

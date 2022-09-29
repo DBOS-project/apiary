@@ -88,6 +88,34 @@ public class MongoContext extends ApiaryContext {
         } else {
             logger.info("Insert failed, exists: {}", id);
         }
+
+        if (existenceTimes.size() % 10000 == 0) {
+            List<Long> queryTimes;
+            int numQueries;
+            queryTimes = MongoContext.existenceTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+            numQueries = queryTimes.size();
+            if (numQueries > 0) {
+                long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
+                long p50 = queryTimes.get(numQueries / 2);
+                long p99 = queryTimes.get((numQueries * 99) / 100);
+                logger.info("Existence: Queries: {} Average: {}μs p50: {}μs p99: {}μs", numQueries, average, p50, p99);
+            } else {
+                logger.info("No writes");
+            }
+            MongoContext.existenceTimes.clear();
+
+            queryTimes = MongoContext.insertTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+            numQueries = queryTimes.size();
+            if (numQueries > 0) {
+                long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
+                long p50 = queryTimes.get(numQueries / 2);
+                long p99 = queryTimes.get((numQueries * 99) / 100);
+                logger.info("Insert: Queries: {} Average: {}μs p50: {}μs p99: {}μs", numQueries, average, p50, p99);
+            } else {
+                logger.info("No writes");
+            }
+            MongoContext.insertTimes.clear();
+        }
     }
 
     public void replaceOne(String collectionName, Document document, String id) throws PSQLException {

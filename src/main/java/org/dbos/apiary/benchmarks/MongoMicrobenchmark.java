@@ -130,32 +130,6 @@ public class MongoMicrobenchmark {
             logger.info("No writes");
         }
 
-        queryTimes = MongoContext.existenceTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
-        numQueries = queryTimes.size();
-        if (numQueries > 0) {
-            long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
-            double throughput = (double) numQueries * 1000.0 / elapsedTime;
-            long p50 = queryTimes.get(numQueries / 2);
-            long p99 = queryTimes.get((numQueries * 99) / 100);
-            logger.info("Existence: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
-        } else {
-            logger.info("No writes");
-        }
-        MongoContext.existenceTimes.clear();
-
-        queryTimes = MongoContext.insertTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
-        numQueries = queryTimes.size();
-        if (numQueries > 0) {
-            long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
-            double throughput = (double) numQueries * 1000.0 / elapsedTime;
-            long p50 = queryTimes.get(numQueries / 2);
-            long p99 = queryTimes.get((numQueries * 99) / 100);
-            logger.info("Insert: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
-        } else {
-            logger.info("No writes");
-        }
-        MongoContext.insertTimes.clear();
-
         threadPool.shutdown();
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);
         logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);

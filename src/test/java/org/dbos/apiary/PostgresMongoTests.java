@@ -111,6 +111,35 @@ public class PostgresMongoTests {
     }
 
     @Test
+    public void testMongoBenchmark() throws InvalidProtocolBufferException, SQLException {
+        logger.info("testMongoBenchmark");
+
+        MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresAddPerson", ApiaryConfig.postgres, PostgresAddPerson::new);
+        apiaryWorker.registerFunction("PostgresFindPerson", ApiaryConfig.postgres, PostgresFindPerson::new);
+        apiaryWorker.registerFunction("MongoAddPerson", ApiaryConfig.mongo, MongoAddPerson::new);
+        apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresAddPerson", "matei", 1).getInt();
+        assertEquals(1, res);
+
+        for (int i = 0; i < 1000; i++) {
+            long t0 = System.nanoTime();
+            res = client.executeFunction("MongoFindPerson", "matei").getInt();
+            logger.info("Outer: {}", (System.nanoTime() - t0) / 1000);
+        }
+    }
+
+    @Test
     public void testMongoWriteRead() throws InvalidProtocolBufferException, SQLException {
         logger.info("testMongoWriteRead");
 

@@ -6,6 +6,7 @@ import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.utilities.Percentile;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
@@ -24,6 +25,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class PostgresConnection implements ApiaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(PostgresConnection.class);
+
+    public Percentile upserts = new Percentile();
+    public Percentile queries = new Percentile();
+    public Percentile commits = new Percentile();
+    public Percentile rollbacks = new Percentile();
+    public Percentile funcCalls = new Percentile();
 
     private final PGSimpleDataSource ds;
     public final ThreadLocal<Connection> connection;
@@ -166,10 +173,11 @@ public class PostgresConnection implements ApiaryConnection {
                                        long functionID, boolean isReplay, Object... inputs) {
         Connection c = connection.get();
         FunctionOutput f = null;
+        long tt0 = System.nanoTime();
         while (true) {
             activeTransactionsLock.readLock().lock();
             PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID, isReplay,
-                    new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
+                    new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions), upserts, queries);
             activeTransactions.add(ctxt.txc);
             latestTransactionContext = ctxt.txc;
             if (ctxt.txc.xmin > biggestxmin) {
@@ -178,6 +186,7 @@ public class PostgresConnection implements ApiaryConnection {
             activeTransactionsLock.readLock().unlock();
             try {
                 f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+                
                 boolean valid = true;
                 for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
                     Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
@@ -186,6 +195,7 @@ public class PostgresConnection implements ApiaryConnection {
                     }
                 }
                 if (valid) {
+                    long t0 = System.nanoTime();
                     ctxt.conn.commit();
                     for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
                         Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
@@ -194,10 +204,16 @@ public class PostgresConnection implements ApiaryConnection {
                         }
                     }
                     activeTransactions.remove(ctxt.txc);
+                    Long time = System.nanoTime() - t0;
+                    commits.add(time / 1000);
                     break;
                 } else {
+                    long t0 = System.nanoTime();
                     rollback(ctxt);
+                    Long time = System.nanoTime() - t0;
+                    rollbacks.add(time / 1000);
                 }
+                
             } catch (Exception e) {
                 if (e instanceof InvocationTargetException) {
                     Throwable innerException = e;
@@ -224,6 +240,8 @@ public class PostgresConnection implements ApiaryConnection {
                 break;
             }
         }
+        Long time = System.nanoTime() - tt0;
+        funcCalls.add(time / 1000);
         return f;
     }
 

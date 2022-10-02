@@ -46,4 +46,9 @@ public class Percentile {
     synchronized public int size() {
         return times.size();
     }
+
+    synchronized public void clear() {
+        times.clear();
+        isSorted = false;
+    }
 }

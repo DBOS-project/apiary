@@ -17,6 +17,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -27,21 +31,60 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     public Percentile upserts = new Percentile();
     public Percentile queries = new Percentile();
     public Percentile commits = new Percentile();
-
+    public AtomicInteger groupFlushLogs = new AtomicInteger(0);
     private final MysqlDataSource ds;
     private final ThreadLocal<Connection> connection;
     private final ThreadLocal<Connection> commitConnection;
     private boolean delayLogFlush = false;
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
-
+    private static ConcurrentLinkedQueue<CountDownLatch> groupFlushRequests = new ConcurrentLinkedQueue();
+    private static AtomicBoolean groupFlusherStarted = new AtomicBoolean(false);
+    public void enableSlowQueryLog() {
+        try {
+            Connection conn = ds.getConnection();
+            Statement s = conn.createStatement();
+            s.execute("SET GLOBAL slow_query_log=1");
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
     public void enableDelayedFlush() {
         this.delayLogFlush = true;
         try {
+            
             Connection conn = ds.getConnection();
             conn.setAutoCommit(true);
             Statement s = conn.createStatement();
             s.execute("SET GLOBAL innodb_flush_log_at_trx_commit=0;");
+            if (groupFlusherStarted.compareAndSet(false, true)) {
+                new Thread( () -> {
+                    logger.info("GroupDelayFlush Thread started");
+                    while (true) {
+                        List<CountDownLatch> latches = null;
+                        while (groupFlushRequests.isEmpty() == false) {
+                            if (latches == null) {
+                                latches = new ArrayList<>();
+                            }
+                            latches.add(groupFlushRequests.poll());
+                        }
+                        if (latches != null && !latches.isEmpty()) {
+                            try {
+                                Statement stmt = conn.createStatement();
+                                stmt.execute("FLUSH ENGINE LOGS");
+                                stmt.close();
+                                groupFlushLogs.incrementAndGet();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            for(CountDownLatch latch : latches) {
+                                latch.countDown();
+                            }
+                        }
+                    }
+                }).start();
+            }
             s.close();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -196,11 +239,13 @@ public class MysqlConnection implements ApiarySecondaryConnection {
             Statement s = null;
             try {
                 c = commitConnection.get();
-                s = c.createStatement();
+                //s = c.createStatement();
                 if (delayLogFlush) {
-                    s.execute("FLUSH ENGINE LOGS;");
+                    CountDownLatch latch = new CountDownLatch(1);
+                    groupFlushRequests.add(latch);
+                    latch.await();
                 }
-                s.close();
+                //s.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }

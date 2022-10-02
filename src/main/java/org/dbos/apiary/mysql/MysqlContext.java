@@ -152,6 +152,8 @@ public class MysqlContext extends ApiaryContext {
         filterQuery.append(String.format(" AND (( %s < %d ", beginVersion, txc.xmax));
         if (!activeTxnString.isEmpty()) {
             filterQuery.append(String.format(" AND %s NOT IN (%s) ) ", beginVersion, activeTxnString));
+        } else {
+            filterQuery.append(" )");
         }
         // If it has updates, then need to read its own writes.
         if (mysqlUpdated) {
@@ -163,6 +165,8 @@ public class MysqlContext extends ApiaryContext {
         filterQuery.append(String.format(" AND ( %s >= %d ", endVersion, txc.xmax));
         if (!activeTxnString.isEmpty()) {
             filterQuery.append(String.format(" OR %s IN (%s) )", endVersion, activeTxnString));
+        } else {
+            filterQuery.append(" )");
         }
 
         // If it has updates, then need to read its own writes.

@@ -3,6 +3,7 @@ package org.dbos.apiary.postgres;
 import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.utilities.Percentile;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +24,8 @@ public class PostgresContext extends ApiaryContext {
     final Connection conn;
     private AtomicLong functionIDCounter = new AtomicLong(0);
     private long currentID = functionID;
-
+    public Percentile upserts;
+    public Percentile queries;
     private final long replayTxID;  // The replayed transaction ID.
 
     private static final String checkReplayTxID = String.format("SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=0", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
@@ -37,9 +39,12 @@ public class PostgresContext extends ApiaryContext {
 
     public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID,
                            boolean isReplay,
-                           Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions) {
+                           Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions,
+                           Percentile upserts, Percentile queries) {
         super(workerContext, service, execID, functionID, isReplay);
         this.conn = c;
+        this.upserts = upserts;
+        this.queries = queries;
         long tmpReplayTxID = -1;
         try {
             Statement stmt = conn.createStatement();
@@ -142,7 +147,7 @@ public class PostgresContext extends ApiaryContext {
             replayUpdate(procedure, input);
             return;
         }
-
+        long t0 = System.nanoTime();
         if (ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) {
             // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
             int querySeqNum = txc.querySeqNum.getAndIncrement();
@@ -187,6 +192,8 @@ public class PostgresContext extends ApiaryContext {
             prepareStatement(pstmt, input);
             pstmt.executeUpdate();
         }
+        Long time = System.nanoTime() - t0;
+        upserts.add(time / 1000);
     }
 
     /**
@@ -199,6 +206,7 @@ public class PostgresContext extends ApiaryContext {
         if (this.isReplay) {
             return replayQuery(procedure, input);
         }
+        long t0 = System.nanoTime();
         PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
         prepareStatement(pstmt, input);
         ResultSet rs = pstmt.executeQuery();
@@ -265,6 +273,8 @@ public class PostgresContext extends ApiaryContext {
             workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
             rs.beforeFirst();
         }
+        Long time = System.nanoTime() - t0;
+        queries.add(time / 1000);
         return rs;
     }
 

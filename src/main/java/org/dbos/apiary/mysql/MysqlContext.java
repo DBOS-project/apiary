@@ -8,6 +8,8 @@ import org.dbos.apiary.utilities.Percentile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -63,7 +65,7 @@ public class MysqlContext extends ApiaryContext {
         }
     }
 
-    public void executeUpsert(String tableName, String id, Object... input) throws Exception {
+    public void executeUpsert(String tableName, String id, String visbilityUpdatePredicate, Object... input) throws Exception {
         long t0 = System.nanoTime();
         // TODO: This interface is not the natural SQL interface. Figure out a better one? E.g., can we support arbitrary update queries?
         StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (?, ?, ?", tableName));
@@ -86,9 +88,29 @@ public class MysqlContext extends ApiaryContext {
         // make writes visible
         String updateVisibility = String.format("UPDATE %s SET %s = ? WHERE %s = ? AND %s < ? AND %s = ?", tableName, MysqlContext.endVersion, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion);
         // UPDATE table SET __endVersion__ = ? WHERE __apiaryID__ = ? and __beginVersion__ < ? and __endVersion__ == infinity
-        pstmt = conn.prepareStatement(updateVisibility);
-        prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
-        pstmt.executeUpdate();
+        if (visbilityUpdatePredicate != null) {
+            updateVisibility = updateVisibility + " AND " + visbilityUpdatePredicate;
+        }
+        while (true) {
+            try {
+                pstmt = conn.prepareStatement(updateVisibility);
+                prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
+                pstmt.executeUpdate();
+            } catch (MySQLTransactionRollbackException m) {
+                if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
+                    continue; // Deadlock or lock timed out
+                } else {
+                    m.printStackTrace();
+                    logger.error("2. Failed to update valid txn {}", txc.txID);
+                    logger.info("2. Validate update query: {}", query);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.error("3. Failed to update valid txn {}", txc.txID);
+                logger.info("3. Validate update query: {}", query);
+            }
+            break;
+        }
 
         Long time = System.nanoTime() - t0;
         upserts.add(time / 1000);

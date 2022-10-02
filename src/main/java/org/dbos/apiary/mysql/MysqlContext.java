@@ -4,6 +4,7 @@ import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Percentile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,30 +66,45 @@ public class MysqlContext extends ApiaryContext {
 
     public void executeUpsert(String tableName, String id, Object... input) throws Exception {
         long t0 = System.nanoTime();
-        // TODO: This interface is not the natural SQL interface. Figure out a better one? E.g., can we support arbitrary update queries?
-        StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (?, ?, ?", tableName));
-        for (int i = 0; i < input.length; i++) {
-            query.append(", ?");
+        if (!ApiaryConfig.XDBTransactions) {
+            StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (", tableName));
+            for (int i = 0; i < input.length; i++) {
+                if (i == 0) {
+                    query.append("?");
+                } else {
+                    query.append(", ?");
+                }
+            }
+            query.append(");");
+            PreparedStatement pstmt = conn.prepareStatement(query.toString());
+            prepareStatement(pstmt, input);
+            pstmt.executeUpdate();
+        } else {
+            // TODO: This interface is not the natural SQL interface. Figure out a better one? E.g., can we support arbitrary update queries?
+            StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (?, ?, ?", tableName));
+            for (int i = 0; i < input.length; i++) {
+                query.append(", ?");
+            }
+            query.append(");");
+
+            writtenKeys.putIfAbsent(tableName, new ArrayList<>());
+            writtenKeys.get(tableName).add(id);
+            PreparedStatement pstmt = conn.prepareStatement(query.toString());
+            Object[] apiaryInput = new Object[input.length + 3];
+            apiaryInput[0] = id;
+            apiaryInput[1] = txc.txID;
+            apiaryInput[2] = Long.MAX_VALUE;
+            System.arraycopy(input, 0, apiaryInput, 3, input.length);
+            prepareStatement(pstmt, apiaryInput);
+            pstmt.executeUpdate();
+
+            // make writes visible
+            String updateVisibility = String.format("UPDATE %s SET %s = ? WHERE %s = ? AND %s < ? AND %s = ?", tableName, MysqlContext.endVersion, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion);
+            // UPDATE table SET __endVersion__ = ? WHERE __apiaryID__ = ? and __beginVersion__ < ? and __endVersion__ == infinity
+            pstmt = conn.prepareStatement(updateVisibility);
+            prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
+            pstmt.executeUpdate();
         }
-        query.append(");");
-
-        writtenKeys.putIfAbsent(tableName, new ArrayList<>());
-        writtenKeys.get(tableName).add(id);
-        PreparedStatement pstmt = conn.prepareStatement(query.toString());
-        Object[] apiaryInput = new Object[input.length + 3];
-        apiaryInput[0] = id;
-        apiaryInput[1] = txc.txID;
-        apiaryInput[2] = Long.MAX_VALUE;
-        System.arraycopy(input, 0, apiaryInput, 3, input.length);
-        prepareStatement(pstmt, apiaryInput);
-        pstmt.executeUpdate();
-
-        // make writes visible
-        String updateVisibility = String.format("UPDATE %s SET %s = ? WHERE %s = ? AND %s < ? AND %s = ?", tableName, MysqlContext.endVersion, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion);
-        // UPDATE table SET __endVersion__ = ? WHERE __apiaryID__ = ? and __beginVersion__ < ? and __endVersion__ == infinity
-        pstmt = conn.prepareStatement(updateVisibility);
-        prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
-        pstmt.executeUpdate();
 
         Long time = System.nanoTime() - t0;
         upserts.add(time / 1000);
@@ -96,26 +112,33 @@ public class MysqlContext extends ApiaryContext {
 
     public ResultSet executeQuery(String procedure, Object... input) throws Exception {
         long t0 = System.nanoTime();
-        // TODO: This implementation assume predicates at the end. No more group by or others. May find a better solution.
-        // Also hard to use prepared statement because the number of active transactions varies.
+        ResultSet rs;
         String sanitizeQuery = procedure.replaceAll(";+$", "");
-        StringBuilder filterQuery = new StringBuilder(sanitizeQuery);
-        String activeTxnString = txc.activeTransactions.stream().map(Object::toString).collect(Collectors.joining(","));
-        // Add filters to the end.
-        filterQuery.append(String.format(" AND %s < %d ", beginVersion, txc.xmax));
-        if (!activeTxnString.isEmpty()) {
-            filterQuery.append(String.format(" AND %s NOT IN (%s) ", beginVersion, activeTxnString));
-        }
-        filterQuery.append(String.format(" AND ( %s >= %d ", endVersion, txc.xmax));
-        if (!activeTxnString.isEmpty()) {
-            filterQuery.append(String.format(" OR %s IN (%s) ", endVersion, activeTxnString));
-        }
+        if (!ApiaryConfig.XDBTransactions) {
+            PreparedStatement pstmt = conn.prepareStatement(sanitizeQuery);
+            prepareStatement(pstmt, input);
+            rs = pstmt.executeQuery();
+        } else {
+            // TODO: This implementation assume predicates at the end. No more group by or others. May find a better solution.
+            // Also hard to use prepared statement because the number of active transactions varies.
+            StringBuilder filterQuery = new StringBuilder(sanitizeQuery);
+            String activeTxnString = txc.activeTransactions.stream().map(Object::toString).collect(Collectors.joining(","));
+            // Add filters to the end.
+            filterQuery.append(String.format(" AND %s < %d ", beginVersion, txc.xmax));
+            if (!activeTxnString.isEmpty()) {
+                filterQuery.append(String.format(" AND %s NOT IN (%s) ", beginVersion, activeTxnString));
+            }
+            filterQuery.append(String.format(" AND ( %s >= %d ", endVersion, txc.xmax));
+            if (!activeTxnString.isEmpty()) {
+                filterQuery.append(String.format(" OR %s IN (%s) ", endVersion, activeTxnString));
+            }
 
-        filterQuery.append("); ");
+            filterQuery.append("); ");
 
-        PreparedStatement pstmt = conn.prepareStatement(filterQuery.toString());
-        prepareStatement(pstmt, input);
-        ResultSet rs = pstmt.executeQuery();
+            PreparedStatement pstmt = conn.prepareStatement(filterQuery.toString());
+            prepareStatement(pstmt, input);
+            rs = pstmt.executeQuery();
+        }
 
         Long time = System.nanoTime() - t0;
         queries.add(time / 1000);

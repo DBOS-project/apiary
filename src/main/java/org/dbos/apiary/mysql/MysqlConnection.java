@@ -7,6 +7,7 @@ import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Percentile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,13 +109,19 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     }
 
     public void createTable(String tableName, String specStr) throws SQLException {
-        // TODO: How do we interact with the original primary key columns to avoid conflicts? Add Apiary columns as part of primary key? For now, assume no primary key columns.
-        // Automatically add three additional columns: apiaryID, beginVersion, endVersion.
         Connection conn = ds.getConnection();
         Statement s = conn.createStatement();
-        String apiaryTable = String.format(
-                "CREATE TABLE IF NOT EXISTS %s (%s VARCHAR(256) NOT NULL, %s BIGINT, %s BIGINT, %s);"
-        , tableName, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion, specStr);
+        String apiaryTable;
+        if (ApiaryConfig.XDBTransactions) {
+            // Automatically add three additional columns: apiaryID, beginVersion, endVersion.
+            // TODO: How do we interact with the original primary key columns to avoid conflicts? Add Apiary columns as part of primary key? For now, assume no primary key columns.
+            apiaryTable = String.format(
+                    "CREATE TABLE IF NOT EXISTS %s (%s VARCHAR(256) NOT NULL, %s BIGINT, %s BIGINT, %s);"
+                    , tableName, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion, specStr);
+        } else {
+            apiaryTable = String.format(
+                    "CREATE TABLE IF NOT EXISTS %s (%s);", tableName, specStr);
+        }
         s.execute(apiaryTable);
         s.close();
         conn.close();

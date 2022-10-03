@@ -107,7 +107,7 @@ public class MysqlMicrobenchmark {
                 if (chooser < percentageRead) {
                     int personNum = ThreadLocalRandom.current().nextInt(personNums.get());
                     if (ApiaryConfig.XDBTransactions) {
-                        client.get().executeFunction("PostgresMysqlSoloQueryPerson");
+                        client.get().executeFunction("PostgresMysqlSoloQueryPerson", "matei" + personNum);
                     } else {
                         client.get().executeFunction("MysqlQueryPerson", "matei" + personNum);
                     }

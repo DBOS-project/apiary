@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
@@ -29,7 +28,7 @@ public class MysqlMicrobenchmark {
     private static final int threadPoolSize = 128;
     private static final int numWorker = 16;
 
-    private static final int numPeople = 100000;
+    private static final int numPeople = 1000000;
     private static final int chunkSize = 1000;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.

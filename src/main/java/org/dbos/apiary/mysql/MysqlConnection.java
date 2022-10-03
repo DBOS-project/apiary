@@ -105,11 +105,16 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
+    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws SQLException {
         MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
         FunctionOutput f = null;
-        f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-
+        try {
+            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+        } catch (Exception e) {
+            // Commit the transaction.
+            this.connection.get().commit();
+            throw new RuntimeException(e);
+        }
         // Flush logs and commit transaction.
         this.connection.get().commit();
         return f;
@@ -118,27 +123,38 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     @Override
     public void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc) {
         String query = "";
-        try {
-            Connection c = ds.getConnection();
-            c.setAutoCommit(false);
-            Statement s = c.createStatement();
-            for (String table : writtenKeys.keySet()) {
-                query = String.format("DELETE FROM %s WHERE %s = %d", table, MysqlContext.beginVersion, txc.txID);
-                s.addBatch(query);
-                query = String.format("UPDATE %s SET %s = %d where %s = %d", table, MysqlContext.endVersion, Long.MAX_VALUE, MysqlContext.endVersion, txc.txID);
-                s.addBatch(query);
-                for (String key: writtenKeys.get(table)) {
-                    lockManager.get(table).get(key).set(false);
+        while (true) {
+            try {
+                Connection c = ds.getConnection();
+                c.setAutoCommit(false);
+                Statement s = c.createStatement();
+                for (String table : writtenKeys.keySet()) {
+                    query = String.format("DELETE FROM %s WHERE %s = %d", table, MysqlContext.beginVersion, txc.txID);
+                    s.addBatch(query);
+                    query = String.format("UPDATE %s SET %s = %d where %s = %d", table, MysqlContext.endVersion, Long.MAX_VALUE, MysqlContext.endVersion, txc.txID);
+                    s.addBatch(query);
+                    for (String key : writtenKeys.get(table)) {
+                        lockManager.get(table).get(key).set(false);
+                    }
                 }
+                s.executeBatch();
+                s.close();
+                c.commit();
+                c.close();
+            } catch (MySQLTransactionRollbackException m) {
+                if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
+                    continue; // Deadlock or lock timed out
+                } else {
+                    m.printStackTrace();
+                    logger.error("2. Failed to update valid txn {}", txc.txID);
+                    logger.info("2. Rollback MySQL query: {}", query);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.error("3. Failed to rollback mysql txn {}", txc.txID);
+                logger.info("2. Rollback MySQL query: {}", query);
             }
-            s.executeBatch();
-            s.close();
-            c.commit();
-            c.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            logger.error("Failed to rollback MySQL txn {}", txc.txID);
-            logger.info("Rollback MySQL query: {}", query);
+            break;
         }
     }
 

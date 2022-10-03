@@ -82,6 +82,52 @@ public class MysqlContext extends ApiaryContext {
         pstmt.executeUpdate();
     }
 
+    // Note: use this function to bulk load experimental data. So skip recording writtenKeys and write locks.
+    public void insertMany(String tableName, List<String> ids, List<Object[]> inputs) throws Exception {
+        if (!ApiaryConfig.XDBTransactions) {
+            StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (", tableName));
+            for (int i = 0; i < inputs.get(0).length; i++) {
+                if (i == 0) {
+                    query.append("?");
+                } else {
+                    query.append(", ?");
+                }
+            }
+            query.append(");");
+            PreparedStatement pstmt = conn.prepareStatement(query.toString());
+            for (Object[] input : inputs) {
+                prepareStatement(pstmt, input);
+                pstmt.addBatch();
+            }
+            pstmt.executeBatch();
+            pstmt.close();
+            return;
+        }
+
+        StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (?, ?, ?", tableName));
+        for (int i = 0; i < inputs.get(0).length; i++) {
+            query.append(", ?");
+        }
+        query.append(");");
+
+        PreparedStatement pstmt = conn.prepareStatement(query.toString());
+        for (int i = 0; i < inputs.size(); i++) {
+            Object[] input = inputs.get(i);
+            Object[] apiaryInput = new Object[input.length + 3];
+            apiaryInput[0] = ids.get(i);
+            apiaryInput[1] = txc.txID;
+            apiaryInput[2] = Long.MAX_VALUE;
+            System.arraycopy(input, 0, apiaryInput, 3, input.length);
+            prepareStatement(pstmt, apiaryInput);
+            pstmt.addBatch();
+        }
+        pstmt.executeBatch();
+        pstmt.close();
+
+        mysqlUpdated = true;
+        return;
+    }
+
     public void executeUpsert(String tableName, String id, Object... input) throws Exception {
         long t0 = System.nanoTime();
         if (!ApiaryConfig.XDBTransactions) {
@@ -99,6 +145,7 @@ public class MysqlContext extends ApiaryContext {
             pstmt.executeUpdate();
             Long time = System.nanoTime() - t0;
             upserts.add(time / 1000);
+            pstmt.close();
             return;
         }
 
@@ -127,6 +174,7 @@ public class MysqlContext extends ApiaryContext {
         System.arraycopy(input, 0, apiaryInput, 3, input.length);
         prepareStatement(pstmt, apiaryInput);
         pstmt.executeUpdate();
+        pstmt.close();
 
         // make writes visible
         String updateVisibility = String.format("UPDATE %s SET %s = ? WHERE %s = ? AND %s < ? AND %s = ?", tableName, MysqlContext.endVersion, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion);
@@ -137,6 +185,7 @@ public class MysqlContext extends ApiaryContext {
                 pstmt = conn.prepareStatement(updateVisibility);
                 prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
                 pstmt.executeUpdate();
+                pstmt.close();
             } catch (MySQLTransactionRollbackException m) {
                 if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
                     continue; // Deadlock or lock timed out
@@ -169,6 +218,7 @@ public class MysqlContext extends ApiaryContext {
             rs = pstmt.executeQuery();
             Long time = System.nanoTime() - t0;
             queries.add(time / 1000);
+            pstmt.close();
             return rs;
         }
 
@@ -211,6 +261,7 @@ public class MysqlContext extends ApiaryContext {
 
         Long time = System.nanoTime() - t0;
         queries.add(time / 1000);
+        pstmt.close();
         return rs;
     }
 

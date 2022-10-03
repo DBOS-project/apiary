@@ -5,14 +5,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.mysql.MysqlConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.mysql.MysqlQueryPerson;
-import org.dbos.apiary.procedures.mysql.MysqlReplacePerson;
-import org.dbos.apiary.procedures.mysql.MysqlUpsertPerson;
-import org.dbos.apiary.procedures.mysql.MysqlWriteReadPerson;
-import org.dbos.apiary.procedures.postgres.pgmysql.PostgresMysqlReplacePerson;
-import org.dbos.apiary.procedures.postgres.pgmysql.PostgresMysqlWriteReadPerson;
-import org.dbos.apiary.procedures.postgres.pgmysql.PostgresQueryPerson;
-import org.dbos.apiary.procedures.postgres.pgmysql.PostgresUpsertPerson;
+import org.dbos.apiary.procedures.mysql.*;
+import org.dbos.apiary.procedures.postgres.pgmysql.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -143,6 +137,36 @@ public class PostgresMysqlTests {
 
         res = client.executeFunction("PostgresReplacePerson", "matei", 2).getInt();
         assertEquals(2, res);
+
+        res = client.executeFunction("PostgresQueryPerson", "matei").getInt();
+        assertEquals(1, res);
+    }
+
+    @Test
+    public void testMysqlBulk() throws InvalidProtocolBufferException, SQLException {
+        logger.info("testMysqlBulk");
+        MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
+
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.mysql, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresQueryPerson", ApiaryConfig.postgres, PostgresQueryPerson::new);
+        apiaryWorker.registerFunction("PostgresMysqlBulkAddPerson", ApiaryConfig.postgres, PostgresMysqlBulkAddPerson::new);
+        apiaryWorker.registerFunction("MysqlBulkAddPerson", ApiaryConfig.mysql, MysqlBulkAddPerson::new);
+        apiaryWorker.registerFunction("MysqlQueryPerson", ApiaryConfig.mysql, MysqlQueryPerson::new);
+
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresMysqlBulkAddPerson",  new String[]{"matei", "christos"}, new int[]{1, 2}).getInt();
+        assertEquals(2, res);
+
+        res = client.executeFunction("PostgresQueryPerson", "christos").getInt();
+        assertEquals(1, res);
 
         res = client.executeFunction("PostgresQueryPerson", "matei").getInt();
         assertEquals(1, res);

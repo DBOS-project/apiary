@@ -7,6 +7,7 @@ import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Percentile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -30,19 +32,25 @@ public class MysqlConnection implements ApiarySecondaryConnection {
 
     private final MysqlDataSource ds;
     private final ThreadLocal<Connection> connection;
-    private final ThreadLocal<Connection> commitConnection;
-    private boolean delayLogFlush = false;
+    private boolean delayLogFlush = true;
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
 
+    private final Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
+
+
     public void enableDelayedFlush() {
-        this.delayLogFlush = true;
         try {
             Connection conn = ds.getConnection();
             conn.setAutoCommit(true);
             Statement s = conn.createStatement();
-            s.execute("SET GLOBAL innodb_flush_log_at_trx_commit=0;");
+            if (delayLogFlush && ApiaryConfig.XDBTransactions) {
+                s.execute("SET GLOBAL innodb_flush_log_at_trx_commit=0;");
+            } else {
+                s.execute("SET GLOBAL innodb_flush_log_at_trx_commit=1;");
+            }
             s.close();
+            conn.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -57,31 +65,19 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         this.ds.setUser(databaseUsername);
         this.ds.setPassword(databasePassword);
 
+        // Enable delayed flush by default.
+        enableDelayedFlush();
+
         this.connection = ThreadLocal.withInitial(() -> {
             try {
                 Connection conn = ds.getConnection();
-                conn.setAutoCommit(true);
-                // conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
-                return conn;
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-            return null;
-        });
-
-        this.commitConnection = ThreadLocal.withInitial(() -> {
-            try {
-                Connection conn = ds.getConnection();
-                conn.setAutoCommit(true);
-                if (delayLogFlush) {
-                    Statement s = conn.createStatement();
-                    s.execute("SET GLOBAL innodb_flush_log_at_trx_commit=0;");
-                    s.close();
+                if (ApiaryConfig.XDBTransactions) {
+                    conn.setAutoCommit(true);
                 } else {
-                    Statement s = conn.createStatement();
-                    s.execute("SET GLOBAL innodb_flush_log_at_trx_commit=1;");
-                    s.close();
+                    // Otherwise, manually commit transactions after function execution.
+                    conn.setAutoCommit(false);
                 }
+                // MySQL default level is repeatable read.
                 // conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
                 return conn;
             } catch (SQLException e) {
@@ -108,13 +104,19 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     }
 
     public void createTable(String tableName, String specStr) throws SQLException {
-        // TODO: How do we interact with the original primary key columns to avoid conflicts? Add Apiary columns as part of primary key? For now, assume no primary key columns.
-        // Automatically add three additional columns: apiaryID, beginVersion, endVersion.
         Connection conn = ds.getConnection();
         Statement s = conn.createStatement();
-        String apiaryTable = String.format(
-                "CREATE TABLE IF NOT EXISTS %s (%s VARCHAR(256) NOT NULL, %s BIGINT, %s BIGINT, %s);"
-        , tableName, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion, specStr);
+        String apiaryTable;
+        if (ApiaryConfig.XDBTransactions) {
+            // Automatically add three additional columns: apiaryID, beginVersion, endVersion.
+            // TODO: How do we interact with the original primary key columns to avoid conflicts? Add Apiary columns as part of primary key? For now, assume no primary key columns.
+            apiaryTable = String.format(
+                    "CREATE TABLE IF NOT EXISTS %s (%s VARCHAR(256) NOT NULL, %s BIGINT, %s BIGINT, %s);"
+                    , tableName, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion, specStr);
+        } else {
+            apiaryTable = String.format(
+                    "CREATE TABLE IF NOT EXISTS %s (%s);", tableName, specStr);
+        }
         s.execute(apiaryTable);
         s.close();
         conn.close();
@@ -130,12 +132,13 @@ public class MysqlConnection implements ApiarySecondaryConnection {
 
     @Override
     public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
-        MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, workerContext, txc, service, execID, functionID, upserts, queries);
+        MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
         FunctionOutput f = null;
-        try {
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-        } catch (Exception e) {
-            e.printStackTrace();
+        f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+
+        // Flush logs and commit transaction for non-XDST calls.
+        if (!ApiaryConfig.XDBTransactions) {
+            this.connection.get().commit();
         }
         return f;
     }
@@ -145,20 +148,25 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         String query = "";
         try {
             Connection c = ds.getConnection();
+            c.setAutoCommit(false);
             Statement s = c.createStatement();
             for (String table : writtenKeys.keySet()) {
                 query = String.format("DELETE FROM %s WHERE %s = %d", table, MysqlContext.beginVersion, txc.txID);
                 s.addBatch(query);
                 query = String.format("UPDATE %s SET %s = %d where %s = %d", table, MysqlContext.endVersion, Long.MAX_VALUE, MysqlContext.endVersion, txc.txID);
                 s.addBatch(query);
+                for (String key: writtenKeys.get(table)) {
+                    lockManager.get(table).get(key).set(false);
+                }
             }
             s.executeBatch();
             s.close();
+            c.commit();
             c.close();
         } catch (Exception e) {
             e.printStackTrace();
-            logger.error("Failed to rollback txn {}", txc.txID);
-            logger.info("Rollback query: {}", query);
+            logger.error("Failed to rollback MySQL txn {}", txc.txID);
+            logger.info("Rollback MySQL query: {}", query);
         }
     }
 
@@ -191,19 +199,7 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         }
         validationLock.unlock();
         if (valid) {
-            String query = "";
-            Connection c = null;
-            Statement s = null;
-            try {
-                c = commitConnection.get();
-                s = c.createStatement();
-                if (delayLogFlush) {
-                    s.execute("FLUSH ENGINE LOGS;");
-                }
-                s.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            flushEngineLogs();
         }
         long time = System.nanoTime() - t0;
         commits.add(time / 1000);
@@ -212,7 +208,11 @@ public class MysqlConnection implements ApiarySecondaryConnection {
 
     @Override
     public void commit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-
+        for (String table : writtenKeys.keySet()) {
+            for (String key : writtenKeys.get(table)) {
+                lockManager.get(table).get(key).set(false);
+            }
+        }
     }
 
     @Override
@@ -224,14 +224,32 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         String query = "";
         try {
             Connection c = ds.getConnection();
+            c.setAutoCommit(false);
             Statement s = c.createStatement();
-            for (String tableName : committedWrites.keySet()) {
+            for (String tableName : lockManager.keySet()) {
                 query = String.format("DELETE FROM %s WHERE %s < %d", tableName, MysqlContext.endVersion, globalxmin);
                 s.execute(query);
             }
+            c.commit();
+            s.close();
+            c.close();
         } catch (Exception e) {
             e.printStackTrace();
             logger.error("Failed to garbage collect: {}", query);
+        }
+    }
+
+    private void flushEngineLogs() {
+        // Flush the engine.
+        Connection c = connection.get();
+        if (delayLogFlush) {
+            try {
+                Statement s = c.createStatement();
+                s.execute("FLUSH ENGINE LOGS;");
+                s.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }

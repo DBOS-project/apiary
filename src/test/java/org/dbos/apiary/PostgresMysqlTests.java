@@ -6,7 +6,11 @@ import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.mysql.MysqlConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.mysql.MysqlQueryPerson;
+import org.dbos.apiary.procedures.mysql.MysqlReplacePerson;
 import org.dbos.apiary.procedures.mysql.MysqlUpsertPerson;
+import org.dbos.apiary.procedures.mysql.MysqlWriteReadPerson;
+import org.dbos.apiary.procedures.postgres.pgmysql.PostgresMysqlReplacePerson;
+import org.dbos.apiary.procedures.postgres.pgmysql.PostgresMysqlWriteReadPerson;
 import org.dbos.apiary.procedures.postgres.pgmysql.PostgresQueryPerson;
 import org.dbos.apiary.procedures.postgres.pgmysql.PostgresUpsertPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -60,8 +64,12 @@ public class PostgresMysqlTests {
         try {
             MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
             conn.dropTable("PersonTable");
-            // TODO: need to solve the primary key issue. Currently cannot have primary keys.
-            conn.createTable("PersonTable", "Name varchar(1000) NOT NULL, Number integer NOT NULL");
+            if (ApiaryConfig.XDBTransactions) {
+                // TODO: need to solve the primary key issue. Currently cannot have primary keys.
+                conn.createTable("PersonTable", "Name varchar(100) NOT NULL, Number integer NOT NULL");
+            } else {
+                conn.createTable("PersonTable", "Name varchar(100) PRIMARY KEY NOT NULL, Number integer NOT NULL");
+            }
         } catch (Exception e) {
             logger.info("Failed to connect to MySQL.");
             assumeTrue(false);
@@ -117,7 +125,9 @@ public class PostgresMysqlTests {
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerFunction("PostgresUpsertPerson", ApiaryConfig.postgres, PostgresUpsertPerson::new);
         apiaryWorker.registerFunction("PostgresQueryPerson", ApiaryConfig.postgres, PostgresQueryPerson::new);
+        apiaryWorker.registerFunction("PostgresReplacePerson", ApiaryConfig.postgres, PostgresMysqlReplacePerson::new);
         apiaryWorker.registerFunction("MysqlUpsertPerson", ApiaryConfig.mysql, MysqlUpsertPerson::new);
+        apiaryWorker.registerFunction("MysqlReplacePerson", ApiaryConfig.mysql, MysqlReplacePerson::new);
         apiaryWorker.registerFunction("MysqlQueryPerson", ApiaryConfig.mysql, MysqlQueryPerson::new);
 
         apiaryWorker.startServing();
@@ -131,7 +141,7 @@ public class PostgresMysqlTests {
         res = client.executeFunction("PostgresQueryPerson", "matei").getInt();
         assertEquals(1, res);
 
-        res = client.executeFunction("PostgresUpsertPerson", "matei", 2).getInt();
+        res = client.executeFunction("PostgresReplacePerson", "matei", 2).getInt();
         assertEquals(2, res);
 
         res = client.executeFunction("PostgresQueryPerson", "matei").getInt();
@@ -139,7 +149,34 @@ public class PostgresMysqlTests {
     }
 
     @Test
+    public void testMysqlWriteRead() throws SQLException, InvalidProtocolBufferException {
+        logger.info("testMysqlWriteRead");
+
+        MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
+
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.mysql, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresMysqlWriteReadPerson", ApiaryConfig.postgres, PostgresMysqlWriteReadPerson::new);
+        apiaryWorker.registerFunction("MysqlWriteReadPerson", ApiaryConfig.mysql, MysqlWriteReadPerson::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresMysqlWriteReadPerson", "matei", 1).getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("PostgresMysqlWriteReadPerson", "matei2", 2).getInt();
+        assertEquals(2, res);
+    }
+
+    @Test
     public void testMysqlConcurrentInsert() throws InterruptedException, SQLException {
+        // Only test if it's using XDBT.
+        assumeTrue(ApiaryConfig.XDBTransactions);
         logger.info("testMysqlConcurrentInsert");
 
         MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
@@ -194,6 +231,8 @@ public class PostgresMysqlTests {
 
     @Test
     public void testMysqlConcurrentUpdates() throws InterruptedException, SQLException {
+        // Only test if it's using XDBT.
+        assumeTrue(ApiaryConfig.XDBTransactions);
         logger.info("testMysqlConcurrentUpdates");
 
         MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
@@ -223,7 +262,7 @@ public class PostgresMysqlTests {
                     int localTag = ThreadLocalRandom.current().nextInt(maxTag);
                     int localCount = count.getAndIncrement();
                     client.executeFunction("PostgresUpsertPerson", "matei" + localTag, localCount).getInt();
-                    String search = "matei" + localTag;
+                    String search = "matei" + ThreadLocalRandom.current().nextInt(localTag - 5, localTag + 5);
                     int res = client.executeFunction("PostgresQueryPerson", search).getInt();
                     if (res == -1) {
                         success.set(false);

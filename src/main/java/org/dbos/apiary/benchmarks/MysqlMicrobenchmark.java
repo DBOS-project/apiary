@@ -16,7 +16,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class MysqlMicrobenchmark {
@@ -25,7 +27,8 @@ public class MysqlMicrobenchmark {
     private static final int threadPoolSize = 128;
     private static final int numWorker = 16;
 
-    private static final int numPeople = 10000;
+    private static final int numPeople = 100000;
+    private static final int chunkSize = 1000;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
@@ -69,16 +72,28 @@ public class MysqlMicrobenchmark {
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
 
         long loadStart = System.currentTimeMillis();
-        String[] names = new String[numPeople];
-        int[] nums = new int[numPeople];
-        for (int personNum = 0; personNum < numPeople; personNum++) {
-            names[personNum] = "matei" + personNum;
-            nums[personNum] = personNum;
+
+        int numChunks = numPeople / chunkSize;
+        int count = 0;
+        for (int chunkNum = 0; chunkNum < numChunks; chunkNum++) {
+            String[] initialNames = new String[chunkSize];
+            int[] initialNumbers = new int[chunkSize];
+            for (int i = 0; i < chunkSize; i++) {
+                int num = count;
+                String name = "matei" + num;
+                initialNames[i] = name;
+                initialNumbers[i] = num;
+                count++;
+            }
+            client.get().executeFunction("PostgresMysqlSoloBulkAddPerson", initialNames, initialNumbers);
         }
-        client.get().executeFunction("PostgresMysqlSoloBulkAddPerson", names, nums);
-        int res = client.get().executeFunction("PostgresMysqlSoloQueryPerson", "matei" + 0).getInt();
+
+        int res = client.get().executeFunction("PostgresMysqlSoloQueryPerson", "matei" + (numPeople - 1)).getInt();
         assert (res == 0);
         logger.info("Done loading {} people: {}ms", numPeople, System.currentTimeMillis() - loadStart);
 
+
+
+        apiaryWorker.shutdown();
     }
 }

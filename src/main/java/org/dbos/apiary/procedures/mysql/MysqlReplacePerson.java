@@ -12,7 +12,7 @@ public class MysqlReplacePerson extends MysqlFunction {
         if (ApiaryConfig.XDBTransactions) {
             context.executeUpsert("PersonTable", name, name, number);
         } else {
-            context.executeUpdate(nontxnUpdate, name, number);
+            context.executeUpdate(nontxnUpdate, number, name);
         }
         return number;
     }

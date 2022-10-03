@@ -157,7 +157,7 @@ public class MysqlContext extends ApiaryContext {
         }
         // If it has updates, then need to read its own writes.
         if (mysqlUpdated) {
-            filterQuery.append(String.format(" OR %s == %d )", beginVersion, txc.txID));
+            filterQuery.append(String.format(" OR %s = %d )", beginVersion, txc.txID));
         } else {
             filterQuery.append(")");
         }

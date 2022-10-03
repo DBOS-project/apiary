@@ -171,6 +171,8 @@ public class PostgresMysqlTests {
 
     @Test
     public void testMysqlConcurrentInsert() throws InterruptedException, SQLException {
+        // Only test if it's using XDBT.
+        assumeTrue(ApiaryConfig.XDBTransactions);
         logger.info("testMysqlConcurrentInsert");
 
         MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
@@ -225,6 +227,8 @@ public class PostgresMysqlTests {
 
     @Test
     public void testMysqlConcurrentUpdates() throws InterruptedException, SQLException {
+        // Only test if it's using XDBT.
+        assumeTrue(ApiaryConfig.XDBTransactions);
         logger.info("testMysqlConcurrentUpdates");
 
         MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
@@ -254,7 +258,7 @@ public class PostgresMysqlTests {
                     int localTag = ThreadLocalRandom.current().nextInt(maxTag);
                     int localCount = count.getAndIncrement();
                     client.executeFunction("PostgresUpsertPerson", "matei" + localTag, localCount).getInt();
-                    String search = "matei" + localTag;
+                    String search = "matei" + ThreadLocalRandom.current().nextInt(localTag - 5, localTag + 5);
                     int res = client.executeFunction("PostgresQueryPerson", search).getInt();
                     if (res == -1) {
                         success.set(false);

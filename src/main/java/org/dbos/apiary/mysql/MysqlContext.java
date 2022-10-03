@@ -218,7 +218,6 @@ public class MysqlContext extends ApiaryContext {
             rs = pstmt.executeQuery();
             Long time = System.nanoTime() - t0;
             queries.add(time / 1000);
-            pstmt.close();
             return rs;
         }
 
@@ -261,7 +260,6 @@ public class MysqlContext extends ApiaryContext {
 
         Long time = System.nanoTime() - t0;
         queries.add(time / 1000);
-        pstmt.close();
         return rs;
     }
 

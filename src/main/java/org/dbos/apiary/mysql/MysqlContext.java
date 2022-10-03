@@ -213,7 +213,7 @@ public class MysqlContext extends ApiaryContext {
         ResultSet rs;
         String sanitizeQuery = procedure.replaceAll(";+$", "");
         if (!ApiaryConfig.XDBTransactions) {
-            PreparedStatement pstmt = conn.prepareStatement(procedure);
+            PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             prepareStatement(pstmt, input);
             rs = pstmt.executeQuery();
             Long time = System.nanoTime() - t0;
@@ -253,7 +253,7 @@ public class MysqlContext extends ApiaryContext {
 
         filterQuery.append(" ;");
 
-        PreparedStatement pstmt = conn.prepareStatement(filterQuery.toString());
+        PreparedStatement pstmt = conn.prepareStatement(filterQuery.toString(), ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
         prepareStatement(pstmt, input);
 
         rs = pstmt.executeQuery();

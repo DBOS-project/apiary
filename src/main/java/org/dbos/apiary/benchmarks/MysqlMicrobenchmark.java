@@ -25,7 +25,7 @@ public class MysqlMicrobenchmark {
     private static final int threadPoolSize = 128;
     private static final int numWorker = 16;
 
-    private static final int numPeople = 1000000;
+    private static final int numPeople = 10000;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();

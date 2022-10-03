@@ -4,6 +4,7 @@ import org.apache.commons_voltpatches.cli.CommandLine;
 import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
 import org.apache.commons_voltpatches.cli.Options;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +23,7 @@ public class BenchmarkingExecutable {
         options.addOption("p2", true, "Percentage 2");
         options.addOption("p3", true, "Percentage 3");
         options.addOption("p4", true, "Percentage 4");
+        options.addOption("notxn", false, "Disable XDST transaction.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -38,6 +40,15 @@ public class BenchmarkingExecutable {
         if (cmd.hasOption("mainHostAddr")) {
             mainHostAddr = cmd.getOptionValue("mainHostAddr");
         }
+
+        if (cmd.hasOption("notxn")) {
+            logger.info("Disabling XDST transction!");
+            ApiaryConfig.XDBTransactions = false;
+        } else {
+            logger.info("Using XDST transaction!");
+            ApiaryConfig.XDBTransactions = true;
+        }
+
         String benchmark = cmd.getOptionValue("b");
         String service = benchmark;
         if (cmd.hasOption("s")) {

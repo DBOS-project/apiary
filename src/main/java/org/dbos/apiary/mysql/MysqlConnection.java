@@ -105,16 +105,10 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws SQLException {
+    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
         MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
         FunctionOutput f = null;
-        try {
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-        } catch (Exception e) {
-            // Commit the transaction.
-            this.connection.get().commit();
-            throw new RuntimeException(e);
-        }
+        f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
         // Flush logs and commit transaction.
         this.connection.get().commit();
         return f;

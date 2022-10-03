@@ -64,9 +64,9 @@ public class PostgresMysqlTests {
             conn.dropTable("PersonTable");
             if (ApiaryConfig.XDBTransactions) {
                 // TODO: need to solve the primary key issue. Currently cannot have primary keys.
-                conn.createTable("PersonTable", "Name varchar(1000) NOT NULL, Number integer NOT NULL");
+                conn.createTable("PersonTable", "Name varchar(100) NOT NULL, Number integer NOT NULL");
             } else {
-                conn.createTable("PersonTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Number integer NOT NULL");
+                conn.createTable("PersonTable", "Name varchar(100) PRIMARY KEY NOT NULL, Number integer NOT NULL");
             }
         } catch (Exception e) {
             logger.info("Failed to connect to MySQL.");

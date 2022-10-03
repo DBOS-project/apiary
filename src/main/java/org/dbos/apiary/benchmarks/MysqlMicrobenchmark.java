@@ -19,7 +19,9 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class MysqlMicrobenchmark {
     private static final Logger logger = LoggerFactory.getLogger(MysqlMicrobenchmark.class);
@@ -93,9 +95,102 @@ public class MysqlMicrobenchmark {
         assert (res == 0);
         logger.info("Done loading {} people: {}ms", numPeople, System.currentTimeMillis() - loadStart);
 
+        AtomicInteger personNums = new AtomicInteger(numPeople);
+        ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + (duration * 1000 + threadWarmupMs);
 
+        Runnable r = () -> {
+            try {
+                long t0 = System.nanoTime();
+                int chooser = ThreadLocalRandom.current().nextInt(100);
+                if (chooser < percentageRead) {
+                    int personNum = ThreadLocalRandom.current().nextInt(personNums.get());
+                    if (ApiaryConfig.XDBTransactions) {
+                        client.get().executeFunction("PostgresMysqlSoloQueryPerson");
+                    } else {
+                        client.get().executeFunction("MysqlQueryPerson", "matei" + personNum);
+                    }
+                    readTimes.add(System.nanoTime() - t0);
+                } else if (chooser < percentageRead + percentageAppend) {
+                    int personID = personNums.getAndIncrement();
+                    if (ApiaryConfig.XDBTransactions) {
+                        client.get().executeFunction("PostgresMysqlSoloAddPerson", "matei" + personID, personID);
+                    } else {
+                        client.get().executeFunction("MysqlUpsertPerson", "matei" + personID, personID);
+                    }
+                    insertTimes.add(System.nanoTime() - t0);
+                } else {
+                    int personID = ThreadLocalRandom.current().nextInt(personNums.get() - 100);
+                    int num = ThreadLocalRandom.current().nextInt();
+                    if (ApiaryConfig.XDBTransactions) {
+                        client.get().executeFunction("PostgresMysqlSoloReplacePerson", "matei" + personID, num);
+                    } else {
+                        client.get().executeFunction("MysqlReplacePerson", "matei" + personID, num);
+                    }
+                    updateTimes.add(System.nanoTime() - t0);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        };
+
+        while (System.currentTimeMillis() < endTime) {
+            long t = System.nanoTime();
+            if (System.currentTimeMillis() - startTime < threadWarmupMs) {
+                readTimes.clear();
+                insertTimes.clear();
+                updateTimes.clear();
+            }
+            threadPool.submit(r);
+            while (System.nanoTime() - t < interval.longValue() * 1000) {
+                // Busy-spin
+            }
+        }
+
+        long elapsedTime = (System.currentTimeMillis() - startTime) - threadWarmupMs;
+
+        List<Long> queryTimes = readTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+        int numQueries = queryTimes.size();
+        if (numQueries > 0) {
+            long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
+            double throughput = (double) numQueries * 1000.0 / elapsedTime;
+            long p50 = queryTimes.get(numQueries / 2);
+            long p99 = queryTimes.get((numQueries * 99) / 100);
+            logger.info("Reads: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
+        } else {
+            logger.info("No reads");
+        }
+
+        queryTimes = insertTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+        numQueries = queryTimes.size();
+        if (numQueries > 0) {
+            long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
+            double throughput = (double) numQueries * 1000.0 / elapsedTime;
+            long p50 = queryTimes.get(numQueries / 2);
+            long p99 = queryTimes.get((numQueries * 99) / 100);
+            logger.info("Inserts: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
+        } else {
+            logger.info("No inserts");
+        }
+
+        queryTimes = updateTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+        numQueries = queryTimes.size();
+        if (numQueries > 0) {
+            long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
+            double throughput = (double) numQueries * 1000.0 / elapsedTime;
+            long p50 = queryTimes.get(numQueries / 2);
+            long p99 = queryTimes.get((numQueries * 99) / 100);
+            logger.info("Updates: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
+        } else {
+            logger.info("No updates");
+        }
+
+        threadPool.shutdown();
+        threadPool.awaitTermination(100000, TimeUnit.SECONDS);
 
         apiaryWorker.shutdown();
+        logger.info("All queries finished! {}", System.currentTimeMillis() - startTime);
         System.exit(0);
     }
 }

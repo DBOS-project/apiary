@@ -69,7 +69,7 @@ public class MongoMicrobenchmark {
                     int personNum = ThreadLocalRandom.current().nextInt(personNums.get());
                     client.get().executeFunction("MongoFindPerson", "matei" + personNum);
                     readTimes.add(System.nanoTime() - t0);
-                } else if (chooser < percentageAppend) {
+                } else if (chooser < percentageRead + percentageAppend) {
                     int personID = personNums.getAndIncrement();
                     if (ApiaryConfig.XDBTransactions) {
                         client.get().executeFunction("PostgresSoloAddPerson", "matei" + personID, personID);

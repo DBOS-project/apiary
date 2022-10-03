@@ -109,7 +109,6 @@ public class MysqlContext extends ApiaryContext {
             query.append(", ?");
         }
         query.append(");");
-        conn.setAutoCommit(false);
 
         PreparedStatement pstmt = conn.prepareStatement(query.toString());
         for (int i = 0; i < inputs.size(); i++) {
@@ -123,8 +122,6 @@ public class MysqlContext extends ApiaryContext {
             pstmt.addBatch();
         }
         pstmt.executeBatch();
-        conn.commit();
-        conn.setAutoCommit(true);
         pstmt.close();
 
         mysqlUpdated = true;

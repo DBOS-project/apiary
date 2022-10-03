@@ -32,29 +32,10 @@ public class MysqlConnection implements ApiarySecondaryConnection {
 
     private final MysqlDataSource ds;
     private final ThreadLocal<Connection> connection;
-    private boolean delayLogFlush = true;
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
 
     private final Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
-
-
-    public void enableDelayedFlush() {
-        try {
-            Connection conn = ds.getConnection();
-            conn.setAutoCommit(true);
-            Statement s = conn.createStatement();
-            if (delayLogFlush && ApiaryConfig.XDBTransactions) {
-                s.execute("SET GLOBAL innodb_flush_log_at_trx_commit=0;");
-            } else {
-                s.execute("SET GLOBAL innodb_flush_log_at_trx_commit=1;");
-            }
-            s.close();
-            conn.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 
     public MysqlConnection(String hostname, Integer port, String databaseName, String databaseUsername, String databasePassword) throws SQLException {
         this.ds = new MysqlDataSource();
@@ -65,18 +46,11 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         this.ds.setUser(databaseUsername);
         this.ds.setPassword(databasePassword);
 
-        // Enable delayed flush by default.
-        enableDelayedFlush();
-
         this.connection = ThreadLocal.withInitial(() -> {
             try {
                 Connection conn = ds.getConnection();
-                if (ApiaryConfig.XDBTransactions) {
-                    conn.setAutoCommit(true);
-                } else {
-                    // Otherwise, manually commit transactions after function execution.
-                    conn.setAutoCommit(false);
-                }
+                // Manually commit transaction after function execution.
+                conn.setAutoCommit(false);
                 // MySQL default level is repeatable read.
                 // conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
                 return conn;
@@ -136,10 +110,8 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         FunctionOutput f = null;
         f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
 
-        // Flush logs and commit transaction for non-XDST calls.
-        if (!ApiaryConfig.XDBTransactions) {
-            this.connection.get().commit();
-        }
+        // Flush logs and commit transaction.
+        this.connection.get().commit();
         return f;
     }
 
@@ -198,9 +170,6 @@ public class MysqlConnection implements ApiarySecondaryConnection {
             }
         }
         validationLock.unlock();
-        if (valid) {
-            flushEngineLogs();
-        }
         long time = System.nanoTime() - t0;
         commits.add(time / 1000);
         return valid;
@@ -239,17 +208,4 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         }
     }
 
-    private void flushEngineLogs() {
-        // Flush the engine.
-        Connection c = connection.get();
-        if (delayLogFlush) {
-            try {
-                Statement s = c.createStatement();
-                s.execute("FLUSH ENGINE LOGS;");
-                s.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
 }

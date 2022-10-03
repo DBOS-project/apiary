@@ -139,7 +139,6 @@ public class MysqlConnection implements ApiarySecondaryConnection {
                 s.executeBatch();
                 s.close();
                 c.commit();
-                c.close();
             } catch (MySQLTransactionRollbackException m) {
                 if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
                     continue; // Deadlock or lock timed out

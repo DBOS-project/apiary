@@ -125,8 +125,7 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         String query = "";
         while (true) {
             try {
-                Connection c = ds.getConnection();
-                c.setAutoCommit(false);
+                Connection c = this.connection.get();
                 Statement s = c.createStatement();
                 for (String table : writtenKeys.keySet()) {
                     query = String.format("DELETE FROM %s WHERE %s = %d", table, MysqlContext.beginVersion, txc.txID);

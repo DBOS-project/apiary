@@ -179,7 +179,6 @@ public class MysqlContext extends ApiaryContext {
         PreparedStatement pstmt = conn.prepareStatement(filterQuery.toString());
         prepareStatement(pstmt, input);
 
-        logger.debug(pstmt.toString());
         rs = pstmt.executeQuery();
 
         Long time = System.nanoTime() - t0;

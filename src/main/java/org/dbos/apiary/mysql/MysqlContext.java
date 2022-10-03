@@ -1,5 +1,6 @@
 package org.dbos.apiary.mysql;
 
+import com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
@@ -121,9 +122,27 @@ public class MysqlContext extends ApiaryContext {
         // make writes visible
         String updateVisibility = String.format("UPDATE %s SET %s = ? WHERE %s = ? AND %s < ? AND %s = ?", tableName, MysqlContext.endVersion, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion);
         // UPDATE table SET __endVersion__ = ? WHERE __apiaryID__ = ? and __beginVersion__ < ? and __endVersion__ == infinity
-        pstmt = conn.prepareStatement(updateVisibility);
-        prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
-        pstmt.executeUpdate();
+
+        while (true) {
+            try {
+                pstmt = conn.prepareStatement(updateVisibility);
+                prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
+                pstmt.executeUpdate();
+            } catch (MySQLTransactionRollbackException m) {
+                if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
+                    continue; // Deadlock or lock timed out
+                } else {
+                    m.printStackTrace();
+                    logger.error("2. Failed to update valid txn {}", txc.txID);
+                    logger.info("2. Validate update query: {}", query);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.error("3. Failed to update valid txn {}", txc.txID);
+                logger.info("3. Validate update query: {}", query);
+            }
+            break;
+        }
 
         mysqlUpdated = true;
 

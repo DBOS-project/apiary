@@ -107,9 +107,9 @@ public class ApiaryWorker {
             garbageCollectorThread.interrupt();
             garbageCollectorThread.join();
             reqThreadPool.shutdown();
-            reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            reqThreadPool.awaitTermination(10, TimeUnit.SECONDS);
             repThreadPool.shutdown();
-            repThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            repThreadPool.awaitTermination(10, TimeUnit.SECONDS);
             serverThread.interrupt();
             zContext.close();
             serverThread.join();

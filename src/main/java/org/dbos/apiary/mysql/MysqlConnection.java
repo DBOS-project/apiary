@@ -111,6 +111,7 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
         // Flush logs and commit transaction.
         this.connection.get().commit();
+        logger.info("Committed, writtenKeys: {}", writtenKeys);
         return f;
     }
 

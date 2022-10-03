@@ -7,6 +7,8 @@ import org.dbos.apiary.mysql.MysqlConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.mysql.MysqlQueryPerson;
 import org.dbos.apiary.procedures.mysql.MysqlUpsertPerson;
+import org.dbos.apiary.procedures.mysql.MysqlWriteReadPerson;
+import org.dbos.apiary.procedures.postgres.pgmysql.PostgresMysqlWriteReadPerson;
 import org.dbos.apiary.procedures.postgres.pgmysql.PostgresQueryPerson;
 import org.dbos.apiary.procedures.postgres.pgmysql.PostgresUpsertPerson;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -136,6 +138,31 @@ public class PostgresMysqlTests {
 
         res = client.executeFunction("PostgresQueryPerson", "matei").getInt();
         assertEquals(1, res);
+    }
+
+    @Test
+    public void testMysqlWriteRead() throws SQLException, InvalidProtocolBufferException {
+        logger.info("testMysqlWriteRead");
+
+        MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
+
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.mysql, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresMysqlWriteReadPerson", ApiaryConfig.postgres, PostgresMysqlWriteReadPerson::new);
+        apiaryWorker.registerFunction("MysqlWriteReadPerson", ApiaryConfig.mysql, MysqlWriteReadPerson::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("PostgresMysqlWriteReadPerson", "matei", 1).getInt();
+        assertEquals(1, res);
+
+        res = client.executeFunction("PostgresMysqlWriteReadPerson", "matei2", 2).getInt();
+        assertEquals(2, res);
     }
 
     @Test

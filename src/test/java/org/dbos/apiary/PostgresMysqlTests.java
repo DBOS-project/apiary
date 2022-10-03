@@ -62,8 +62,12 @@ public class PostgresMysqlTests {
         try {
             MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
             conn.dropTable("PersonTable");
-            // TODO: need to solve the primary key issue. Currently cannot have primary keys.
-            conn.createTable("PersonTable", "Name varchar(1000) NOT NULL, Number integer NOT NULL");
+            if (ApiaryConfig.XDBTransactions) {
+                // TODO: need to solve the primary key issue. Currently cannot have primary keys.
+                conn.createTable("PersonTable", "Name varchar(1000) NOT NULL, Number integer NOT NULL");
+            } else {
+                conn.createTable("PersonTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Number integer NOT NULL");
+            }
         } catch (Exception e) {
             logger.info("Failed to connect to MySQL.");
             assumeTrue(false);

@@ -73,6 +73,15 @@ public class MysqlContext extends ApiaryContext {
         }
     }
 
+    // Note: this executeUpdate should only be used by non-XDST transactions.
+    // XDST transactions must use executeUpsert.
+    public void executeUpdate(String procedure, Object... input) throws Exception {
+        assert (!ApiaryConfig.XDBTransactions);
+        PreparedStatement pstmt = conn.prepareStatement(procedure);
+        prepareStatement(pstmt, input);
+        pstmt.executeUpdate();
+    }
+
     public void executeUpsert(String tableName, String id, Object... input) throws Exception {
         long t0 = System.nanoTime();
         if (!ApiaryConfig.XDBTransactions) {

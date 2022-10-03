@@ -6,8 +6,10 @@ import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.mysql.MysqlConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.mysql.MysqlQueryPerson;
+import org.dbos.apiary.procedures.mysql.MysqlReplacePerson;
 import org.dbos.apiary.procedures.mysql.MysqlUpsertPerson;
 import org.dbos.apiary.procedures.mysql.MysqlWriteReadPerson;
+import org.dbos.apiary.procedures.postgres.pgmysql.PostgresMysqlReplacePerson;
 import org.dbos.apiary.procedures.postgres.pgmysql.PostgresMysqlWriteReadPerson;
 import org.dbos.apiary.procedures.postgres.pgmysql.PostgresQueryPerson;
 import org.dbos.apiary.procedures.postgres.pgmysql.PostgresUpsertPerson;
@@ -123,7 +125,9 @@ public class PostgresMysqlTests {
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
         apiaryWorker.registerFunction("PostgresUpsertPerson", ApiaryConfig.postgres, PostgresUpsertPerson::new);
         apiaryWorker.registerFunction("PostgresQueryPerson", ApiaryConfig.postgres, PostgresQueryPerson::new);
+        apiaryWorker.registerFunction("PostgresReplacePerson", ApiaryConfig.postgres, PostgresMysqlReplacePerson::new);
         apiaryWorker.registerFunction("MysqlUpsertPerson", ApiaryConfig.mysql, MysqlUpsertPerson::new);
+        apiaryWorker.registerFunction("MysqlReplacePerson", ApiaryConfig.mysql, MysqlReplacePerson::new);
         apiaryWorker.registerFunction("MysqlQueryPerson", ApiaryConfig.mysql, MysqlQueryPerson::new);
 
         apiaryWorker.startServing();
@@ -137,7 +141,7 @@ public class PostgresMysqlTests {
         res = client.executeFunction("PostgresQueryPerson", "matei").getInt();
         assertEquals(1, res);
 
-        res = client.executeFunction("PostgresUpsertPerson", "matei", 2).getInt();
+        res = client.executeFunction("PostgresReplacePerson", "matei", 2).getInt();
         assertEquals(2, res);
 
         res = client.executeFunction("PostgresQueryPerson", "matei").getInt();

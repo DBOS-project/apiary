@@ -95,5 +95,6 @@ public class MysqlMicrobenchmark {
 
 
         apiaryWorker.shutdown();
+        System.exit(0);
     }
 }

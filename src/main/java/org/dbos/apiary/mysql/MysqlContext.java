@@ -154,6 +154,7 @@ public class MysqlContext extends ApiaryContext {
         lockManager.get(tableName).putIfAbsent(id, new AtomicBoolean(false));
         boolean available = lockManager.get(tableName).get(id).compareAndSet(false, true);
         if (!available) {
+            conn.commit();
             throw new PSQLException("MySQL tuple locked", PSQLState.SERIALIZATION_FAILURE);
         }
 
@@ -190,11 +191,13 @@ public class MysqlContext extends ApiaryContext {
                 if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
                     continue; // Deadlock or lock timed out
                 } else {
+                    conn.commit();
                     m.printStackTrace();
                     logger.error("2. Failed to update valid txn {}", txc.txID);
                     logger.info("2. Validate update query: {}", query);
                 }
             } catch (Exception e) {
+                conn.commit();
                 e.printStackTrace();
                 logger.error("3. Failed to update valid txn {}", txc.txID);
                 logger.info("3. Validate update query: {}", query);

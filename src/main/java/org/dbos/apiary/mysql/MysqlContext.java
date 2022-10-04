@@ -185,10 +185,11 @@ public class MysqlContext extends ApiaryContext {
         try {
             pstmt = conn.prepareStatement(updateVisibility);
             prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
-            logger.info(pstmt.toString());
             pstmt.executeUpdate();
             pstmt.close();
         } catch (Exception m) {
+            // Transaction would be automatically rolled back.
+            writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
             throw new PSQLException("Failed to update visibility", PSQLState.SERIALIZATION_FAILURE);
         }
         mysqlUpdated = true;

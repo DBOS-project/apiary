@@ -112,14 +112,13 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         // Flush logs and commit transaction.
         this.connection.get().commit();
         writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
-        logger.info("Committed, writtenKeys: {}", writtenKeys);
         return f;
     }
 
     @Override
     public void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc) {
         // If the connection has not committed, use the normal rollback.
-        if (writtenKeys.containsKey(MysqlContext.committedToken)) {
+        if (!writtenKeys.containsKey(MysqlContext.committedToken)) {
             try {
                 this.connection.get().rollback();
             } catch (SQLException e) {
@@ -140,6 +139,9 @@ public class MysqlConnection implements ApiarySecondaryConnection {
                 Connection c = this.connection.get();
                 Statement s = c.createStatement();
                 for (String table : writtenKeys.keySet()) {
+                    if (table.equals(MysqlContext.committedToken)) {
+                        continue;  // Skip.
+                    }
                     query = String.format("DELETE FROM %s WHERE %s = %d", table, MysqlContext.beginVersion, txc.txID);
                     s.addBatch(query);
                     query = String.format("UPDATE %s SET %s = %d where %s = %d", table, MysqlContext.endVersion, Long.MAX_VALUE, MysqlContext.endVersion, txc.txID);
@@ -175,6 +177,9 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         validationLock.lock();
         boolean valid = true;
         for (String table: writtenKeys.keySet()) {
+            if (table.equals(MysqlContext.committedToken)) {
+                continue;  // Skip.
+            }
             for (String key : writtenKeys.get(table)) {
                 // Has the key been modified by a transaction not in the snapshot?
                 Set<Long> writes = committedWrites.getOrDefault(table, Collections.emptyMap()).getOrDefault(key, Collections.emptySet());
@@ -188,6 +193,9 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         }
         if (valid) {
             for (String collection: writtenKeys.keySet()) {
+                if (collection.equals(MysqlContext.committedToken)) {
+                    continue;  // Skip.
+                }
                 for (String key : writtenKeys.get(collection)) {
                     committedWrites.putIfAbsent(collection, new ConcurrentHashMap<>());
                     committedWrites.get(collection).putIfAbsent(key, ConcurrentHashMap.newKeySet());
@@ -204,6 +212,9 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     @Override
     public void commit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
         for (String table : writtenKeys.keySet()) {
+            if (table.equals(MysqlContext.committedToken)) {
+                continue;  // Skip.
+            }
             for (String key : writtenKeys.get(table)) {
                 lockManager.get(table).get(key).set(false);
             }

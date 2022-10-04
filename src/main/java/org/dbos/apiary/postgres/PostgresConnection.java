@@ -155,7 +155,6 @@ public class PostgresConnection implements ApiaryConnection {
         for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
             Map<String, List<String>> updatedKeys = ctxt.secondaryWrittenKeys.get(secondary);
             ctxt.workerContext.getSecondaryConnection(secondary).rollback(updatedKeys, ctxt.txc);
-            logger.info("Rollback secondary {}", secondary);
         }
         ctxt.conn.rollback();
         abortedTransactions.remove(ctxt.txc);

@@ -1,6 +1,5 @@
 package org.dbos.apiary.mysql;
 
-import com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
@@ -17,9 +16,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -39,7 +36,7 @@ public class MysqlContext extends ApiaryContext {
 
     private final Map<String, Map<String, AtomicBoolean>> lockManager;
 
-    private boolean mysqlUpdated = false;
+    private Map<String, Set<String>> currentLockedKeys = new HashMap<>();
 
     Map<String, List<String>> writtenKeys;
 
@@ -126,7 +123,6 @@ public class MysqlContext extends ApiaryContext {
         pstmt.executeBatch();
         pstmt.close();
 
-        mysqlUpdated = true;
         return;
     }
 
@@ -152,11 +148,19 @@ public class MysqlContext extends ApiaryContext {
         }
 
         // Grab write lock for the upsert.
-        lockManager.putIfAbsent(tableName, new ConcurrentHashMap<>());
-        lockManager.get(tableName).putIfAbsent(id, new AtomicBoolean(false));
-        boolean available = lockManager.get(tableName).get(id).compareAndSet(false, true);
-        if (!available) {
-            throw new PSQLException("MySQL tuple locked", PSQLState.SERIALIZATION_FAILURE);
+        // Remember which locks are grabbed because we do not want to re-grab the lock during local retries.
+        if (currentLockedKeys.containsKey(tableName) && currentLockedKeys.get(tableName).contains(id)) {
+            logger.info("Skip grabbing tuple lock during retries.");
+        } else {
+            lockManager.putIfAbsent(tableName, new ConcurrentHashMap<>());
+            lockManager.get(tableName).putIfAbsent(id, new AtomicBoolean(false));
+            boolean available = lockManager.get(tableName).get(id).compareAndSet(false, true);
+            if (!available) {
+                throw new PSQLException("MySQL tuple locked", PSQLState.SERIALIZATION_FAILURE);
+            } else {
+                currentLockedKeys.putIfAbsent(tableName, new HashSet<>());
+                currentLockedKeys.get(tableName).add(id);
+            }
         }
 
         // TODO: This interface is not the natural SQL interface. Figure out a better one? E.g., can we support arbitrary update queries?
@@ -186,17 +190,10 @@ public class MysqlContext extends ApiaryContext {
             updateVisibility = updateVisibility + " AND " + visbilityUpdatePredicate;
         }
 
-        try {
-            pstmt = conn.prepareStatement(updateVisibility);
-            prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
-            pstmt.executeUpdate();
-            pstmt.close();
-        } catch (Exception m) {
-            // Transaction would be automatically rolled back.
-            writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
-            throw new PSQLException("Failed to update visibility", PSQLState.SERIALIZATION_FAILURE);
-        }
-        mysqlUpdated = true;
+        pstmt = conn.prepareStatement(updateVisibility);
+        prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
+        pstmt.executeUpdate();
+        pstmt.close();
 
         Long time = System.nanoTime() - t0;
         upserts.add(time / 1000);

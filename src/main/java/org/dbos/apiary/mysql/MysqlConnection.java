@@ -9,6 +9,8 @@ import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Percentile;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,36 +107,27 @@ public class MysqlConnection implements ApiarySecondaryConnection {
 
     @Override
     public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
-        boolean bypassFlag = false;
-        if (writtenKeys.containsKey(MysqlContext.committedToken)) {
-            // This is a hack: it means the function is invoked directly from the worker, bypassing Postgres.
-            bypassFlag = true;
-        }
-
         FunctionOutput f = null;
-        if (ApiaryConfig.XDBTransactions && !bypassFlag) {
-            // Let the outer function handle the commit and rollback.
-            MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-            return f;
-        }
 
         // Otherwise, need to retry until succeeded.
         while (true) {
             MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
             try {
                 f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-                this.connection.get().commit();
+                if (writtenKeys.containsKey(MysqlContext.committedToken)) {
+                    // This is a hack: it means the function is invoked directly from the worker, bypassing Postgres. So we have to commit here.
+                    // For XDB txns, we commit at validation step.
+                    this.connection.get().commit();
+                }
             } catch (MySQLTransactionRollbackException m) {
                 if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
                     continue; // Deadlock or lock timed out, already rolled back by MySQL.
                 } else {
                     m.printStackTrace();
-                    logger.error("2. Failed to run function {} in txn {}", functionName, txc.txID);
+                    throw new PSQLException("2. Failed to run MysqlFunction", PSQLState.SERIALIZATION_FAILURE);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
-                logger.error("2. Failed to run function {} in txn {}", functionName, txc.txID);
+                throw new PSQLException("3. Failed to run MysqlFunction", PSQLState.SERIALIZATION_FAILURE);
             }
             break;
         }

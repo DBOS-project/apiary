@@ -111,13 +111,30 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
         // Flush logs and commit transaction.
         this.connection.get().commit();
+        writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
         logger.info("Committed, writtenKeys: {}", writtenKeys);
         return f;
     }
 
     @Override
     public void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-        String query = "";
+        // If the connection has not committed, use the normal rollback.
+        if (writtenKeys.containsKey(MysqlContext.committedToken)) {
+            try {
+                this.connection.get().rollback();
+            } catch (SQLException e) {
+                logger.error("Rollback failed :/");
+                throw new RuntimeException(e);
+            }
+            for (String table : writtenKeys.keySet()) {
+                for (String key : writtenKeys.get(table)) {
+                    lockManager.get(table).get(key).set(false);
+                }
+            }
+            return;
+        }
+
+        String query = null;
         while (true) {
             try {
                 Connection c = this.connection.get();

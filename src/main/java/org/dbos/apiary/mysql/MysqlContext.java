@@ -29,6 +29,7 @@ public class MysqlContext extends ApiaryContext {
     public static final String apiaryID = "__apiaryID__";
     public static final String beginVersion = "__beginVersion__";
     public static final String endVersion = "__endVersion__";
+    public static final String committedToken = "__apiaryCommitted__";
 
     Percentile upserts = null;
     Percentile queries = null;
@@ -39,6 +40,7 @@ public class MysqlContext extends ApiaryContext {
     private final Map<String, Map<String, AtomicBoolean>> lockManager;
 
     private boolean mysqlUpdated = false;
+
     Map<String, List<String>> writtenKeys;
 
     public MysqlContext(Connection conn, Map<String, List<String>> writtenKeys, Map<String, Map<String, AtomicBoolean>> lockManager,  WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Percentile upserts, Percentile queries) {
@@ -154,7 +156,6 @@ public class MysqlContext extends ApiaryContext {
         lockManager.get(tableName).putIfAbsent(id, new AtomicBoolean(false));
         boolean available = lockManager.get(tableName).get(id).compareAndSet(false, true);
         if (!available) {
-            conn.commit();
             throw new PSQLException("MySQL tuple locked", PSQLState.SERIALIZATION_FAILURE);
         }
 

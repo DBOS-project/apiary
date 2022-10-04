@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 public class BenchmarkingExecutable {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkingExecutable.class);
 
+    public static boolean skipLoadData = false;
+
     // Ignore the illegal reflective access warning from VoltDB. TODO: Fix it later.
     public static void main(String[] args) throws Exception {
         Options options = new Options();
@@ -24,6 +26,7 @@ public class BenchmarkingExecutable {
         options.addOption("p3", true, "Percentage 3");
         options.addOption("p4", true, "Percentage 4");
         options.addOption("notxn", false, "Disable XDST transaction.");
+        options.addOption("skipLoad", false, "Skip data loading.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -47,6 +50,10 @@ public class BenchmarkingExecutable {
         } else {
             logger.info("Using XDST transaction!");
             ApiaryConfig.XDBTransactions = true;
+        }
+
+        if (cmd.hasOption("skipLoad")) {
+            skipLoadData = true;
         }
 
         String benchmark = cmd.getOptionValue("b");

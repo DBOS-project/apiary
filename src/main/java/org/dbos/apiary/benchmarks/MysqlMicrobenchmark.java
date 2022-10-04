@@ -73,26 +73,30 @@ public class MysqlMicrobenchmark {
 
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
 
-        long loadStart = System.currentTimeMillis();
+        if (BenchmarkingExecutable.skipLoadData) {
+            logger.info("Skip loading data, {} people", numPeople);
+        } else {
+            long loadStart = System.currentTimeMillis();
 
-        int numChunks = numPeople / chunkSize;
-        int count = 0;
-        for (int chunkNum = 0; chunkNum < numChunks; chunkNum++) {
-            String[] initialNames = new String[chunkSize];
-            int[] initialNumbers = new int[chunkSize];
-            for (int i = 0; i < chunkSize; i++) {
-                int num = count;
-                String name = "matei" + num;
-                initialNames[i] = name;
-                initialNumbers[i] = num;
-                count++;
+            int numChunks = numPeople / chunkSize;
+            int count = 0;
+            for (int chunkNum = 0; chunkNum < numChunks; chunkNum++) {
+                String[] initialNames = new String[chunkSize];
+                int[] initialNumbers = new int[chunkSize];
+                for (int i = 0; i < chunkSize; i++) {
+                    int num = count;
+                    String name = "matei" + num;
+                    initialNames[i] = name;
+                    initialNumbers[i] = num;
+                    count++;
+                }
+                client.get().executeFunction("PostgresMysqlSoloBulkAddPerson", initialNames, initialNumbers);
             }
-            client.get().executeFunction("PostgresMysqlSoloBulkAddPerson", initialNames, initialNumbers);
-        }
 
-        int res = client.get().executeFunction("PostgresMysqlSoloQueryPerson", "matei" + (numPeople - 1)).getInt();
-        assert (res == 0);
-        logger.info("Done loading {} people: {}ms", numPeople, System.currentTimeMillis() - loadStart);
+            int res = client.get().executeFunction("PostgresMysqlSoloQueryPerson", "matei" + (numPeople - 1)).getInt();
+            assert (res == 0);
+            logger.info("Done loading {} people: {}ms", numPeople, System.currentTimeMillis() - loadStart);
+        }
 
         AtomicInteger personNums = new AtomicInteger(numPeople);
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);

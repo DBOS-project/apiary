@@ -48,8 +48,8 @@ public class MysqlMicrobenchmark {
         mysqlConn.dropTable("PersonTable");
         if (ApiaryConfig.XDBTransactions) {
             // TODO: need to solve the primary key issue. Currently cannot have primary keys.
-            mysqlConn.createTable("PersonTable", "Name varchar(100) NOT NULL, Number integer NOT NULL, KEY (__apiaryID__), " +
-                    "  KEY(__endVersion__), " +  "  KEY(__beginVersion__), KEY(Name)");
+            mysqlConn.createTable("PersonTable", "Name varchar(100) NOT NULL, Number integer NOT NULL, PRIMARY KEY (__apiaryID__, __beginVersion__), " +
+                    "  KEY(__endVersion__), KEY(Name)");
         } else {
             mysqlConn.createTable("PersonTable", "Name varchar(100) PRIMARY KEY NOT NULL, Number integer NOT NULL");
         }

@@ -107,9 +107,6 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
         FunctionOutput f = null;
         f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-        // Flush logs and commit transaction.
-        this.connection.get().commit();
-        writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
         return f;
     }
 
@@ -170,6 +167,12 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     @Override
     public boolean validate(Map<String, List<String>> writtenKeys, TransactionContext txc) {
         long t0 = System.nanoTime();
+        try {
+            this.connection.get().commit();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
         Set<Long> activeTransactions = new HashSet<>(txc.activeTransactions);
         validationLock.lock();
         boolean valid = true;
@@ -208,6 +211,14 @@ public class MysqlConnection implements ApiarySecondaryConnection {
 
     @Override
     public void commit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+        if (!writtenKeys.containsKey(MysqlContext.committedToken)) {
+            try {
+                this.connection.get().commit();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
+        }
         for (String table : writtenKeys.keySet()) {
             if (table.equals(MysqlContext.committedToken)) {
                 continue;  // Skip.

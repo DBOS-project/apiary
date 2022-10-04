@@ -222,35 +222,49 @@ public class MysqlContext extends ApiaryContext {
         // TODO: This implementation assume predicates at the end. No more group by or others. May find a better solution.
         // Also hard to use prepared statement because the number of active transactions varies.
         StringBuilder filterQuery = new StringBuilder(sanitizeQuery);
-        String activeTxnString = txc.activeTransactions.stream().map(Object::toString).collect(Collectors.joining(","));
+        String activeTxnString = txc.activeTransactions.stream().map(v -> "?").collect(Collectors.joining(", "));
 
         // Add filters to the end.
         // Query would be <user query> AND ((beginVersion < txc.xmax? AND beginVersion NOT IN (?, ?..)) OR beginVersion = txID?) AND (endVersion > xmax? OR endVersion IN (?, ?) ) AND endVersion != txID?.
         // Number of prepared parameters: input + xmax + numActiveTxn + txid + xmax + numActiveTxn + txid.
-        int numParams = input.length + 4 + (2 * txc.activeTransactions.size());
-        filterQuery.append(String.format(" AND (( %s < %d ", beginVersion, txc.xmax));
+        int numParams = 4 + (2 * txc.activeTransactions.size());
+        Object[] apiaryInput = new Object[input.length + numParams];
+        System.arraycopy(input, 0, apiaryInput, 0, input.length);
+
+        int inputIdx = input.length;
+        filterQuery.append(String.format(" AND (( %s < ? ", beginVersion));
+        apiaryInput[inputIdx++] = txc.xmax;
         if (!activeTxnString.isEmpty()) {
-            filterQuery.append(String.format(" AND %s NOT IN (%s) ) ", beginVersion, activeTxnString));
+            filterQuery.append(String.format(" AND %s NOT IN ( %s ))", beginVersion, activeTxnString));
+            for (int i = 0; i < txc.activeTransactions.size(); i++) {
+                apiaryInput[inputIdx++] = txc.activeTransactions.get(i);
+            }
         } else {
             filterQuery.append(" )");
         }
         // It needs to read its own writes.
-        filterQuery.append(String.format(" OR %s = %d )", beginVersion, txc.txID));
+        filterQuery.append(String.format(" OR %s = ?)", beginVersion));
+        apiaryInput[inputIdx++] = txc.txID;
 
-        filterQuery.append(String.format(" AND ( %s >= %d ", endVersion, txc.xmax));
+        filterQuery.append(String.format(" AND ( %s >= ? ", endVersion));
+        apiaryInput[inputIdx++] = txc.xmax;
         if (!activeTxnString.isEmpty()) {
-            filterQuery.append(String.format(" OR %s IN (%s) )", endVersion, activeTxnString));
+            filterQuery.append(String.format(" OR %s IN ( %s ))", endVersion, activeTxnString));
+            for (int i = 0; i < txc.activeTransactions.size(); i++) {
+                apiaryInput[inputIdx++] = txc.activeTransactions.get(i);
+            }
         } else {
             filterQuery.append(" )");
         }
 
         // It needs to read its own writes.
-        filterQuery.append(String.format(" AND %s != %d ", endVersion, txc.txID));
+        filterQuery.append(String.format(" AND %s != ? ", endVersion));
+        apiaryInput[inputIdx++] = txc.txID;
 
         filterQuery.append(" ;");
 
         PreparedStatement pstmt = conn.prepareStatement(filterQuery.toString(), ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        prepareStatement(pstmt, input);
+        prepareStatement(pstmt, apiaryInput);
 
         rs = pstmt.executeQuery();
 

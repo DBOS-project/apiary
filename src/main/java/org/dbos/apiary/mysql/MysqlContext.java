@@ -130,7 +130,7 @@ public class MysqlContext extends ApiaryContext {
         return;
     }
 
-    public void executeUpsert(String tableName, String id, Object... input) throws Exception {
+    public void executeUpsertWithPredicate(String tableName, String id, String visbilityUpdatePredicate, Object... input) throws Exception {
         long t0 = System.nanoTime();
         if (!ApiaryConfig.XDBTransactions) {
             StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (", tableName));
@@ -182,6 +182,10 @@ public class MysqlContext extends ApiaryContext {
         String updateVisibility = String.format("UPDATE %s SET %s = ? WHERE %s = ? AND %s < ? AND %s = ?", tableName, MysqlContext.endVersion, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion);
         // UPDATE table SET __endVersion__ = ? WHERE __apiaryID__ = ? and __beginVersion__ < ? and __endVersion__ == infinity
 
+        if (visbilityUpdatePredicate != null) {
+            updateVisibility = updateVisibility + " AND " + visbilityUpdatePredicate;
+        }
+
         try {
             pstmt = conn.prepareStatement(updateVisibility);
             prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
@@ -196,6 +200,10 @@ public class MysqlContext extends ApiaryContext {
 
         Long time = System.nanoTime() - t0;
         upserts.add(time / 1000);
+    }
+
+    public void executeUpsert(String tableName, String id, Object... input) throws Exception {
+        executeUpsertWithPredicate(tableName, id, null, input);
     }
 
     public ResultSet executeQuery(String procedure, Object... input) throws Exception {

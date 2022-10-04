@@ -12,7 +12,6 @@ import org.dbos.apiary.utilities.Percentile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -21,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 public class MysqlConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(MysqlConnection.class);
@@ -143,14 +141,13 @@ public class MysqlConnection implements ApiarySecondaryConnection {
                         continue;  // Skip.
                     }
                     query = String.format("DELETE FROM %s WHERE %s = %d", table, MysqlContext.beginVersion, txc.txID);
-                    s.addBatch(query);
+                    s.executeUpdate(query);
                     query = String.format("UPDATE %s SET %s = %d where %s = %d", table, MysqlContext.endVersion, Long.MAX_VALUE, MysqlContext.endVersion, txc.txID);
-                    s.addBatch(query);
+                    s.executeUpdate(query);
                     for (String key : writtenKeys.get(table)) {
                         lockManager.get(table).get(key).set(false);
                     }
                 }
-                s.executeBatch();
                 s.close();
                 c.commit();
             } catch (MySQLTransactionRollbackException m) {
@@ -164,7 +161,7 @@ public class MysqlConnection implements ApiarySecondaryConnection {
             } catch (Exception e) {
                 e.printStackTrace();
                 logger.error("3. Failed to rollback mysql txn {}", txc.txID);
-                logger.info("2. Rollback MySQL query: {}", query);
+                logger.info("3. Rollback MySQL query: {}", query);
             }
             break;
         }

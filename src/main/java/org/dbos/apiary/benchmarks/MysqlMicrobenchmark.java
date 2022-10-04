@@ -44,7 +44,7 @@ public class MysqlMicrobenchmark {
         PostgresConnection pgConn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
         pgConn.dropTable("FuncInvocations");
 
-        MysqlConnection mysqlConn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
+        MysqlConnection mysqlConn = new MysqlConnection(dbAddr, ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
         mysqlConn.dropTable("PersonTable");
         if (ApiaryConfig.XDBTransactions) {
             // TODO: need to solve the primary key issue. Currently cannot have primary keys.

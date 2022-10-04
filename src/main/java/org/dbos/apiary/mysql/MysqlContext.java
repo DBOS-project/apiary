@@ -223,19 +223,19 @@ public class MysqlContext extends ApiaryContext {
         // Also hard to use prepared statement because the number of active transactions varies.
         StringBuilder filterQuery = new StringBuilder(sanitizeQuery);
         String activeTxnString = txc.activeTransactions.stream().map(Object::toString).collect(Collectors.joining(","));
+
         // Add filters to the end.
+        // Query would be <user query> AND ((beginVersion < txc.xmax? AND beginVersion NOT IN (?, ?..)) OR beginVersion = txID?) AND (endVersion > xmax? OR endVersion IN (?, ?) ) AND endVersion != txID?.
+        // Number of prepared parameters: input + xmax + numActiveTxn + txid + xmax + numActiveTxn + txid.
+        int numParams = input.length + 4 + (2 * txc.activeTransactions.size());
         filterQuery.append(String.format(" AND (( %s < %d ", beginVersion, txc.xmax));
         if (!activeTxnString.isEmpty()) {
             filterQuery.append(String.format(" AND %s NOT IN (%s) ) ", beginVersion, activeTxnString));
         } else {
             filterQuery.append(" )");
         }
-        // If it has updates, then need to read its own writes.
-        if (mysqlUpdated) {
-            filterQuery.append(String.format(" OR %s = %d )", beginVersion, txc.txID));
-        } else {
-            filterQuery.append(")");
-        }
+        // It needs to read its own writes.
+        filterQuery.append(String.format(" OR %s = %d )", beginVersion, txc.txID));
 
         filterQuery.append(String.format(" AND ( %s >= %d ", endVersion, txc.xmax));
         if (!activeTxnString.isEmpty()) {
@@ -244,10 +244,8 @@ public class MysqlContext extends ApiaryContext {
             filterQuery.append(" )");
         }
 
-        // If it has updates, then need to read its own writes.
-        if (mysqlUpdated) {
-            filterQuery.append(String.format(" AND %s != %d ", endVersion, txc.txID));
-        }
+        // It needs to read its own writes.
+        filterQuery.append(String.format(" AND %s != %d ", endVersion, txc.txID));
 
         filterQuery.append(" ;");
 

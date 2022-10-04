@@ -104,9 +104,39 @@ public class MysqlConnection implements ApiarySecondaryConnection {
 
     @Override
     public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
-        MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
+        boolean bypassFlag = false;
+        if (writtenKeys.containsKey(MysqlContext.committedToken)) {
+            // This is a hack: it means the function is invoked directly from the worker, bypassing Postgres.
+            bypassFlag = true;
+        }
+
         FunctionOutput f = null;
-        f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+        if (ApiaryConfig.XDBTransactions && !bypassFlag) {
+            // Let the outer function handle the commit and rollback.
+            MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
+            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+            return f;
+        }
+
+        // Otherwise, need to retry until succeeded.
+        while (true) {
+            MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
+            try {
+                f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+                this.connection.get().commit();
+            } catch (MySQLTransactionRollbackException m) {
+                if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
+                    continue; // Deadlock or lock timed out, already rolled back by MySQL.
+                } else {
+                    m.printStackTrace();
+                    logger.error("2. Failed to run function {} in txn {}", functionName, txc.txID);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.error("2. Failed to run function {} in txn {}", functionName, txc.txID);
+            }
+            break;
+        }
         return f;
     }
 

@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
@@ -265,21 +266,32 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         // No need to keep track of writes that are visible to all active or future transactions.
         committedWrites.values().forEach(i -> i.values().forEach(w -> w.removeIf(txID -> txID < globalxmin)));
         // Delete old versions that are no longer visible to any active or future transaction.
+        // Retry until success.
         String query = "";
-        try {
-            Connection c = ds.getConnection();
-            c.setAutoCommit(false);
-            Statement s = c.createStatement();
-            for (String tableName : lockManager.keySet()) {
-                query = String.format("DELETE FROM %s WHERE %s < %d", tableName, MysqlContext.endVersion, globalxmin);
-                s.execute(query);
+        while (true) {
+            try {
+                Connection c = this.connection.get();
+                c.setAutoCommit(false);
+                for (String tableName : lockManager.keySet()) {
+                    query = String.format("DELETE FROM %s WHERE %s < ?", tableName, MysqlContext.endVersion);
+                    PreparedStatement pstmt = c.prepareStatement(query);
+                    pstmt.setLong(1, globalxmin);
+                    pstmt.executeUpdate();
+                    pstmt.close();
+                }
+                c.commit();
+            } catch (MySQLTransactionRollbackException m) {
+                if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
+                    continue; // Deadlock or lock timed out
+                } else {
+                    m.printStackTrace();
+                    logger.error("2. Failed to garbage collect query: {}", query);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.error("3. Failed to garbage collect query: {}", query);
             }
-            c.commit();
-            s.close();
-            c.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            logger.error("Failed to garbage collect: {}", query);
+            break;
         }
     }
 

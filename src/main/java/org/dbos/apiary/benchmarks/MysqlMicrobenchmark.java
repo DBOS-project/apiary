@@ -71,8 +71,8 @@ public class MysqlMicrobenchmark {
             mysqlConn.dropTable("PersonTable");
             if (ApiaryConfig.XDBTransactions) {
                 // TODO: need to solve the primary key issue. Currently cannot have primary keys.
-                mysqlConn.createTable("PersonTable", "Name varchar(100) NOT NULL, Number integer NOT NULL, PRIMARY KEY (__apiaryID__, __beginVersion__), " +
-                        "  KEY(__endVersion__), KEY(Name)");
+                mysqlConn.createTable("PersonTable", "Name varchar(100) NOT NULL, Number integer NOT NULL, PRIMARY KEY (Name, __beginVersion__), " +
+                        "  KEY(__endVersion__), KEY (__apiaryID__)");
             } else {
                 mysqlConn.createTable("PersonTable", "Name varchar(100) PRIMARY KEY NOT NULL, Number integer NOT NULL");
             }
@@ -110,11 +110,7 @@ public class MysqlMicrobenchmark {
                 int chooser = ThreadLocalRandom.current().nextInt(100);
                 if (chooser < percentageRead) {
                     int personNum = ThreadLocalRandom.current().nextInt(personNums.get());
-                    if (ApiaryConfig.XDBTransactions) {
-                        client.get().executeFunction("PostgresMysqlSoloQueryPerson", "matei" + personNum);
-                    } else {
-                        client.get().executeFunction("MysqlQueryPerson", "matei" + personNum);
-                    }
+                    client.get().executeFunction("MysqlQueryPerson", "matei" + personNum);
                     readTimes.add(System.nanoTime() - t0);
                 } else if (chooser < percentageRead + percentageAppend) {
                     int personID = personNums.getAndIncrement();

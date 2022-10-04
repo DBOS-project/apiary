@@ -45,14 +45,6 @@ public class MysqlMicrobenchmark {
         pgConn.dropTable("FuncInvocations");
 
         MysqlConnection mysqlConn = new MysqlConnection(dbAddr, ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
-        mysqlConn.dropTable("PersonTable");
-        if (ApiaryConfig.XDBTransactions) {
-            // TODO: need to solve the primary key issue. Currently cannot have primary keys.
-            mysqlConn.createTable("PersonTable", "Name varchar(100) NOT NULL, Number integer NOT NULL, PRIMARY KEY (__apiaryID__, __beginVersion__), " +
-                    "  KEY(__endVersion__), KEY(Name)");
-        } else {
-            mysqlConn.createTable("PersonTable", "Name varchar(100) PRIMARY KEY NOT NULL, Number integer NOT NULL");
-        }
 
         // Start serving.
         ApiaryWorker apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker);
@@ -76,6 +68,15 @@ public class MysqlMicrobenchmark {
         if (BenchmarkingExecutable.skipLoadData) {
             logger.info("Skip loading data, {} people", numPeople);
         } else {
+            mysqlConn.dropTable("PersonTable");
+            if (ApiaryConfig.XDBTransactions) {
+                // TODO: need to solve the primary key issue. Currently cannot have primary keys.
+                mysqlConn.createTable("PersonTable", "Name varchar(100) NOT NULL, Number integer NOT NULL, PRIMARY KEY (__apiaryID__, __beginVersion__), " +
+                        "  KEY(__endVersion__), KEY(Name)");
+            } else {
+                mysqlConn.createTable("PersonTable", "Name varchar(100) PRIMARY KEY NOT NULL, Number integer NOT NULL");
+            }
+
             long loadStart = System.currentTimeMillis();
 
             int numChunks = numPeople / chunkSize;

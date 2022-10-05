@@ -9,6 +9,7 @@ import org.dbos.apiary.client.InternalApiaryWorkerClient;
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.*;
+import org.dbos.apiary.mysql.MysqlContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
@@ -107,9 +108,9 @@ public class ApiaryWorker {
             garbageCollectorThread.interrupt();
             garbageCollectorThread.join();
             reqThreadPool.shutdown();
-            reqThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            reqThreadPool.awaitTermination(10, TimeUnit.SECONDS);
             repThreadPool.shutdown();
-            repThreadPool.awaitTermination(10000, TimeUnit.SECONDS);
+            repThreadPool.awaitTermination(10, TimeUnit.SECONDS);
             serverThread.interrupt();
             zContext.close();
             serverThread.join();
@@ -214,7 +215,10 @@ public class ApiaryWorker {
             } else { // Execute a read-only secondary function without primary involvement using a cached txc.
                 ApiarySecondaryConnection c = workerContext.getSecondaryConnection(type);
                 TransactionContext txc = workerContext.getPrimaryConnection().getLatestTransactionContext();
-                o = c.callFunction(name, new HashMap<>(), workerContext, txc, service, execID, functionID, arguments);
+                // Hack, if bypass Postgres, put a committed token in the writtenKeys hashmap.
+                Map<String, List<String>> writtenKeys = new HashMap<>();
+                writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
+                o = c.callFunction(name, writtenKeys, workerContext, txc, service, execID, functionID, arguments);
             }
         } catch (Exception e) {
             e.printStackTrace();

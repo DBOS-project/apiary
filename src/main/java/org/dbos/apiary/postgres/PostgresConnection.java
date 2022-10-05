@@ -189,9 +189,7 @@ public class PostgresConnection implements ApiaryConnection {
                     ctxt.conn.commit();
                     for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
                         Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
-                        if (!writtenKeys.isEmpty()) {
-                            ctxt.workerContext.getSecondaryConnection(secondary).commit(writtenKeys, ctxt.txc);
-                        }
+                        ctxt.workerContext.getSecondaryConnection(secondary).commit(writtenKeys, ctxt.txc);
                     }
                     activeTransactions.remove(ctxt.txc);
                     break;

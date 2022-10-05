@@ -21,7 +21,7 @@ public class MongoMicrobenchmark {
     private static final Logger logger = LoggerFactory.getLogger(MongoMicrobenchmark.class);
     private static final int threadPoolSize = 256;
 
-    private static final int numPeople = 100000;
+    private static final int numPeople = 1000000;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
@@ -69,7 +69,7 @@ public class MongoMicrobenchmark {
                     int personNum = ThreadLocalRandom.current().nextInt(personNums.get());
                     client.get().executeFunction("MongoFindPerson", "matei" + personNum);
                     readTimes.add(System.nanoTime() - t0);
-                } else if (chooser < percentageAppend) {
+                } else if (chooser < percentageRead + percentageAppend) {
                     int personID = personNums.getAndIncrement();
                     if (ApiaryConfig.XDBTransactions) {
                         client.get().executeFunction("PostgresSoloAddPerson", "matei" + personID, personID);

@@ -24,6 +24,7 @@ public class MysqlWriteReadPerson extends MysqlFunction {
             count = rs.getInt(1);
             assert (!rs.next());  // Should only have at most 1 row.
         }
+        rs.close();
         return count;
     }
 }

@@ -4,11 +4,14 @@ import org.apache.commons_voltpatches.cli.CommandLine;
 import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
 import org.apache.commons_voltpatches.cli.Options;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BenchmarkingExecutable {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkingExecutable.class);
+
+    public static boolean skipLoadData = false;
 
     // Ignore the illegal reflective access warning from VoltDB. TODO: Fix it later.
     public static void main(String[] args) throws Exception {
@@ -22,6 +25,8 @@ public class BenchmarkingExecutable {
         options.addOption("p2", true, "Percentage 2");
         options.addOption("p3", true, "Percentage 3");
         options.addOption("p4", true, "Percentage 4");
+        options.addOption("notxn", false, "Disable XDST transaction.");
+        options.addOption("skipLoad", false, "Skip data loading.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -38,6 +43,19 @@ public class BenchmarkingExecutable {
         if (cmd.hasOption("mainHostAddr")) {
             mainHostAddr = cmd.getOptionValue("mainHostAddr");
         }
+
+        if (cmd.hasOption("notxn")) {
+            logger.info("Disabling XDST transction!");
+            ApiaryConfig.XDBTransactions = false;
+        } else {
+            logger.info("Using XDST transaction!");
+            ApiaryConfig.XDBTransactions = true;
+        }
+
+        if (cmd.hasOption("skipLoad")) {
+            skipLoadData = true;
+        }
+
         String benchmark = cmd.getOptionValue("b");
         String service = benchmark;
         if (cmd.hasOption("s")) {
@@ -94,6 +112,12 @@ public class BenchmarkingExecutable {
             int percentageUpdate = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 1;
             logger.info("Superbenchmark {} {}", percentageRead, percentageUpdate);
             Superbenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageUpdate);
+        } else if (benchmark.equals("mysqlmicro")) {
+            int percentageRead = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 100;
+            int percentageNew = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 0;
+            int percentageUpdate = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 0;
+            logger.info("Mysql Microbenchmark {} {} {}", percentageRead, percentageNew, percentageUpdate);
+            MysqlMicrobenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageNew, percentageUpdate);
         }
     }
 }

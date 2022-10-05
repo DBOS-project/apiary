@@ -1,6 +1,5 @@
 package org.dbos.apiary.mysql;
 
-import com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException;
 import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
@@ -17,9 +16,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -29,6 +26,7 @@ public class MysqlContext extends ApiaryContext {
     public static final String apiaryID = "__apiaryID__";
     public static final String beginVersion = "__beginVersion__";
     public static final String endVersion = "__endVersion__";
+    public static final String committedToken = "__apiaryCommitted__";
 
     Percentile upserts = null;
     Percentile queries = null;
@@ -38,7 +36,8 @@ public class MysqlContext extends ApiaryContext {
 
     private final Map<String, Map<String, AtomicBoolean>> lockManager;
 
-    private boolean mysqlUpdated = false;
+    private Map<String, Set<String>> currentLockedKeys = new HashMap<>();
+
     Map<String, List<String>> writtenKeys;
 
     public MysqlContext(Connection conn, Map<String, List<String>> writtenKeys, Map<String, Map<String, AtomicBoolean>> lockManager,  WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Percentile upserts, Percentile queries) {
@@ -82,7 +81,52 @@ public class MysqlContext extends ApiaryContext {
         pstmt.executeUpdate();
     }
 
-    public void executeUpsert(String tableName, String id, Object... input) throws Exception {
+    // Note: use this function to bulk load experimental data. So skip recording writtenKeys and write locks.
+    public void insertMany(String tableName, List<String> ids, List<Object[]> inputs) throws Exception {
+        if (!ApiaryConfig.XDBTransactions) {
+            StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (", tableName));
+            for (int i = 0; i < inputs.get(0).length; i++) {
+                if (i == 0) {
+                    query.append("?");
+                } else {
+                    query.append(", ?");
+                }
+            }
+            query.append(");");
+            PreparedStatement pstmt = conn.prepareStatement(query.toString());
+            for (Object[] input : inputs) {
+                prepareStatement(pstmt, input);
+                pstmt.addBatch();
+            }
+            pstmt.executeBatch();
+            pstmt.close();
+            return;
+        }
+
+        StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (?, ?, ?", tableName));
+        for (int i = 0; i < inputs.get(0).length; i++) {
+            query.append(", ?");
+        }
+        query.append(");");
+
+        PreparedStatement pstmt = conn.prepareStatement(query.toString());
+        for (int i = 0; i < inputs.size(); i++) {
+            Object[] input = inputs.get(i);
+            Object[] apiaryInput = new Object[input.length + 3];
+            apiaryInput[0] = ids.get(i);
+            apiaryInput[1] = txc.txID;
+            apiaryInput[2] = Long.MAX_VALUE;
+            System.arraycopy(input, 0, apiaryInput, 3, input.length);
+            prepareStatement(pstmt, apiaryInput);
+            pstmt.addBatch();
+        }
+        pstmt.executeBatch();
+        pstmt.close();
+
+        return;
+    }
+
+    public void executeUpsertWithPredicate(String tableName, String id, String visbilityUpdatePredicate, Object... input) throws Exception {
         long t0 = System.nanoTime();
         if (!ApiaryConfig.XDBTransactions) {
             StringBuilder query = new StringBuilder(String.format("INSERT INTO %s VALUES (", tableName));
@@ -99,15 +143,24 @@ public class MysqlContext extends ApiaryContext {
             pstmt.executeUpdate();
             Long time = System.nanoTime() - t0;
             upserts.add(time / 1000);
+            pstmt.close();
             return;
         }
 
         // Grab write lock for the upsert.
-        lockManager.putIfAbsent(tableName, new ConcurrentHashMap<>());
-        lockManager.get(tableName).putIfAbsent(id, new AtomicBoolean(false));
-        boolean available = lockManager.get(tableName).get(id).compareAndSet(false, true);
-        if (!available) {
-            throw new PSQLException("MySQL tuple locked", PSQLState.SERIALIZATION_FAILURE);
+        // Remember which locks are grabbed because we do not want to re-grab the lock during local retries.
+        if (currentLockedKeys.containsKey(tableName) && currentLockedKeys.get(tableName).contains(id)) {
+            logger.info("Skip grabbing tuple lock during retries.");
+        } else {
+            lockManager.putIfAbsent(tableName, new ConcurrentHashMap<>());
+            lockManager.get(tableName).putIfAbsent(id, new AtomicBoolean(false));
+            boolean available = lockManager.get(tableName).get(id).compareAndSet(false, true);
+            if (!available) {
+                throw new PSQLException("MySQL tuple locked", PSQLState.SERIALIZATION_FAILURE);
+            } else {
+                currentLockedKeys.putIfAbsent(tableName, new HashSet<>());
+                currentLockedKeys.get(tableName).add(id);
+            }
         }
 
         // TODO: This interface is not the natural SQL interface. Figure out a better one? E.g., can we support arbitrary update queries?
@@ -127,36 +180,27 @@ public class MysqlContext extends ApiaryContext {
         System.arraycopy(input, 0, apiaryInput, 3, input.length);
         prepareStatement(pstmt, apiaryInput);
         pstmt.executeUpdate();
+        pstmt.close();
 
         // make writes visible
         String updateVisibility = String.format("UPDATE %s SET %s = ? WHERE %s = ? AND %s < ? AND %s = ?", tableName, MysqlContext.endVersion, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion);
         // UPDATE table SET __endVersion__ = ? WHERE __apiaryID__ = ? and __beginVersion__ < ? and __endVersion__ == infinity
 
-        while (true) {
-            try {
-                pstmt = conn.prepareStatement(updateVisibility);
-                prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
-                pstmt.executeUpdate();
-            } catch (MySQLTransactionRollbackException m) {
-                if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
-                    continue; // Deadlock or lock timed out
-                } else {
-                    m.printStackTrace();
-                    logger.error("2. Failed to update valid txn {}", txc.txID);
-                    logger.info("2. Validate update query: {}", query);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                logger.error("3. Failed to update valid txn {}", txc.txID);
-                logger.info("3. Validate update query: {}", query);
-            }
-            break;
+        if (visbilityUpdatePredicate != null) {
+            updateVisibility = updateVisibility + " AND " + visbilityUpdatePredicate;
         }
 
-        mysqlUpdated = true;
+        pstmt = conn.prepareStatement(updateVisibility);
+        prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
+        pstmt.executeUpdate();
+        pstmt.close();
 
         Long time = System.nanoTime() - t0;
         upserts.add(time / 1000);
+    }
+
+    public void executeUpsert(String tableName, String id, Object... input) throws Exception {
+        executeUpsertWithPredicate(tableName, id, null, input);
     }
 
     public ResultSet executeQuery(String procedure, Object... input) throws Exception {
@@ -164,7 +208,7 @@ public class MysqlContext extends ApiaryContext {
         ResultSet rs;
         String sanitizeQuery = procedure.replaceAll(";+$", "");
         if (!ApiaryConfig.XDBTransactions) {
-            PreparedStatement pstmt = conn.prepareStatement(procedure);
+            PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             prepareStatement(pstmt, input);
             rs = pstmt.executeQuery();
             Long time = System.nanoTime() - t0;
@@ -175,37 +219,49 @@ public class MysqlContext extends ApiaryContext {
         // TODO: This implementation assume predicates at the end. No more group by or others. May find a better solution.
         // Also hard to use prepared statement because the number of active transactions varies.
         StringBuilder filterQuery = new StringBuilder(sanitizeQuery);
-        String activeTxnString = txc.activeTransactions.stream().map(Object::toString).collect(Collectors.joining(","));
+        String activeTxnString = txc.activeTransactions.stream().map(v -> "?").collect(Collectors.joining(", "));
+
         // Add filters to the end.
-        filterQuery.append(String.format(" AND (( %s < %d ", beginVersion, txc.xmax));
+        // Query would be <user query> AND ((beginVersion < txc.xmax? AND beginVersion NOT IN (?, ?..)) OR beginVersion = txID?) AND (endVersion > xmax? OR endVersion IN (?, ?) ) AND endVersion != txID?.
+        // Number of prepared parameters: input + xmax + numActiveTxn + txid + xmax + numActiveTxn + txid.
+        int numParams = 4 + (2 * txc.activeTransactions.size());
+        Object[] apiaryInput = new Object[input.length + numParams];
+        System.arraycopy(input, 0, apiaryInput, 0, input.length);
+
+        int inputIdx = input.length;
+        filterQuery.append(String.format(" AND (( %s < ? ", beginVersion));
+        apiaryInput[inputIdx++] = txc.xmax;
         if (!activeTxnString.isEmpty()) {
-            filterQuery.append(String.format(" AND %s NOT IN (%s) ) ", beginVersion, activeTxnString));
+            filterQuery.append(String.format(" AND %s NOT IN ( %s ))", beginVersion, activeTxnString));
+            for (int i = 0; i < txc.activeTransactions.size(); i++) {
+                apiaryInput[inputIdx++] = txc.activeTransactions.get(i);
+            }
         } else {
             filterQuery.append(" )");
         }
-        // If it has updates, then need to read its own writes.
-        if (mysqlUpdated) {
-            filterQuery.append(String.format(" OR %s = %d )", beginVersion, txc.txID));
-        } else {
-            filterQuery.append(")");
-        }
+        // It needs to read its own writes.
+        filterQuery.append(String.format(" OR %s = ?)", beginVersion));
+        apiaryInput[inputIdx++] = txc.txID;
 
-        filterQuery.append(String.format(" AND ( %s >= %d ", endVersion, txc.xmax));
+        filterQuery.append(String.format(" AND ( %s >= ? ", endVersion));
+        apiaryInput[inputIdx++] = txc.xmax;
         if (!activeTxnString.isEmpty()) {
-            filterQuery.append(String.format(" OR %s IN (%s) )", endVersion, activeTxnString));
+            filterQuery.append(String.format(" OR %s IN ( %s ))", endVersion, activeTxnString));
+            for (int i = 0; i < txc.activeTransactions.size(); i++) {
+                apiaryInput[inputIdx++] = txc.activeTransactions.get(i);
+            }
         } else {
             filterQuery.append(" )");
         }
 
-        // If it has updates, then need to read its own writes.
-        if (mysqlUpdated) {
-            filterQuery.append(String.format(" AND %s != %d ", endVersion, txc.txID));
-        }
+        // It needs to read its own writes.
+        filterQuery.append(String.format(" AND %s != ? ", endVersion));
+        apiaryInput[inputIdx++] = txc.txID;
 
         filterQuery.append(" ;");
 
-        PreparedStatement pstmt = conn.prepareStatement(filterQuery.toString());
-        prepareStatement(pstmt, input);
+        PreparedStatement pstmt = conn.prepareStatement(filterQuery.toString(), ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        prepareStatement(pstmt, apiaryInput);
 
         rs = pstmt.executeQuery();
 

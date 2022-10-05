@@ -9,11 +9,13 @@ import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Percentile;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.BatchUpdateException;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
@@ -21,7 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 public class MysqlConnection implements ApiarySecondaryConnection {
     private static final Logger logger = LoggerFactory.getLogger(MysqlConnection.class);
@@ -32,29 +33,10 @@ public class MysqlConnection implements ApiarySecondaryConnection {
 
     private final MysqlDataSource ds;
     private final ThreadLocal<Connection> connection;
-    private boolean delayLogFlush = true;
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
 
     private final Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
-
-
-    public void enableDelayedFlush() {
-        try {
-            Connection conn = ds.getConnection();
-            conn.setAutoCommit(true);
-            Statement s = conn.createStatement();
-            if (delayLogFlush && ApiaryConfig.XDBTransactions) {
-                s.execute("SET GLOBAL innodb_flush_log_at_trx_commit=0;");
-            } else {
-                s.execute("SET GLOBAL innodb_flush_log_at_trx_commit=1;");
-            }
-            s.close();
-            conn.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 
     public MysqlConnection(String hostname, Integer port, String databaseName, String databaseUsername, String databasePassword) throws SQLException {
         this.ds = new MysqlDataSource();
@@ -65,18 +47,11 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         this.ds.setUser(databaseUsername);
         this.ds.setPassword(databasePassword);
 
-        // Enable delayed flush by default.
-        enableDelayedFlush();
-
         this.connection = ThreadLocal.withInitial(() -> {
             try {
                 Connection conn = ds.getConnection();
-                if (ApiaryConfig.XDBTransactions) {
-                    conn.setAutoCommit(true);
-                } else {
-                    // Otherwise, manually commit transactions after function execution.
-                    conn.setAutoCommit(false);
-                }
+                // Manually commit transaction after function execution.
+                conn.setAutoCommit(false);
                 // MySQL default level is repeatable read.
                 // conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
                 return conn;
@@ -132,51 +107,103 @@ public class MysqlConnection implements ApiarySecondaryConnection {
 
     @Override
     public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
-        MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
         FunctionOutput f = null;
-        f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
 
-        // Flush logs and commit transaction for non-XDST calls.
-        if (!ApiaryConfig.XDBTransactions) {
-            this.connection.get().commit();
+        // Otherwise, need to retry until succeeded.
+        while (true) {
+            MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
+            try {
+                f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+                if (writtenKeys.containsKey(MysqlContext.committedToken)) {
+                    // This is a hack: it means the function is invoked directly from the worker, bypassing Postgres. So we have to commit here.
+                    // For XDB txns, we commit at validation step.
+                    this.connection.get().commit();
+                }
+            } catch (MySQLTransactionRollbackException m) {
+                if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
+                    continue; // Deadlock or lock timed out, already rolled back by MySQL.
+                } else {
+                    m.printStackTrace();
+                    throw new PSQLException("2. Failed to run MysqlFunction", PSQLState.SERIALIZATION_FAILURE);
+                }
+            } catch (Exception e) {
+                throw new PSQLException("3. Failed to run MysqlFunction", PSQLState.SERIALIZATION_FAILURE);
+            }
+            break;
         }
         return f;
     }
 
     @Override
     public void rollback(Map<String, List<String>> writtenKeys, TransactionContext txc) {
-        String query = "";
-        try {
-            Connection c = ds.getConnection();
-            c.setAutoCommit(false);
-            Statement s = c.createStatement();
+        // If the connection has not committed, use the normal rollback.
+        if (!writtenKeys.containsKey(MysqlContext.committedToken)) {
+            try {
+                this.connection.get().rollback();
+            } catch (SQLException e) {
+                logger.error("Rollback failed :/");
+                throw new RuntimeException(e);
+            }
             for (String table : writtenKeys.keySet()) {
-                query = String.format("DELETE FROM %s WHERE %s = %d", table, MysqlContext.beginVersion, txc.txID);
-                s.addBatch(query);
-                query = String.format("UPDATE %s SET %s = %d where %s = %d", table, MysqlContext.endVersion, Long.MAX_VALUE, MysqlContext.endVersion, txc.txID);
-                s.addBatch(query);
-                for (String key: writtenKeys.get(table)) {
+                for (String key : writtenKeys.get(table)) {
                     lockManager.get(table).get(key).set(false);
                 }
             }
-            s.executeBatch();
-            s.close();
-            c.commit();
-            c.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            logger.error("Failed to rollback MySQL txn {}", txc.txID);
-            logger.info("Rollback MySQL query: {}", query);
+            return;
+        }
+
+        String query = null;
+        while (true) {
+            try {
+                Connection c = this.connection.get();
+                Statement s = c.createStatement();
+                for (String table : writtenKeys.keySet()) {
+                    if (table.equals(MysqlContext.committedToken)) {
+                        continue;  // Skip.
+                    }
+                    query = String.format("DELETE FROM %s WHERE %s = %d", table, MysqlContext.beginVersion, txc.txID);
+                    s.executeUpdate(query);
+                    query = String.format("UPDATE %s SET %s = %d where %s = %d", table, MysqlContext.endVersion, Long.MAX_VALUE, MysqlContext.endVersion, txc.txID);
+                    s.executeUpdate(query);
+                    for (String key : writtenKeys.get(table)) {
+                        lockManager.get(table).get(key).set(false);
+                    }
+                }
+                s.close();
+                c.commit();
+            } catch (MySQLTransactionRollbackException m) {
+                if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
+                    continue; // Deadlock or lock timed out
+                } else {
+                    m.printStackTrace();
+                    logger.error("2. Failed to update valid txn {}", txc.txID);
+                    logger.info("2. Rollback MySQL query: {}", query);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.error("3. Failed to rollback mysql txn {}", txc.txID);
+                logger.info("3. Rollback MySQL query: {}", query);
+            }
+            break;
         }
     }
 
     @Override
     public boolean validate(Map<String, List<String>> writtenKeys, TransactionContext txc) {
         long t0 = System.nanoTime();
+        try {
+            this.connection.get().commit();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
         Set<Long> activeTransactions = new HashSet<>(txc.activeTransactions);
         validationLock.lock();
         boolean valid = true;
         for (String table: writtenKeys.keySet()) {
+            if (table.equals(MysqlContext.committedToken)) {
+                continue;  // Skip.
+            }
             for (String key : writtenKeys.get(table)) {
                 // Has the key been modified by a transaction not in the snapshot?
                 Set<Long> writes = committedWrites.getOrDefault(table, Collections.emptyMap()).getOrDefault(key, Collections.emptySet());
@@ -190,6 +217,9 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         }
         if (valid) {
             for (String collection: writtenKeys.keySet()) {
+                if (collection.equals(MysqlContext.committedToken)) {
+                    continue;  // Skip.
+                }
                 for (String key : writtenKeys.get(collection)) {
                     committedWrites.putIfAbsent(collection, new ConcurrentHashMap<>());
                     committedWrites.get(collection).putIfAbsent(key, ConcurrentHashMap.newKeySet());
@@ -198,9 +228,6 @@ public class MysqlConnection implements ApiarySecondaryConnection {
             }
         }
         validationLock.unlock();
-        if (valid) {
-            flushEngineLogs();
-        }
         long time = System.nanoTime() - t0;
         commits.add(time / 1000);
         return valid;
@@ -208,7 +235,18 @@ public class MysqlConnection implements ApiarySecondaryConnection {
 
     @Override
     public void commit(Map<String, List<String>> writtenKeys, TransactionContext txc) {
+        if (!writtenKeys.containsKey(MysqlContext.committedToken)) {
+            try {
+                this.connection.get().commit();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
+        }
         for (String table : writtenKeys.keySet()) {
+            if (table.equals(MysqlContext.committedToken)) {
+                continue;  // Skip.
+            }
             for (String key : writtenKeys.get(table)) {
                 lockManager.get(table).get(key).set(false);
             }
@@ -221,35 +259,33 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         // No need to keep track of writes that are visible to all active or future transactions.
         committedWrites.values().forEach(i -> i.values().forEach(w -> w.removeIf(txID -> txID < globalxmin)));
         // Delete old versions that are no longer visible to any active or future transaction.
+        // Retry until success.
         String query = "";
-        try {
-            Connection c = ds.getConnection();
-            c.setAutoCommit(false);
-            Statement s = c.createStatement();
-            for (String tableName : lockManager.keySet()) {
-                query = String.format("DELETE FROM %s WHERE %s < %d", tableName, MysqlContext.endVersion, globalxmin);
-                s.execute(query);
+        while (true) {
+            try {
+                Connection c = this.connection.get();
+                c.setAutoCommit(false);
+                for (String tableName : lockManager.keySet()) {
+                    query = String.format("DELETE FROM %s WHERE %s < ?", tableName, MysqlContext.endVersion);
+                    PreparedStatement pstmt = c.prepareStatement(query);
+                    pstmt.setLong(1, globalxmin);
+                    pstmt.executeUpdate();
+                    pstmt.close();
+                }
+                c.commit();
+            } catch (MySQLTransactionRollbackException m) {
+                if (m.getErrorCode() == 1213 || m.getErrorCode() == 1205) {
+                    continue; // Deadlock or lock timed out
+                } else {
+                    m.printStackTrace();
+                    logger.error("2. Failed to garbage collect query: {}", query);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.error("3. Failed to garbage collect query: {}", query);
             }
-            c.commit();
-            s.close();
-            c.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            logger.error("Failed to garbage collect: {}", query);
+            break;
         }
     }
 
-    private void flushEngineLogs() {
-        // Flush the engine.
-        Connection c = connection.get();
-        if (delayLogFlush) {
-            try {
-                Statement s = c.createStatement();
-                s.execute("FLUSH ENGINE LOGS;");
-                s.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
 }

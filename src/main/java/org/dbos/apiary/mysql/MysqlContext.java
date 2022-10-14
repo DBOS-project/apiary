@@ -6,6 +6,7 @@ import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Percentile;
+import org.dbos.apiary.utilities.ScopedTimer;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class MysqlContext extends ApiaryContext {  
@@ -27,6 +29,8 @@ public class MysqlContext extends ApiaryContext {
     public static final String beginVersion = "__beginVersion__";
     public static final String endVersion = "__endVersion__";
     public static final String committedToken = "__apiaryCommitted__";
+
+    public AtomicLong executionOverheadNanos = new AtomicLong(0);
 
     Percentile upserts = null;
     Percentile queries = null;
@@ -182,21 +186,26 @@ public class MysqlContext extends ApiaryContext {
         pstmt.executeUpdate();
         pstmt.close();
 
-        // make writes visible
-        String updateVisibility = String.format("UPDATE %s SET %s = ? WHERE %s = ? AND %s < ? AND %s = ?", tableName, MysqlContext.endVersion, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion);
-        // UPDATE table SET __endVersion__ = ? WHERE __apiaryID__ = ? and __beginVersion__ < ? and __endVersion__ == infinity
+        try (ScopedTimer t = new ScopedTimer((long elapsed)->this.executionOverheadNanos.addAndGet(elapsed))) {
+            // make writes visible
+            String updateVisibility = String.format("UPDATE %s SET %s = ? WHERE %s = ? AND %s < ? AND %s = ?", tableName, MysqlContext.endVersion, MysqlContext.apiaryID, MysqlContext.beginVersion, MysqlContext.endVersion);
+            // UPDATE table SET __endVersion__ = ? WHERE __apiaryID__ = ? and __beginVersion__ < ? and __endVersion__ == infinity
 
-        if (visbilityUpdatePredicate != null) {
-            updateVisibility = updateVisibility + " AND " + visbilityUpdatePredicate;
+            if (visbilityUpdatePredicate != null) {
+                updateVisibility = updateVisibility + " AND " + visbilityUpdatePredicate;
+            }
+
+            pstmt = conn.prepareStatement(updateVisibility);
+            prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
+            pstmt.executeUpdate();
+            pstmt.close();
+
+        } catch (Exception e) {
+            throw e;
         }
 
-        pstmt = conn.prepareStatement(updateVisibility);
-        prepareStatement(pstmt, new Object[]{txc.txID, id, txc.txID, Long.MAX_VALUE});
-        pstmt.executeUpdate();
-        pstmt.close();
-
         Long time = System.nanoTime() - t0;
-        upserts.add(time / 1000);
+        upserts.add(time / 1000);        
     }
 
     public void executeUpsert(String tableName, String id, Object... input) throws Exception {

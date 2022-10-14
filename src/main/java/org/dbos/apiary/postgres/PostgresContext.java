@@ -3,6 +3,7 @@ package org.dbos.apiary.postgres;
 import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.utilities.ScopedTimer;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +25,11 @@ public class PostgresContext extends ApiaryContext {
     private AtomicLong functionIDCounter = new AtomicLong(0);
     private long currentID = functionID;
 
+    public AtomicLong initializationNanos = new AtomicLong(0);
+    public AtomicLong executionNanos = new AtomicLong(0);
+    public AtomicLong validationNanos = new AtomicLong(0);
+    public AtomicLong commitNanos = new AtomicLong(0);
+
     private final long replayTxID;  // The replayed transaction ID.
 
     private static final String checkReplayTxID = String.format("SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=0", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
@@ -41,41 +47,46 @@ public class PostgresContext extends ApiaryContext {
         super(workerContext, service, execID, functionID, isReplay);
         this.conn = c;
         long tmpReplayTxID = -1;
-        try {
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("select txid_current();");
-            rs.next();
-            long txID = rs.getLong(1);
-            rs = stmt.executeQuery("select pg_current_snapshot();");
-            rs.next();
-            String snapshotString = rs.getString(1);
-            long xmin = PostgresUtilities.parseXmin(snapshotString);
-            long xmax = PostgresUtilities.parseXmax(snapshotString);
-            List<Long> activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
-            activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < xmax).collect(Collectors.toList()));
-            for (TransactionContext t: activeTransactions) {
-                if (t.txID < xmax && !activeTxIDs.contains(t.txID)) {
-                    rs = stmt.executeQuery("select txid_status(" + t.txID + ");");
-                    rs.next();
-                    if (rs.getString("txid_status").equals("aborted")) {
-                        activeTxIDs.add(t.txID);
+        try (ScopedTimer t0 = new ScopedTimer((long elapsed) -> this.initializationNanos.set(elapsed) )) {
+            
+            try {
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select txid_current();");
+                rs.next();
+                long txID = rs.getLong(1);
+                rs = stmt.executeQuery("select pg_current_snapshot();");
+                rs.next();
+                String snapshotString = rs.getString(1);
+                long xmin = PostgresUtilities.parseXmin(snapshotString);
+                long xmax = PostgresUtilities.parseXmax(snapshotString);
+                List<Long> activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
+                activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < xmax).collect(Collectors.toList()));
+                for (TransactionContext t: activeTransactions) {
+                    if (t.txID < xmax && !activeTxIDs.contains(t.txID)) {
+                        rs = stmt.executeQuery("select txid_status(" + t.txID + ");");
+                        rs.next();
+                        if (rs.getString("txid_status").equals("aborted")) {
+                            activeTxIDs.add(t.txID);
+                        }
                     }
                 }
-            }
-            this.txc = new TransactionContext(txID, xmin, xmax, activeTxIDs);
+                this.txc = new TransactionContext(txID, xmin, xmax, activeTxIDs);
 
-            // Look up the original transaction ID if it's a replay.
-            if (isReplay) {
-                PreparedStatement pstmt = conn.prepareStatement(checkReplayTxID);
-                pstmt.setLong(1, execID);
-                pstmt.setLong(2, functionID);
-                rs = pstmt.executeQuery();
-                if (rs.next()) {
-                    tmpReplayTxID = rs.getLong(1);
-                    logger.info("Current transaction {} is a replay of executionID: {}, functionID: {}, original tranasction ID: {}", txID, execID, functionID, tmpReplayTxID);
-                } else {
-                    throw new RuntimeException("Cannot find the original transaction ID for this replay!");
+                // Look up the original transaction ID if it's a replay.
+                if (isReplay) {
+                    PreparedStatement pstmt = conn.prepareStatement(checkReplayTxID);
+                    pstmt.setLong(1, execID);
+                    pstmt.setLong(2, functionID);
+                    rs = pstmt.executeQuery();
+                    if (rs.next()) {
+                        tmpReplayTxID = rs.getLong(1);
+                        logger.info("Current transaction {} is a replay of executionID: {}, functionID: {}, original tranasction ID: {}", txID, execID, functionID, tmpReplayTxID);
+                    } else {
+                        throw new RuntimeException("Cannot find the original transaction ID for this replay!");
+                    }
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         } catch (Exception e) {
             e.printStackTrace();

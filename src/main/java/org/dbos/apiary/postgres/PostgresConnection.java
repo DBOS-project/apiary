@@ -6,6 +6,8 @@ import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.utilities.ScopedTimer;
+import org.dbos.apiary.utilities.Tracer;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
@@ -16,6 +18,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -32,7 +35,11 @@ public class PostgresConnection implements ApiaryConnection {
     private final Set<TransactionContext> activeTransactions = ConcurrentHashMap.newKeySet();
     private final Set<TransactionContext> abortedTransactions = ConcurrentHashMap.newKeySet();
     private TransactionContext latestTransactionContext;
+    public Tracer tracer = null;
 
+    public void setTracer(Tracer tracer) {
+        this.tracer = tracer;
+    }
     /**
      * Create a connection to a Postgres database.
      * @param hostname the Postgres database hostname.
@@ -166,61 +173,91 @@ public class PostgresConnection implements ApiaryConnection {
                                        long functionID, boolean isReplay, Object... inputs) {
         Connection c = connection.get();
         FunctionOutput f = null;
+        AtomicLong totalTime = new AtomicLong(0);
+        PostgresContext succeededCtx = null;
         while (true) {
-            activeTransactionsLock.readLock().lock();
-            PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID, isReplay,
-                    new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
-            activeTransactions.add(ctxt.txc);
-            latestTransactionContext = ctxt.txc;
-            if (ctxt.txc.xmin > biggestxmin) {
-                biggestxmin = ctxt.txc.xmin;
-            }
-            activeTransactionsLock.readLock().unlock();
-            try {
-                f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
-                boolean valid = true;
-                for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
-                    Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
-                    if (!writtenKeys.isEmpty()) {
-                        valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(writtenKeys, ctxt.txc);
-                    }
+            try (ScopedTimer t = new ScopedTimer((long elapsed) -> totalTime.set(elapsed)) ) {
+                activeTransactionsLock.readLock().lock();
+                PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID, isReplay,
+                        new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
+                activeTransactions.add(ctxt.txc);
+                latestTransactionContext = ctxt.txc;
+                if (ctxt.txc.xmin > biggestxmin) {
+                    biggestxmin = ctxt.txc.xmin;
                 }
-                if (valid) {
-                    ctxt.conn.commit();
-                    for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
-                        Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
-                        ctxt.workerContext.getSecondaryConnection(secondary).commit(writtenKeys, ctxt.txc);
+                activeTransactionsLock.readLock().unlock();
+                try {
+                    try (ScopedTimer t2 = new ScopedTimer((long elapsed) -> ctxt.executionNanos.set(elapsed)) ) {
+                        f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+                    } catch (Exception e) {
+                        throw e;
                     }
-                    activeTransactions.remove(ctxt.txc);
-                    break;
-                } else {
-                    rollback(ctxt);
-                }
-            } catch (Exception e) {
-                if (e instanceof InvocationTargetException) {
-                    Throwable innerException = e;
-                    while (innerException instanceof InvocationTargetException) {
-                        InvocationTargetException i = (InvocationTargetException) innerException;
-                        innerException = i.getCause();
-                    }
-                    if (innerException instanceof PSQLException) {
-                        PSQLException p = (PSQLException) innerException;
-                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
-                            try {
-                                rollback(ctxt);
-                                continue;
-                            } catch (SQLException ex) {
-                                ex.printStackTrace();
+                    
+                    boolean valid = true;
+                    try (ScopedTimer t3 = new ScopedTimer((long elapsed) -> ctxt.validationNanos.set(elapsed)) ) {
+                        for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
+                            Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
+                            if (!writtenKeys.isEmpty()) {
+                                valid &= ctxt.workerContext.getSecondaryConnection(secondary).validate(writtenKeys, ctxt.txc);
                             }
+                        }
+                    } catch (Exception e) {
+                        throw e;
+                    }
+                    
+                    try (ScopedTimer t4 = new ScopedTimer((long elapsed) -> ctxt.commitNanos.set(elapsed)) ) {
+                        if (valid) {
+                            ctxt.conn.commit();
+                            for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
+                                Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
+                                ctxt.workerContext.getSecondaryConnection(secondary).commit(writtenKeys, ctxt.txc);
+                            }
+                            activeTransactions.remove(ctxt.txc);
+                            succeededCtx = ctxt;
+                            break;
                         } else {
-                            logger.info("Unrecoverable Postgres error: {} {}", p.getMessage(), p.getSQLState());
+                            rollback(ctxt);
+                        }
+                    } catch (Exception e) {
+                        throw e;
+                    }
+
+                } catch (Exception e) {
+                    if (e instanceof InvocationTargetException) {
+                        Throwable innerException = e;
+                        while (innerException instanceof InvocationTargetException) {
+                            InvocationTargetException i = (InvocationTargetException) innerException;
+                            innerException = i.getCause();
+                        }
+                        if (innerException instanceof PSQLException) {
+                            PSQLException p = (PSQLException) innerException;
+                            if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                                try {
+                                    rollback(ctxt);
+                                    continue;
+                                } catch (SQLException ex) {
+                                    ex.printStackTrace();
+                                }
+                            } else {
+                                logger.info("Unrecoverable Postgres error: {} {}", p.getMessage(), p.getSQLState());
+                            }
                         }
                     }
+                    logger.info("Unrecoverable error in function execution: {}", e.getMessage());
+                    e.printStackTrace();
+                    break;
                 }
-                logger.info("Unrecoverable error in function execution: {}", e.getMessage());
+            } catch (Exception e) {
                 e.printStackTrace();
-                break;
             }
+        }
+        if (succeededCtx != null && tracer != null) {
+            tracer.setTotalTime(execID, totalTime.get());
+            tracer.setXDSTInitNanos(execID, succeededCtx.initializationNanos.get());
+            tracer.setXDSTExecutionNanos(execID, succeededCtx.executionNanos.get());
+            tracer.setXDSTValidationNanos(execID, succeededCtx.validationNanos.get());
+            tracer.setXDSTCommitNanos(execID, succeededCtx.commitNanos.get());
+            tracer.addCategoryValidId(functionName, execID);
         }
         return f;
     }

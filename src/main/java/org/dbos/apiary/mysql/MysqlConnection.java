@@ -9,6 +9,7 @@ import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Percentile;
+import org.dbos.apiary.utilities.Tracer;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
@@ -30,13 +31,17 @@ public class MysqlConnection implements ApiarySecondaryConnection {
     public Percentile upserts = new Percentile();
     public Percentile queries = new Percentile();
     public Percentile commits = new Percentile();
-
+    public Tracer tracer = null;
     private final MysqlDataSource ds;
     private final ThreadLocal<Connection> connection;
     private final Map<String, Map<String, Set<Long>>> committedWrites = new ConcurrentHashMap<>();
     private final Lock validationLock = new ReentrantLock();
 
     private final Map<String, Map<String, AtomicBoolean>> lockManager = new ConcurrentHashMap<>();
+
+    public void setTracer(Tracer tracer) {
+        this.tracer = tracer;
+    }
 
     public MysqlConnection(String hostname, Integer port, String databaseName, String databaseUsername, String databasePassword) throws SQLException {
         this.ds = new MysqlDataSource();
@@ -110,8 +115,9 @@ public class MysqlConnection implements ApiarySecondaryConnection {
         FunctionOutput f = null;
 
         // Otherwise, need to retry until succeeded.
+        MysqlContext ctxt = null;
         while (true) {
-            MysqlContext ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
+            ctxt = new MysqlContext(this.connection.get(), writtenKeys, lockManager, workerContext, txc, service, execID, functionID, upserts, queries);
             try {
                 f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
                 if (writtenKeys.containsKey(MysqlContext.committedToken)) {
@@ -130,6 +136,10 @@ public class MysqlConnection implements ApiarySecondaryConnection {
                 throw new PSQLException("3. Failed to run MysqlFunction", PSQLState.SERIALIZATION_FAILURE);
             }
             break;
+        }
+
+        if (tracer != null && ctxt != null) {
+            tracer.addXDSTExecutionOverheadNanos(execID, ctxt.executionOverheadNanos.get());
         }
         return f;
     }

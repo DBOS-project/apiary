@@ -22,7 +22,7 @@ public class ApiaryWorkerClient {
     private final int clientID;
 
     // A map that stores unique execution ID for each service.
-    private final AtomicLong execIDGenerator = new AtomicLong(0);
+    private static final AtomicLong execIDGenerator = new AtomicLong(0);
 
     /**
      * Create a client for sending synchronous requests to Apiary.

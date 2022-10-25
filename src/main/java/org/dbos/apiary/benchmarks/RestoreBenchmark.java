@@ -52,13 +52,13 @@ public class RestoreBenchmark {
             String tableName = "tbl" + localTableNum;
             // Bulk load the table.
             int count = 0;
+            int res;
             for (int chunkNum = 0; chunkNum < numChunks; chunkNum++) {
                 int[] numbers = new int[chunkSize];
                 for (int i = 0; i < chunkSize; i++) {
                     numbers[i] = count;
                     count++;
                 }
-                int res = 0;
                 try {
                     res = client.get().executeFunction("PostgresInsertMany", tableName, numColumns, numbers).getInt();
                 } catch (InvalidProtocolBufferException e) {
@@ -67,6 +67,15 @@ public class RestoreBenchmark {
                 }
                 assert(res == numbers.length);
             }
+            // Check actually loaded the table.
+            try {
+                res = client.get().executeFunction("PostgresCountTable", tableName).getInt();
+            } catch (InvalidProtocolBufferException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+            assert(res == numRows);
+            logger.info("Done loading table: {}", tableName);
         };
 
         // Load all tables in parallel.

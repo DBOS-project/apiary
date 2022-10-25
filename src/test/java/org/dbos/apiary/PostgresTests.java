@@ -49,6 +49,8 @@ public class PostgresTests {
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
             conn.dropTable(ProvenanceBuffer.PROV_FuncInvocations);
+            conn.dropTable("KVTable");
+            conn.createTable("KVTable", "KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL");
             conn.dropTable("RetwisPosts");
             conn.createTable("RetwisPosts", "UserID integer NOT NULL, PostID integer NOT NULL, Timestamp integer NOT NULL, Post varchar(1000) NOT NULL");
             conn.dropTable("RetwisFollowees");

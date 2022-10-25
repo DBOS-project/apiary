@@ -47,6 +47,7 @@ public class RestoreBenchmark {
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
 
         Runnable r = () -> {
+            long startTime = System.currentTimeMillis();
             int localTableNum = tableNum.incrementAndGet();
             assert (localTableNum <= numTables);
             String tableName = "tbl" + localTableNum;
@@ -75,7 +76,7 @@ public class RestoreBenchmark {
                 throw new RuntimeException(e);
             }
             assert(res == numRows);
-            logger.info("Done loading table: {}", tableName);
+            logger.info("Done loading table: {}, {} ms", tableName, System.currentTimeMillis() - startTime);
         };
 
         // Load all tables in parallel.

@@ -93,7 +93,7 @@ public class PostgresTests {
             numbers[i] = i + 1000;
         }
 
-        res = client.executeFunction("PostgresInsertMany", 3, numbers).getInt();
+        res = client.executeFunction("PostgresInsertMany", "BigIntTable", 3, numbers).getInt();
         assertEquals(numRows, res);
 
         res = client.executeFunction("PostgresCountTable", "BigIntTable").getInt();

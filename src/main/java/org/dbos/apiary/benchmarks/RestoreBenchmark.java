@@ -43,7 +43,7 @@ public class RestoreBenchmark {
         long loadStart = System.currentTimeMillis();
 
         int numChunks = numRows / chunkSize;
-        AtomicInteger tableNum = new AtomicInteger(numTables);
+        AtomicInteger tableNum = new AtomicInteger(0);
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
 
         Runnable r = () -> {

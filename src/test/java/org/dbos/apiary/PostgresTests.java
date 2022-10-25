@@ -4,9 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.replay.PostgresFetchSubscribers;
-import org.dbos.apiary.procedures.postgres.replay.PostgresForumSubscribe;
-import org.dbos.apiary.procedures.postgres.replay.PostgresIsSubscribed;
+import org.dbos.apiary.procedures.postgres.replay.*;
 import org.dbos.apiary.procedures.postgres.retwis.*;
 import org.dbos.apiary.procedures.postgres.tests.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -57,6 +55,8 @@ public class PostgresTests {
             conn.createTable("RetwisFollowees", "UserID integer NOT NULL, FolloweeID integer NOT NULL");
             conn.dropTable("ForumSubscription");
             conn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");
+            conn.dropTable("BigIntTable");
+            conn.createTable("BigIntTable", "col1 BIGINT NOT NULL, col2 BIGINT NOT NULL, col3 BIGINT NOT NULL");
             conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
             conn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
         } catch (Exception e) {
@@ -74,8 +74,34 @@ public class PostgresTests {
         }
     }
 
+    @Test void testInsertMany() throws SQLException, InvalidProtocolBufferException {
+        logger.info("testInsertMany");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresInsertMany", ApiaryConfig.postgres, PostgresInsertMany::new);
+        apiaryWorker.registerFunction("PostgresCountTable", ApiaryConfig.postgres, PostgresCountTable::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        int numRows = 10;
+        int[] numbers = new int[numRows];
+        for (int i = 0; i < numRows; i++) {
+            numbers[i] = i + 1000;
+        }
+
+        res = client.executeFunction("PostgresInsertMany", 3, numbers).getInt();
+        assertEquals(numRows, res);
+
+        res = client.executeFunction("PostgresCountTable", "BigIntTable").getInt();
+        assertEquals(numRows, res);
+    }
+
     @Test
-    public void testForumSubscribe() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+    public void testForumSubscribe() throws SQLException, InvalidProtocolBufferException {
         logger.info("testForumSubscribe");
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
 

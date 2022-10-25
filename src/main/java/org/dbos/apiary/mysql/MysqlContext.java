@@ -66,7 +66,7 @@ public class MysqlContext extends ApiaryContext {
             } else if (o instanceof Timestamp) {
                 ps.setTimestamp(i + 1, (Timestamp) o);
             } else {
-                logger.info("type {} for input {} not recogized ", o.toString(), i);
+                logger.info("type {} for input {} not recognized ", o.toString(), i);
                 assert (false); // TODO: More types.
             }
         }

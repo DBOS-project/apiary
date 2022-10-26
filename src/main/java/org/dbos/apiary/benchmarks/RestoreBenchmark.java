@@ -12,7 +12,11 @@ import org.dbos.apiary.worker.ApiaryWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.swing.plaf.nimbus.State;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -29,7 +33,7 @@ public class RestoreBenchmark {
         // Reset tables.
         resetTables(dbAddr, numTables, numColumns);
 
-        PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "dbos", "postgres", "dbos");
 
         ApiaryWorker apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pgConn);
@@ -94,7 +98,11 @@ public class RestoreBenchmark {
         assert (numTables > 0);
         assert (numColumns > 0);
         try {
-            PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            Connection localconn = DriverManager.getConnection(dbAddr, "postgres", "dbos");
+            Statement stmt = localconn.createStatement();
+            stmt.executeUpdate("CREATE DATABASE dbos");
+
+            PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "dbos", "postgres", "dbos");
             conn.dropTable(ProvenanceBuffer.PROV_FuncInvocations);
 
             for (int i = 1; i <= numTables; i++) {

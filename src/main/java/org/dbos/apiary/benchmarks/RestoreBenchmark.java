@@ -100,6 +100,7 @@ public class RestoreBenchmark {
         try {
             Connection localconn = DriverManager.getConnection(dbAddr, "postgres", "dbos");
             Statement stmt = localconn.createStatement();
+            stmt.executeUpdate("DROP DATABASE IF EXISTS dbos");
             stmt.executeUpdate("CREATE DATABASE dbos");
 
             PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "dbos", "postgres", "dbos");

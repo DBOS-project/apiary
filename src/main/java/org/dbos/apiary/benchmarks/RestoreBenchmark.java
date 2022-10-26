@@ -98,10 +98,12 @@ public class RestoreBenchmark {
         assert (numTables > 0);
         assert (numColumns > 0);
         try {
-            Connection localconn = DriverManager.getConnection(dbAddr, "postgres", "dbos");
-            Statement stmt = localconn.createStatement();
+            PostgresConnection initconn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+
+            Statement stmt = initconn.connection.get().createStatement();
             stmt.executeUpdate("DROP DATABASE IF EXISTS dbos");
             stmt.executeUpdate("CREATE DATABASE dbos");
+            stmt.close();
 
             PostgresConnection conn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "dbos", "postgres", "dbos");
             conn.dropTable(ProvenanceBuffer.PROV_FuncInvocations);

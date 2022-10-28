@@ -4,14 +4,19 @@ set -ex
 SCRIPT_DIR=$(dirname $(realpath $0))
 
 # Start Postgres Docker image.
-docker pull postgres
+docker pull postgres:14.5-bullseye
 
-mkdir -p /tmp/postgresdemo/archive
+BASE_DIR="$PWD/base"  # Base backup. Need to have the proper postgresql.conf and recovery.signal
+WAL_DIR="$PWD/pg_wal" # WAL archive
+
+if [[ $# -eq 2 ]]; then
+    BASE_DIR="$1" # Input from cmd line.
+    WAL_DIR="$2"
+fi
 
 # Set the password to dbos, default user is postgres.
-docker run --network host --rm --name="apiary-postgres" --env POSTGRES_PASSWORD=dbos \
-    -v "$PWD/dbos-postgres-2.conf":/etc/postgresql/postgresql.conf \
-    -v "/tmp/postgresdemo/archive":/tmp/postgresdemo/archive \
-    -e PGDATA=/var/lib/postgresql/data/pgdata \
-    -v "/tmp/postgresdemo/clus2":/var/lib/postgresql/data \
-    postgres:latest -c 'config_file=/etc/postgresql/postgresql.conf'
+docker run --network host --rm --name="recovery-postgres" --env POSTGRES_PASSWORD=dbos \
+    -v "$BASE_DIR":/tmp/dbosbase \
+    -v "$WAL_DIR":/tmp/wal_archive \
+    -e PGDATA=/tmp/dbosbase \
+    postgres:14.5-bullseye -c 'config_file=/tmp/dbosbase/postgresql.conf'

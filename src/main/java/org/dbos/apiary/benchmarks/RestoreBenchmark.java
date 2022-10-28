@@ -99,8 +99,9 @@ public class RestoreBenchmark {
         assert (numColumns > 0);
         try {
             PostgresConnection initconn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
-
-            Statement stmt = initconn.connection.get().createStatement();
+            Connection localConn = initconn.connection.get();
+            localConn.setAutoCommit(true);
+            Statement stmt = localConn.createStatement();
             stmt.executeUpdate("DROP DATABASE IF EXISTS dbos");
             stmt.executeUpdate("CREATE DATABASE dbos");
             stmt.close();

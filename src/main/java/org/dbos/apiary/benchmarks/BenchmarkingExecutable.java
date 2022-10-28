@@ -123,7 +123,7 @@ public class BenchmarkingExecutable {
             int numColumns = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 0;
             int numRows = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 0;
             logger.info("Restore Benchmark: numTables {}, numColumns {}, numRows {}", numTables, numColumns, numRows);
-            RestoreBenchmark.benchmark(mainHostAddr, numTables, numColumns, numRows);
+            RestoreBenchmark.benchmark(mainHostAddr, numTables, numColumns, numRows, skipLoadData);
         }
     }
 }

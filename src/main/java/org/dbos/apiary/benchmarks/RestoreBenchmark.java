@@ -29,9 +29,11 @@ public class RestoreBenchmark {
     private static final int numWorker = 4;
     private static final int chunkSize = 1000;
 
-    public static void benchmark(String dbAddr, int numTables, int numColumns, int numRows) throws SQLException, InterruptedException {
+    public static void benchmark(String dbAddr, int numTables, int numColumns, int numRows, boolean skipReset) throws SQLException, InterruptedException {
         // Reset tables.
-        resetTables(dbAddr, numTables, numColumns);
+        if (!skipReset) {
+            resetTables(dbAddr, numTables, numColumns);
+        }
 
         PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "dbos", "postgres", "dbos");
 

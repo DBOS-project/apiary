@@ -17,6 +17,6 @@ fi
 # Set the password to dbos, default user is postgres.
 docker run --network host --rm --name="recovery-postgres" --env POSTGRES_PASSWORD=dbos \
     -v "$BASE_DIR":/tmp/dbosbase \
-    -v "$WAL_DIR":/tmp/wal_archive \
+    -v "$WAL_DIR":/tmp/postgres/archive \
     -e PGDATA=/tmp/dbosbase \
     postgres:14.5-bullseye -c 'config_file=/tmp/dbosbase/postgresql.conf'

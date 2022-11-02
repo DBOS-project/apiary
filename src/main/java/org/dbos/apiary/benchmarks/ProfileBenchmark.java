@@ -28,7 +28,7 @@ public class ProfileBenchmark {
 
     public static void benchmark(Integer interval, Integer duration, int percentageRead, int percentageNew, int percentageUpdate) throws SQLException, InterruptedException, IOException {
         assert (percentageRead + percentageNew + percentageUpdate == 100);
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         pconn.dropTable("FuncInvocations");
         pconn.dropTable("VersionTable");
         pconn.dropTable("ProfileTable");

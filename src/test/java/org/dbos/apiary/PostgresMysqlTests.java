@@ -46,7 +46,7 @@ public class PostgresMysqlTests {
     @BeforeEach
     public void resetTables() {
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
             conn.dropTable("FuncInvocations");
             conn.dropTable("PersonTable");
             conn.createTable("PersonTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Number integer NOT NULL");
@@ -86,7 +86,7 @@ public class PostgresMysqlTests {
 
         MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
 
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mysql, conn);
@@ -113,7 +113,7 @@ public class PostgresMysqlTests {
         logger.info("testMysqlUpdate");
         MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
 
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mysql, conn);
@@ -148,7 +148,7 @@ public class PostgresMysqlTests {
         logger.info("testMysqlBulk");
         MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
 
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mysql, conn);
@@ -179,7 +179,7 @@ public class PostgresMysqlTests {
 
         MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
 
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mysql, conn);
@@ -206,7 +206,7 @@ public class PostgresMysqlTests {
 
         MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
 
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         int numThreads = 10;
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numThreads);
@@ -262,7 +262,7 @@ public class PostgresMysqlTests {
 
         MysqlConnection conn = new MysqlConnection("localhost", ApiaryConfig.mysqlPort, "dbos", "root", "dbos");
 
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, ApiaryConfig.postgres, "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         int numThreads = 10;
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numThreads);

@@ -51,7 +51,7 @@ public class PostgresGCSTests {
     @BeforeEach
     public void resetTables() {
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             conn.dropTable("FuncInvocations");
             conn.dropTable("StuffTable");
             conn.dropTable("VersionTable");
@@ -91,7 +91,7 @@ public class PostgresGCSTests {
     public void testGCSProfile() throws InvalidProtocolBufferException, SQLException {
         logger.info("testGCSProfile");
 
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         GCSConnection conn = new GCSConnection(pconn);
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
@@ -123,7 +123,7 @@ public class PostgresGCSTests {
     public void testGCSBasic() throws InvalidProtocolBufferException, SQLException {
         logger.info("testGCSBasic");
 
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         GCSConnection conn = new GCSConnection(pconn);
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
@@ -148,7 +148,7 @@ public class PostgresGCSTests {
     public void testGCSUpdate() throws InvalidProtocolBufferException, SQLException {
         logger.info("testGCSUpdate");
 
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         GCSConnection conn = new GCSConnection(pconn);
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
@@ -178,7 +178,7 @@ public class PostgresGCSTests {
     public void testGCSConcurrent() throws InterruptedException, SQLException {
         logger.info("testGCSConcurrent");
 
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         GCSConnection conn = new GCSConnection(pconn);
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
@@ -229,7 +229,7 @@ public class PostgresGCSTests {
     public void testGCSConcurrentUpdates() throws InterruptedException, SQLException {
         logger.info("testGCSConcurrentUpdates");
 
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         GCSConnection conn = new GCSConnection(pconn);
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);

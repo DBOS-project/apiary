@@ -32,7 +32,7 @@ public class RollbackExecutable {
         PGSimpleDataSource ds = new PGSimpleDataSource();
         ds.setServerNames(new String[] {"localhost"});
         ds.setPortNumbers(new int[] {ApiaryConfig.postgresPort});
-        ds.setDatabaseName("postgres");
+        ds.setDatabaseName(ApiaryConfig.dbosDBName);
         ds.setUser("postgres");
         ds.setPassword("dbos");
         ds.setSsl(false);

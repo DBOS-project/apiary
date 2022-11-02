@@ -1,6 +1,5 @@
 package org.dbos.apiary.worker;
 
-import com.mongodb.client.model.Indexes;
 import org.apache.commons_voltpatches.cli.CommandLine;
 import org.apache.commons_voltpatches.cli.CommandLineParser;
 import org.apache.commons_voltpatches.cli.DefaultParser;
@@ -20,8 +19,6 @@ import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBRe
 import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBWrite;
 import org.dbos.apiary.procedures.gcs.GCSProfileRead;
 import org.dbos.apiary.procedures.gcs.GCSProfileUpdate;
-import org.dbos.apiary.procedures.gcs.GCSReadString;
-import org.dbos.apiary.procedures.gcs.GCSWriteString;
 import org.dbos.apiary.procedures.mongo.MongoAddPerson;
 import org.dbos.apiary.procedures.mongo.MongoBulkAddPerson;
 import org.dbos.apiary.procedures.mongo.MongoFindPerson;
@@ -99,7 +96,7 @@ public class ApiaryWorkerExecutable {
             throw new IllegalArgumentException("TODO: Implement VoltDB worker");
         } else if (db.equals("elasticsearch")) {
             apiaryWorker = new ApiaryWorker(scheduler, numThreads);
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             String esAddr = "localhost";
             if (cmd.hasOption("secondaryAddress")) {
                 esAddr = cmd.getOptionValue("secondaryAddress");
@@ -126,7 +123,7 @@ public class ApiaryWorkerExecutable {
             apiaryWorker.registerFunction("ShopESSearchItem", ApiaryConfig.elasticsearch, ShopESSearchItem::new);
         } else if (db.equals("mongo")) {
             apiaryWorker = new ApiaryWorker(scheduler, numThreads);
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             String mongoAddr = "localhost";
             if (cmd.hasOption("secondaryAddress")) {
                 mongoAddr = cmd.getOptionValue("secondaryAddress");
@@ -154,7 +151,7 @@ public class ApiaryWorkerExecutable {
             apiaryWorker.registerFunction("MongoFindPerson", ApiaryConfig.mongo, MongoFindPerson::new);
         } else if (db.equals("gcs")) {
             apiaryWorker = new ApiaryWorker(scheduler, numThreads);
-            PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             GCSConnection gconn = new GCSConnection(pconn);
             apiaryWorker.registerConnection(ApiaryConfig.gcs, gconn);
             apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
@@ -165,7 +162,7 @@ public class ApiaryWorkerExecutable {
             apiaryWorker.registerFunction("GCSProfileRead", ApiaryConfig.gcs, GCSProfileRead::new);
         } else if (db.equals("superbenchmark")) {
             apiaryWorker = new ApiaryWorker(scheduler, numThreads);
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             String esAddr = "localhost";
             if (cmd.hasOption("secondaryAddress")) {
                 esAddr = cmd.getOptionValue("secondaryAddress");

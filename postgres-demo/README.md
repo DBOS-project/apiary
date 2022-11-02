@@ -154,7 +154,7 @@ to launch an Apiary worker on startup to manage all the Apiary function requests
 then register all our functions with the worker:
 
 ```java
-PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 ApiaryWorker apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
 apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
 apiaryWorker.registerFunction("NectarRegister", ApiaryConfig.postgres, NectarRegister::new);

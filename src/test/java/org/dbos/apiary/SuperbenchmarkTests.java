@@ -4,19 +4,10 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.mongodb.client.model.Indexes;
-import org.bson.BsonDocument;
-import org.bson.BsonInt64;
-import org.bson.Document;
-import org.bson.conversions.Bson;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.elasticsearch.ElasticsearchConnection;
 import org.dbos.apiary.mongo.MongoConnection;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.elasticsearch.ElasticsearchBulkIndexPerson;
-import org.dbos.apiary.procedures.elasticsearch.ElasticsearchIndexPerson;
-import org.dbos.apiary.procedures.elasticsearch.ElasticsearchSearchPerson;
-import org.dbos.apiary.procedures.elasticsearch.shop.ShopESAddItem;
-import org.dbos.apiary.procedures.elasticsearch.shop.ShopESSearchItem;
 import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBBulkWrite;
 import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBRead;
 import org.dbos.apiary.procedures.elasticsearch.superbenchmark.ElasticsearchSBWrite;
@@ -24,10 +15,6 @@ import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBBulkWrite;
 import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBRead;
 import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBUpdate;
 import org.dbos.apiary.procedures.mongo.superbenchmark.MongoSBWrite;
-import org.dbos.apiary.procedures.postgres.pges.PostgresBulkIndexPerson;
-import org.dbos.apiary.procedures.postgres.pges.PostgresIndexPerson;
-import org.dbos.apiary.procedures.postgres.pges.PostgresSearchPerson;
-import org.dbos.apiary.procedures.postgres.shop.*;
 import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBBulkWrite;
 import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBRead;
 import org.dbos.apiary.procedures.postgres.superbenchmark.PostgresSBUpdate;
@@ -41,12 +28,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -67,7 +48,7 @@ public class SuperbenchmarkTests {
     @BeforeEach
     public void resetTables() {
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             conn.dropTable("FuncInvocations");
             conn.dropTable("SuperbenchmarkTable");
             conn.createTable("SuperbenchmarkTable", "ItemID integer PRIMARY KEY NOT NULL, Inventory integer NOT NULL");
@@ -119,7 +100,7 @@ public class SuperbenchmarkTests {
         try {
             econn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
             mconn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Elasticsearch/Postgres instance! {}", e.getMessage());
             return;

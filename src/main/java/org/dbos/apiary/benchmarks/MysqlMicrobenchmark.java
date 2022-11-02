@@ -41,7 +41,7 @@ public class MysqlMicrobenchmark {
         ApiaryConfig.captureUpdates = false;
         ApiaryConfig.captureReads = false;
 
-        PostgresConnection pgConn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pgConn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         pgConn.dropTable("FuncInvocations");
 
         MysqlConnection mysqlConn = new MysqlConnection(dbAddr, ApiaryConfig.mysqlPort, "dbos", "root", "dbos");

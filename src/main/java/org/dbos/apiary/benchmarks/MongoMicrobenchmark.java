@@ -29,7 +29,7 @@ public class MongoMicrobenchmark {
 
     public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageRead, int percentageAppend, int percentageUpdate) throws SQLException, InterruptedException, IOException {
         assert (percentageRead + percentageAppend + percentageUpdate == 100);
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         conn.dropTable("FuncInvocations");
         conn.dropTable("PersonTable");
         conn.createTable("PersonTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Number integer NOT NULL");

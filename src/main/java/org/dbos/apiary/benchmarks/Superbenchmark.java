@@ -36,7 +36,7 @@ public class Superbenchmark {
         assert(percentageRead + percentageUpdate == 100);
 
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             conn.dropTable("FuncInvocations");
             conn.dropTable("SuperbenchmarkTable");
             conn.createTable("SuperbenchmarkTable", "ItemID integer PRIMARY KEY NOT NULL, Inventory integer NOT NULL");

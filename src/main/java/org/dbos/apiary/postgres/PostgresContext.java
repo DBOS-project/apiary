@@ -119,6 +119,8 @@ public class PostgresContext extends ApiaryContext {
                 ps.setInt(i + 1, (Integer) o);
             } else if (o instanceof String) {
                 ps.setString(i + 1, (String) o);
+            } else if (o instanceof Long)  {
+                ps.setLong(i + 1, (Long) o);
             } else if (o instanceof Float) {
                 ps.setFloat(i + 1, (Float) o);
             } else if (o instanceof Double) {
@@ -126,6 +128,7 @@ public class PostgresContext extends ApiaryContext {
             } else if (o instanceof Timestamp) {
                 ps.setTimestamp(i + 1, (Timestamp) o);
             } else {
+                logger.info("type {} for input {} not recognized ", o.toString(), i);
                 assert (false); // TODO: More types.
             }
         }
@@ -190,6 +193,22 @@ public class PostgresContext extends ApiaryContext {
     }
 
     /**
+     * Execute bulk inserts into a table in a batch. Do not have provenance capture for this type of operation.
+     * @param procedure a SQL DML statement (INSERT).
+     * @param inputs     an array of input parameters for the SQL statement.
+     */
+    public void insertMany(String procedure, List<Object[]> inputs) throws SQLException {
+        PreparedStatement pstmt = conn.prepareStatement(procedure);
+        for (Object[] input : inputs) {
+            prepareStatement(pstmt, input);
+            pstmt.addBatch();
+        }
+        pstmt.executeBatch();
+        pstmt.close();
+        return;
+    }
+
+    /**
      * Execute a database query.
      * @param procedure a SQL query.
      * @param input     input parameters for the SQL statement.
@@ -200,7 +219,9 @@ public class PostgresContext extends ApiaryContext {
             return replayQuery(procedure, input);
         }
         PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        prepareStatement(pstmt, input);
+        if (input != null) {
+            prepareStatement(pstmt, input);
+        }
         ResultSet rs = pstmt.executeQuery();
         if (ApiaryConfig.captureReads && workerContext.provBuff != null) {
             int querySeqNum = txc.querySeqNum.getAndIncrement();
@@ -327,7 +348,9 @@ public class PostgresContext extends ApiaryContext {
                 this.replayTxID, seqNum);
 
         PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        prepareStatement(pstmt, input);
+        if (input != null) {
+            prepareStatement(pstmt, input);
+        }
         String currentQuery = pstmt.toString();
         String originalQuery;
         List<String> tables;

@@ -30,7 +30,7 @@ public class HotelBenchmark {
 
     public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageSearch, int percentageReserve) throws SQLException, InterruptedException, IOException {
         assert (percentageSearch + percentageReserve == 100);
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         conn.dropTable("FuncInvocations");
         conn.dropTable("HotelsTable");
         conn.createTable("HotelsTable", "HotelID integer PRIMARY KEY NOT NULL, HotelName VARCHAR(1000) NOT NULL, AvailableRooms integer NOT NULL");

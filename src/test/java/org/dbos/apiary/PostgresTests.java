@@ -4,9 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.replay.PostgresFetchSubscribers;
-import org.dbos.apiary.procedures.postgres.replay.PostgresForumSubscribe;
-import org.dbos.apiary.procedures.postgres.replay.PostgresIsSubscribed;
+import org.dbos.apiary.procedures.postgres.replay.*;
 import org.dbos.apiary.procedures.postgres.retwis.*;
 import org.dbos.apiary.procedures.postgres.tests.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -19,10 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -49,14 +44,18 @@ public class PostgresTests {
     @BeforeEach
     public void resetTables() {
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             conn.dropTable(ProvenanceBuffer.PROV_FuncInvocations);
+            conn.dropTable("KVTable");
+            conn.createTable("KVTable", "KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL");
             conn.dropTable("RetwisPosts");
             conn.createTable("RetwisPosts", "UserID integer NOT NULL, PostID integer NOT NULL, Timestamp integer NOT NULL, Post varchar(1000) NOT NULL");
             conn.dropTable("RetwisFollowees");
             conn.createTable("RetwisFollowees", "UserID integer NOT NULL, FolloweeID integer NOT NULL");
             conn.dropTable("ForumSubscription");
             conn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");
+            conn.dropTable("BigIntTable");
+            conn.createTable("BigIntTable", "col1 BIGINT NOT NULL, col2 BIGINT NOT NULL, col3 BIGINT NOT NULL");
             conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
             conn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
         } catch (Exception e) {
@@ -74,10 +73,36 @@ public class PostgresTests {
         }
     }
 
+    @Test void testInsertMany() throws SQLException, InvalidProtocolBufferException {
+        logger.info("testInsertMany");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresInsertMany", ApiaryConfig.postgres, PostgresInsertMany::new);
+        apiaryWorker.registerFunction("PostgresCountTable", ApiaryConfig.postgres, PostgresCountTable::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        int numRows = 10;
+        int[] numbers = new int[numRows];
+        for (int i = 0; i < numRows; i++) {
+            numbers[i] = i + 1000;
+        }
+
+        res = client.executeFunction("PostgresInsertMany", "BigIntTable", 3, numbers).getInt();
+        assertEquals(numRows, res);
+
+        res = client.executeFunction("PostgresCountTable", "BigIntTable").getInt();
+        assertEquals(numRows, res);
+    }
+
     @Test
-    public void testForumSubscribe() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+    public void testForumSubscribe() throws SQLException, InvalidProtocolBufferException {
         logger.info("testForumSubscribe");
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
@@ -106,7 +131,7 @@ public class PostgresTests {
     public void testForumSubscribeConcurrent() throws SQLException, InvalidProtocolBufferException, InterruptedException, ExecutionException {
         // Run until duplications happen.
         logger.info("testForumSubscribeConcurrent");
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
@@ -172,7 +197,7 @@ public class PostgresTests {
     public void testFibPostgres() throws InvalidProtocolBufferException, SQLException {
         logger.info("testFibPostgres");
 
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
@@ -197,7 +222,7 @@ public class PostgresTests {
     public void testRetwisPostgres() throws InvalidProtocolBufferException, SQLException {
         logger.info("testRetwisPostgres");
 
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);

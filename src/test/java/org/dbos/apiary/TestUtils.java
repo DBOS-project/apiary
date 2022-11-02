@@ -1,7 +1,6 @@
 package org.dbos.apiary;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
@@ -33,7 +32,7 @@ public class TestUtils {
 
     public static boolean testPostgresConnection() {
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
             return false;

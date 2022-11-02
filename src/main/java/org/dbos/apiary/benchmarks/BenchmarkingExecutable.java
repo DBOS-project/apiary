@@ -27,6 +27,7 @@ public class BenchmarkingExecutable {
         options.addOption("p4", true, "Percentage 4");
         options.addOption("notxn", false, "Disable XDST transaction.");
         options.addOption("skipLoad", false, "Skip data loading.");
+        options.addOption("noProv", false, "Disable provenance tracing.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -50,6 +51,12 @@ public class BenchmarkingExecutable {
         } else {
             logger.info("Using XDST transaction!");
             ApiaryConfig.XDBTransactions = true;
+        }
+
+        if (cmd.hasOption("noProv")) {
+            logger.info("Disabling provenance tracing!");
+            ApiaryConfig.captureReads = false;
+            ApiaryConfig.captureUpdates = false;
         }
 
         if (cmd.hasOption("skipLoad")) {
@@ -118,6 +125,11 @@ public class BenchmarkingExecutable {
             int percentageUpdate = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 0;
             logger.info("Mysql Microbenchmark {} {} {}", percentageRead, percentageNew, percentageUpdate);
             MysqlMicrobenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageNew, percentageUpdate);
+        } else if (benchmark.equals("retro")) {
+            int percentageRead = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 100;
+            int percentageWrite = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 100;
+            logger.info("Retroactive Benchmark: read {}%, write {}%", percentageRead, percentageWrite);
+            RetroBenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageWrite, skipLoadData);
         }
     }
 }

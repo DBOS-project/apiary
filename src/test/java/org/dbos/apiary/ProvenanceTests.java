@@ -41,7 +41,7 @@ public class ProvenanceTests {
     @BeforeEach
     public void resetTables() {
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             conn.dropTable(ProvenanceBuffer.PROV_FuncInvocations);
             conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
             conn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
@@ -69,7 +69,7 @@ public class ProvenanceTests {
     @Test
     public void testForumSubscribeReplay() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         logger.info("testForumSubscribeReplay");
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
@@ -168,7 +168,7 @@ public class ProvenanceTests {
 
         // Wait until previous exporter finished.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
-        PostgresConnection pgconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pgconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         Connection conn = pgconn.connection.get();
         Statement stmt = conn.createStatement();
 
@@ -226,7 +226,7 @@ public class ProvenanceTests {
     public void testPostgresProvenance() throws InvalidProtocolBufferException, SQLException, InterruptedException {
         logger.info("testPostgresProvenance");
 
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
@@ -370,7 +370,7 @@ public class ProvenanceTests {
     public void testPostgresProvenanceJoins() throws InvalidProtocolBufferException, SQLException, InterruptedException {
         logger.info("testPostgresProvenanceJoins");
 
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
@@ -492,7 +492,7 @@ public class ProvenanceTests {
     public void testPostgresProvenanceMultiRows() throws InvalidProtocolBufferException, SQLException, InterruptedException {
         logger.info("testPostgresProvenanceMultiRows");
 
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);

@@ -2,6 +2,7 @@ package org.dbos.apiary.benchmarks;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
+import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.replay.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -132,8 +133,12 @@ public class RetroBenchmark {
     private static void resetTables(String dbAddr) {
         try {
             PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
+
             pgConn.dropTable("ForumSubscription");
             pgConn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");
+            pgConn.dropTable(ProvenanceBuffer.PROV_FuncInvocations);
+            pgConn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
+            pgConn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");

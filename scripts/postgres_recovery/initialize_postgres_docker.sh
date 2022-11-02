@@ -24,4 +24,4 @@ docker run --network host --rm --name="init-postgres" --env POSTGRES_PASSWORD=db
 
 sleep 10
 
-docker exec -i apiary-postgres psql -h localhost -U postgres -t < ${SCRIPT_DIR}/../init_postgres.sql
+docker exec -i init-postgres psql -h localhost -U postgres -t < ${SCRIPT_DIR}/../init_postgres.sql

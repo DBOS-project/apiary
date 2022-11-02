@@ -132,20 +132,6 @@ public class RetroBenchmark {
 
     private static void resetTables(String dbAddr) {
         try {
-            PGSimpleDataSource ds = new PGSimpleDataSource();
-            ds.setServerNames(new String[] {dbAddr});
-            ds.setPortNumbers(new int[] {ApiaryConfig.postgresPort});
-            ds.setDatabaseName("postgres"); // Start with the default one.
-            ds.setUser("postgres");
-            ds.setPassword("dbos");
-            ds.setSsl(false);
-            Connection localConn = ds.getConnection();
-            localConn.setAutoCommit(true);
-            Statement stmt = localConn.createStatement();
-            stmt.executeUpdate("DROP DATABASE IF EXISTS dbos");
-            stmt.executeUpdate("CREATE DATABASE dbos");
-            stmt.close();
-
             PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
             pgConn.dropTable("ForumSubscription");
             pgConn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");

@@ -36,7 +36,7 @@ public class ShopBenchmark {
     // Requires file part.tbl in the data/ folder from TPC-H.  Download here: https://kraftp-uniserve-data.s3.us-east-2.amazonaws.com/TPC-H-SF1/part.tbl
     public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageGetItem, int percentageCheckout, int percentageAppend, int percentageUpdate) throws SQLException, InterruptedException, IOException {
         assert (percentageGetItem + percentageCheckout + percentageAppend + percentageUpdate == 100);
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         conn.dropTable("FuncInvocations");
         conn.dropTable("ShopItems");
         conn.dropTable("ShopCart");

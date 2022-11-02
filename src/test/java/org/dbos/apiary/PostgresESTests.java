@@ -49,7 +49,7 @@ public class PostgresESTests {
     @BeforeEach
     public void resetTables() {
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             conn.dropTable("FuncInvocations");
             conn.dropTable("PersonTable");
             conn.dropTable("ShopItems");
@@ -99,7 +99,7 @@ public class PostgresESTests {
         PostgresConnection pconn;
         try {
             conn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Elasticsearch/Postgres instance! {}", e.getMessage());
             return;
@@ -132,7 +132,7 @@ public class PostgresESTests {
         PostgresConnection pconn;
         try {
             conn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Elasticsearch/Postgres instance! {}", e.getMessage());
             return;
@@ -175,7 +175,7 @@ public class PostgresESTests {
         PostgresConnection pconn;
         try {
             conn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Elasticsearch/Postgres instance! {}", e.getMessage());
             return;
@@ -214,7 +214,7 @@ public class PostgresESTests {
         PostgresConnection pconn;
         try {
             conn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Elasticsearch/Postgres instance! {}", e.getMessage());
             return;
@@ -272,7 +272,7 @@ public class PostgresESTests {
         PostgresConnection pconn;
         try {
             conn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Elasticsearch/Postgres instance! {}", e.getMessage());
             return;
@@ -332,7 +332,7 @@ public class PostgresESTests {
         PostgresConnection pconn;
         try {
             conn = new ElasticsearchConnection("localhost", 9200, "elastic", "password");
-            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         } catch (Exception e) {
             logger.info("No Elasticsearch/Postgres instance! {}", e.getMessage());
             return;

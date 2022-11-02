@@ -60,21 +60,21 @@ public class ProvenanceBuffer {
 
     // TODO: need a better way to auto-reconnect to the remote provenance DB, during transient failures.
     public final ThreadLocal<Connection> conn;
-    private final String databaseName;
+    private final String databaseType;
 
     public final Boolean hasConnection;
 
     private Thread exportThread;
 
-    public ProvenanceBuffer(String databaseName, String databaseAddress) throws ClassNotFoundException {
-        this.databaseName = databaseName;
-        if (databaseName == null) {
+    public ProvenanceBuffer(String databaseType, String databaseAddress) throws ClassNotFoundException {
+        this.databaseType = databaseType;
+        if (databaseType == null) {
             logger.info("No provenance buffer!");
             this.conn = null;
             this.hasConnection = false;
             return;
         }
-        if (databaseName.equals(ApiaryConfig.vertica)) {
+        if (databaseType.equals(ApiaryConfig.vertica)) {
             Class.forName("com.vertica.jdbc.Driver");
             this.conn = ThreadLocal.withInitial(() -> {
                 // Connect to Vertica.
@@ -96,13 +96,13 @@ public class ProvenanceBuffer {
                 return null;
             });
         } else {
-            assert(databaseName.equals(ApiaryConfig.postgres));
+            assert(databaseType.equals(ApiaryConfig.postgres));
             this.conn = ThreadLocal.withInitial(() -> {
                 // Connect to Postgres.
                 PGSimpleDataSource ds = new PGSimpleDataSource();
                 ds.setServerNames(new String[] {databaseAddress});
                 ds.setPortNumbers(new int[] {ApiaryConfig.postgresPort});
-                ds.setDatabaseName("postgres");
+                ds.setDatabaseName("dbos");
                 ds.setUser("postgres");
                 ds.setPassword("dbos");
                 ds.setSsl(false);
@@ -222,7 +222,7 @@ public class ProvenanceBuffer {
             }
             // Pad the rest with zeros if it's Vertica, because it doesn't support NULL very well.
             for (int j = numVals; j < numColumns; j++) {
-                if (databaseName.equals(ApiaryConfig.vertica)) {
+                if (databaseType.equals(ApiaryConfig.vertica)) {
                     setColumn(pstmt, j + 1, Types.VARCHAR, padding);
                 } else {
                     setColumn(pstmt, j + 1, Types.NULL, null);
@@ -298,7 +298,7 @@ public class ProvenanceBuffer {
             return preparedQueries.get(table);
         }
         StringBuilder preparedQuery;
-        if (databaseName.equals(ApiaryConfig.vertica)) {
+        if (databaseType.equals(ApiaryConfig.vertica)) {
             preparedQuery = new StringBuilder("INSERT INTO " + table + " VALUES (");
             for (int i = 0; i < numColumns; i++) {
                 if (i != 0) {
@@ -307,7 +307,7 @@ public class ProvenanceBuffer {
                 preparedQuery.append("?");
             }
         } else {
-            assert(databaseName.equals(ApiaryConfig.postgres));
+            assert(databaseType.equals(ApiaryConfig.postgres));
             preparedQuery = new StringBuilder("INSERT INTO " + table + " (");
             List<String> columnNames = getColNames(table);
             for (int i = 0; i < numColumns; i++) {

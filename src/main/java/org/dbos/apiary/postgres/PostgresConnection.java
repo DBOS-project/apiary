@@ -35,18 +35,18 @@ public class PostgresConnection implements ApiaryConnection {
 
     /**
      * Create a connection to a Postgres database.
-     * @param hostname the Postgres database hostname.
-     * @param port the Postgres database port.
-     * @param databaseName the Postgres database name.
+     *
+     * @param hostname         the Postgres database hostname.
+     * @param port             the Postgres database port.
      * @param databaseUsername the Postgres database username.
      * @param databasePassword the Postgres database password.
      * @throws SQLException
      */
-    public PostgresConnection(String hostname, Integer port, String databaseName, String databaseUsername, String databasePassword) throws SQLException {
+    public PostgresConnection(String hostname, Integer port, String databaseUsername, String databasePassword) throws SQLException {
         this.ds = new PGSimpleDataSource();
         this.ds.setServerNames(new String[] {hostname});
         this.ds.setPortNumbers(new int[] {port});
-        this.ds.setDatabaseName(databaseName);
+        this.ds.setDatabaseName("dbos");  // Default use dbos databse.
         this.ds.setUser(databaseUsername);
         this.ds.setPassword(databasePassword);
         this.ds.setSsl(false);

@@ -49,7 +49,7 @@ public class PostgresMongoTests {
     public void resetTables() {
         ApiaryConfig.isolationLevel = ApiaryConfig.REPEATABLE_READ;
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             conn.dropTable("FuncInvocations");
             conn.dropTable("PersonTable");
             conn.createTable("PersonTable", "Name varchar(1000) PRIMARY KEY NOT NULL, Number integer NOT NULL");
@@ -86,7 +86,7 @@ public class PostgresMongoTests {
         logger.info("testMongoBasic");
 
         MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
@@ -115,7 +115,7 @@ public class PostgresMongoTests {
         logger.info("testMongoWriteRead");
 
         MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
@@ -139,7 +139,7 @@ public class PostgresMongoTests {
         logger.info("testMongoBulk");
 
         MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
@@ -169,7 +169,7 @@ public class PostgresMongoTests {
         logger.info("testMongoUpdate");
 
         MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
@@ -203,7 +203,7 @@ public class PostgresMongoTests {
         logger.info("testMongoConcurrent");
 
         MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         int numThreads = 10;
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numThreads);
@@ -254,7 +254,7 @@ public class PostgresMongoTests {
         logger.info("testMongoConcurrentUpdates");
 
         MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         int numThreads = 10;
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numThreads);
@@ -313,7 +313,7 @@ public class PostgresMongoTests {
         logger.info("testMongoHotel");
 
         MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
-        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);

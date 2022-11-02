@@ -43,7 +43,7 @@ public class RetroBenchmark {
         assert (percentageRead + percentageWrite == 100);
 
         // Use the "dbos" database, not the default "postgres" one.
-        PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "dbos", "postgres", "dbos");
+        PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
 
         // Enable provenance logging in the worker.
         ApiaryWorker apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
@@ -146,7 +146,7 @@ public class RetroBenchmark {
             stmt.executeUpdate("CREATE DATABASE dbos");
             stmt.close();
 
-            PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "dbos", "postgres", "dbos");
+            PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
             pgConn.dropTable("ForumSubscription");
             pgConn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");
         } catch (Exception e) {

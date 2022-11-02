@@ -31,7 +31,7 @@ public class NectarController {
     ApiaryWorkerClient client;
 
     public NectarController() throws SQLException {
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         conn.dropTable("WebsiteLogins"); // For testing.
         conn.dropTable("WebsitePosts"); // For testing.
         conn.createTable("WebsiteLogins", "Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL");

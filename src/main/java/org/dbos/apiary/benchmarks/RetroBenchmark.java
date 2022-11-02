@@ -45,8 +45,14 @@ public class RetroBenchmark {
 
         PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
 
-        // Enable provenance logging in the worker.
-        ApiaryWorker apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        ApiaryWorker apiaryWorker;
+        if (ApiaryConfig.captureUpdates || ApiaryConfig.captureReads) {
+            // Enable provenance logging in the worker.
+            apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        } else {
+            // Disable provenance.
+            apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker);
+        }
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pgConn);
 
         apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);

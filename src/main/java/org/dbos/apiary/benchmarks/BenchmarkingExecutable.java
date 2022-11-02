@@ -27,6 +27,7 @@ public class BenchmarkingExecutable {
         options.addOption("p4", true, "Percentage 4");
         options.addOption("notxn", false, "Disable XDST transaction.");
         options.addOption("skipLoad", false, "Skip data loading.");
+        options.addOption("noProv", false, "Disable provenance tracing.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -50,6 +51,12 @@ public class BenchmarkingExecutable {
         } else {
             logger.info("Using XDST transaction!");
             ApiaryConfig.XDBTransactions = true;
+        }
+
+        if (cmd.hasOption("noProv")) {
+            logger.info("Disabling provenance tracing!");
+            ApiaryConfig.captureReads = false;
+            ApiaryConfig.captureUpdates = false;
         }
 
         if (cmd.hasOption("skipLoad")) {

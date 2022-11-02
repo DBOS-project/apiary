@@ -118,12 +118,11 @@ public class BenchmarkingExecutable {
             int percentageUpdate = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 0;
             logger.info("Mysql Microbenchmark {} {} {}", percentageRead, percentageNew, percentageUpdate);
             MysqlMicrobenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageNew, percentageUpdate);
-        } else if (benchmark.equals("restore")) {
-            int numTables = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 0;
-            int numColumns = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 0;
-            int numRows = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 0;
-            logger.info("Restore Benchmark: numTables {}, numColumns {}, numRows {}", numTables, numColumns, numRows);
-            RestoreBenchmark.benchmark(mainHostAddr, numTables, numColumns, numRows, skipLoadData);
+        } else if (benchmark.equals("retro")) {
+            int percentageRead = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 100;
+            int percentageWrite = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 100;
+            logger.info("Retroactive Benchmark: read {}%, write {}%", percentageRead, percentageWrite);
+            RetroBenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageWrite, skipLoadData);
         }
     }
 }

@@ -46,7 +46,7 @@ public class PostgresConnection implements ApiaryConnection {
         this.ds = new PGSimpleDataSource();
         this.ds.setServerNames(new String[] {hostname});
         this.ds.setPortNumbers(new int[] {port});
-        this.ds.setDatabaseName("dbos");  // Default use dbos databse.
+        this.ds.setDatabaseName(ApiaryConfig.dbosDBName);  // Default use dbos databse.
         this.ds.setUser(databaseUsername);
         this.ds.setPassword(databasePassword);
         this.ds.setSsl(false);

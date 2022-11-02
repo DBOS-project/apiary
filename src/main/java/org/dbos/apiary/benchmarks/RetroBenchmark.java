@@ -42,7 +42,6 @@ public class RetroBenchmark {
 
         assert (percentageRead + percentageWrite == 100);
 
-        // Use the "dbos" database, not the default "postgres" one.
         PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
 
         // Enable provenance logging in the worker.

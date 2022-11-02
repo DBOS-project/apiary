@@ -102,7 +102,7 @@ public class ProvenanceBuffer {
                 PGSimpleDataSource ds = new PGSimpleDataSource();
                 ds.setServerNames(new String[] {databaseAddress});
                 ds.setPortNumbers(new int[] {ApiaryConfig.postgresPort});
-                ds.setDatabaseName("dbos");
+                ds.setDatabaseName(ApiaryConfig.dbosDBName);
                 ds.setUser("postgres");
                 ds.setPassword("dbos");
                 ds.setSsl(false);

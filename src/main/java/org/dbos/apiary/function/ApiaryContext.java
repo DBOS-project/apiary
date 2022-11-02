@@ -1,6 +1,7 @@
 package org.dbos.apiary.function;
 
-import java.sql.SQLException;
+import org.dbos.apiary.utilities.ApiaryConfig;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,14 +29,14 @@ public abstract class ApiaryContext {
     /**
      * For internal use only.
      */
-    public final boolean isReplay;
+    public final int replayMode;
 
-    public ApiaryContext(WorkerContext workerContext, String service, long execID, long functionID, boolean isReplay) {
+    public ApiaryContext(WorkerContext workerContext, String service, long execID, long functionID, int replayMode) {
         this.workerContext = workerContext;
         this.service = service;
         this.execID = execID;
         this.functionID = functionID;
-        this.isReplay = isReplay;
+        this.replayMode = replayMode;
     }
 
     /** Public Interface for functions. **/

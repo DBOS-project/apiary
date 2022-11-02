@@ -36,9 +36,9 @@ public class PostgresContext extends ApiaryContext {
     Map<String, Map<String, List<String>>> secondaryWrittenKeys = new HashMap<>();
 
     public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID,
-                           boolean isReplay,
+                           int replayMode,
                            Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions) {
-        super(workerContext, service, execID, functionID, isReplay);
+        super(workerContext, service, execID, functionID, replayMode);
         this.conn = c;
         long tmpReplayTxID = -1;
         try {
@@ -65,7 +65,7 @@ public class PostgresContext extends ApiaryContext {
             this.txc = new TransactionContext(txID, xmin, xmax, activeTxIDs);
 
             // Look up the original transaction ID if it's a replay.
-            if (isReplay) {
+            if (replayMode != ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
                 PreparedStatement pstmt = conn.prepareStatement(checkReplayTxID);
                 pstmt.setLong(1, execID);
                 pstmt.setLong(2, functionID);
@@ -141,7 +141,7 @@ public class PostgresContext extends ApiaryContext {
      */
     public void executeUpdate(String procedure, Object... input) throws SQLException {
         // Replay.
-        if (this.isReplay) {
+        if (this.replayMode != ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
             replayUpdate(procedure, input);
             return;
         }
@@ -215,7 +215,7 @@ public class PostgresContext extends ApiaryContext {
      */
     public ResultSet executeQuery(String procedure, Object... input) throws SQLException {
         // Replay
-        if (this.isReplay) {
+        if (this.replayMode != ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
             return replayQuery(procedure, input);
         }
         PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);

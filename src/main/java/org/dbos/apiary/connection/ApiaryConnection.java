@@ -23,7 +23,7 @@ public interface ApiaryConnection {
      * @throws Exception
      */
     FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID,
-                                boolean isReplay, Object... inputs) throws Exception;
+                                int replayMode, Object... inputs) throws Exception;
 
     Set<TransactionContext> getActiveTransactions();
 

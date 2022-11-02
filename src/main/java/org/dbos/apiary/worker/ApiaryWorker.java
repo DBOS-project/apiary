@@ -158,7 +158,7 @@ public class ApiaryWorker {
                             workerContext.getPrimaryConnection().getPartitionHostMap().get(0)
                             : workerContext.getPrimaryConnection().getHostname(subtask.input);
                     // Push to the outgoing queue.
-                    byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currTask.isReplay, currCallerID, subtask.functionID, subtask.input);
+                    byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currTask.replayMode, currCallerID, subtask.functionID, subtask.input);
                     outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
                 }
                 numTraversed++;
@@ -196,7 +196,7 @@ public class ApiaryWorker {
     }
 
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
-    private void executeFunction(String name, String service, long execID, long callerID, long functionID, boolean isReplay,
+    private void executeFunction(String name, String service, long execID, long callerID, long functionID, int replayMode,
                                  ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
@@ -207,11 +207,11 @@ public class ApiaryWorker {
             String type = workerContext.getFunctionType(name);
             if (type.equals(ApiaryConfig.stateless)) {
                 ApiaryFunction function = workerContext.getFunction(name);
-                ApiaryStatelessContext context = new ApiaryStatelessContext(workerContext, service, execID, functionID, isReplay);
+                ApiaryStatelessContext context = new ApiaryStatelessContext(workerContext, service, execID, functionID, replayMode);
                 o = function.apiaryRunFunction(context, arguments);
             } else if (workerContext.getPrimaryConnectionType().equals(type)) {
                 ApiaryConnection c = workerContext.getPrimaryConnection();
-                o = c.callFunction(name, workerContext, service, execID, functionID, isReplay, arguments);
+                o = c.callFunction(name, workerContext, service, execID, functionID, replayMode, arguments);
             } else { // Execute a read-only secondary function without primary involvement using a cached txc.
                 ApiarySecondaryConnection c = workerContext.getSecondaryConnection(type);
                 TransactionContext txc = workerContext.getPrimaryConnection().getLatestTransactionContext();
@@ -225,7 +225,7 @@ public class ApiaryWorker {
         }
         long runtime = System.nanoTime() - tStart;
         assert (o != null);
-        ApiaryTaskStash currTask = new ApiaryTaskStash(service, execID, callerID, functionID, isReplay, replyAddr, senderTimestampNano);
+        ApiaryTaskStash currTask = new ApiaryTaskStash(service, execID, callerID, functionID, replayMode, replyAddr, senderTimestampNano);
         currTask.output = o.output;
 
         // Store tasks in the list and async invoke all sub-tasks that are ready.
@@ -282,7 +282,7 @@ public class ApiaryWorker {
                 long callerID = req.getCallerId();
                 long functionID = req.getFunctionId();
                 long execID = req.getExecutionId();
-                boolean isReplay = req.getIsReplay();
+                int replayMode = req.getReplayMode();
                 Object[] arguments = new Object[byteArguments.size()];
                 for (int i = 0; i < arguments.length; i++) {
                     byte[] byteArray = byteArguments.get(i).toByteArray();
@@ -297,7 +297,7 @@ public class ApiaryWorker {
                     }
                 }
                 executeFunction(req.getName(), req.getService(), execID, callerID, functionID,
-                        isReplay, address, req.getSenderTimestampNano(), arguments);
+                        replayMode, address, req.getSenderTimestampNano(), arguments);
             } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }

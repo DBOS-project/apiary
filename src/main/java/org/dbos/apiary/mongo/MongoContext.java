@@ -39,7 +39,7 @@ public class MongoContext extends ApiaryContext {
     final Map<String, List<String>> writtenKeys;
 
     public MongoContext(MongoClient client, Map<String, List<String>> writtenKeys, MongoDatabase database, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
-        super(workerContext, service, execID, functionID, false);
+        super(workerContext, service, execID, functionID, ApiaryConfig.ReplayMode.NOT_REPLAY.getValue());
         this.database = database;
         this.client = client;
         this.txc = txc;

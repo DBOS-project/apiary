@@ -37,4 +37,22 @@ public class ApiaryConfig {
     // GCS bucket names.
     public static final String gcsTestBucket = "apiary_gcs_test";
     public static final String mysql = "mysql";
+
+    // Replay mode.
+    public enum ReplayMode {
+        NOT_REPLAY(0),
+        SINGLE(1),
+        ALL(2);
+
+        private int value;
+
+        private ReplayMode (int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return this.value;
+        }
+    }
+
 }

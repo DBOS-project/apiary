@@ -298,10 +298,10 @@ public class ProvenanceBuffer {
                 } else if (((List<?>) val).get(0) instanceof ByteString) {
                     Object[] byteAry = new Object[sz];
                     for (int i = 0; i < sz; i++) {
-                        byte[] tmpBytes = ((List<ByteString>) val).get(i).toByteArray();
+                        String tmpBytes = ((List<ByteString>) val).get(i).toStringUtf8();
                         byteAry[i] = tmpBytes;
                     }
-                    ary = conn.createArrayOf("BYTEA", byteAry);
+                    ary = conn.createArrayOf("TEXT", byteAry);
                 } else {
                     logger.warn("Do not support such array type: {}", ((List<?>) val).get(0).getClass());
                 }

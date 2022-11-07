@@ -298,8 +298,9 @@ public class ProvenanceBuffer {
                     Array ary = conn.createArrayOf("INTEGER", ((List<?>) val).toArray());
                     pstmt.setArray(colIndex, ary);
                 } else {
-                pstmt.setNull(colIndex, colType);
-                logger.warn("Failed to convert type: {}. Skipped and set to null.", colType);
+                    pstmt.setNull(colIndex, colType);
+                    logger.warn("Failed to convert type: {}. Skipped and set to null.", colType);
+                }
             }
         } else if (colType == Types.BINARY) {
             // The bytea type.

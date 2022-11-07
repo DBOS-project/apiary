@@ -96,8 +96,8 @@ public class PostgresConnection implements ApiaryConnection {
 
         if (ApiaryConfig.recordInput) {
             // Record input for replay. Only need to record the input of the first function, so we only need to use execID to find the arguments.
-            // Since Postgres does not really support arrays of byte[], we have to use the string type.
-            createTable(ApiaryConfig.tableRecordedInputs, "ExecID BIGINT PRIMARY KEY, ARGTYPES INTEGER[], ARGBYTES TEXT[]");
+            // Since Postgres does not really support arrays of byte[], we have to manually parse it.
+            createTable(ApiaryConfig.tableRecordedInputs, "ExecID BIGINT PRIMARY KEY, ARGTYPES INTEGER[], ARGLENS INTEGER[], ARGBYTES BYTEA");
         }
 
         // TODO: add back recorded outputs later for fault tolerance.

@@ -6,6 +6,8 @@ import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -291,21 +293,26 @@ public class ProvenanceBuffer {
                     pstmt.setNull(colIndex, colType);
                     return;
                 }
-                Array ary = null;
                 int sz = ((List<?>) val).size();
                 if (((List<?>) val).get(0) instanceof Integer) {
-                    ary = conn.createArrayOf("INTEGER", ((List<?>) val).toArray());
+                    Array ary = conn.createArrayOf("INTEGER", ((List<?>) val).toArray());
+                    pstmt.setArray(colIndex, ary);
                 } else if (((List<?>) val).get(0) instanceof ByteString) {
-                    Object[] byteAry = new Object[sz];
+                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
                     for (int i = 0; i < sz; i++) {
-                        String tmpBytes = ((List<ByteString>) val).get(i).toStringUtf8();
-                        byteAry[i] = tmpBytes;
+                        byte[] tmpBytes = ((List<ByteString>) val).get(i).toByteArray();
+                        try {
+                            outputStream.write(tmpBytes);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
-                    ary = conn.createArrayOf("TEXT", byteAry);
+                    byte[] combinedBytes = outputStream.toByteArray();
+                    pstmt.setBytes(colIndex, combinedBytes);
                 } else {
-                    logger.warn("Do not support such array type: {}", ((List<?>) val).get(0).getClass());
+                    logger.warn("Do not support such array type: {}. Set to Null.", ((List<?>) val).get(0).getClass());
+                    pstmt.setNull(colIndex, colType);
                 }
-                pstmt.setArray(colIndex, ary);
             } else {
                 pstmt.setNull(colIndex, colType);
                 logger.warn("Failed to convert type: {}. Skipped and set to null.", colType);

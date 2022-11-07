@@ -286,18 +286,25 @@ public class ProvenanceBuffer {
         } else if (colType == Types.VARCHAR) {
             pstmt.setString(colIndex, val.toString());
         } else if (colType == Types.ARRAY) {
-            if ((val instanceof List) && (!((List<?>) val).isEmpty())) {
+            if ((val instanceof List)) {
                 Array ary = null;
+                int sz = ((List<?>) val).size();
                 if (((List<?>) val).get(0) instanceof Integer) {
                     ary = conn.createArrayOf("INTEGER", ((List<?>) val).toArray());
                 } else if (((List<?>) val).get(0) instanceof ByteString) {
-                    ary = conn.createArrayOf("BYTEA", ((List<?>) val).toArray());
+                    Object[] byteAry = new Object[sz];
+                    for (int i = 0; i < sz; i++) {
+                        byte[] tmpBytes = ((List<ByteString>) val).get(i).toByteArray();
+                        byteAry[i] = tmpBytes;
+                    }
+                    ary = conn.createArrayOf("BYTEA", byteAry);
                 } else {
                     logger.warn("Do not support such array type: {}", ((List<?>) val).get(0).getClass());
                 }
                 pstmt.setArray(colIndex, ary);
             } else {
-                logger.warn("Failed to convert type: {}. Skipped.", colType);
+                pstmt.setNull(colIndex, colType);
+                logger.warn("Failed to convert type: {}. Skipped and set to null.", colType);
             }
         } else {
             // Everything else will be passed directly as string.

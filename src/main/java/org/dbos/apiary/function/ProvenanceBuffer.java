@@ -287,7 +287,7 @@ public class ProvenanceBuffer {
             pstmt.setString(colIndex, val.toString());
         } else if (colType == Types.ARRAY) {
             if ((val instanceof List)) {
-                if (((List<?>) val).isEmpty() {
+                if (((List<?>) val).isEmpty()) {
                     pstmt.setNull(colIndex, colType);
                     return;
                 }

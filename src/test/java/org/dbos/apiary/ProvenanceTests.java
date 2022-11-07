@@ -37,6 +37,7 @@ public class ProvenanceTests {
     @BeforeAll
     public static void testConnection() {
         assumeTrue(TestUtils.testPostgresConnection());
+        ApiaryConfig.recordInput = true;
     }
 
     @BeforeEach

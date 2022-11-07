@@ -142,7 +142,7 @@ public class RetroBenchmark {
 
             pgConn.dropTable("ForumSubscription");
             pgConn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");
-            pgConn.dropTable(ProvenanceBuffer.PROV_FuncInvocations);
+            pgConn.dropTable(ApiaryConfig.tableFuncInvocations);
             pgConn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
             pgConn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
         } catch (Exception e) {

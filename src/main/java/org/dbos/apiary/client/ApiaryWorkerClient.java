@@ -1,7 +1,6 @@
 package org.dbos.apiary.client;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
@@ -83,7 +82,7 @@ public class ApiaryWorkerClient {
     }
 
     /**
-     * Replay a function synchronously and block waiting for the result. The replay will not generate new provenance data.
+     * Replay a single function/workflow synchronously and block waiting for the result. The replay will not generate new provenance data.
      * @param execId    the original execution ID of the invoked function.
      * @param name      the name of the invoked function.
      * @param arguments the original arguments of the invoked function.
@@ -91,6 +90,11 @@ public class ApiaryWorkerClient {
      * @throws InvalidProtocolBufferException
      */
     public FunctionOutput replayFunction(long execId, String name, Object... arguments) throws InvalidProtocolBufferException {
+        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, ApiaryConfig.ReplayMode.SINGLE.getValue(), arguments);
+    }
+
+
+    public FunctionOutput retroReplay(long execId, String name, Object... arguments) throws InvalidProtocolBufferException {
         return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, ApiaryConfig.ReplayMode.SINGLE.getValue(), arguments);
     }
 

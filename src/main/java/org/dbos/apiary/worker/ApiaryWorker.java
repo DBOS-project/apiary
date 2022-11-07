@@ -296,6 +296,14 @@ public class ApiaryWorker {
                         arguments[i] = Utilities.byteArrayToIntArray(byteArray);
                     }
                 }
+
+                if (ApiaryConfig.recordInput &&
+                        (replayMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) &&
+                        (callerID == 0L) && (functionID == 0L) &&
+                        (workerContext.provBuff != null)) {
+                    // Log function input if recordInput is set to true, during initial execution, and if this is the first function of the entire workflow.
+                    workerContext.provBuff.addEntry(ApiaryConfig.tableRecordedInputs, execID, argumentTypes, byteArguments);
+                }
                 executeFunction(req.getName(), req.getService(), execID, callerID, functionID,
                         replayMode, address, req.getSenderTimestampNano(), arguments);
             } catch (AssertionError | Exception e) {

@@ -1,5 +1,6 @@
 package org.dbos.apiary.function;
 
+import com.google.protobuf.ByteString;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
@@ -22,7 +23,6 @@ public class ProvenanceBuffer {
     public static final int exportInterval = 1000;
 
     // Constant variables.
-    public static final String PROV_FuncInvocations = "FuncInvocations";
     public static final String PROV_ApiaryMetadata = "ApiaryMetadata";
     public static final String PROV_QueryMetadata = "ApiaryQueryMetadata";
     public static final String PROV_APIARY_TRANSACTION_ID = "APIARY_TRANSACTION_ID";
@@ -241,7 +241,8 @@ public class ProvenanceBuffer {
         logger.info("Exported table {}, {} rows", table, numEntries);
     }
 
-    private static void setColumn(PreparedStatement pstmt, int colIndex, int colType, Object val) throws SQLException {
+    private void setColumn(PreparedStatement pstmt, int colIndex, int colType, Object val) throws SQLException {
+        Connection conn = this.conn.get();
         // Convert value to the target type.
         if (val == null) {
             // The column must be nullable.
@@ -284,6 +285,20 @@ public class ProvenanceBuffer {
             pstmt.setLong(colIndex, smallVal);
         } else if (colType == Types.VARCHAR) {
             pstmt.setString(colIndex, val.toString());
+        } else if (colType == Types.ARRAY) {
+            if ((val instanceof List) && (!((List<?>) val).isEmpty())) {
+                Array ary = null;
+                if (((List<?>) val).get(0) instanceof Integer) {
+                    ary = conn.createArrayOf("INTEGER", ((List<?>) val).toArray());
+                } else if (((List<?>) val).get(0) instanceof ByteString) {
+                    ary = conn.createArrayOf("BYTEA", ((List<?>) val).toArray());
+                } else {
+                    logger.warn("Do not support such array type: {}", ((List<?>) val).get(0).getClass());
+                }
+                pstmt.setArray(colIndex, ary);
+            } else {
+                logger.warn("Failed to convert type: {}. Skipped.", colType);
+            }
         } else {
             // Everything else will be passed directly as string.
             logger.warn(String.format("Failed to convert type: %d. Use String", colType));

@@ -55,4 +55,8 @@ public class ApiaryConfig {
         }
     }
 
+    public static Boolean recordInput = false;  // If true, capture input of the entry function and record in a table.
+    public static final String tableRecordedInputs = "RECORDEDINPUTS";
+
+
 }

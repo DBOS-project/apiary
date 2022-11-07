@@ -76,7 +76,7 @@ public class PostgresConnection implements ApiaryConnection {
             logger.info("Failed to connect to Postgres");
             throw new RuntimeException("Failed to connect to Postgres");
         }
-        createTable(ProvenanceBuffer.PROV_FuncInvocations,
+        createTable(ApiaryConfig.tableFuncInvocations,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_APIARY_TIMESTAMP + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
@@ -93,6 +93,12 @@ public class PostgresConnection implements ApiaryConnection {
                 + ProvenanceBuffer.PROV_QUERY_TABLENAMES + " VARCHAR(1024) NOT NULL, "
                 + ProvenanceBuffer.PROV_QUERY_PROJECTION + " VARCHAR(1024) NOT NULL "
         );
+
+        if (ApiaryConfig.recordInput) {
+            // Record input for replay. Only need to record the input of the first function, so we only need to use execID to find the arguments.
+            createTable(ApiaryConfig.tableRecordedInputs, "ExecID BIGINT PRIMARY KEY, ARGTYPES INTEGER[], ARGBYTES BYTEA[]");
+        }
+
         // TODO: add back recorded outputs later for fault tolerance.
         // createTable("RecordedOutputs", "ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID)");
     }

@@ -1,5 +1,6 @@
 package org.dbos.apiary;
 
+import com.google.protobuf.Api;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
@@ -42,9 +43,10 @@ public class ProvenanceTests {
     public void resetTables() {
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
-            conn.dropTable(ProvenanceBuffer.PROV_FuncInvocations);
+            conn.dropTable(ApiaryConfig.tableFuncInvocations);
             conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
             conn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
+            conn.dropTable(ApiaryConfig.tableRecordedInputs);
             conn.dropTable("KVTable");
             conn.createTable("KVTable", "KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL");
             conn.dropTable("KVTableTwo");
@@ -101,7 +103,7 @@ public class ProvenanceTests {
         Connection provConn = provBuff.conn.get();
         Statement stmt = provConn.createStatement();
 
-        String table = ProvenanceBuffer.PROV_FuncInvocations;
+        String table = ApiaryConfig.tableFuncInvocations;
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s ASC;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
         rs.next();
         long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
@@ -164,7 +166,7 @@ public class ProvenanceTests {
     public void testProvenanceBuffer() throws InterruptedException, ClassNotFoundException, SQLException {
         logger.info("testProvenanceBuffer");
         ProvenanceBuffer buf = new ProvenanceBuffer(ApiaryConfig.postgres, "localhost");
-        String table = ProvenanceBuffer.PROV_FuncInvocations;
+        String table = ApiaryConfig.tableFuncInvocations;
 
         // Wait until previous exporter finished.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
@@ -256,7 +258,7 @@ public class ProvenanceTests {
 
         // Check provenance tables.
         // Check function invocation table.
-        String table = ProvenanceBuffer.PROV_FuncInvocations;
+        String table = ApiaryConfig.tableFuncInvocations;
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s DESC;", table, ProvenanceBuffer.PROV_APIARY_TIMESTAMP));
         rs.next();
         long txid1 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);

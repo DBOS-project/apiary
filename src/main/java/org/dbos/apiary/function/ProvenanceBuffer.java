@@ -297,7 +297,19 @@ public class ProvenanceBuffer {
                 if (((List<?>) val).get(0) instanceof Integer) {
                     Array ary = conn.createArrayOf("INTEGER", ((List<?>) val).toArray());
                     pstmt.setArray(colIndex, ary);
-                } else if (((List<?>) val).get(0) instanceof ByteString) {
+                } else {
+                pstmt.setNull(colIndex, colType);
+                logger.warn("Failed to convert type: {}. Skipped and set to null.", colType);
+            }
+        } else if (colType == Types.BINARY) {
+            // The bytea type.
+            if ((val instanceof List)) {
+                if (((List<?>) val).isEmpty()) {
+                    pstmt.setNull(colIndex, colType);
+                    return;
+                }
+                int sz = ((List<?>) val).size();
+                if (((List<?>) val).get(0) instanceof ByteString) {
                     ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
                     for (int i = 0; i < sz; i++) {
                         byte[] tmpBytes = ((List<ByteString>) val).get(i).toByteArray();

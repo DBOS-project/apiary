@@ -332,7 +332,7 @@ public class ApiaryWorker {
                 pendingTasks.putIfAbsent(resExecId, new HashMap<>());
             } else {
                 // Skip the task if it is absent. Because we allow reducing the number of called functions (currently does not support adding more).
-                if (!pendingTasks.get(resExecId).containsKey(resFuncId)) {
+                if (!pendingTasks.containsKey(resExecId) || !pendingTasks.get(resExecId).containsKey(resFuncId)) {
                     logger.info("Skip function ID {}, not found in pending tasks.", resFuncId);
                     continue;
                 }

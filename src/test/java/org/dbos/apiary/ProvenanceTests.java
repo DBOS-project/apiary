@@ -1,8 +1,6 @@
 package org.dbos.apiary;
 
-import com.google.protobuf.Api;
 import com.google.protobuf.InvalidProtocolBufferException;
-import jdk.jshell.execution.Util;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
@@ -211,7 +209,8 @@ public class ProvenanceTests {
         rs.close();
 
         // Retroactively execute all.
-        // TODO: reset database and re-execute.
+        // Reset the database and re-execute.
+        conn.truncateTable("ForumSubscription", false);
         resList = client.retroReplay(resExecId).getIntArray();
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);

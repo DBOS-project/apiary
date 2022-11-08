@@ -265,6 +265,10 @@ public class ApiaryWorker {
         assert(workerContext.provBuff != null);
         Connection conn = workerContext.provBuff.conn.get();
 
+        // Turn off provenance capture for replay.
+        ApiaryConfig.captureUpdates = false;
+        ApiaryConfig.captureReads = false;
+
         // Find previous execution history.
         String provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, targetExecID,
                 ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_EXECUTIONID);
@@ -293,9 +297,6 @@ public class ApiaryWorker {
         // Re-execute one by one.
         Object output = null;
         while (historyRs.next()) {
-            logger.info(pendingTasks.toString());
-            logger.info(execFuncIdToValue.toString());
-            logger.info(execIdToFinalOutput.toString());
             long resTxId = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             long resExecId = historyRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
             long resFuncId = historyRs.getLong(ProvenanceBuffer.PROV_FUNCID);

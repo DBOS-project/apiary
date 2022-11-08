@@ -141,7 +141,7 @@ public class PostgresContext extends ApiaryContext {
      */
     public void executeUpdate(String procedure, Object... input) throws SQLException {
         // Replay.
-        if (this.replayMode != ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
+        if (this.replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
             replayUpdate(procedure, input);
             return;
         }
@@ -215,7 +215,7 @@ public class PostgresContext extends ApiaryContext {
      */
     public ResultSet executeQuery(String procedure, Object... input) throws SQLException {
         // Replay
-        if (this.replayMode != ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
+        if (this.replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
             return replayQuery(procedure, input);
         }
         PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);

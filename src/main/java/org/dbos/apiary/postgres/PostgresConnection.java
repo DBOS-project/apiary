@@ -121,6 +121,22 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     /**
+     * Truncate a table and potentially its corresponding events table.
+     * @param tableName         the table to truncate.
+     * @param deleteProvenance  if true, truncate the events table as well.
+     */
+    public void truncateTable(String tableName, boolean deleteProvenance) throws SQLException {
+        Connection conn = ds.getConnection();
+        Statement truncateTable = conn.createStatement();
+        truncateTable.execute(String.format("TRUNCATE %s;", tableName));
+        if (deleteProvenance) {
+            truncateTable.execute(String.format("TRUNCATE %sEvents;", tableName));
+        }
+        truncateTable.close();
+        conn.close();
+    }
+
+    /**
      * Create a table and a corresponding events table.
      * @param tableName the table to create.
      * @param specStr the schema of the table, in Postgres DDL.

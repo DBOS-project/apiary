@@ -317,9 +317,11 @@ public class ApiaryWorker {
 
             FunctionOutput fo = null;
             if (resFuncId == 0l) {
-                 fo = callFunctionInternal(resName, "retroReplay", resExecId, resFuncId, replayMode, origInputs);
+                // This is the first function of a request.
+                fo = callFunctionInternal(resName, "retroReplay", resExecId, resFuncId, replayMode, origInputs);
                 assert (fo != null);
                 output = fo.output;
+                execFuncIdToValue.putIfAbsent(resExecId, new HashMap<>());
             } else {
                 // Find the task in the stash. Make sure that all futures have been resolved.
                 Task currTask = pendingTasks.get(resExecId).get(resFuncId);
@@ -342,6 +344,8 @@ public class ApiaryWorker {
                     execFuncIdToValue.remove(resExecId);
                 }
             }
+            // Store output value.
+            execFuncIdToValue.get(resExecId).putIfAbsent(resFuncId, output);
             // Queue all of its async tasks to the pending map.
             for (Task t : fo.queuedTasks) {
                 pendingTasks.putIfAbsent(resExecId, new HashMap<>());

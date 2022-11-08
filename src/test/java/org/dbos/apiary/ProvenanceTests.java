@@ -187,6 +187,27 @@ public class ProvenanceTests {
         assertEquals(2, arguments.length);
         assertEquals(123, (int) arguments[0]);
         assertEquals(555, (int) arguments[1]);
+
+        rs.next();
+        recordExecid = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        recordInput = rs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
+        req = ExecuteFunctionRequest.parseFrom(recordInput);
+        arguments = Utilities.getArgumentsFromRequest(req);
+        assertEquals(resExecId2, recordExecid);
+        assertEquals(resExecId2, req.getExecutionId());
+        assertEquals(2, arguments.length);
+        assertEquals(123, (int) arguments[0]);
+        assertEquals(555, (int) arguments[1]);
+
+        rs.next();
+        recordExecid = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        recordInput = rs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
+        req = ExecuteFunctionRequest.parseFrom(recordInput);
+        arguments = Utilities.getArgumentsFromRequest(req);
+        assertEquals(resExecId3, recordExecid);
+        assertEquals(resExecId3, req.getExecutionId());
+        assertEquals(1, arguments.length);
+        assertEquals(555, (int) arguments[0]);
     }
 
     @Test

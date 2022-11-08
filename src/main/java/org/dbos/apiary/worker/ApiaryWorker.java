@@ -303,7 +303,7 @@ public class ApiaryWorker {
             String[] resNames = historyRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
             String resName = resNames[resNames.length - 1]; // Extract the actual function name.
             logger.info("Retro-executing txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
-            if (resExecId != origExecId) {
+            if ((resExecId != origExecId) && (resFuncId == 0l)) {
                 // Read the input for this execution ID.
                 if (inputRs.next()) {
                     origExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);

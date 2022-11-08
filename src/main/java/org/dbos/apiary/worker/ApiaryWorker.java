@@ -287,7 +287,8 @@ public class ApiaryWorker {
             long resTxId = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             long resExecId = historyRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
             long resFuncId = historyRs.getLong(ProvenanceBuffer.PROV_FUNCID);
-            String resName = historyRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split(".")[-1];
+            String[] resNames = historyRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
+            String resName = resNames[resNames.length - 1];
             logger.info("Re-executing txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
             if (inputRs.next()) {
                 // Get input.

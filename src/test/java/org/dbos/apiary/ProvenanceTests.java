@@ -25,8 +25,13 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class ProvenanceTests {
@@ -215,8 +220,97 @@ public class ProvenanceTests {
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
-
     }
+
+    @Test
+    public void testForumSubscribeRetro() throws SQLException, InterruptedException, InvalidProtocolBufferException, ExecutionException {
+        logger.info("testForumSubscribeRetro");
+
+        // Run concurrent test until we find duplications. Then retroactively replay everything.
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
+        apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
+        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.startServing();
+
+        ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
+        assert(provBuff != null);
+
+        ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
+
+        // Start a thread pool.
+        ExecutorService threadPool = Executors.newFixedThreadPool(4);
+
+        class SubsTask implements Callable<Integer> {
+            private final int userId;
+            private final int forumId;
+
+            public SubsTask(int userId, int forumId) {
+                this.userId = userId;
+                this.forumId = forumId;
+            }
+
+            @Override
+            public Integer call() {
+                int res;
+                try {
+                    res = client.get().executeFunction("PostgresIsSubscribed", userId, forumId).getInt();
+                } catch (Exception e) {
+                    res = -1;
+                }
+                return res;
+            }
+        }
+
+        // Try many times until we find duplications.
+        int userId = 123;
+        int forumId = 555;
+
+        // Push two concurrent tasks.
+        List<SubsTask> tasks = new ArrayList<>();
+        tasks.add(new SubsTask(userId, forumId));
+        tasks.add(new SubsTask(userId, forumId));
+        List<Future<Integer>> futures = threadPool.invokeAll(tasks);
+        for (Future<Integer> future : futures) {
+            if (!future.isCancelled()) {
+                int res = future.get();
+                assertTrue(res != -1);
+            }
+        }
+        // Check subscriptions.
+        int[] resList = client.get().executeFunction("PostgresFetchSubscribers", forumId).getIntArray();
+
+        // Only continue the test if we have found duplications.
+        assumeTrue(resList.length > 1);
+        threadPool.shutdown();
+
+        // Wait for provenance to be exported.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
+        // Check the original execution.
+        Connection provConn = provBuff.conn.get();
+        Statement stmt = provConn.createStatement();
+        String provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID);
+        ResultSet rs = stmt.executeQuery(provQuery);
+        rs.next();
+        long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
+        assertTrue(resExecId >= 0);
+        assumeTrue(resFuncId == 0);
+        assertEquals(PostgresIsSubscribed.class.getName(), resFuncName);
+
+        // Reset the table and retroactively execute all.
+        conn.truncateTable("ForumSubscription", false);
+        int[] retroResList = client.get().retroReplay(resExecId).getIntArray();
+        assertEquals(resList.length, retroResList.length);
+        assertTrue(Arrays.equals(resList, retroResList));
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+    }
+
 
     @Test
     public void testProvenanceBuffer() throws InterruptedException, ClassNotFoundException, SQLException {

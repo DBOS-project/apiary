@@ -1,6 +1,7 @@
 package org.dbos.apiary.function;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.GeneratedMessage;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
@@ -287,45 +288,12 @@ public class ProvenanceBuffer {
             pstmt.setLong(colIndex, smallVal);
         } else if (colType == Types.VARCHAR) {
             pstmt.setString(colIndex, val.toString());
-        } else if (colType == Types.ARRAY) {
-            if ((val instanceof List)) {
-                if (((List<?>) val).isEmpty()) {
-                    pstmt.setNull(colIndex, colType);
-                    return;
-                }
-                int sz = ((List<?>) val).size();
-                if (((List<?>) val).get(0) instanceof Integer) {
-                    Array ary = conn.createArrayOf("INTEGER", ((List<?>) val).toArray());
-                    pstmt.setArray(colIndex, ary);
-                } else {
-                    pstmt.setNull(colIndex, colType);
-                    logger.warn("Failed to convert type: {}. Skipped and set to null.", colType);
-                }
-            }
         } else if (colType == Types.BINARY) {
             // The bytea type.
-            if ((val instanceof List)) {
-                if (((List<?>) val).isEmpty()) {
-                    pstmt.setNull(colIndex, colType);
-                    return;
-                }
-                int sz = ((List<?>) val).size();
-                if (((List<?>) val).get(0) instanceof ByteString) {
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
-                    for (int i = 0; i < sz; i++) {
-                        byte[] tmpBytes = ((List<ByteString>) val).get(i).toByteArray();
-                        try {
-                            outputStream.write(tmpBytes);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                    byte[] combinedBytes = outputStream.toByteArray();
-                    pstmt.setBytes(colIndex, combinedBytes);
-                } else {
-                    logger.warn("Do not support such array type: {}. Set to Null.", ((List<?>) val).get(0).getClass());
-                    pstmt.setNull(colIndex, colType);
-                }
+            if (val instanceof com.google.protobuf.GeneratedMessageV3) {
+                // Convert protobuf to byte array.
+                byte[] varbin = ((GeneratedMessage) val).toByteArray();
+                pstmt.setBytes(colIndex, varbin);
             } else {
                 pstmt.setNull(colIndex, colType);
                 logger.warn("Failed to convert type: {}. Skipped and set to null.", colType);

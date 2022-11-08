@@ -256,14 +256,14 @@ public class ApiaryWorker {
     }
 
     private class RequestRunnable implements Runnable, Comparable<RequestRunnable> {
-        private ExecuteFunctionRequest req;
+        private final ExecuteFunctionRequest req;
         private final ZFrame address;
         public long priority;
 
         public RequestRunnable(ZFrame address, ExecuteFunctionRequest req) {
             this.address = address;
+            this.req = req;
             try {
-                this.req = req;
                 long runtime = functionAverageRuntimesNs.getOrDefault(req.getName(), new AtomicDouble(defaultTimeNs)).longValue();
                 this.priority = scheduler.getPriority(req.getService(), runtime);
             } catch (AssertionError | Exception e) {
@@ -304,7 +304,7 @@ public class ApiaryWorker {
                         (callerID == 0L) && (functionID == 0L) &&
                         (workerContext.provBuff != null)) {
                     // Log function input if recordInput is set to true, during initial execution, and if this is the first function of the entire workflow.
-                    workerContext.provBuff.addEntry(ApiaryConfig.tableRecordedInputs, execID, argumentTypes, argSizes, byteArguments);
+                    workerContext.provBuff.addEntry(ApiaryConfig.tableRecordedInputs, execID, req);
                 }
                 executeFunction(req.getName(), req.getService(), execID, callerID, functionID,
                         replayMode, address, req.getSenderTimestampNano(), arguments);

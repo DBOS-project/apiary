@@ -321,14 +321,13 @@ public class ApiaryWorker {
                 }
             }
 
-            FunctionOutput fo = null;
+            FunctionOutput fo;
             if (resFuncId == 0l) {
                 // This is the first function of a request.
                 fo = callFunctionInternal(resName, "retroReplay", resExecId, resFuncId, replayMode, origInputs);
                 assert (fo != null);
-                output = fo.output;
                 execFuncIdToValue.putIfAbsent(resExecId, new HashMap<>());
-                execIdToFinalOutput.putIfAbsent(resExecId, output);
+                execIdToFinalOutput.putIfAbsent(resExecId, fo.output);
                 pendingTasks.putIfAbsent(resExecId, new HashMap<>());
             } else {
                 // Skip the task if it is absent. Because we allow reducing the number of called functions (currently does not support adding more).
@@ -349,12 +348,11 @@ public class ApiaryWorker {
 
                 fo = callFunctionInternal(currTask.funcName, "retroReplay", resExecId, resFuncId, replayMode, currTask.input);
                 assert (fo != null);
-                output = fo.output;
                 // Remove this task from the map.
                 pendingTasks.get(resExecId).remove(resFuncId);
             }
             // Store output value.
-            execFuncIdToValue.get(resExecId).putIfAbsent(resFuncId, output);
+            execFuncIdToValue.get(resExecId).putIfAbsent(resFuncId, fo.output);
             // Queue all of its async tasks to the pending map.
             for (Task t : fo.queuedTasks) {
                 if (pendingTasks.get(resExecId).containsKey(t.functionID)) {
@@ -371,12 +369,53 @@ public class ApiaryWorker {
                     assert (execFuncIdToValue.get(resExecId).containsKey(futureOutput.futureID));
                     Object resFo = execFuncIdToValue.get(resExecId).get(futureOutput.futureID);
                     execIdToFinalOutput.put(resExecId, resFo);
-                    output = resFo;
                 }
                 // Clean up.
                 execFuncIdToValue.remove(resExecId);
                 pendingTasks.remove(resExecId);
             }
+        }
+
+        // If we still have pending tasks, execute them one by one at the end.
+        // It is a heuristic because we assume no isolation between workflows. So they can interleave whatever they want.
+        for (long resExecId : pendingTasks.keySet()) {
+            Queue<Task> queuedTasks = new LinkedBlockingQueue<>(pendingTasks.get(resExecId).values());
+            Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(resExecId);
+
+            while (!queuedTasks.isEmpty()) {
+                Task currTask = queuedTasks.poll();
+                if (currTask == null) {
+                    break;
+                }
+                // Run all tasks that have no dependencies.
+                FunctionOutput fo;
+                if (currTask.dereferenceFutures(currFuncIdToValue)) {
+                    fo = callFunctionInternal(currTask.funcName, "retroReplay", resExecId, currTask.functionID, replayMode, currTask.input);
+                    assert (fo != null);
+                } else {
+                    queuedTasks.add(currTask);  // Add it back.
+                    continue;
+                }
+
+                // Store output value.
+                execFuncIdToValue.get(resExecId).putIfAbsent(currTask.functionID, fo.output);
+                // Queue all of its async tasks to the pending map.
+                for (Task t : fo.queuedTasks) {
+                    queuedTasks.add(t);
+                }
+            }
+
+            // Check if we need to update the final output map.
+            Object o = execIdToFinalOutput.get(resExecId);
+            if (o instanceof ApiaryFuture) {
+                ApiaryFuture futureOutput = (ApiaryFuture) o;
+                assert (execFuncIdToValue.get(resExecId).containsKey(futureOutput.futureID));
+                Object resFo = execFuncIdToValue.get(resExecId).get(futureOutput.futureID);
+                execIdToFinalOutput.put(resExecId, resFo);
+            }
+            // Clean up.
+            execFuncIdToValue.remove(resExecId);
+            pendingTasks.remove(resExecId);
         }
 
         ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, output);

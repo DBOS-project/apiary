@@ -93,7 +93,12 @@ public class ApiaryWorkerClient {
         return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, ApiaryConfig.ReplayMode.SINGLE.getValue(), arguments);
     }
 
-
+    /**
+     * Replay the execution and everything after it using the original execution trace. Block waiting for the result of the last execution. The replay will not generate new provenance data.
+     * @param execId    the original execution ID of the target request.
+     * @return          the output of the last execution.
+     * @throws InvalidProtocolBufferException
+     */
     public FunctionOutput retroReplay(long execId) throws InvalidProtocolBufferException {
         return internalClient.executeFunction(this.apiaryWorkerAddress, "retroReplay", "DefaultService", execId, ApiaryConfig.ReplayMode.ALL.getValue(), null);
     }

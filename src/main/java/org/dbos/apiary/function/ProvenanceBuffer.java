@@ -245,8 +245,7 @@ public class ProvenanceBuffer {
         logger.info("Exported table {}, {} rows", table, numEntries);
     }
 
-    private void setColumn(PreparedStatement pstmt, int colIndex, int colType, Object val) throws SQLException {
-        Connection conn = this.conn.get();
+    private static void setColumn(PreparedStatement pstmt, int colIndex, int colType, Object val) throws SQLException {
         // Convert value to the target type.
         if (val == null) {
             // The column must be nullable.
@@ -291,12 +290,7 @@ public class ProvenanceBuffer {
             pstmt.setString(colIndex, val.toString());
         } else if (colType == Types.BINARY) {
             // The bytea type.
-            if (val instanceof byte[]) {
-                pstmt.setBytes(colIndex, (byte[]) val);
-            } else {
-                pstmt.setNull(colIndex, colType);
-                logger.warn("Failed to convert type: {}. Skipped and set to null.", colType);
-            }
+            pstmt.setBytes(colIndex, (byte[]) val);
         } else {
             // Everything else will be passed directly as string.
             logger.warn(String.format("Failed to convert type: %d. Use String", colType));

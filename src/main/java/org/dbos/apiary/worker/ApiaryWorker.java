@@ -325,9 +325,12 @@ public class ApiaryWorker {
             } else {
                 // Find the task in the stash. Make sure that all futures have been resolved.
                 Task currTask = pendingTasks.get(resExecId).get(resFuncId);
+                assert (currTask != null);
+                logger.info(pendingTasks.toString());
 
                 // Resolve input for this task. Must success.
                 Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(resExecId);
+                logger.info(execFuncIdToValue.toString());
                 if (!currTask.dereferenceFutures(currFuncIdToValue)) {
                     logger.error("Failed to dereference input for execId {}, funcId {}. Aborted", resExecId, resFuncId);
                     throw new RuntimeException("Retro replay failed to dereference input.");
@@ -349,10 +352,10 @@ public class ApiaryWorker {
             // Queue all of its async tasks to the pending map.
             for (Task t : fo.queuedTasks) {
                 pendingTasks.putIfAbsent(resExecId, new HashMap<>());
-                if (pendingTasks.get(resExecId).containsKey(resFuncId)) {
-                    logger.error("ExecID {} funcID {} has duplicated outputs!", resExecId, resFuncId);
+                if (pendingTasks.get(resExecId).containsKey(t.functionID)) {
+                    logger.error("ExecID {} funcID {} has duplicated outputs!", resExecId, t.functionID);
                 }
-                pendingTasks.get(resExecId).putIfAbsent(resFuncId, t);
+                pendingTasks.get(resExecId).putIfAbsent(t.functionID, t);
             }
         }
 

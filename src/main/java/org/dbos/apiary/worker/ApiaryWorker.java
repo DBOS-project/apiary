@@ -295,6 +295,7 @@ public class ApiaryWorker {
         while (historyRs.next()) {
             logger.info(pendingTasks.toString());
             logger.info(execFuncIdToValue.toString());
+            logger.info(execIdToFinalOutput.toString());
             long resTxId = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             long resExecId = historyRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
             long resFuncId = historyRs.getLong(ProvenanceBuffer.PROV_FUNCID);
@@ -367,8 +368,9 @@ public class ApiaryWorker {
                     execIdToFinalOutput.put(resExecId, resFo);
                     output = resFo;
                 }
-                // Clean up the FuncID to Value map.
+                // Clean up.
                 execFuncIdToValue.remove(resExecId);
+                pendingTasks.remove(resExecId);
             }
         }
 

@@ -250,6 +250,12 @@ public class ApiaryWorker {
         functionAverageRuntimesNs.get(name).getAndAdd(((double) (runtime - old)) / runningAverageLength);
     }
 
+    private void retroExecuteAll(long execID, int replayMode, ZFrame replyAddr, long senderTimestampNano) {
+        logger.info("retro execute all!");
+        ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, 123);
+        outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
+    }
+
     private class RequestRunnable implements Runnable, Comparable<RequestRunnable> {
         private final ExecuteFunctionRequest req;
         private final ZFrame address;
@@ -287,8 +293,15 @@ public class ApiaryWorker {
                     // ExecID = 0l means the initial service function, ignore.
                     workerContext.provBuff.addEntry(ApiaryConfig.tableRecordedInputs, execID, req.toByteArray());
                 }
-                executeFunction(req.getName(), req.getService(), execID, callerID, functionID,
-                        replayMode, address, req.getSenderTimestampNano(), arguments);
+                if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
+                    // Must be the first function in a workflow.
+                    assert (functionID == 0l);
+                    // Retroactive replay mode goes through a separate function.
+                    retroExecuteAll(execID, replayMode, address, req.getSenderTimestampNano());
+                } else {
+                    executeFunction(req.getName(), req.getService(), execID, callerID, functionID,
+                            replayMode, address, req.getSenderTimestampNano(), arguments);
+                }
             } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }

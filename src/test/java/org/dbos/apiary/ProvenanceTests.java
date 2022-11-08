@@ -208,6 +208,11 @@ public class ProvenanceTests {
         assertEquals(resExecId4, req.getExecutionId());
         assertEquals(1, arguments.length);
         assertEquals(555, (int) arguments[0]);
+        rs.close();
+
+        // Retroactively execute all.
+        res = client.retroReplay(resExecId3).getInt();
+        assertEquals(123, res);
     }
 
     @Test

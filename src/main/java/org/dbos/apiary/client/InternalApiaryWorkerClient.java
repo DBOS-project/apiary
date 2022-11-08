@@ -53,25 +53,27 @@ public class InternalApiaryWorkerClient {
                                                  long callerID, long functionID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
-        for (Object o: arguments) {
-            if (o instanceof String) {
-                String s = (String) o;
-                byteArguments.add(ByteString.copyFrom(s.getBytes(StandardCharsets.UTF_8)));
-                argumentTypes.add(Utilities.stringType);
-            }  else if (o instanceof Integer) {
-                Integer i = (Integer) o;
-                byteArguments.add(ByteString.copyFrom(Utilities.toByteArray(i)));
-                argumentTypes.add(Utilities.intType);
-            }  else if (o instanceof String[]) {
-                String[] s = (String[]) o;
-                byteArguments.add(ByteString.copyFrom(Utilities.stringArraytoByteArray(s)));
-                argumentTypes.add(Utilities.stringArrayType);
-            } else if (o instanceof int[]) {
-                int[] i = (int[]) o;
-                byteArguments.add(ByteString.copyFrom(Utilities.intArrayToByteArray(i)));
-                argumentTypes.add(Utilities.intArrayType);
-            } else {
-                logger.info("Unrecognized type {}: {}", o.getClass().getName(), o);
+        if (arguments != null) {
+            for (Object o : arguments) {
+                if (o instanceof String) {
+                    String s = (String) o;
+                    byteArguments.add(ByteString.copyFrom(s.getBytes(StandardCharsets.UTF_8)));
+                    argumentTypes.add(Utilities.stringType);
+                } else if (o instanceof Integer) {
+                    Integer i = (Integer) o;
+                    byteArguments.add(ByteString.copyFrom(Utilities.toByteArray(i)));
+                    argumentTypes.add(Utilities.intType);
+                } else if (o instanceof String[]) {
+                    String[] s = (String[]) o;
+                    byteArguments.add(ByteString.copyFrom(Utilities.stringArraytoByteArray(s)));
+                    argumentTypes.add(Utilities.stringArrayType);
+                } else if (o instanceof int[]) {
+                    int[] i = (int[]) o;
+                    byteArguments.add(ByteString.copyFrom(Utilities.intArrayToByteArray(i)));
+                    argumentTypes.add(Utilities.intArrayType);
+                } else {
+                    logger.info("Unrecognized type {}: {}", o.getClass().getName(), o);
+                }
             }
         }
         long sendTime = System.nanoTime();

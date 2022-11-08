@@ -94,8 +94,8 @@ public class ApiaryWorkerClient {
     }
 
 
-    public FunctionOutput retroReplay(long execId, String name, Object... arguments) throws InvalidProtocolBufferException {
-        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, ApiaryConfig.ReplayMode.SINGLE.getValue(), arguments);
+    public FunctionOutput retroReplay(long execId) throws InvalidProtocolBufferException {
+        return internalClient.executeFunction(this.apiaryWorkerAddress, "retroReplay", "DefaultService", execId, ApiaryConfig.ReplayMode.ALL.getValue(), null);
     }
 
     /**

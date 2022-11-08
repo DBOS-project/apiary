@@ -260,26 +260,33 @@ public class ApiaryWorker {
         return o;
     }
 
-    private void retroExecuteAll(long execID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws Exception {
+    private void retroExecuteAll(long targetExecID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws Exception {
         logger.info("retro execute all!");
         assert(workerContext.provBuff != null);
         Connection conn = workerContext.provBuff.conn.get();
 
         // Find previous execution history.
-        String provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, execID,
+        String provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, targetExecID,
                 ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_EXECUTIONID);
         Statement stmt = conn.createStatement();
         ResultSet historyRs = stmt.executeQuery(provQuery);
 
         // Find previous input of execution ID.
         String inputQuery = String.format("SELECT * FROM %s WHERE %s >= %d ORDER BY %s;",
-                ApiaryConfig.tableRecordedInputs, ProvenanceBuffer.PROV_EXECUTIONID, execID, ProvenanceBuffer.PROV_EXECUTIONID);
+                ApiaryConfig.tableRecordedInputs, ProvenanceBuffer.PROV_EXECUTIONID, targetExecID, ProvenanceBuffer.PROV_EXECUTIONID);
         Statement stmt2 = conn.createStatement();
         ResultSet inputRs = stmt2.executeQuery(inputQuery);
 
         // Cache inputs of the original execution. <execId, input>
         long origExecId = -1;
         Object[] origInputs = null;
+
+        // Store currently unresolved tasks. <execId, funcId, task>
+        Map<Long, Map<Long, Task>> pendingTasks = new HashMap<>();
+
+        // Store funcID to value mapping of each execution.
+        // TODO: clean up this map when the execution is done (no more pending tasks for this execID).
+        Map<Long, Map<Long, Object>> execFuncIdToValue = new HashMap<>();
 
         // Re-execute one by one.
         Object output = null;
@@ -288,8 +295,8 @@ public class ApiaryWorker {
             long resExecId = historyRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
             long resFuncId = historyRs.getLong(ProvenanceBuffer.PROV_FUNCID);
             String[] resNames = historyRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
-            String resName = resNames[resNames.length - 1];
-            logger.info("Re-executing txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
+            String resName = resNames[resNames.length - 1]; // Extract the actual function name.
+            logger.info("Retro-executing txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
             if (resExecId != origExecId) {
                 // Read the input for this execution ID.
                 if (inputRs.next()) {
@@ -308,12 +315,40 @@ public class ApiaryWorker {
                 }
             }
 
+            FunctionOutput fo = null;
             if (resFuncId == 0l) {
-                FunctionOutput o = callFunctionInternal(resName, "retroReplay", resExecId, resFuncId, replayMode, origInputs);
-                output = o.output;
+                 fo = callFunctionInternal(resName, "retroReplay", resExecId, resFuncId, replayMode, origInputs);
+                assert (fo != null);
+                output = fo.output;
             } else {
-                // TODO: implement.
-                logger.error("Do not support more than one func.");
+                // Find the task in the stash. Make sure that all futures have been resolved.
+                Task currTask = pendingTasks.get(resExecId).get(resFuncId);
+
+                // Resolve input for this task. Must success.
+                Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(resExecId);
+                if (!currTask.dereferenceFutures(currFuncIdToValue)) {
+                    logger.error("Failed to dereference input for execId {}, funcId {}. Aborted", resExecId, resFuncId);
+                    throw new RuntimeException("Retro replay failed to dereference input.");
+                }
+
+                fo = callFunctionInternal(currTask.funcName, "retroReplay", resExecId, resFuncId, replayMode, currTask.input);
+                assert (fo != null);
+                output = fo.output;
+
+                // Remove this task from the map.
+                pendingTasks.get(resExecId).remove(resFuncId);
+                if (pendingTasks.get(resExecId).isEmpty()) {
+                    // Clean up the FuncID to Value map.
+                    execFuncIdToValue.remove(resExecId);
+                }
+            }
+            // Queue all of its async tasks to the pending map.
+            for (Task t : fo.queuedTasks) {
+                pendingTasks.putIfAbsent(resExecId, new HashMap<>());
+                if (pendingTasks.get(resExecId).containsKey(resFuncId)) {
+                    logger.error("ExecID {} funcID {} has duplicated outputs!", resExecId, resFuncId);
+                }
+                pendingTasks.get(resExecId).putIfAbsent(resFuncId, t);
             }
         }
 

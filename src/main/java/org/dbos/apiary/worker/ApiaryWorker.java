@@ -254,26 +254,43 @@ public class ApiaryWorker {
         functionAverageRuntimesNs.get(name).getAndAdd(((double) (runtime - old)) / runningAverageLength);
     }
 
-    private void retroExecuteAll(long execID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws SQLException {
+    private void retroExecuteAll(long execID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws SQLException, InvalidProtocolBufferException {
         logger.info("retro execute all!");
         assert(workerContext.provBuff != null);
         Connection conn = workerContext.provBuff.conn.get();
 
         // Find previous execution history.
         String provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, execID,
-                ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+                ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_EXECUTIONID);
         Statement stmt = conn.createStatement();
         ResultSet rs = stmt.executeQuery(provQuery);
 
+        // Re-execute one by one.
         while (rs.next()) {
             long resTxId = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
             long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
             String resName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
-            logger.info("txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
+            logger.info("Re-executing txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
         }
 
-        ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, 123);
+        // Find previous input of execution ID.
+        String inputQuery = String.format("SELECT * FROM %s WHERE %s >= %d ORDER BY %s;",
+                ApiaryConfig.tableRecordedInputs, ProvenanceBuffer.PROV_EXECUTIONID, execID, ProvenanceBuffer.PROV_EXECUTIONID);
+        Statement stmt2 = conn.createStatement();
+        ResultSet inputRs = stmt2.executeQuery(inputQuery);
+
+        while (inputRs.next()) {
+            long resExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+            byte[] recordInput = rs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
+            ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
+            Object[] arguments = Utilities.getArgumentsFromRequest(req);
+            logger.info("Original arguments execid {}, inputs {}", resExecId, arguments);
+        }
+
+
+
+        ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, List.of(123).toArray());
         outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
     }
 

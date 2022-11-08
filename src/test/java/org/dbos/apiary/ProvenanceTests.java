@@ -211,8 +211,9 @@ public class ProvenanceTests {
         rs.close();
 
         // Retroactively execute all.
-        res = client.retroReplay(resExecId3).getInt();
-        assertEquals(123, res);
+        resList = client.retroReplay(resExecId3).getIntArray();
+        assertEquals(1, resList.length);
+        assertEquals(123, resList[0]);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
     }

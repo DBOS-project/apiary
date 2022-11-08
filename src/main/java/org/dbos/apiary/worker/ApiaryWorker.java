@@ -281,9 +281,10 @@ public class ApiaryWorker {
 
                 if (ApiaryConfig.recordInput &&
                         (replayMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) &&
-                        (callerID == 0L) && (functionID == 0L) &&
+                        (callerID == 0L) && (execID != 0L) &&
                         (workerContext.provBuff != null)) {
                     // Log function input if recordInput is set to true, during initial execution, and if this is the first function of the entire workflow.
+                    // ExecID = 0l means the initial service function, ignore.
                     workerContext.provBuff.addEntry(ApiaryConfig.tableRecordedInputs, execID, req.toByteArray());
                 }
                 executeFunction(req.getName(), req.getService(), execID, callerID, functionID,

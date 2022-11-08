@@ -277,9 +277,9 @@ public class ApiaryWorker {
         Statement stmt2 = conn.createStatement();
         ResultSet inputRs = stmt2.executeQuery(inputQuery);
 
-        // Cache inputs of previous executions. <execId, input>
-        // TODO: clean up this cache.
-        Map<Long, Object[]> execIdFuncIdArgs = new HashMap<>();
+        // Cache inputs of the original execution. <execId, input>
+        long origExecId = -1;
+        Object[] origInputs = null;
 
         // Re-execute one by one.
         Object output = null;
@@ -290,21 +290,26 @@ public class ApiaryWorker {
             String[] resNames = historyRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
             String resName = resNames[resNames.length - 1];
             logger.info("Re-executing txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
-            if (inputRs.next()) {
-                // Get input.
-                long resExecId2 = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-                byte[] recordInput = inputRs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
-                ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
-                Object[] arguments = Utilities.getArgumentsFromRequest(req);
-                logger.info("Original arguments execid {}, inputs {}", resExecId2, arguments);
-                execIdFuncIdArgs.putIfAbsent(resExecId2, arguments);
+            if (resExecId != origExecId) {
+                // Read the input for this execution ID.
+                if (inputRs.next()) {
+                    origExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+                    byte[] recordInput = inputRs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
+                    ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
+                    origInputs = Utilities.getArgumentsFromRequest(req);
+                    if (origExecId != resExecId) {
+                        logger.error("Input execID {} does not match the expected ID {}!", origExecId, resExecId);
+                        throw new RuntimeException("Retro replay failed due to mismatched IDs.");
+                    }
+                    logger.info("Original arguments execid {}, inputs {}", origExecId, origInputs);
+                } else {
+                    logger.error("Could not find the input for this execution ID {} ", resExecId);
+                    throw new RuntimeException("Retro replay failed due to missing input.");
+                }
             }
 
-            Object[] originalInput;
             if (resFuncId == 0l) {
-                // Retrieve input from the cache.
-                originalInput = execIdFuncIdArgs.get(resExecId);
-                FunctionOutput o = callFunctionInternal(resName, "retroReplay", resExecId, resFuncId, replayMode, originalInput);
+                FunctionOutput o = callFunctionInternal(resName, "retroReplay", resExecId, resFuncId, replayMode, origInputs);
                 output = o.output;
             } else {
                 // TODO: implement.

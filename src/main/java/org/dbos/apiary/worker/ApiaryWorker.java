@@ -263,14 +263,14 @@ public class ApiaryWorker {
         String provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, execID,
                 ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_EXECUTIONID);
         Statement stmt = conn.createStatement();
-        ResultSet rs = stmt.executeQuery(provQuery);
+        ResultSet historyRs = stmt.executeQuery(provQuery);
 
         // Re-execute one by one.
-        while (rs.next()) {
-            long resTxId = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-            long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-            long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
-            String resName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
+        while (historyRs.next()) {
+            long resTxId = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            long resExecId = historyRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+            long resFuncId = historyRs.getLong(ProvenanceBuffer.PROV_FUNCID);
+            String resName = historyRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
             logger.info("Re-executing txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
         }
 
@@ -282,7 +282,7 @@ public class ApiaryWorker {
 
         while (inputRs.next()) {
             long resExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-            byte[] recordInput = rs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
+            byte[] recordInput = inputRs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
             ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
             Object[] arguments = Utilities.getArgumentsFromRequest(req);
             logger.info("Original arguments execid {}, inputs {}", resExecId, arguments);

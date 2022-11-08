@@ -212,7 +212,7 @@ public class ProvenanceTests {
 
         // Retroactively execute all.
         // TODO: reset database and re-execute.
-        resList = client.retroReplay(resExecId3).getIntArray();
+        resList = client.retroReplay(resExecId).getIntArray();
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);

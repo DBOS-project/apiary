@@ -48,6 +48,8 @@ public class ProvenanceTests {
     @BeforeEach
     public void resetTables() {
         try {
+            ApiaryConfig.captureReads = true;
+            ApiaryConfig.captureUpdates = true;
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             conn.dropTable(ApiaryConfig.tableFuncInvocations);
             conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);

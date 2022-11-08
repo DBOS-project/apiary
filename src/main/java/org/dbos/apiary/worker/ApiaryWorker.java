@@ -293,6 +293,8 @@ public class ApiaryWorker {
         // Re-execute one by one.
         Object output = null;
         while (historyRs.next()) {
+            logger.info(pendingTasks.toString());
+            logger.info(execFuncIdToValue.toString());
             long resTxId = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             long resExecId = historyRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
             long resFuncId = historyRs.getLong(ProvenanceBuffer.PROV_FUNCID);
@@ -325,15 +327,15 @@ public class ApiaryWorker {
                 output = fo.output;
                 execFuncIdToValue.putIfAbsent(resExecId, new HashMap<>());
                 execIdToFinalOutput.putIfAbsent(resExecId, output);
+                pendingTasks.putIfAbsent(resExecId, new HashMap<>());
             } else {
                 // Find the task in the stash. Make sure that all futures have been resolved.
                 Task currTask = pendingTasks.get(resExecId).get(resFuncId);
                 assert (currTask != null);
-                logger.info(pendingTasks.toString());
 
                 // Resolve input for this task. Must success.
                 Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(resExecId);
-                logger.info(execFuncIdToValue.toString());
+
                 if (!currTask.dereferenceFutures(currFuncIdToValue)) {
                     logger.error("Failed to dereference input for execId {}, funcId {}. Aborted", resExecId, resFuncId);
                     throw new RuntimeException("Retro replay failed to dereference input.");
@@ -349,7 +351,6 @@ public class ApiaryWorker {
             execFuncIdToValue.get(resExecId).putIfAbsent(resFuncId, output);
             // Queue all of its async tasks to the pending map.
             for (Task t : fo.queuedTasks) {
-                pendingTasks.putIfAbsent(resExecId, new HashMap<>());
                 if (pendingTasks.get(resExecId).containsKey(t.functionID)) {
                     logger.error("ExecID {} funcID {} has duplicated outputs!", resExecId, t.functionID);
                 }
@@ -364,6 +365,7 @@ public class ApiaryWorker {
                     assert (execFuncIdToValue.get(resExecId).containsKey(futureOutput.futureID));
                     Object resFo = execFuncIdToValue.get(resExecId).get(futureOutput.futureID);
                     execIdToFinalOutput.put(resExecId, resFo);
+                    output = resFo;
                 }
                 // Clean up the FuncID to Value map.
                 execFuncIdToValue.remove(resExecId);

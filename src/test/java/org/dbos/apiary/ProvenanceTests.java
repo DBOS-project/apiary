@@ -213,6 +213,8 @@ public class ProvenanceTests {
         // Retroactively execute all.
         res = client.retroReplay(resExecId3).getInt();
         assertEquals(123, res);
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
     }
 
     @Test

@@ -17,6 +17,10 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.*;
 import zmq.ZError;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -250,8 +254,19 @@ public class ApiaryWorker {
         functionAverageRuntimesNs.get(name).getAndAdd(((double) (runtime - old)) / runningAverageLength);
     }
 
-    private void retroExecuteAll(long execID, int replayMode, ZFrame replyAddr, long senderTimestampNano) {
+    private void retroExecuteAll(long execID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws SQLException {
         logger.info("retro execute all!");
+        assert(workerContext.provBuff != null);
+        Connection conn = workerContext.provBuff.conn.get();
+
+        // Find previous execution history.
+        String provQuery = String.format("SELECT * FROM %s WHERE %s >= %d ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, execID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery(provQuery);
+        while (rs.next()) {
+            logger.info(rs.toString());
+        }
+
         ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, 123);
         outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
     }

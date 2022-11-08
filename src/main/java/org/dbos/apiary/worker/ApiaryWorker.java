@@ -290,7 +290,7 @@ public class ApiaryWorker {
 
 
 
-        ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, List.of(123).toArray());
+        ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, List.of(123).stream().mapToInt(i -> i).toArray());
         outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
     }
 

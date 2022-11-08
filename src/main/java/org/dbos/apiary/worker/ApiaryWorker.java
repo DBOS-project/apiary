@@ -300,11 +300,11 @@ public class ApiaryWorker {
                 execIdFuncIdArgs.putIfAbsent(resExecId2, arguments);
             }
 
-            Object[] input;
+            Object[] originalInput;
             if (resFuncId == 0l) {
                 // Retrieve input from the cache.
-                input = execIdFuncIdArgs.get(resExecId);
-                FunctionOutput o = callFunctionInternal(resName, "retroReplay", execID, resFuncId, replayMode, input);
+                originalInput = execIdFuncIdArgs.get(resExecId);
+                FunctionOutput o = callFunctionInternal(resName, "retroReplay", resExecId, resFuncId, replayMode, originalInput);
                 output = o.output;
             } else {
                 // TODO: implement.

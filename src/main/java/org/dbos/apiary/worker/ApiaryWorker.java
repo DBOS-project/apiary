@@ -331,9 +331,13 @@ public class ApiaryWorker {
                 execIdToFinalOutput.putIfAbsent(resExecId, output);
                 pendingTasks.putIfAbsent(resExecId, new HashMap<>());
             } else {
+                // Skip the task if it is absent. Because we allow reducing the number of called functions (currently does not support adding more).
+                if (!pendingTasks.get(resExecId).containsKey(resFuncId)) {
+                    logger.info("Skip function ID {}, not found in pending tasks.", resFuncId);
+                    continue;
+                }
                 // Find the task in the stash. Make sure that all futures have been resolved.
                 Task currTask = pendingTasks.get(resExecId).get(resFuncId);
-                assert (currTask != null);
 
                 // Resolve input for this task. Must success.
                 Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(resExecId);

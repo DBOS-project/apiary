@@ -17,7 +17,7 @@ public interface ApiaryFunction {
 
         // Record invocation message to the buffer.
         if (ctxt.execID != 0) {
-            recordInvocation(ctxt, this.getClass().getName());
+            recordInvocation(ctxt, this.getClass().getSimpleName());
         }
 
         Object output;

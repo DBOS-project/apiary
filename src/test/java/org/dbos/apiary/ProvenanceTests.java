@@ -7,6 +7,7 @@ import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.replay.PostgresFetchSubscribers;
 import org.dbos.apiary.procedures.postgres.replay.PostgresForumSubscribe;
 import org.dbos.apiary.procedures.postgres.replay.PostgresIsSubscribed;
+import org.dbos.apiary.procedures.postgres.retro.PostgresIsSubscribedTxn;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceBasic;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceJoins;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceMultiRows;
@@ -305,11 +306,29 @@ public class ProvenanceTests {
         assumeTrue(resFuncId == 0);
         assertEquals(PostgresIsSubscribed.class.getName(), resFuncName);
 
-        // Reset the table and retroactively execute all.
+        // Reset the table and replay all.
         conn.truncateTable("ForumSubscription", false);
         int[] retroResList = client.get().retroReplay(resExecId).getIntArray();
         assertEquals(resList.length, retroResList.length);
         assertTrue(Arrays.equals(resList, retroResList));
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
+        // Now, register the new code and see if it can get the correct result.
+        apiaryWorker.shutdown(); // Stop the existing worker.
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribedTxn::new);  // Register the new one.
+        // Do not register the second subscribe function.
+        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.startServing();
+
+        provBuff = apiaryWorker.workerContext.provBuff;
+        assert(provBuff != null);
+
+        conn.truncateTable("ForumSubscription", false);
+        int[] retroResList2 = client.get().retroReplay(resExecId).getIntArray();
+        assertEquals(1, retroResList2.length);
+        assertEquals(userId, retroResList2[0]);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 

@@ -57,19 +57,19 @@ public class InternalApiaryWorkerClient {
             if (o instanceof String) {
                 String s = (String) o;
                 byteArguments.add(ByteString.copyFrom(s.getBytes(StandardCharsets.UTF_8)));
-                argumentTypes.add(ApiaryWorker.stringType);
+                argumentTypes.add(Utilities.stringType);
             }  else if (o instanceof Integer) {
                 Integer i = (Integer) o;
                 byteArguments.add(ByteString.copyFrom(Utilities.toByteArray(i)));
-                argumentTypes.add(ApiaryWorker.intType);
+                argumentTypes.add(Utilities.intType);
             }  else if (o instanceof String[]) {
                 String[] s = (String[]) o;
                 byteArguments.add(ByteString.copyFrom(Utilities.stringArraytoByteArray(s)));
-                argumentTypes.add(ApiaryWorker.stringArrayType);
+                argumentTypes.add(Utilities.stringArrayType);
             } else if (o instanceof int[]) {
                 int[] i = (int[]) o;
                 byteArguments.add(ByteString.copyFrom(Utilities.intArrayToByteArray(i)));
-                argumentTypes.add(ApiaryWorker.intArrayType);
+                argumentTypes.add(Utilities.intArrayType);
             } else {
                 logger.info("Unrecognized type {}: {}", o.getClass().getName(), o);
             }

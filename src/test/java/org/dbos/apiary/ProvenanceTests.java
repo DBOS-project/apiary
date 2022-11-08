@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import com.google.protobuf.Api;
 import com.google.protobuf.InvalidProtocolBufferException;
+import jdk.jshell.execution.Util;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
@@ -12,6 +13,7 @@ import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceBasic;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceJoins;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceMultiRows;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.junit.jupiter.api.AfterEach;
@@ -126,6 +128,14 @@ public class ProvenanceTests {
         assertNotEquals(resExecId, resExecId3);
         assertEquals(resFuncId, resFuncId3);
 
+        // The fourth function should be a new fetchSubscribers.
+        rs.next();
+        long resExecId4 = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long resFuncId4 = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        assertNotEquals(resExecId, resExecId4);
+        assertNotEquals(resExecId3, resExecId4);
+        assertEquals(resFuncId, resFuncId4);
+
         // Replay the execution of the first one.
         res = client.replayFunction(resExecId,"PostgresIsSubscribed", 123, 555).getInt();
         assertEquals(123, res);
@@ -161,6 +171,22 @@ public class ProvenanceTests {
         assertEquals(resFuncId3, replayFuncId);
         assertEquals(1, resIsReplay);
 
+        // Check the recorded inputs.
+        table = ApiaryConfig.tableRecordedInputs;
+        provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", table, ProvenanceBuffer.PROV_EXECUTIONID);
+        rs = stmt.executeQuery(provQuery);
+        rs.next();
+
+        // The order should be the same.
+        long recordExecid = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        byte[] recordInput = rs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
+        ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
+        Object[] arguments = Utilities.getArgumentsFromRequest(req);
+        assertEquals(resExecId, recordExecid);
+        assertEquals(resExecId, req.getExecutionId());
+        assertEquals(2, arguments.length);
+        assertEquals(123, (int) arguments[0]);
+        assertEquals(555, (int) arguments[1]);
     }
 
     @Test

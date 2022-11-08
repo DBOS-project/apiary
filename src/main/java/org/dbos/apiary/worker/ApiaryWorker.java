@@ -25,11 +25,6 @@ import java.util.stream.Collectors;
 public class ApiaryWorker {
     private static final Logger logger = LoggerFactory.getLogger(ApiaryWorker.class);
 
-    public static int stringType = 1;
-    public static int stringArrayType = 2;
-    public static int intType = 3;
-    public static int intArrayType = 4;
-
     private final AtomicLong callerIDs = new AtomicLong(0);
     // Store the call stack for each caller.
     private final Map<Long, ApiaryTaskStash> callerStashMap = new ConcurrentHashMap<>();
@@ -277,27 +272,12 @@ public class ApiaryWorker {
             try {
                 scheduler.onDequeue(req);
                 assert (req != null);
-                List<ByteString> byteArguments = req.getArgumentsList();
-                List<Integer> argumentTypes = req.getArgumentTypesList();
+
                 long callerID = req.getCallerId();
                 long functionID = req.getFunctionId();
                 long execID = req.getExecutionId();
                 int replayMode = req.getReplayMode();
-                Object[] arguments = new Object[byteArguments.size()];
-                List<Integer> argSizes = new ArrayList<>();
-                for (int i = 0; i < arguments.length; i++) {
-                    byte[] byteArray = byteArguments.get(i).toByteArray();
-                    argSizes.add(byteArray.length);
-                    if (argumentTypes.get(i) == stringType) {
-                        arguments[i] = new String(byteArray);
-                    } else if (argumentTypes.get(i) == intType) {
-                        arguments[i] = Utilities.fromByteArray(byteArray);
-                    } else if (argumentTypes.get(i) == stringArrayType) {
-                        arguments[i] = Utilities.byteArrayToStringArray(byteArray);
-                    }  else if (argumentTypes.get(i) == intArrayType) {
-                        arguments[i] = Utilities.byteArrayToIntArray(byteArray);
-                    }
-                }
+                Object[] arguments = Utilities.getArgumentsFromRequest(req);
 
                 if (ApiaryConfig.recordInput &&
                         (replayMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) &&

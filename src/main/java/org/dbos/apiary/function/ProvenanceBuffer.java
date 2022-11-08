@@ -40,6 +40,7 @@ public class ProvenanceBuffer {
     public static final String PROV_QUERY_SEQNUM = "APIARY_QUERY_SEQNUM";
     public static final String PROV_QUERY_TABLENAMES = "APIARY_QUERY_TABLENAMES";
     public static final String PROV_QUERY_PROJECTION = "APIARY_QUERY_PROJECTION";
+    public static final String PROV_REQ_BYTES = "APIARY_REQ_BYTES";
 
     /**
      * Enum class for provenance operations.

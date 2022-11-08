@@ -96,7 +96,10 @@ public class PostgresConnection implements ApiaryConnection {
 
         if (ApiaryConfig.recordInput) {
             // Record input for replay. Only need to record the input of the first function, so we only need to use execID to find the arguments.
-            createTable(ApiaryConfig.tableRecordedInputs, "ExecID BIGINT PRIMARY KEY, REQ_PROTO_BYTES BYTEA");
+            createTable(ApiaryConfig.tableRecordedInputs,
+                    ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT PRIMARY KEY, " +
+                    ProvenanceBuffer.PROV_REQ_BYTES + " BYTEA NOT NULL");
+
         }
 
         // TODO: add back recorded outputs later for fault tolerance.

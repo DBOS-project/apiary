@@ -290,10 +290,8 @@ public class ProvenanceBuffer {
             pstmt.setString(colIndex, val.toString());
         } else if (colType == Types.BINARY) {
             // The bytea type.
-            if (val instanceof com.google.protobuf.GeneratedMessageV3) {
-                // Convert protobuf to byte array.
-                byte[] varbin = ((GeneratedMessage) val).toByteArray();
-                pstmt.setBytes(colIndex, varbin);
+            if (val instanceof byte[]) {
+                pstmt.setBytes(colIndex, (byte[]) val);
             } else {
                 pstmt.setNull(colIndex, colType);
                 logger.warn("Failed to convert type: {}. Skipped and set to null.", colType);

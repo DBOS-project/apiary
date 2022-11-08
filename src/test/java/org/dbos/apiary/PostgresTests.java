@@ -46,6 +46,7 @@ public class PostgresTests {
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
             conn.dropTable(ApiaryConfig.tableFuncInvocations);
+            conn.dropTable(ApiaryConfig.tableRecordedInputs);
             conn.dropTable("KVTable");
             conn.createTable("KVTable", "KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL");
             conn.dropTable("RetwisPosts");

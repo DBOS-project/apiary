@@ -285,8 +285,10 @@ public class ApiaryWorker {
         Map<Long, Map<Long, Task>> pendingTasks = new HashMap<>();
 
         // Store funcID to value mapping of each execution.
-        // TODO: clean up this map when the execution is done (no more pending tasks for this execID).
         Map<Long, Map<Long, Object>> execFuncIdToValue = new HashMap<>();
+
+        // Store execID to final output map. Because the output could be a future.
+        Map<Long, Object> execIdToFinalOutput = new HashMap<>();
 
         // Re-execute one by one.
         Object output = null;
@@ -322,6 +324,7 @@ public class ApiaryWorker {
                 assert (fo != null);
                 output = fo.output;
                 execFuncIdToValue.putIfAbsent(resExecId, new HashMap<>());
+                execIdToFinalOutput.putIfAbsent(resExecId, output);
             } else {
                 // Find the task in the stash. Make sure that all futures have been resolved.
                 Task currTask = pendingTasks.get(resExecId).get(resFuncId);
@@ -339,13 +342,8 @@ public class ApiaryWorker {
                 fo = callFunctionInternal(currTask.funcName, "retroReplay", resExecId, resFuncId, replayMode, currTask.input);
                 assert (fo != null);
                 output = fo.output;
-
                 // Remove this task from the map.
                 pendingTasks.get(resExecId).remove(resFuncId);
-                if (pendingTasks.get(resExecId).isEmpty()) {
-                    // Clean up the FuncID to Value map.
-                    execFuncIdToValue.remove(resExecId);
-                }
             }
             // Store output value.
             execFuncIdToValue.get(resExecId).putIfAbsent(resFuncId, output);
@@ -356,6 +354,19 @@ public class ApiaryWorker {
                     logger.error("ExecID {} funcID {} has duplicated outputs!", resExecId, t.functionID);
                 }
                 pendingTasks.get(resExecId).putIfAbsent(t.functionID, t);
+            }
+
+            if (pendingTasks.get(resExecId).isEmpty()) {
+                // Check if we need to update the final output map.
+                Object o = execIdToFinalOutput.get(resExecId);
+                if (o instanceof ApiaryFuture) {
+                    ApiaryFuture futureOutput = (ApiaryFuture) o;
+                    assert (execFuncIdToValue.get(resExecId).containsKey(futureOutput.futureID));
+                    Object resFo = execFuncIdToValue.get(resExecId).get(futureOutput.futureID);
+                    execIdToFinalOutput.put(resExecId, resFo);
+                }
+                // Clean up the FuncID to Value map.
+                execFuncIdToValue.remove(resExecId);
             }
         }
 

@@ -260,11 +260,17 @@ public class ApiaryWorker {
         Connection conn = workerContext.provBuff.conn.get();
 
         // Find previous execution history.
-        String provQuery = String.format("SELECT * FROM %s WHERE %s >= %d ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, execID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        String provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s==0 ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, execID,
+                ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         Statement stmt = conn.createStatement();
         ResultSet rs = stmt.executeQuery(provQuery);
+
         while (rs.next()) {
-            logger.info(rs.toString());
+            long resTxId = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+            long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+            String resName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
+            logger.info("txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
         }
 
         ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, 123);

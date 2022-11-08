@@ -76,7 +76,7 @@ public class PostgresConnection implements ApiaryConnection {
             logger.info("Failed to connect to Postgres");
             throw new RuntimeException("Failed to connect to Postgres");
         }
-        createTable(ProvenanceBuffer.PROV_FuncInvocations,
+        createTable(ApiaryConfig.tableFuncInvocations,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_APIARY_TIMESTAMP + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
@@ -93,6 +93,15 @@ public class PostgresConnection implements ApiaryConnection {
                 + ProvenanceBuffer.PROV_QUERY_TABLENAMES + " VARCHAR(1024) NOT NULL, "
                 + ProvenanceBuffer.PROV_QUERY_PROJECTION + " VARCHAR(1024) NOT NULL "
         );
+
+        if (ApiaryConfig.recordInput) {
+            // Record input for replay. Only need to record the input of the first function, so we only need to use execID to find the arguments.
+            createTable(ApiaryConfig.tableRecordedInputs,
+                    ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT PRIMARY KEY, " +
+                    ProvenanceBuffer.PROV_REQ_BYTES + " BYTEA NOT NULL");
+
+        }
+
         // TODO: add back recorded outputs later for fault tolerance.
         // createTable("RecordedOutputs", "ExecID bigint, FunctionID bigint, StringOutput VARCHAR(1000), IntOutput integer, StringArrayOutput bytea, IntArrayOutput bytea, FutureOutput bigint, QueuedTasks bytea, PRIMARY KEY(ExecID, FunctionID)");
     }
@@ -107,6 +116,22 @@ public class PostgresConnection implements ApiaryConnection {
         Statement truncateTable = conn.createStatement();
         truncateTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
         truncateTable.execute(String.format("DROP TABLE IF EXISTS %sEvents;", tableName));
+        truncateTable.close();
+        conn.close();
+    }
+
+    /**
+     * Truncate a table and potentially its corresponding events table.
+     * @param tableName         the table to truncate.
+     * @param deleteProvenance  if true, truncate the events table as well.
+     */
+    public void truncateTable(String tableName, boolean deleteProvenance) throws SQLException {
+        Connection conn = ds.getConnection();
+        Statement truncateTable = conn.createStatement();
+        truncateTable.execute(String.format("TRUNCATE %s;", tableName));
+        if (deleteProvenance) {
+            truncateTable.execute(String.format("TRUNCATE %sEvents;", tableName));
+        }
         truncateTable.close();
         conn.close();
     }
@@ -163,12 +188,12 @@ public class PostgresConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID,
-                                       long functionID, boolean isReplay, Object... inputs) {
+                                       long functionID, int replayMode, Object... inputs) {
         Connection c = connection.get();
         FunctionOutput f = null;
         while (true) {
             activeTransactionsLock.readLock().lock();
-            PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID, isReplay,
+            PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID, replayMode,
                     new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
             activeTransactions.add(ctxt.txc);
             latestTransactionContext = ctxt.txc;

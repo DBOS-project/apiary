@@ -49,29 +49,31 @@ public class InternalApiaryWorkerClient {
         }
     }
 
-    public static byte[] serializeExecuteRequest(String name, String service, long execID, boolean isReplay,
+    public static byte[] serializeExecuteRequest(String name, String service, long execID, int replayMode,
                                                  long callerID, long functionID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
-        for (Object o: arguments) {
-            if (o instanceof String) {
-                String s = (String) o;
-                byteArguments.add(ByteString.copyFrom(s.getBytes(StandardCharsets.UTF_8)));
-                argumentTypes.add(ApiaryWorker.stringType);
-            }  else if (o instanceof Integer) {
-                Integer i = (Integer) o;
-                byteArguments.add(ByteString.copyFrom(Utilities.toByteArray(i)));
-                argumentTypes.add(ApiaryWorker.intType);
-            }  else if (o instanceof String[]) {
-                String[] s = (String[]) o;
-                byteArguments.add(ByteString.copyFrom(Utilities.stringArraytoByteArray(s)));
-                argumentTypes.add(ApiaryWorker.stringArrayType);
-            } else if (o instanceof int[]) {
-                int[] i = (int[]) o;
-                byteArguments.add(ByteString.copyFrom(Utilities.intArrayToByteArray(i)));
-                argumentTypes.add(ApiaryWorker.intArrayType);
-            } else {
-                logger.info("Unrecognized type {}: {}", o.getClass().getName(), o);
+        if (arguments != null) {
+            for (Object o : arguments) {
+                if (o instanceof String) {
+                    String s = (String) o;
+                    byteArguments.add(ByteString.copyFrom(s.getBytes(StandardCharsets.UTF_8)));
+                    argumentTypes.add(Utilities.stringType);
+                } else if (o instanceof Integer) {
+                    Integer i = (Integer) o;
+                    byteArguments.add(ByteString.copyFrom(Utilities.toByteArray(i)));
+                    argumentTypes.add(Utilities.intType);
+                } else if (o instanceof String[]) {
+                    String[] s = (String[]) o;
+                    byteArguments.add(ByteString.copyFrom(Utilities.stringArraytoByteArray(s)));
+                    argumentTypes.add(Utilities.stringArrayType);
+                } else if (o instanceof int[]) {
+                    int[] i = (int[]) o;
+                    byteArguments.add(ByteString.copyFrom(Utilities.intArrayToByteArray(i)));
+                    argumentTypes.add(Utilities.intArrayType);
+                } else {
+                    logger.info("Unrecognized type {}: {}", o.getClass().getName(), o);
+                }
             }
         }
         long sendTime = System.nanoTime();
@@ -84,15 +86,15 @@ public class InternalApiaryWorkerClient {
                 .setService(service)
                 .setExecutionId(execID)
                 .setSenderTimestampNano(sendTime)
-                .setIsReplay(isReplay)
+                .setReplayMode(replayMode)
                 .build();
         return req.toByteArray();
     }
 
-    public FunctionOutput executeFunction(String address, String name, String service, long execID, boolean isReplay,
+    public FunctionOutput executeFunction(String address, String name, String service, long execID, int replayMode,
                                           Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
-        byte[] reqBytes = serializeExecuteRequest(name, service, execID, isReplay, 0l, 0, arguments);
+        byte[] reqBytes = serializeExecuteRequest(name, service, execID, replayMode, 0l, 0, arguments);
         socket.send(reqBytes, 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);

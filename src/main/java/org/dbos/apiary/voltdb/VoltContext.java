@@ -37,7 +37,7 @@ public class VoltContext extends ApiaryContext {
     private long currentID = functionID;
 
     public VoltContext(VoltFunction p, ProvenanceBuffer provBuff, String service, long execID, long functionID) {
-        super(new WorkerContext(provBuff), service, execID, functionID, false);
+        super(new WorkerContext(provBuff), service, execID, functionID, ApiaryConfig.ReplayMode.NOT_REPLAY.getValue());
         this.p = p;
         this.transactionID = getTransactionID();
     }

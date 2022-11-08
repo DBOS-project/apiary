@@ -2,6 +2,7 @@ package org.dbos.apiary.utilities;
 
 import com.google.protobuf.ByteString;
 import org.dbos.apiary.ExecuteFunctionReply;
+import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.slf4j.Logger;
@@ -13,9 +14,13 @@ import java.lang.reflect.Modifier;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.List;
 
 public class Utilities {
-
+    public static int stringType = 1;
+    public static int stringArrayType = 2;
+    public static int intType = 3;
+    public static int intArrayType = 4;
     private static final Logger logger = LoggerFactory.getLogger(Utilities.class);
 
     public static byte[] objectToByteArray(Serializable obj) {
@@ -190,16 +195,16 @@ public class Utilities {
                 .setFunctionId(functionID)
                 .setSenderTimestampNano(senderTimestampNano);
         if (output instanceof String) {
-            b.setReplyType(ApiaryWorker.stringType);
+            b.setReplyType(stringType);
             b.setReplyString((String) output);
         } else if (output instanceof Integer) {
-            b.setReplyType(ApiaryWorker.intType);
+            b.setReplyType(intType);
             b.setReplyInt((int) output);
         } else if (output instanceof String[]) {
-            b.setReplyType(ApiaryWorker.stringArrayType);
+            b.setReplyType(stringArrayType);
             b.setReplyArray(ByteString.copyFrom(stringArraytoByteArray((String[]) output)));
         } else if (output instanceof int[]) {
-            b.setReplyType(ApiaryWorker.intArrayType);
+            b.setReplyType(intArrayType);
             b.setReplyArray(ByteString.copyFrom(intArrayToByteArray((int[]) output)));
         }
         return b;
@@ -207,15 +212,36 @@ public class Utilities {
 
     public static Object getOutputFromReply(ExecuteFunctionReply rep) {
         Object output = null;
-        if (rep.getReplyType() == ApiaryWorker.stringType) {
+        if (rep.getReplyType() == stringType) {
             output = rep.getReplyString();
-        } else if (rep.getReplyType() == ApiaryWorker.intType) {
+        } else if (rep.getReplyType() == intType) {
             output = rep.getReplyInt();
-        } else if (rep.getReplyType() == ApiaryWorker.stringArrayType) {
+        } else if (rep.getReplyType() == stringArrayType) {
             output = Utilities.byteArrayToStringArray(rep.getReplyArray().toByteArray());
-        } else if (rep.getReplyType() == ApiaryWorker.intArrayType) {
+        } else if (rep.getReplyType() == intArrayType) {
             output = Utilities.byteArrayToIntArray(rep.getReplyArray().toByteArray());
         }
         return output;
+    }
+
+    public static Object[] getArgumentsFromRequest(ExecuteFunctionRequest req) {
+        List<ByteString> byteArguments = req.getArgumentsList();
+        List<Integer> argumentTypes = req.getArgumentTypesList();
+        Object[] arguments = new Object[byteArguments.size()];
+        List<Integer> argSizes = new ArrayList<>();
+        for (int i = 0; i < arguments.length; i++) {
+            byte[] byteArray = byteArguments.get(i).toByteArray();
+            argSizes.add(byteArray.length);
+            if (argumentTypes.get(i) == stringType) {
+                arguments[i] = new String(byteArray);
+            } else if (argumentTypes.get(i) == intType) {
+                arguments[i] = Utilities.fromByteArray(byteArray);
+            } else if (argumentTypes.get(i) == stringArrayType) {
+                arguments[i] = Utilities.byteArrayToStringArray(byteArray);
+            }  else if (argumentTypes.get(i) == intArrayType) {
+                arguments[i] = Utilities.byteArrayToIntArray(byteArray);
+            }
+        }
+        return arguments;
     }
 }

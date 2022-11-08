@@ -2,6 +2,7 @@ package org.dbos.apiary.client;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.function.FunctionOutput;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.*;
@@ -42,7 +43,7 @@ public class ApiaryWorkerClient {
         this.internalClient = new InternalApiaryWorkerClient(zContext);
         int tmpID = 0;
         try {
-            tmpID = internalClient.executeFunction(this.apiaryWorkerAddress, getApiaryClientID, "ApiarySystem", 0L, false).getInt();
+            tmpID = internalClient.executeFunction(this.apiaryWorkerAddress, getApiaryClientID, "ApiarySystem", 0L, ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()).getInt();
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }
@@ -66,7 +67,7 @@ public class ApiaryWorkerClient {
      * @return          serialized byte array of the request.
      */
     public byte[] serializeExecuteRequest(String name, String service, Object... arguments) {
-        return InternalApiaryWorkerClient.serializeExecuteRequest(name, service, getExecutionId(), false, 0L, 0L, arguments);
+        return InternalApiaryWorkerClient.serializeExecuteRequest(name, service, getExecutionId(), ApiaryConfig.ReplayMode.NOT_REPLAY.getValue(), 0L, 0L, arguments);
     }
 
     /**
@@ -77,11 +78,11 @@ public class ApiaryWorkerClient {
      * @throws InvalidProtocolBufferException
      */
     public FunctionOutput executeFunction(String name, Object... arguments) throws InvalidProtocolBufferException {
-        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", getExecutionId(), false, arguments);
+        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", getExecutionId(), ApiaryConfig.ReplayMode.NOT_REPLAY.getValue(), arguments);
     }
 
     /**
-     * Replay a function synchronously and block waiting for the result. The replay will not generate new provenance data.
+     * Replay a single function/workflow synchronously and block waiting for the result. The replay will not generate new provenance data.
      * @param execId    the original execution ID of the invoked function.
      * @param name      the name of the invoked function.
      * @param arguments the original arguments of the invoked function.
@@ -89,7 +90,17 @@ public class ApiaryWorkerClient {
      * @throws InvalidProtocolBufferException
      */
     public FunctionOutput replayFunction(long execId, String name, Object... arguments) throws InvalidProtocolBufferException {
-        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, true, arguments);
+        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, ApiaryConfig.ReplayMode.SINGLE.getValue(), arguments);
+    }
+
+    /**
+     * Replay the execution and everything after it using the original execution trace. Block waiting for the result of the last execution. The replay will not generate new provenance data.
+     * @param execId    the original execution ID of the target request.
+     * @return          the output of the last execution.
+     * @throws InvalidProtocolBufferException
+     */
+    public FunctionOutput retroReplay(long execId) throws InvalidProtocolBufferException {
+        return internalClient.executeFunction(this.apiaryWorkerAddress, "retroReplay", "DefaultService", execId, ApiaryConfig.ReplayMode.ALL.getValue(), null);
     }
 
     /**

@@ -1,10 +1,14 @@
 package org.dbos.apiary.function;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.GeneratedMessage;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,7 +26,6 @@ public class ProvenanceBuffer {
     public static final int exportInterval = 1000;
 
     // Constant variables.
-    public static final String PROV_FuncInvocations = "FuncInvocations";
     public static final String PROV_ApiaryMetadata = "ApiaryMetadata";
     public static final String PROV_QueryMetadata = "ApiaryQueryMetadata";
     public static final String PROV_APIARY_TRANSACTION_ID = "APIARY_TRANSACTION_ID";
@@ -37,6 +40,7 @@ public class ProvenanceBuffer {
     public static final String PROV_QUERY_SEQNUM = "APIARY_QUERY_SEQNUM";
     public static final String PROV_QUERY_TABLENAMES = "APIARY_QUERY_TABLENAMES";
     public static final String PROV_QUERY_PROJECTION = "APIARY_QUERY_PROJECTION";
+    public static final String PROV_REQ_BYTES = "APIARY_REQ_BYTES";
 
     /**
      * Enum class for provenance operations.
@@ -284,6 +288,9 @@ public class ProvenanceBuffer {
             pstmt.setLong(colIndex, smallVal);
         } else if (colType == Types.VARCHAR) {
             pstmt.setString(colIndex, val.toString());
+        } else if (colType == Types.BINARY) {
+            // The bytea type.
+            pstmt.setBytes(colIndex, (byte[]) val);
         } else {
             // Everything else will be passed directly as string.
             logger.warn(String.format("Failed to convert type: %d. Use String", colType));

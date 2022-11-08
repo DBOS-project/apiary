@@ -27,7 +27,7 @@ public class PostgresContext extends ApiaryContext {
     private final long replayTxID;  // The replayed transaction ID.
 
     private static final String checkReplayTxID = String.format("SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=0", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
-            ProvenanceBuffer.PROV_FuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY);
+            ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY);
 
     private static final String checkMetadata = String.format("SELECT * FROM %s WHERE %s=? AND %s=?", ProvenanceBuffer.PROV_QueryMetadata, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_QUERY_SEQNUM);
 
@@ -36,9 +36,9 @@ public class PostgresContext extends ApiaryContext {
     Map<String, Map<String, List<String>>> secondaryWrittenKeys = new HashMap<>();
 
     public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID,
-                           boolean isReplay,
+                           int replayMode,
                            Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions) {
-        super(workerContext, service, execID, functionID, isReplay);
+        super(workerContext, service, execID, functionID, replayMode);
         this.conn = c;
         long tmpReplayTxID = -1;
         try {
@@ -65,7 +65,7 @@ public class PostgresContext extends ApiaryContext {
             this.txc = new TransactionContext(txID, xmin, xmax, activeTxIDs);
 
             // Look up the original transaction ID if it's a replay.
-            if (isReplay) {
+            if (replayMode != ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
                 PreparedStatement pstmt = conn.prepareStatement(checkReplayTxID);
                 pstmt.setLong(1, execID);
                 pstmt.setLong(2, functionID);
@@ -141,7 +141,7 @@ public class PostgresContext extends ApiaryContext {
      */
     public void executeUpdate(String procedure, Object... input) throws SQLException {
         // Replay.
-        if (this.isReplay) {
+        if (this.replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
             replayUpdate(procedure, input);
             return;
         }
@@ -215,7 +215,7 @@ public class PostgresContext extends ApiaryContext {
      */
     public ResultSet executeQuery(String procedure, Object... input) throws SQLException {
         // Replay
-        if (this.isReplay) {
+        if (this.replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
             return replayQuery(procedure, input);
         }
         PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);

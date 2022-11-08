@@ -200,25 +200,7 @@ public class ApiaryWorker {
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {
-            if (!workerContext.functionExists(name)) {
-                logger.info("Unrecognized function: {}", name);
-            }
-            String type = workerContext.getFunctionType(name);
-            if (type.equals(ApiaryConfig.stateless)) {
-                ApiaryFunction function = workerContext.getFunction(name);
-                ApiaryStatelessContext context = new ApiaryStatelessContext(workerContext, service, execID, functionID, replayMode);
-                o = function.apiaryRunFunction(context, arguments);
-            } else if (workerContext.getPrimaryConnectionType().equals(type)) {
-                ApiaryConnection c = workerContext.getPrimaryConnection();
-                o = c.callFunction(name, workerContext, service, execID, functionID, replayMode, arguments);
-            } else { // Execute a read-only secondary function without primary involvement using a cached txc.
-                ApiarySecondaryConnection c = workerContext.getSecondaryConnection(type);
-                TransactionContext txc = workerContext.getPrimaryConnection().getLatestTransactionContext();
-                // Hack, if bypass Postgres, put a committed token in the writtenKeys hashmap.
-                Map<String, List<String>> writtenKeys = new HashMap<>();
-                writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
-                o = c.callFunction(name, writtenKeys, workerContext, txc, service, execID, functionID, arguments);
-            }
+            o = callFunctionInternal(name, service, execID, functionID, replayMode, arguments);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -254,7 +236,31 @@ public class ApiaryWorker {
         functionAverageRuntimesNs.get(name).getAndAdd(((double) (runtime - old)) / runningAverageLength);
     }
 
-    private void retroExecuteAll(long execID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws SQLException, InvalidProtocolBufferException {
+    private FunctionOutput callFunctionInternal(String name, String service, long execID, long functionID, int replayMode, Object[] arguments) throws Exception {
+        FunctionOutput o;
+        if (!workerContext.functionExists(name)) {
+            logger.info("Unrecognized function: {}", name);
+        }
+        String type = workerContext.getFunctionType(name);
+        if (type.equals(ApiaryConfig.stateless)) {
+            ApiaryFunction function = workerContext.getFunction(name);
+            ApiaryStatelessContext context = new ApiaryStatelessContext(workerContext, service, execID, functionID, replayMode);
+            o = function.apiaryRunFunction(context, arguments);
+        } else if (workerContext.getPrimaryConnectionType().equals(type)) {
+            ApiaryConnection c = workerContext.getPrimaryConnection();
+            o = c.callFunction(name, workerContext, service, execID, functionID, replayMode, arguments);
+        } else { // Execute a read-only secondary function without primary involvement using a cached txc.
+            ApiarySecondaryConnection c = workerContext.getSecondaryConnection(type);
+            TransactionContext txc = workerContext.getPrimaryConnection().getLatestTransactionContext();
+            // Hack, if bypass Postgres, put a committed token in the writtenKeys hashmap.
+            Map<String, List<String>> writtenKeys = new HashMap<>();
+            writtenKeys.putIfAbsent(MysqlContext.committedToken, new ArrayList<>());
+            o = c.callFunction(name, writtenKeys, workerContext, txc, service, execID, functionID, arguments);
+        }
+        return o;
+    }
+
+    private void retroExecuteAll(long execID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws Exception {
         logger.info("retro execute all!");
         assert(workerContext.provBuff != null);
         Connection conn = workerContext.provBuff.conn.get();
@@ -265,32 +271,47 @@ public class ApiaryWorker {
         Statement stmt = conn.createStatement();
         ResultSet historyRs = stmt.executeQuery(provQuery);
 
-        // Re-execute one by one.
-        while (historyRs.next()) {
-            long resTxId = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-            long resExecId = historyRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-            long resFuncId = historyRs.getLong(ProvenanceBuffer.PROV_FUNCID);
-            String resName = historyRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
-            logger.info("Re-executing txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
-        }
-
         // Find previous input of execution ID.
         String inputQuery = String.format("SELECT * FROM %s WHERE %s >= %d ORDER BY %s;",
                 ApiaryConfig.tableRecordedInputs, ProvenanceBuffer.PROV_EXECUTIONID, execID, ProvenanceBuffer.PROV_EXECUTIONID);
         Statement stmt2 = conn.createStatement();
         ResultSet inputRs = stmt2.executeQuery(inputQuery);
 
-        while (inputRs.next()) {
-            long resExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-            byte[] recordInput = inputRs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
-            ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
-            Object[] arguments = Utilities.getArgumentsFromRequest(req);
-            logger.info("Original arguments execid {}, inputs {}", resExecId, arguments);
+        // Cache inputs of previous executions. <execId, input>
+        // TODO: clean up this cache.
+        Map<Long, Object[]> execIdFuncIdArgs = new HashMap<>();
+
+        // Re-execute one by one.
+        Object output = null;
+        while (historyRs.next()) {
+            long resTxId = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            long resExecId = historyRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+            long resFuncId = historyRs.getLong(ProvenanceBuffer.PROV_FUNCID);
+            String resName = historyRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split(".")[-1];
+            logger.info("Re-executing txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
+            if (inputRs.next()) {
+                // Get input.
+                long resExecId2 = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+                byte[] recordInput = inputRs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
+                ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
+                Object[] arguments = Utilities.getArgumentsFromRequest(req);
+                logger.info("Original arguments execid {}, inputs {}", resExecId2, arguments);
+                execIdFuncIdArgs.putIfAbsent(resExecId2, arguments);
+            }
+
+            Object[] input;
+            if (resFuncId == 0l) {
+                // Retrieve input from the cache.
+                input = execIdFuncIdArgs.get(resExecId);
+                FunctionOutput o = callFunctionInternal(resName, "retroReplay", execID, resFuncId, replayMode, input);
+                output = o.output;
+            } else {
+                // TODO: implement.
+                logger.error("Do not support more than one func.");
+            }
         }
 
-
-
-        ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, List.of(123).stream().mapToInt(i -> i).toArray());
+        ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, output);
         outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
     }
 

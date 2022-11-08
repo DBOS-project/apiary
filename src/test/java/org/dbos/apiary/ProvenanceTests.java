@@ -211,6 +211,7 @@ public class ProvenanceTests {
         rs.close();
 
         // Retroactively execute all.
+        // TODO: reset database and re-execute.
         resList = client.retroReplay(resExecId3).getIntArray();
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);

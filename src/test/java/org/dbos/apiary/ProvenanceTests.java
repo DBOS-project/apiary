@@ -7,8 +7,6 @@ import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.replay.PostgresFetchSubscribers;
 import org.dbos.apiary.procedures.postgres.replay.PostgresForumSubscribe;
 import org.dbos.apiary.procedures.postgres.replay.PostgresIsSubscribed;
-import org.dbos.apiary.procedures.postgres.retro.PostgresFetchCount;
-import org.dbos.apiary.procedures.postgres.retro.PostgresFetchList;
 import org.dbos.apiary.procedures.postgres.retro.PostgresIsSubscribedTxn;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceBasic;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceJoins;

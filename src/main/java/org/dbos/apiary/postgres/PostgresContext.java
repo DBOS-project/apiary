@@ -64,8 +64,8 @@ public class PostgresContext extends ApiaryContext {
             }
             this.txc = new TransactionContext(txID, xmin, xmax, activeTxIDs);
 
-            // Look up the original transaction ID if it's a replay.
-            if (replayMode != ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
+            // Look up the original transaction ID if it's a single replay.
+            if (replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
                 PreparedStatement pstmt = conn.prepareStatement(checkReplayTxID);
                 pstmt.setLong(1, execID);
                 pstmt.setLong(2, functionID);

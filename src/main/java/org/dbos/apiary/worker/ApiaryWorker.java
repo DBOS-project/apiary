@@ -376,48 +376,8 @@ public class ApiaryWorker {
             }
         }
 
-        // If we still have pending tasks, execute them one by one at the end.
-        // It is a heuristic because we assume no isolation between workflows. So they can interleave whatever they want.
-        for (long resExecId : pendingTasks.keySet()) {
-            origExecId = resExecId;
-            Queue<Task> queuedTasks = new LinkedBlockingQueue<>(pendingTasks.get(resExecId).values());
-            Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(resExecId);
-
-            while (!queuedTasks.isEmpty()) {
-                Task currTask = queuedTasks.poll();
-                if (currTask == null) {
-                    break;
-                }
-                // Run all tasks that have no dependencies.
-                FunctionOutput fo;
-                if (currTask.dereferenceFutures(currFuncIdToValue)) {
-                    logger.info("Executing retro new function. ExecID {}, FuncID {}", resExecId, currTask.functionID);
-                    fo = callFunctionInternal(currTask.funcName, "retroReplay", resExecId, currTask.functionID, replayMode, currTask.input);
-                    assert (fo != null);
-                } else {
-                    queuedTasks.add(currTask);  // Add it back.
-                    continue;
-                }
-
-                // Store output value.
-                execFuncIdToValue.get(resExecId).putIfAbsent(currTask.functionID, fo.output);
-                // Queue all of its async tasks to the pending map.
-                for (Task t : fo.queuedTasks) {
-                    queuedTasks.add(t);
-                }
-            }
-
-            // Check if we need to update the final output map.
-            Object o = execIdToFinalOutput.get(resExecId);
-            if (o instanceof ApiaryFuture) {
-                ApiaryFuture futureOutput = (ApiaryFuture) o;
-                assert (execFuncIdToValue.get(resExecId).containsKey(futureOutput.futureID));
-                Object resFo = execFuncIdToValue.get(resExecId).get(futureOutput.futureID);
-                execIdToFinalOutput.put(resExecId, resFo);
-            }
-            // Clean up.
-            execFuncIdToValue.remove(resExecId);
-            pendingTasks.remove(resExecId);
+        if (!pendingTasks.isEmpty()) {
+            throw new RuntimeException("Still more pending tasks to be solved! Currently do not support adding transactions.");
         }
 
         output = execIdToFinalOutput.get(origExecId);  // The last execution ID.

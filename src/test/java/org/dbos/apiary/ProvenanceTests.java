@@ -323,16 +323,16 @@ public class ProvenanceTests {
         // Do not register the second subscribe function.
 
         // Register the new pipeline, so we can test the case where we have more functions.
-        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchList::new);
-        apiaryWorker.registerFunction("PostgresFetchCount", ApiaryConfig.postgres, PostgresFetchCount::new);
+        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
         apiaryWorker.startServing();
 
         provBuff = apiaryWorker.workerContext.provBuff;
         assert(provBuff != null);
 
         conn.truncateTable("ForumSubscription", false);
-        int retroSum = client.get().retroReplay(resExecId).getInt();
-        assertEquals(1, retroSum);
+        int[] retroList = client.get().retroReplay(resExecId).getIntArray();
+        assertEquals(1, retroList.length);
+        assertEquals(userId, retroList[0]);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 

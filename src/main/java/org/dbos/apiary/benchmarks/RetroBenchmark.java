@@ -63,6 +63,8 @@ public class RetroBenchmark {
 
     public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageRead, int percentageWrite, boolean skipLoad, int replayMode, long targetExecId) throws SQLException, InterruptedException, ExecutionException, InvalidProtocolBufferException {
 
+        ApiaryConfig.isolationLevel = ApiaryConfig.SERIALIZABLE;
+
         if (replayMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
             ApiaryConfig.recordInput = true;
             if (!skipLoad) {

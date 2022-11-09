@@ -2,19 +2,19 @@ package org.dbos.apiary.benchmarks;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
+import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.replay.*;
+import org.dbos.apiary.procedures.postgres.retro.PostgresIsSubscribedTxn;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
@@ -35,10 +35,44 @@ public class RetroBenchmark {
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
     private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();
 
-    public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageRead, int percentageWrite, boolean skipLoad) throws SQLException, InterruptedException {
-        // Reset tables.
-        if (!skipLoad) {
-            resetTables(dbAddr);
+    private static ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
+
+    private static final int initialUserId = 123;
+    private static final int initialForumId = 555;
+
+    static class SubsTask implements Callable<Integer> {
+        private final int userId;
+        private final int forumId;
+
+        public SubsTask(int userId, int forumId) {
+            this.userId = userId;
+            this.forumId = forumId;
+        }
+
+        @Override
+        public Integer call() {
+            int res;
+            try {
+                res = client.get().executeFunction("PostgresIsSubscribed", userId, forumId).getInt();
+            } catch (Exception e) {
+                res = -1;
+            }
+            return res;
+        }
+    }
+
+    public static void benchmark(String dbAddr, Integer interval, Integer duration, int percentageRead, int percentageWrite, boolean skipLoad, int replayMode, long targetExecId) throws SQLException, InterruptedException, ExecutionException, InvalidProtocolBufferException {
+
+        if (replayMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
+            ApiaryConfig.recordInput = true;
+            if (!skipLoad) {
+                // Only reset tables if we do initial runs.
+                resetAllTables(dbAddr);
+            }
+        } else {
+            ApiaryConfig.recordInput = false;
+            // TODO: a better way to restore the database.
+            resetAppTables(dbAddr);
         }
 
         assert (percentageRead + percentageWrite == 100);
@@ -55,14 +89,43 @@ public class RetroBenchmark {
         }
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pgConn);
 
-        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
-        apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
+        if (replayMode == 0) {
+            // The buggy version.
+            apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
+            apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
+        } else {
+            // The transactional version.
+            apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribedTxn::new);
+        }
         apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
         apiaryWorker.startServing();
 
-        ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
+        if (replayMode > 0) {
+            long startTime = System.currentTimeMillis();
+            replayExec(replayMode, targetExecId);
+            apiaryWorker.shutdown();
+            long elapsedTime = System.currentTimeMillis() - startTime;
+            logger.info("Replay mode {}, execution time: {} ms", replayMode, elapsedTime);
+            return;
+        }
 
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
+
+        // Insert duplicated entries.
+        List<SubsTask> tasks = new ArrayList<>();
+        tasks.add(new SubsTask(initialUserId, initialForumId));
+        tasks.add(new SubsTask(initialUserId, initialForumId));
+        List<Future<Integer>> futures = threadPool.invokeAll(tasks);
+        for (Future<Integer> future : futures) {
+            if (!future.isCancelled()) {
+                int res = future.get();
+                assert (res != -1);
+            }
+        }
+
+        // Check subscriptions.
+        int[] resList = client.get().executeFunction("PostgresFetchSubscribers", initialForumId).getIntArray();
+        assert (resList.length > 1);
 
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
@@ -136,7 +199,20 @@ public class RetroBenchmark {
         apiaryWorker.shutdown();
     }
 
-    private static void resetTables(String dbAddr) {
+    private static void replayExec(int replayMode, long targetExecId) throws InvalidProtocolBufferException {
+        if (replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
+            // Replay a single execution.
+            int res = client.get().replayFunction(targetExecId, "PostgresIsSubscribed", initialUserId, initialForumId).getInt();
+            assert (res == initialUserId);
+        } else if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()){
+            FunctionOutput res = client.get().retroReplay(targetExecId);
+            assert (res != null);
+        } else {
+            logger.error("Do not support replay mode {}", replayMode);
+        }
+    }
+
+    private static void resetAllTables(String dbAddr) {
         try {
             PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
 
@@ -145,6 +221,16 @@ public class RetroBenchmark {
             pgConn.dropTable(ApiaryConfig.tableFuncInvocations);
             pgConn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
             pgConn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.info("Failed to connect to Postgres.");
+        }
+    }
+
+    private static void resetAppTables(String dbAddr) {
+        try {
+            PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
+            pgConn.truncateTable("ForumSubscription", false);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");

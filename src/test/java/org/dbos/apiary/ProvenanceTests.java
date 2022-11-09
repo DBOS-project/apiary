@@ -332,7 +332,7 @@ public class ProvenanceTests {
 
         conn.truncateTable("ForumSubscription", false);
         int retroSum = client.get().retroReplay(resExecId).getInt();
-        assertEquals(userId, retroSum);
+        assertEquals(1, retroSum);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 

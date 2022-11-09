@@ -7,6 +7,8 @@ import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.replay.PostgresFetchSubscribers;
 import org.dbos.apiary.procedures.postgres.replay.PostgresForumSubscribe;
 import org.dbos.apiary.procedures.postgres.replay.PostgresIsSubscribed;
+import org.dbos.apiary.procedures.postgres.retro.PostgresFetchCount;
+import org.dbos.apiary.procedures.postgres.retro.PostgresFetchList;
 import org.dbos.apiary.procedures.postgres.retro.PostgresIsSubscribedTxn;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceBasic;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceJoins;
@@ -319,16 +321,18 @@ public class ProvenanceTests {
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribedTxn::new);  // Register the new one.
         // Do not register the second subscribe function.
-        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+
+        // Register the new pipeline, so we can test the case where we have more functions.
+        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchList::new);
+        apiaryWorker.registerFunction("PostgresFetchCount", ApiaryConfig.postgres, PostgresFetchCount::new);
         apiaryWorker.startServing();
 
         provBuff = apiaryWorker.workerContext.provBuff;
         assert(provBuff != null);
 
         conn.truncateTable("ForumSubscription", false);
-        int[] retroResList2 = client.get().retroReplay(resExecId).getIntArray();
-        assertEquals(1, retroResList2.length);
-        assertEquals(userId, retroResList2[0]);
+        int retroSum = client.get().retroReplay(resExecId).getInt();
+        assertEquals(userId, retroSum);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 

@@ -379,6 +379,7 @@ public class ApiaryWorker {
         // If we still have pending tasks, execute them one by one at the end.
         // It is a heuristic because we assume no isolation between workflows. So they can interleave whatever they want.
         for (long resExecId : pendingTasks.keySet()) {
+            origExecId = resExecId;
             Queue<Task> queuedTasks = new LinkedBlockingQueue<>(pendingTasks.get(resExecId).values());
             Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(resExecId);
 
@@ -418,6 +419,7 @@ public class ApiaryWorker {
             pendingTasks.remove(resExecId);
         }
 
+        output = execIdToFinalOutput.get(origExecId);  // The last execution ID.
         ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, output);
         outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
     }

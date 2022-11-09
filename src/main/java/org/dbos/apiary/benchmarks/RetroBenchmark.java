@@ -223,6 +223,7 @@ public class RetroBenchmark {
             pgConn.dropTable(ApiaryConfig.tableFuncInvocations);
             pgConn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
             pgConn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
+            pgConn.dropTable(ApiaryConfig.tableRecordedInputs);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");

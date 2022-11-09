@@ -391,6 +391,7 @@ public class ApiaryWorker {
                 // Run all tasks that have no dependencies.
                 FunctionOutput fo;
                 if (currTask.dereferenceFutures(currFuncIdToValue)) {
+                    logger.info("Executing retro new function. ExecID {}, FuncID {}", resExecId, currTask.functionID);
                     fo = callFunctionInternal(currTask.funcName, "retroReplay", resExecId, currTask.functionID, replayMode, currTask.input);
                     assert (fo != null);
                 } else {

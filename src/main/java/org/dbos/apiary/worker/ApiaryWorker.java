@@ -321,19 +321,22 @@ public class ApiaryWorker {
                 }
             }
 
-            FunctionOutput fo = null;
+            FunctionOutput fo;
             if (resFuncId == 0l) {
                 // This is the first function of a request.
                 fo = callFunctionInternal(resName, "retroReplay", resExecId, resFuncId, replayMode, origInputs);
                 assert (fo != null);
-                output = fo.output;
                 execFuncIdToValue.putIfAbsent(resExecId, new HashMap<>());
-                execIdToFinalOutput.putIfAbsent(resExecId, output);
+                execIdToFinalOutput.putIfAbsent(resExecId, fo.output);
                 pendingTasks.putIfAbsent(resExecId, new HashMap<>());
             } else {
+                // Skip the task if it is absent. Because we allow reducing the number of called functions (currently does not support adding more).
+                if (!pendingTasks.containsKey(resExecId) || !pendingTasks.get(resExecId).containsKey(resFuncId)) {
+                    logger.info("Skip function ID {}, not found in pending tasks.", resFuncId);
+                    continue;
+                }
                 // Find the task in the stash. Make sure that all futures have been resolved.
                 Task currTask = pendingTasks.get(resExecId).get(resFuncId);
-                assert (currTask != null);
 
                 // Resolve input for this task. Must success.
                 Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(resExecId);
@@ -345,12 +348,11 @@ public class ApiaryWorker {
 
                 fo = callFunctionInternal(currTask.funcName, "retroReplay", resExecId, resFuncId, replayMode, currTask.input);
                 assert (fo != null);
-                output = fo.output;
                 // Remove this task from the map.
                 pendingTasks.get(resExecId).remove(resFuncId);
             }
             // Store output value.
-            execFuncIdToValue.get(resExecId).putIfAbsent(resFuncId, output);
+            execFuncIdToValue.get(resExecId).putIfAbsent(resFuncId, fo.output);
             // Queue all of its async tasks to the pending map.
             for (Task t : fo.queuedTasks) {
                 if (pendingTasks.get(resExecId).containsKey(t.functionID)) {
@@ -367,7 +369,6 @@ public class ApiaryWorker {
                     assert (execFuncIdToValue.get(resExecId).containsKey(futureOutput.futureID));
                     Object resFo = execFuncIdToValue.get(resExecId).get(futureOutput.futureID);
                     execIdToFinalOutput.put(resExecId, resFo);
-                    output = resFo;
                 }
                 // Clean up.
                 execFuncIdToValue.remove(resExecId);
@@ -375,6 +376,11 @@ public class ApiaryWorker {
             }
         }
 
+        if (!pendingTasks.isEmpty()) {
+            throw new RuntimeException("Still more pending tasks to be solved! Currently do not support adding transactions.");
+        }
+
+        output = execIdToFinalOutput.get(origExecId);  // The last execution ID.
         ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, output);
         outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
     }

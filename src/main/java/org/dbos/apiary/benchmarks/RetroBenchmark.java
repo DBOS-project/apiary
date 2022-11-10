@@ -105,7 +105,6 @@ public class RetroBenchmark {
         if (replayMode > 0) {
             long startTime = System.currentTimeMillis();
             replayExec(replayMode, targetExecId);
-            apiaryWorker.shutdown();
             long elapsedTime = System.currentTimeMillis() - startTime;
             int[] resList = client.get().executeFunction("PostgresFetchSubscribers", initialForumId).getIntArray();
             if (resList.length > 1) {
@@ -113,6 +112,7 @@ public class RetroBenchmark {
             } else {
                 logger.info("Replay found no duplications.");
             }
+            apiaryWorker.shutdown();
             logger.info("Replay mode {}, execution time: {} ms", replayMode, elapsedTime);
             return;
         }

@@ -245,7 +245,7 @@ public class ProvenanceTests {
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
 
         // Start a thread pool.
-        ExecutorService threadPool = Executors.newFixedThreadPool(4);
+        ExecutorService threadPool = Executors.newFixedThreadPool(2);
 
         class SubsTask implements Callable<Integer> {
             private final int userId;
@@ -274,6 +274,9 @@ public class ProvenanceTests {
 
         // Push two concurrent tasks.
         List<SubsTask> tasks = new ArrayList<>();
+        tasks.add(new SubsTask(userId, forumId));
+        tasks.add(new SubsTask(userId, forumId));
+        // Then another two tasks. Should not affect the result.
         tasks.add(new SubsTask(userId, forumId));
         tasks.add(new SubsTask(userId, forumId));
         List<Future<Integer>> futures = threadPool.invokeAll(tasks);

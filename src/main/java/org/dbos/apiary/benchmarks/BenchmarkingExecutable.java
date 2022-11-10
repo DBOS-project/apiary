@@ -28,6 +28,8 @@ public class BenchmarkingExecutable {
         options.addOption("notxn", false, "Disable XDST transaction.");
         options.addOption("skipLoad", false, "Skip data loading.");
         options.addOption("noProv", false, "Disable provenance tracing.");
+        options.addOption("execId", true, "Target execution ID for retro-replay.");
+        options.addOption("retroMode", true, "Replay mode: 0-not replay, 1-single replay execID, 2-replay all after execID.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -129,7 +131,15 @@ public class BenchmarkingExecutable {
             int percentageRead = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 100;
             int percentageWrite = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 100;
             logger.info("Retroactive Benchmark: read {}%, write {}%", percentageRead, percentageWrite);
-            RetroBenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageWrite, skipLoadData);
+            int replayMode = 0;
+            long execId = 0l;
+            if (cmd.hasOption("retroMode")) {
+                replayMode = Integer.parseInt(cmd.getOptionValue("retroMode"));
+                if (replayMode > 0) {
+                    execId = Long.parseLong(cmd.getOptionValue("execId"));
+                }
+            }
+            RetroBenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageWrite, skipLoadData, replayMode, execId);
         }
     }
 }

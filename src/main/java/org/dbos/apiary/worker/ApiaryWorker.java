@@ -1,6 +1,7 @@
 package org.dbos.apiary.worker;
 
 import com.google.common.util.concurrent.AtomicDouble;
+import com.google.protobuf.Api;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.ExecuteFunctionReply;
@@ -276,10 +277,8 @@ public class ApiaryWorker {
         ResultSet historyRs = stmt.executeQuery(provQuery);
 
         // Find previous input of execution ID.
-        String inputQuery = String.format("SELECT * FROM %s WHERE %s >= %d ORDER BY %s;",
-                ApiaryConfig.tableRecordedInputs, ProvenanceBuffer.PROV_EXECUTIONID, targetExecID, ProvenanceBuffer.PROV_EXECUTIONID);
         Statement stmt2 = conn.createStatement();
-        ResultSet inputRs = stmt2.executeQuery(inputQuery);
+        ResultSet inputRs = null;
 
         // Cache inputs of the original execution. <execId, input>
         long origExecId = -1;
@@ -304,6 +303,14 @@ public class ApiaryWorker {
             String resName = resNames[resNames.length - 1]; // Extract the actual function name.
             logger.info("Retro-executing txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
             if ((resExecId != origExecId) && (resFuncId == 0l)) {
+                if (origExecId == -1) {
+                    // Get the input data.
+                    String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
+                                    "WHERE %s >= %d AND %s = 0 ORDER BY %s;",
+                            ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_REQ_BYTES, ApiaryConfig.tableRecordedInputs, ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, resTxId, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
+                    );
+                    inputRs = stmt2.executeQuery(inputQuery);
+                }
                 // Read the input for this execution ID.
                 if (inputRs.next()) {
                     origExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);

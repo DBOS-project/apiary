@@ -71,7 +71,7 @@ public class RetroBenchmark {
                 // Only reset tables if we do initial runs.
                 resetAllTables(dbAddr);
             }
-        } else {
+        } else if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()){
             ApiaryConfig.recordInput = false;
             // TODO: a better way to restore the database.
             resetAppTables(dbAddr);

@@ -91,7 +91,7 @@ public class RetroBenchmark {
         }
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pgConn);
 
-        if (replayMode == 0) {
+        if (replayMode != ApiaryConfig.ReplayMode.ALL.getValue()) {
             // The buggy version.
             apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
             apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);

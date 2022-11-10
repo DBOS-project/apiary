@@ -306,8 +306,13 @@ public class ApiaryWorker {
                 if (origExecId == -1) {
                     // Get the input data.
                     String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
-                                    "WHERE %s >= %d AND %s = 0 ORDER BY %s;",
-                            ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_REQ_BYTES, ApiaryConfig.tableRecordedInputs, ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, resTxId, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
+                                    "WHERE %s >= %d AND %s = 0 AND %s = 0 ORDER BY %s;",
+                            ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
+                            ProvenanceBuffer.PROV_REQ_BYTES, ApiaryConfig.tableRecordedInputs,
+                            ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID,
+                            ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
+                            resTxId, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY,
+                            ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
                     );
                     inputRs = stmt2.executeQuery(inputQuery);
                 }

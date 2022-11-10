@@ -271,10 +271,23 @@ public class ApiaryWorker {
         ApiaryConfig.captureReads = false;
 
         // Find previous execution history.
-        String provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, targetExecID,
-                ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        String provQuery = String.format("SELECT %s FROM %s WHERE %s = %d AND %s=0 AND %s=0;",
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ApiaryConfig.tableFuncInvocations,
+                ProvenanceBuffer.PROV_EXECUTIONID, targetExecID, ProvenanceBuffer.PROV_FUNCID,
+                ProvenanceBuffer.PROV_ISREPLAY);
         Statement stmt = conn.createStatement();
         ResultSet historyRs = stmt.executeQuery(provQuery);
+        long origTxid = -1;
+        if (historyRs.next()) {
+            origTxid = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        } else {
+            logger.error("No corresponding original transaction for execution {}", targetExecID);
+            throw new RuntimeException("Cannot find original transactioin!");
+        }
+        historyRs.close();
+        provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
+                ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        historyRs = stmt.executeQuery(provQuery);
 
         // Find previous input of execution ID.
         Statement stmt2 = conn.createStatement();

@@ -71,10 +71,12 @@ public class RetroBenchmark {
                 // Only reset tables if we do initial runs.
                 resetAllTables(dbAddr);
             }
-        } else if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()){
+        } else {
             ApiaryConfig.recordInput = false;
-            // TODO: a better way to restore the database.
-            resetAppTables(dbAddr);
+            if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()){
+                // TODO: a better way to restore the database.
+                resetAppTables(dbAddr);
+            }
         }
 
         assert (percentageRead + percentageWrite == 100);
@@ -204,6 +206,7 @@ public class RetroBenchmark {
 
         threadPool.shutdown();
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
         apiaryWorker.shutdown();
     }
 

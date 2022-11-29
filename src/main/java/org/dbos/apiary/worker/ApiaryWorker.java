@@ -105,15 +105,21 @@ public class ApiaryWorker {
         try {
             garbageCollect = false;
             Thread.sleep(100);
-            garbageCollectorThread.interrupt();
-            garbageCollectorThread.join();
+            if (garbageCollectorThread != null) {
+                garbageCollectorThread.interrupt();
+                garbageCollectorThread.join();
+            }
             reqThreadPool.shutdown();
             reqThreadPool.awaitTermination(10, TimeUnit.SECONDS);
             repThreadPool.shutdown();
             repThreadPool.awaitTermination(10, TimeUnit.SECONDS);
-            serverThread.interrupt();
+            if (serverThread != null) {
+                serverThread.interrupt();
+            }
             zContext.close();
-            serverThread.join();
+            if (serverThread != null) {
+                serverThread.join();
+            }
             if (workerContext.provBuff != null) {
                 workerContext.provBuff.close();
             }

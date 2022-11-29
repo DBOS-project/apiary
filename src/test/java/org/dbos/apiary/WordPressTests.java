@@ -4,10 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.wordpress.WPAddComment;
-import org.dbos.apiary.procedures.postgres.wordpress.WPAddPost;
-import org.dbos.apiary.procedures.postgres.wordpress.WPGetPostComments;
-import org.dbos.apiary.procedures.postgres.wordpress.WPUtil;
+import org.dbos.apiary.procedures.postgres.wordpress.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -82,6 +79,8 @@ public class WordPressTests {
         apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new);
         apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddComment::new);
         apiaryWorker.registerFunction("WPGetPostComments", ApiaryConfig.postgres, WPGetPostComments::new);
+        apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new);
+        apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new);
         apiaryWorker.startServing();
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
@@ -101,6 +100,10 @@ public class WordPressTests {
         assertTrue(resList[1].equals("test comment to a post."));
         assertTrue(resList[2].equals("second test comment to a post."));
 
+        // Trash the post.
+        res = client.executeFunction("WPTrashPost", 123).getInt();
+        assertEquals(123, res);
+        
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }

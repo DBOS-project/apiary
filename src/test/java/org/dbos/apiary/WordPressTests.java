@@ -197,6 +197,7 @@ public class WordPressTests {
 
             // Launch concurrent tasks.
             Future<Integer> trashResFut = threadPool.submit(new WpTask(postIds, -1, "trashpost"));
+            Thread.sleep(1);
             Future<Integer> commentResFut = threadPool.submit(new WpTask(postIds, commentIds, "test comment to a post " + commentIds));
 
             int trashRes, commentRes;

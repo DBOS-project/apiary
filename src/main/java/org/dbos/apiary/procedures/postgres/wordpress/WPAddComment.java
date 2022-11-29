@@ -8,7 +8,8 @@ import java.sql.SQLException;
 
 public class WPAddComment extends PostgresFunction {
 
-    private static final String checkPost = "SELECT " + WPUtil.WP_POST_ID + " FROM " + WPUtil.WP_POSTS_TABLE + " WHERE " + WPUtil.WP_POST_ID + " = ?;";
+    private static final String checkPost = String.format("SELECT %s, %s FROM %s WHERE %s = ?",
+            WPUtil.WP_POST_STATUS, WPUtil.WP_POST_ID, WPUtil.WP_POSTS_TABLE, WPUtil.WP_POST_ID);
 
     // CommentID, PostID, Comment, Status.
     private static final String addComment = "INSERT INTO " + WPUtil.WP_COMMENTS_TABLE + " VALUES(?, ?, ?, ?)";
@@ -21,8 +22,12 @@ public class WPAddComment extends PostgresFunction {
             // Does not exist.
             return -1;
         }
-        // Otherwise, add a comment.
-        ctxt.executeUpdate(addComment, commentId, postId, content, WPUtil.WP_STATUS_VISIBLE);
+        String postStatus = r.getString(WPUtil.WP_POST_STATUS);
+        if (postStatus.equals(WPUtil.WP_STATUS_VISIBLE)) {
+            ctxt.executeUpdate(addComment, commentId, postId, content, WPUtil.WP_STATUS_VISIBLE);
+        } else {
+            ctxt.executeUpdate(addComment, commentId, postId, content, WPUtil.WP_STATUS_POST_TRASHED);
+        }
         return 0;
     }
 }

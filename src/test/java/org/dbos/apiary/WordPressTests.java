@@ -224,6 +224,7 @@ public class WordPressTests {
             commentIds++;
         }
 
+        threadPool.shutdown();
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }

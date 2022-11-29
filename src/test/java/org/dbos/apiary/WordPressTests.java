@@ -86,16 +86,16 @@ public class WordPressTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int res;
-        res = client.executeFunction("WPAddComment", 123l, 3450l, "this should not work.").getInt();
+        res = client.executeFunction("WPAddComment", 123, 3450, "this should not work.").getInt();
         assertEquals(-1, res);
-        res = client.executeFunction("WPAddPost", 123l, "test post").getInt();
+        res = client.executeFunction("WPAddPost", 123, "test post").getInt();
         assertEquals(0, res);
-        res = client.executeFunction("WPAddComment", 123l, 3450l, "test comment to a post.").getInt();
+        res = client.executeFunction("WPAddComment", 123, 3450, "test comment to a post.").getInt();
         assertEquals(0, res);
-        res = client.executeFunction("WPAddComment", 123l, 3460l, "second test comment to a post.").getInt();
+        res = client.executeFunction("WPAddComment", 123, 3460, "second test comment to a post.").getInt();
         assertEquals(0, res);
 
-        String[] resList = client.executeFunction("WPGetPostComments", 123l).getStringArray();
+        String[] resList = client.executeFunction("WPGetPostComments", 123).getStringArray();
         assertEquals(3, resList.length);
         assertTrue(resList[0].equals("test post"));
         assertTrue(resList[1].equals("test comment to a post."));

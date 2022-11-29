@@ -11,7 +11,7 @@ public class WPAddPost extends PostgresFunction {
     private static final String addPost = "INSERT INTO " + WPUtil.WP_POSTS_TABLE + " VALUES (?, ?, ?)";
 
     // Return 0 on success, -1 on failure.
-    public static int runFunction(PostgresContext ctxt, long postId, String content) throws SQLException {
+    public static int runFunction(PostgresContext ctxt, int postId, String content) throws SQLException {
         ctxt.executeUpdate(addPost, postId, content, WPUtil.WP_STATUS_VISIBLE);
         return 0;
     }

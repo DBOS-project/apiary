@@ -14,7 +14,7 @@ public class WPAddComment extends PostgresFunction {
     private static final String addComment = "INSERT INTO " + WPUtil.WP_COMMENTS_TABLE + " VALUES(?, ?, ?, ?)";
 
     // Return 0 on success, -1 on failure.
-    public static int runFunction(PostgresContext ctxt, long postId, long commentId, String content) throws SQLException {
+    public static int runFunction(PostgresContext ctxt, int postId, int commentId, String content) throws SQLException {
         // Check if the post exists.
         ResultSet r = ctxt.executeQuery(checkPost, postId);
         if (!r.next()) {

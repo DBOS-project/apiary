@@ -22,12 +22,8 @@ public class WPAddComment extends PostgresFunction {
             // Does not exist.
             return -1;
         }
-        String postStatus = r.getString(WPUtil.WP_POST_STATUS);
-        if (postStatus.equals(WPUtil.WP_STATUS_VISIBLE)) {
-            ctxt.executeUpdate(addComment, commentId, postId, content, WPUtil.WP_STATUS_VISIBLE);
-        } else {
-            ctxt.executeUpdate(addComment, commentId, postId, content, WPUtil.WP_STATUS_POST_TRASHED);
-        }
+
+        ctxt.executeUpdate(addComment, commentId, postId, content, WPUtil.WP_STATUS_VISIBLE);
         return 0;
     }
 }

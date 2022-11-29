@@ -81,6 +81,7 @@ public class WordPressTests {
         apiaryWorker.registerFunction("WPGetPostComments", ApiaryConfig.postgres, WPGetPostComments::new);
         apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new);
         apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new);
+        apiaryWorker.registerFunction("WPUntrashPost", ApiaryConfig.postgres, WPUntrashPost::new);
         apiaryWorker.startServing();
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
@@ -103,7 +104,11 @@ public class WordPressTests {
         // Trash the post.
         res = client.executeFunction("WPTrashPost", 123).getInt();
         assertEquals(123, res);
-        
+
+        // Untrash the post.
+        res = client.executeFunction("WPUntrashPost", 123).getInt();
+        assertEquals(0, res);
+
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }

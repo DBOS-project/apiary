@@ -100,5 +100,8 @@ public class WordPressTests {
         assertTrue(resList[0].equals("test post"));
         assertTrue(resList[1].equals("test comment to a post."));
         assertTrue(resList[2].equals("second test comment to a post."));
+
+        // Check provenance.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 }

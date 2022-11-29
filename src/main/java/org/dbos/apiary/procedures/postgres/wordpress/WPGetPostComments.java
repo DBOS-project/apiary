@@ -15,7 +15,7 @@ public class WPGetPostComments extends PostgresFunction {
 
     private static final String getPost = String.format("SELECT %s, %s FROM %s WHERE %s = ?",
             WPUtil.WP_POST_STATUS, WPUtil.WP_POST_CONTENT, WPUtil.WP_POSTS_TABLE, WPUtil.WP_POST_ID);
-    private static final String getComments = String.format("SELECT %s FROM %s WHERE %s = ? AND %s = %s ORDER BY %s",
+    private static final String getComments = String.format("SELECT %s FROM %s WHERE %s = ? AND %s = \'%s\' ORDER BY %s",
             WPUtil.WP_COMMENT_CONTENT, WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_POST_ID, WPUtil.WP_COMMENT_STATUS, WPUtil.WP_STATUS_VISIBLE, WPUtil.WP_COMMENT_ID);
 
     public static String[] runFunction(PostgresContext ctxt, int postId) throws SQLException {

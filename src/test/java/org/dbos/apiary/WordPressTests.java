@@ -73,7 +73,7 @@ public class WordPressTests {
     }
 
     @Test
-    public void testWPSerialized() throws SQLException, InvalidProtocolBufferException {
+    public void testWPSerialized() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         logger.info("testWPSerialized");
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 

@@ -82,6 +82,7 @@ public class WordPressTests {
         apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new);
         apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new);
         apiaryWorker.registerFunction("WPUntrashPost", ApiaryConfig.postgres, WPUntrashPost::new);
+        apiaryWorker.registerFunction("WPCheckCommentStatus", ApiaryConfig.postgres, WPCheckCommentStatus::new);
         apiaryWorker.startServing();
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
@@ -105,9 +106,19 @@ public class WordPressTests {
         res = client.executeFunction("WPTrashPost", 123).getInt();
         assertEquals(123, res);
 
+        // Check status. Should all be post-trashed.
+        resList = client.executeFunction("WPCheckCommentStatus", 123).getStringArray();
+        assertEquals(1, resList.length);
+        assertTrue(resList[0].equals(WPUtil.WP_STATUS_POST_TRASHED));
+
         // Untrash the post.
         res = client.executeFunction("WPUntrashPost", 123).getInt();
         assertEquals(0, res);
+
+        // Check status again. Should all be visible.
+        resList = client.executeFunction("WPCheckCommentStatus", 123).getStringArray();
+        assertEquals(1, resList.length);
+        assertTrue(resList[0].equals(WPUtil.WP_STATUS_VISIBLE));
 
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);

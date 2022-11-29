@@ -29,4 +29,8 @@ public class WPUtil {
             + WP_COMMENT_CONTENT + " VARCHAR(2000) NOT NULL, "
             + WP_COMMENT_STATUS + " VARCHAR(20) NOT NULL";
 
+    // For status.
+    public static final String WP_STATUS_VISIBLE = "visible";
+    public static final String WP_STATUS_TRASHED = "trashed";
+    public static final String WP_STATUS_POST_TRASHED = "post-trashed";
 }

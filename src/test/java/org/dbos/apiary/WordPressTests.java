@@ -1,7 +1,12 @@
 package org.dbos.apiary;
 
+import com.google.protobuf.InvalidProtocolBufferException;
+import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
+import org.dbos.apiary.procedures.postgres.wordpress.WPAddComment;
+import org.dbos.apiary.procedures.postgres.wordpress.WPAddPost;
+import org.dbos.apiary.procedures.postgres.wordpress.WPGetPostComments;
 import org.dbos.apiary.procedures.postgres.wordpress.WPUtil;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
@@ -15,6 +20,8 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 // To test the bug and fixes of WordPress-11073: https://core.trac.wordpress.org/ticket/11073
@@ -66,11 +73,32 @@ public class WordPressTests {
     }
 
     @Test
-    public void testWPSerialized() throws SQLException {
+    public void testWPSerialized() throws SQLException, InvalidProtocolBufferException {
         logger.info("testWPSerialized");
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new);
+        apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddComment::new);
+        apiaryWorker.registerFunction("WPGetPostComments", ApiaryConfig.postgres, WPGetPostComments::new);
+        apiaryWorker.startServing();
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("WPAddComment", 123l, 3450l, "this should not work.").getInt();
+        assertEquals(-1, res);
+        res = client.executeFunction("WPAddPost", 123l, "test post").getInt();
+        assertEquals(0, res);
+        res = client.executeFunction("WPAddComment", 123l, 3450l, "test comment to a post.").getInt();
+        assertEquals(0, res);
+        res = client.executeFunction("WPAddComment", 123l, 3460l, "second test comment to a post.").getInt();
+        assertEquals(0, res);
+
+        String[] resList = client.executeFunction("WPGetPostComments", 123l).getStringArray();
+        assertEquals(3, resList.length);
+        assertTrue(resList[0].equals("test post"));
+        assertTrue(resList[1].equals("test comment to a post."));
+        assertTrue(resList[2].equals("second test comment to a post."));
     }
 }

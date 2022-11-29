@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
+import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -119,6 +120,108 @@ public class WordPressTests {
         resList = client.executeFunction("WPCheckCommentStatus", 123).getStringArray();
         assertEquals(1, resList.length);
         assertTrue(resList[0].equals(WPUtil.WP_STATUS_VISIBLE));
+
+        // Check provenance.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+    }
+
+    @Test
+    public void testWPConcurrent() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        // Try to reproduce the bug where the new comment comes between post trashed and comment trashed. So the new comment would be marked as trashed but cannot be restored afterwards.
+        logger.info("testWPConcurrent");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new);
+        apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddComment::new);
+        apiaryWorker.registerFunction("WPGetPostComments", ApiaryConfig.postgres, WPGetPostComments::new);
+        apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new);
+        apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new);
+        apiaryWorker.registerFunction("WPUntrashPost", ApiaryConfig.postgres, WPUntrashPost::new);
+        apiaryWorker.registerFunction("WPCheckCommentStatus", ApiaryConfig.postgres, WPCheckCommentStatus::new);
+        apiaryWorker.startServing();
+
+        ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
+
+        // Start a thread pool.
+        ExecutorService threadPool = Executors.newFixedThreadPool(4);
+
+        class WpTask implements Callable<Integer> {
+            private final int postId;
+            private final int commentId;
+            private final String action;
+
+            public WpTask(int postId, int commentId, String action) {
+                this.postId = postId;
+                this.commentId = commentId;
+                this.action = action;
+            }
+
+            @Override
+            public Integer call() {
+                int res;
+                if (action.equals("trashpost")) {
+                    try {
+                        // Trash a post.
+                        res = client.get().executeFunction("WPTrashPost", postId).getInt();
+                    } catch (Exception e) {
+                        res = -1;
+                    }
+                } else {
+                    try {
+                        // Add a comment.
+                        res = client.get().executeFunction("WPAddComment", postId, commentId, action).getInt();
+                    } catch (Exception e) {
+                        res = -1;
+                    }
+                }
+                return res;
+            }
+
+        }
+
+        // Try many times until we find inconsistency.
+        int postIds = 0;
+        int commentIds = 0;
+        int maxTry = 10;
+        int intRes;
+        String[] strAryRes;
+        for (int i = 0; i < maxTry; i++) {
+            // Add a new post and a comment.
+            intRes = client.get().executeFunction("WPAddPost", postIds, "test post " + postIds).getInt();
+            assertEquals(0, intRes);
+            intRes = client.get().executeFunction("WPAddComment", postIds, commentIds, "test comment to a post " + commentIds).getInt();
+            commentIds++;
+            assertEquals(0, intRes);
+
+            // Launch concurrent tasks.
+            Future<Integer> trashResFut = threadPool.submit(new WpTask(postIds, -1, "trashpost"));
+            Future<Integer> commentResFut = threadPool.submit(new WpTask(postIds, commentIds, "test comment to a post " + commentIds));
+
+            int trashRes, commentRes;
+            try {
+                trashRes = trashResFut.get();
+                commentRes = commentResFut.get();
+                assertEquals(postIds, trashRes);
+                assertEquals(0, commentRes);
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+
+            // Restore the post.
+            intRes = client.get().executeFunction("WPUntrashPost", postIds).getInt();
+            assertEquals(0, intRes);
+
+            // Check results. Try to find inconsistency.
+            strAryRes = client.get().executeFunction("WPCheckCommentStatus", postIds).getStringArray();
+            if (strAryRes.length > 1) {
+                logger.info("Found inconsistency!");
+                break;
+            }
+            postIds++;
+            commentIds++;
+        }
 
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);

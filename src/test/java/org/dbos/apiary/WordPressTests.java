@@ -184,9 +184,10 @@ public class WordPressTests {
         // Try many times until we find inconsistency.
         int postIds = 0;
         int commentIds = 0;
-        int maxTry = 10;
+        int maxTry = 100;
         int intRes;
         String[] strAryRes;
+        boolean foundInconsistency = false;
         for (int i = 0; i < maxTry; i++) {
             // Add a new post and a comment.
             intRes = client.get().executeFunction("WPAddPost", postIds, "test post " + postIds).getInt();
@@ -219,6 +220,7 @@ public class WordPressTests {
             strAryRes = client.get().executeFunction("WPCheckCommentStatus", postIds).getStringArray();
             if (strAryRes.length > 1) {
                 logger.info("Found inconsistency!");
+                foundInconsistency = true;
                 break;
             }
             postIds++;
@@ -226,6 +228,7 @@ public class WordPressTests {
         }
 
         threadPool.shutdown();
+        assertTrue(foundInconsistency);
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }

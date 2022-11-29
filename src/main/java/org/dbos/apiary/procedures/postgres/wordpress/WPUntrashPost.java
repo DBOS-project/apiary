@@ -35,9 +35,8 @@ public class WPUntrashPost extends PostgresFunction {
         String updateQuery = String.format(untrashComments, WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_COMMENT_STATUS, WPUtil.WP_COMMENT_ID, commentIdStr);
         ctxt.executeUpdate(updateQuery, WPUtil.WP_STATUS_VISIBLE);
 
-        // Delete metadata.
-        // TODO: add it back.
-//        ctxt.executeUpdate(deleteMeta, postId, WPUtil.WP_TRASH_KEY);
+        // Clean up metadata.
+        ctxt.executeUpdate(deleteMeta, postId, WPUtil.WP_TRASH_KEY);
         return 0;
     }
 

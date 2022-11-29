@@ -11,12 +11,6 @@ public class WPTrashComments extends PostgresFunction {
     // Return postId on success.
     public static int runFunction(PostgresContext ctxt, int postId) throws SQLException {
         // Trash all visible comments.
-        // Add delay to increase the chance of race.
-        try {
-            Thread.sleep(5);
-        } catch (InterruptedException e) {
-            // Ignore.
-        }
         ctxt.executeUpdate(trashComments, WPUtil.WP_STATUS_POST_TRASHED, postId, WPUtil.WP_STATUS_VISIBLE);
         return postId;
     }

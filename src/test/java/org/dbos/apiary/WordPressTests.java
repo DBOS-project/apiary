@@ -145,7 +145,7 @@ public class WordPressTests {
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
 
         // Start a thread pool.
-        ExecutorService threadPool = Executors.newFixedThreadPool(1);
+        ExecutorService threadPool = Executors.newFixedThreadPool(2);
 
         class WpTask implements Callable<Integer> {
             private final int postId;

@@ -230,6 +230,8 @@ public class PostgresContext extends ApiaryContext {
             metaData[1] = querySeqNum;
             metaData[2] = pstmt.toString();
             if (!ApiaryConfig.captureReads) {
+                metaData[3] = "N/A";
+                metaData[4] = "N/A";
                 // Only capture metadata.
                 workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
             } else {

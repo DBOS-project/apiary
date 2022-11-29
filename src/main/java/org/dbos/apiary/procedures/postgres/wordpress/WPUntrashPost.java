@@ -36,7 +36,8 @@ public class WPUntrashPost extends PostgresFunction {
         ctxt.executeUpdate(updateQuery, WPUtil.WP_STATUS_VISIBLE);
 
         // Delete metadata.
-        ctxt.executeUpdate(deleteMeta, postId, WPUtil.WP_TRASH_KEY);
+        // TODO: add it back.
+//        ctxt.executeUpdate(deleteMeta, postId, WPUtil.WP_TRASH_KEY);
         return 0;
     }
 

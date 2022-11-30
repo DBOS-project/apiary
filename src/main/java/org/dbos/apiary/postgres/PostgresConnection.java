@@ -238,8 +238,20 @@ public class PostgresConnection implements ApiaryConnection {
                                 ex.printStackTrace();
                             }
                         } else {
-                            logger.info("Unrecoverable Postgres error: {} {}", p.getMessage(), p.getSQLState());
+                            logger.info("Unrecoverable inner PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
                         }
+                    }
+                } else if (e instanceof PSQLException) {
+                    PSQLException p = (PSQLException) e;
+                    if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                        try {
+                            rollback(ctxt);
+                            continue;
+                        } catch (SQLException ex) {
+                            ex.printStackTrace();
+                        }
+                    } else {
+                        logger.info("Unrecoverable top-level PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
                     }
                 }
                 logger.info("Unrecoverable error in function execution: {}", e.getMessage());

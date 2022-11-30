@@ -105,15 +105,21 @@ public class ApiaryWorker {
         try {
             garbageCollect = false;
             Thread.sleep(100);
-            garbageCollectorThread.interrupt();
-            garbageCollectorThread.join();
+            if (garbageCollectorThread != null) {
+                garbageCollectorThread.interrupt();
+                garbageCollectorThread.join();
+            }
             reqThreadPool.shutdown();
             reqThreadPool.awaitTermination(10, TimeUnit.SECONDS);
             repThreadPool.shutdown();
             repThreadPool.awaitTermination(10, TimeUnit.SECONDS);
-            serverThread.interrupt();
+            if (serverThread != null) {
+                serverThread.interrupt();
+            }
             zContext.close();
-            serverThread.join();
+            if (serverThread != null) {
+                serverThread.join();
+            }
             if (workerContext.provBuff != null) {
                 workerContext.provBuff.close();
             }
@@ -158,6 +164,10 @@ public class ApiaryWorker {
                             workerContext.getPrimaryConnection().getPartitionHostMap().get(0)
                             : workerContext.getPrimaryConnection().getHostname(subtask.input);
                     // Push to the outgoing queue.
+                    if (ApiaryConfig.workerAsyncDelay) {
+                        // Add some delay if we are trying to do fault injection.
+                        Thread.sleep(ThreadLocalRandom.current().nextInt(10));
+                    }
                     byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currTask.replayMode, currCallerID, subtask.functionID, subtask.input);
                     outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
                 }

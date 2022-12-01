@@ -442,7 +442,7 @@ public class ProvenanceTests {
         String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertEquals("DefaultService", resService);
-        assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
+        assertEquals("PostgresProvenanceBasic", resFuncName);
 
         rs.next();
         long txid2 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
@@ -450,7 +450,7 @@ public class ProvenanceTests {
         resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
         resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertEquals("DefaultService", resService);
-        assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
+        assertEquals("PostgresProvenanceBasic", resFuncName);
 
         // Inner transaction should have the same transaction ID.
         assertEquals(txid1, txid2);

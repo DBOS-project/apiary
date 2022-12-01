@@ -312,7 +312,7 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     private void recordTransactionInfo(WorkerContext workerContext, PostgresContext ctxt, long startTime, String functionName, String status) {
-        if (workerContext.provBuff == null) {
+        if ((workerContext.provBuff == null) || (ctxt.execID == 0)) {
             return;
         }
         // TODO: need a more reliable way to record commit timestamp. Maybe with track_commit_timestamp.

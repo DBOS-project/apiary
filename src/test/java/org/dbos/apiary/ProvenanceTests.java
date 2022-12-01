@@ -119,7 +119,7 @@ public class ProvenanceTests {
         long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertTrue(resExecId >= 0);
-        assertEquals(PostgresIsSubscribed.class.getName(), resFuncName);
+        assertEquals("PostgresIsSubscribed", resFuncName);
 
         // The second function should be a subscribe function.
         rs.next();
@@ -307,7 +307,7 @@ public class ProvenanceTests {
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertTrue(resExecId >= 0);
         assumeTrue(resFuncId == 0);
-        assertEquals(PostgresIsSubscribed.class.getName(), resFuncName);
+        assertEquals("PostgresIsSubscribed", resFuncName);
 
         // Reset the table and replay all.
         conn.truncateTable("ForumSubscription", false);
@@ -709,7 +709,7 @@ public class ProvenanceTests {
         String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertEquals("DefaultService", resService);
-        assertEquals(PostgresProvenanceMultiRows.class.getName(), resFuncName);
+        assertEquals("PostgresProvenanceMultiRows", resFuncName);
 
         // Check KVTable.
         table = "KVTableEvents";

@@ -88,7 +88,14 @@ public class PostgresContext extends ApiaryContext {
         ApiaryFunction f = workerContext.getFunction(name);
         String functionType = workerContext.getFunctionType(name);
         if (functionType.equals(ApiaryConfig.postgres) || functionType.equals(ApiaryConfig.stateless)) {
-            return f.apiaryRunFunction(this, inputs);
+            // Record invocation.
+            long startTime = Utilities.getMicroTimestamp();
+            FunctionOutput fo = f.apiaryRunFunction(this, inputs);
+            if ((workerContext.provBuff != null) && (execID != 0l)) {
+                long endTime = Utilities.getMicroTimestamp();
+                workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txc.txID, startTime, execID, functionID, (short) replayMode, service, name, endTime, ProvenanceBuffer.PROV_STATUS_EMBEDDED);
+            }
+            return fo;
         } else {
             ApiarySecondaryConnection c = workerContext.getSecondaryConnection(functionType);
             long newID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);

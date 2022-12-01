@@ -47,6 +47,7 @@ public class ProvenanceBuffer {
     public static final String PROV_STATUS_COMMIT = "commit";
     public static final String PROV_STATUS_ROLLBACK = "rollback";
     public static final String PROV_STATUS_ABORT = "abort";
+    public static final String PROV_STATUS_EMBEDDED = "embedded";
 
     /**
      * Enum class for provenance operations.

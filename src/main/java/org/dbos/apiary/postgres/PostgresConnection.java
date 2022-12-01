@@ -86,7 +86,7 @@ public class PostgresConnection implements ApiaryConnection {
                 + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(1024) NOT NULL, "
                 + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(1024) NOT NULL, "
                 + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
-                + ProvenanceBuffer.PROV_FUNC_STATUS + "VARCHAR(20) ");
+                + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20) ");
         createTable(ProvenanceBuffer.PROV_ApiaryMetadata,
                 "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
         createTable(ProvenanceBuffer.PROV_QueryMetadata,

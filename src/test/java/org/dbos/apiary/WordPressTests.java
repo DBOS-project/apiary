@@ -133,6 +133,7 @@ public class WordPressTests {
         // Try to reproduce the bug where the new comment comes between post trashed and comment trashed. So the new comment would be marked as trashed but cannot be restored afterwards.
         logger.info("testWPConcurrent");
         ApiaryConfig.workerAsyncDelay = true;
+        ApiaryConfig.recordInput = true;
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
@@ -257,7 +258,8 @@ public class WordPressTests {
         strAryRes = client.get().retroReplay(resExecId).getStringArray();
         assertTrue(strAryRes.length > 1);
 
-        ApiaryConfig.workerAsyncDelay = false;  // Reset flag.
+        ApiaryConfig.workerAsyncDelay = false;  // Reset flags.
+        ApiaryConfig.recordInput = false;
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }

@@ -280,7 +280,8 @@ public class ApiaryWorker {
         ApiaryConfig.captureUpdates = false;
         ApiaryConfig.captureReads = false;
 
-        // Find previous execution history.
+        // Find previous execution history, only execute later committed transactions.
+        // TODO: maybe re-execute aborted transaction, especially for bug reproduction?
         String provQuery = String.format("SELECT %s FROM %s WHERE %s = %d AND %s=0 AND %s=0;",
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ApiaryConfig.tableFuncInvocations,
                 ProvenanceBuffer.PROV_EXECUTIONID, targetExecID, ProvenanceBuffer.PROV_FUNCID,
@@ -295,8 +296,11 @@ public class ApiaryWorker {
             throw new RuntimeException("Cannot find original transactioin!");
         }
         historyRs.close();
-        provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
-                ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+
+        // Replay based on the commit order.
+        // TODO: This may still cause an issue because transaction/commit order != actual serial order. Replay based on the correct snapshot?
+        provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND %s=%s ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
+                ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT, ProvenanceBuffer.PROV_END_TIMESTAMP);
         historyRs = stmt.executeQuery(provQuery);
 
         // Find previous input of execution ID.
@@ -329,13 +333,13 @@ public class ApiaryWorker {
                 if (origExecId == -1) {
                     // Get the input data.
                     String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
-                                    "WHERE %s >= %d AND %s = 0 AND %s = 0 ORDER BY %s;",
+                                    "WHERE %s >= %d AND %s = 0 AND %s = 0 AND %s=%s ORDER BY %s;",
                             ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
                             ProvenanceBuffer.PROV_REQ_BYTES, ApiaryConfig.tableRecordedInputs,
                             ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID,
                             ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
-                            resTxId, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY,
-                            ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
+                            resTxId, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                            ProvenanceBuffer.PROV_END_TIMESTAMP
                     );
                     inputRs = stmt2.executeQuery(inputQuery);
                 }

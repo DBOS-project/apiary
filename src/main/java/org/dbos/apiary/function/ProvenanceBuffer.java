@@ -41,6 +41,12 @@ public class ProvenanceBuffer {
     public static final String PROV_QUERY_TABLENAMES = "APIARY_QUERY_TABLENAMES";
     public static final String PROV_QUERY_PROJECTION = "APIARY_QUERY_PROJECTION";
     public static final String PROV_REQ_BYTES = "APIARY_REQ_BYTES";
+    public static final String PROV_END_TIMESTAMP = "APIARY_END_TIMESTAMP";
+    // For the status column.
+    public static final String PROV_FUNC_STATUS = "APIARY_FUNC_STATUS";
+    public static final String PROV_STATUS_COMMIT = "commit";
+    public static final String PROV_STATUS_ROLLBACK = "rollback";
+    public static final String PROV_STATUS_ABORT = "abort";
 
     /**
      * Enum class for provenance operations.

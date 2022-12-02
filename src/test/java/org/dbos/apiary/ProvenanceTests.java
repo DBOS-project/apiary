@@ -119,7 +119,7 @@ public class ProvenanceTests {
         long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertTrue(resExecId >= 0);
-        assertEquals(PostgresIsSubscribed.class.getName(), resFuncName);
+        assertEquals("PostgresIsSubscribed", resFuncName);
 
         // The second function should be a subscribe function.
         rs.next();
@@ -307,7 +307,7 @@ public class ProvenanceTests {
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertTrue(resExecId >= 0);
         assumeTrue(resFuncId == 0);
-        assertEquals(PostgresIsSubscribed.class.getName(), resFuncName);
+        assertEquals("PostgresIsSubscribed", resFuncName);
 
         // Reset the table and replay all.
         conn.truncateTable("ForumSubscription", false);
@@ -322,8 +322,6 @@ public class ProvenanceTests {
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribedTxn::new);  // Register the new one.
         // Do not register the second subscribe function.
-
-        // Register the new pipeline, so we can test the case where we have more functions.
         apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
         apiaryWorker.startServing();
 
@@ -442,7 +440,7 @@ public class ProvenanceTests {
         String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertEquals("DefaultService", resService);
-        assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
+        assertEquals("PostgresProvenanceBasic", resFuncName);
 
         rs.next();
         long txid2 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
@@ -450,7 +448,7 @@ public class ProvenanceTests {
         resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
         resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertEquals("DefaultService", resService);
-        assertEquals(PostgresProvenanceBasic.class.getName(), resFuncName);
+        assertEquals("PostgresProvenanceBasic", resFuncName);
 
         // Inner transaction should have the same transaction ID.
         assertEquals(txid1, txid2);
@@ -709,7 +707,7 @@ public class ProvenanceTests {
         String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertEquals("DefaultService", resService);
-        assertEquals(PostgresProvenanceMultiRows.class.getName(), resFuncName);
+        assertEquals("PostgresProvenanceMultiRows", resFuncName);
 
         // Check KVTable.
         table = "KVTableEvents";

@@ -6,6 +6,7 @@ import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.utilities.Utilities;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
@@ -83,7 +84,9 @@ public class PostgresConnection implements ApiaryConnection {
                 + ProvenanceBuffer.PROV_FUNCID + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_ISREPLAY + " SMALLINT NOT NULL, "
                 + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(1024) NOT NULL, "
-                + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(1024) NOT NULL");
+                + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(1024) NOT NULL, "
+                + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
+                + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20) ");
         createTable(ProvenanceBuffer.PROV_ApiaryMetadata,
                 "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
         createTable(ProvenanceBuffer.PROV_QueryMetadata,
@@ -192,6 +195,8 @@ public class PostgresConnection implements ApiaryConnection {
         Connection c = connection.get();
         FunctionOutput f = null;
         while (true) {
+            // Record invocation for each try, if we have provenance buffer.
+            long startTime = Utilities.getMicroTimestamp();
             activeTransactionsLock.readLock().lock();
             PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID, replayMode,
                     new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
@@ -217,9 +222,12 @@ public class PostgresConnection implements ApiaryConnection {
                         ctxt.workerContext.getSecondaryConnection(secondary).commit(writtenKeys, ctxt.txc);
                     }
                     activeTransactions.remove(ctxt.txc);
+                    // Record invocation information.
+                    recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_COMMIT);
                     break;
                 } else {
                     rollback(ctxt);
+                    recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
                 }
             } catch (Exception e) {
                 if (e instanceof InvocationTargetException) {
@@ -233,6 +241,7 @@ public class PostgresConnection implements ApiaryConnection {
                         if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
                             try {
                                 rollback(ctxt);
+                                recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
                                 continue;
                             } catch (SQLException ex) {
                                 ex.printStackTrace();
@@ -246,6 +255,7 @@ public class PostgresConnection implements ApiaryConnection {
                     if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
                         try {
                             rollback(ctxt);
+                            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
                             continue;
                         } catch (SQLException ex) {
                             ex.printStackTrace();
@@ -256,9 +266,11 @@ public class PostgresConnection implements ApiaryConnection {
                 }
                 logger.info("Unrecoverable error in function execution: {}", e.getMessage());
                 e.printStackTrace();
+                recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
                 break;
             }
         }
+
         return f;
     }
 
@@ -299,4 +311,12 @@ public class PostgresConnection implements ApiaryConnection {
         return Map.of(0, "localhost");
     }
 
+    private void recordTransactionInfo(WorkerContext workerContext, PostgresContext ctxt, long startTime, String functionName, String status) {
+        if ((workerContext.provBuff == null) || (ctxt.execID == 0)) {
+            return;
+        }
+        // TODO: need a more reliable way to record commit timestamp. Maybe with track_commit_timestamp.
+        long commitTime = Utilities.getMicroTimestamp();
+        workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status);
+    }
 }

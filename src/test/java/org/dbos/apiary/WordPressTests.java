@@ -129,7 +129,7 @@ public class WordPressTests {
     }
 
     @Test
-    public void testWPConcurrent() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+    public void testWPConcurrentRetro() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         // Try to reproduce the bug where the new comment comes between post trashed and comment trashed. So the new comment would be marked as trashed but cannot be restored afterwards.
         logger.info("testWPConcurrent");
         ApiaryConfig.workerAsyncDelay = true;
@@ -257,6 +257,31 @@ public class WordPressTests {
 
         strAryRes = client.get().retroReplay(resExecId).getStringArray();
         assertTrue(strAryRes.length > 1);
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
+        // Register the new code and see if we can get the correct result.
+        apiaryWorker.shutdown();
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new);
+        // Use the new code.
+        apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddCommentFixed::new);
+        apiaryWorker.registerFunction("WPGetPostComments", ApiaryConfig.postgres, WPGetPostComments::new);
+        apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new);
+        apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new);
+        apiaryWorker.registerFunction("WPUntrashPost", ApiaryConfig.postgres, WPUntrashPost::new);
+        apiaryWorker.registerFunction("WPCheckCommentStatus", ApiaryConfig.postgres, WPCheckCommentStatus::new);
+        apiaryWorker.startServing();
+
+        provBuff = apiaryWorker.workerContext.provBuff;
+        assert(provBuff != null);
+
+        conn.truncateTable(WPUtil.WP_POSTS_TABLE, false);
+        conn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);
+        conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
+
+        strAryRes = client.get().retroReplay(resExecId).getStringArray();
+        assertEquals(1, strAryRes.length);
 
         ApiaryConfig.workerAsyncDelay = false;  // Reset flags.
         ApiaryConfig.recordInput = false;

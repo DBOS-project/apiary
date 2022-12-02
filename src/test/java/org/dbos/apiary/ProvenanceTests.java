@@ -322,8 +322,6 @@ public class ProvenanceTests {
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribedTxn::new);  // Register the new one.
         // Do not register the second subscribe function.
-
-        // Register the new pipeline, so we can test the case where we have more functions.
         apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
         apiaryWorker.startServing();
 

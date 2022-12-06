@@ -13,7 +13,6 @@ import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.plaf.nimbus.State;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.*;
@@ -29,6 +28,7 @@ public class PostgresConnection implements ApiaryConnection {
 
     private final PGSimpleDataSource ds;
     public final ThreadLocal<Connection> connection;
+    public final ThreadLocal<Connection> bgConnection;  // For background tasks, not the critical one for function executions.
     private final ReadWriteLock activeTransactionsLock = new ReentrantReadWriteLock();
     private long biggestxmin = Long.MIN_VALUE;
     private final Set<TransactionContext> activeTransactions = ConcurrentHashMap.newKeySet();
@@ -70,6 +70,15 @@ public class PostgresConnection implements ApiaryConnection {
                e.printStackTrace();
            }
            return null;
+        });
+        this.bgConnection = ThreadLocal.withInitial(() -> {
+            try {
+                Connection conn = ds.getConnection();
+                return conn;
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return null;
         });
         try {
             Connection testConn = ds.getConnection();
@@ -126,12 +135,11 @@ public class PostgresConnection implements ApiaryConnection {
      * @throws SQLException
      */
     public void dropTable(String tableName) throws SQLException {
-        Connection conn = ds.getConnection();
+        Connection conn = bgConnection.get();
         Statement truncateTable = conn.createStatement();
         truncateTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
         truncateTable.execute(String.format("DROP TABLE IF EXISTS %sEvents;", tableName));
         truncateTable.close();
-        conn.close();
     }
 
     /**
@@ -140,14 +148,13 @@ public class PostgresConnection implements ApiaryConnection {
      * @param deleteProvenance  if true, truncate the events table as well.
      */
     public void truncateTable(String tableName, boolean deleteProvenance) throws SQLException {
-        Connection conn = ds.getConnection();
+        Connection conn = bgConnection.get();
         Statement truncateTable = conn.createStatement();
         truncateTable.execute(String.format("TRUNCATE %s;", tableName));
         if (deleteProvenance) {
             truncateTable.execute(String.format("TRUNCATE %sEvents;", tableName));
         }
         truncateTable.close();
-        conn.close();
     }
 
     /**
@@ -157,7 +164,7 @@ public class PostgresConnection implements ApiaryConnection {
      * @throws SQLException
      */
     public void createTable(String tableName, String specStr) throws SQLException {
-        Connection conn = ds.getConnection();
+        Connection conn = bgConnection.get();
         Statement s = conn.createStatement();
         s.execute(String.format("CREATE TABLE IF NOT EXISTS %s (%s);", tableName, specStr));
         if (!specStr.contains("APIARY_TRANSACTION_ID")) {
@@ -178,15 +185,13 @@ public class PostgresConnection implements ApiaryConnection {
             s.execute(provTable.toString());
         }
         s.close();
-        conn.close();
     }
 
     public void createIndex(String indexString) throws SQLException {
-        Connection c = ds.getConnection();
+        Connection c = bgConnection.get();
         Statement s = c.createStatement();
         s.execute(indexString);
         s.close();
-        c.close();
     }
 
     private void rollback(PostgresContext ctxt) throws SQLException {
@@ -330,14 +335,13 @@ public class PostgresConnection implements ApiaryConnection {
         long commitTime = Utilities.getMicroTimestamp();
         if (ApiaryConfig.trackCommitTimestamp && status.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
             try {
-                Connection conn = ds.getConnection();
+                Connection conn = bgConnection.get();
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(String.format("SELECT CAST(extract(epoch from pg_xact_commit_timestamp(\'%s\'::xid)) * 1000000 AS BIGINT);", ctxt.txc.txID));
                 if (rs.next()) {
                     commitTime = rs.getLong(1);
                 }
                 stmt.close();
-                conn.close();
             } catch (SQLException e) {
                 logger.error("Failed to get commit timestamp.");
             }

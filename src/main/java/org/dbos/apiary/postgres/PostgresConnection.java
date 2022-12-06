@@ -328,6 +328,16 @@ public class PostgresConnection implements ApiaryConnection {
         }
         // Get actual commit timestamp if track_commit_timestamp is available. Otherwise, get the timestamp from Java.
         long commitTime = Utilities.getMicroTimestamp();
+        if (ApiaryConfig.trackCommitTimestamp) {
+            try {
+                Statement stmt = this.connection.get().createStatement();
+                ResultSet rs = stmt.executeQuery(String.format("SELECT CAST(extract(epoch from pg_xact_commit_timestamp(\'%s\'::xid)) * 1000000 AS BIGINT);", ctxt.txc.txID));
+                rs.next();
+                commitTime = rs.getLong(1);
+            } catch (SQLException e) {
+                logger.error("Failed to get commit timestamp.");
+            }
+        }
         workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status);
     }
 }

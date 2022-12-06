@@ -330,11 +330,14 @@ public class PostgresConnection implements ApiaryConnection {
         long commitTime = Utilities.getMicroTimestamp();
         if (ApiaryConfig.trackCommitTimestamp && status.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
             try {
-                Statement stmt = this.connection.get().createStatement();
+                Connection conn = ds.getConnection();
+                Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(String.format("SELECT CAST(extract(epoch from pg_xact_commit_timestamp(\'%s\'::xid)) * 1000000 AS BIGINT);", ctxt.txc.txID));
                 if (rs.next()) {
                     commitTime = rs.getLong(1);
                 }
+                stmt.close();
+                conn.close();
             } catch (SQLException e) {
                 logger.error("Failed to get commit timestamp.");
             }

@@ -74,6 +74,7 @@ public class PostgresConnection implements ApiaryConnection {
         this.bgConnection = ThreadLocal.withInitial(() -> {
             try {
                 Connection conn = ds.getConnection();
+                conn.setAutoCommit(true);
                 return conn;
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -342,6 +343,7 @@ public class PostgresConnection implements ApiaryConnection {
                 if (rs.next()) {
                     commitTime = rs.getLong(1);
                 }
+                rs.close();
                 stmt.close();
             } catch (SQLException e) {
                 logger.error("Failed to get commit timestamp.");

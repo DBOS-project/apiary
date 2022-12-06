@@ -13,6 +13,7 @@ import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.swing.plaf.nimbus.State;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.*;
@@ -72,6 +73,16 @@ public class PostgresConnection implements ApiaryConnection {
         });
         try {
             Connection testConn = ds.getConnection();
+            Statement stmt = testConn.createStatement();
+            ResultSet rs = stmt.executeQuery("SHOW track_commit_timestamp;");
+            rs.next();
+            if (rs.getString(1).equals("on")) {
+                ApiaryConfig.trackCommitTimestamp = true;
+                logger.info("Postgres track_commit_timestamp = on!");
+            } else {
+                ApiaryConfig.trackCommitTimestamp = false;
+                logger.info("Postgres track_commit_timestamp = off!");
+            }
             testConn.close();
         } catch (SQLException e) {
             logger.info("Failed to connect to Postgres");
@@ -315,7 +326,7 @@ public class PostgresConnection implements ApiaryConnection {
         if ((workerContext.provBuff == null) || (ctxt.execID == 0)) {
             return;
         }
-        // TODO: need a more reliable way to record commit timestamp. Maybe with track_commit_timestamp.
+        // Get actual commit timestamp if track_commit_timestamp is available. Otherwise, get the timestamp from Java.
         long commitTime = Utilities.getMicroTimestamp();
         workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status);
     }

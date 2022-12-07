@@ -282,10 +282,10 @@ public class ApiaryWorker {
 
         // Find previous execution history, only execute later committed transactions.
         // TODO: maybe re-execute aborted transaction, especially for bug reproduction?
-        String provQuery = String.format("SELECT %s FROM %s WHERE %s = %d AND %s=0 AND %s=0;",
+        String provQuery = String.format("SELECT %s FROM %s WHERE %s = %d AND %s=0 AND %s=0 AND %s=\'%s\';",
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ApiaryConfig.tableFuncInvocations,
                 ProvenanceBuffer.PROV_EXECUTIONID, targetExecID, ProvenanceBuffer.PROV_FUNCID,
-                ProvenanceBuffer.PROV_ISREPLAY);
+                ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT);
         Statement stmt = conn.createStatement();
         ResultSet historyRs = stmt.executeQuery(provQuery);
         long origTxid = -1;
@@ -293,12 +293,11 @@ public class ApiaryWorker {
             origTxid = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         } else {
             logger.error("No corresponding original transaction for execution {}", targetExecID);
-            throw new RuntimeException("Cannot find original transactioin!");
+            throw new RuntimeException("Cannot find original transaction!");
         }
         historyRs.close();
 
-        // Replay based on the commit order.
-        // TODO: This may still cause an issue because transaction/commit order != actual serial order. Replay based on the correct snapshot?
+        // Replay based on the snapshot info, because transaction/commit order != actual serial order.
         provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
                 ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT, ProvenanceBuffer.PROV_END_TIMESTAMP);
         historyRs = stmt.executeQuery(provQuery);

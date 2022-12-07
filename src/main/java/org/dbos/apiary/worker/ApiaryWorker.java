@@ -459,7 +459,9 @@ public class ApiaryWorker {
         if (funcId == 0l) {
             // This is the first function of a request.
             fo = c.replayCallFunction(conn, funcName, workerContext, "retroReplay", execId, funcId, replayMode, inputs);
-            assert (fo != null);
+            if (fo == null) {
+                return false;
+            }
             execFuncIdToValue.putIfAbsent(execId, new HashMap<>());
             execIdToFinalOutput.putIfAbsent(execId, fo.output);
             pendingTasks.putIfAbsent(execId, new HashMap<>());
@@ -481,9 +483,11 @@ public class ApiaryWorker {
             }
 
             fo = c.replayCallFunction(conn, currTask.funcName, workerContext,  "retroReplay", execId, funcId, replayMode, currTask.input);
-            assert (fo != null);
             // Remove this task from the map.
             pendingTasks.get(execId).remove(funcId);
+            if (fo == null) {
+                return false; // TODO: better error handling?
+            }
         }
         // Store output value.
         execFuncIdToValue.get(execId).putIfAbsent(funcId, fo.output);

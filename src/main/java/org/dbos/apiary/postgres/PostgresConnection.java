@@ -297,13 +297,20 @@ public class PostgresConnection implements ApiaryConnection {
 
     @Override
     public FunctionOutput replayCallFunction(Connection conn, String functionName, WorkerContext workerContext, String service, long execID, long functionID,
-                                      int replayMode, Object... inputs) throws Exception {
+                                      int replayMode, Object... inputs) {
         // Fast path for replayed functions.
         FunctionOutput f = null;
         long startTime = Utilities.getMicroTimestamp();
         PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
                 new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
-        f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+        try {
+            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+        } catch (Exception e) {
+            // TODO: better error handling? For now, ignore those errors.
+            logger.warn("Failed execution. Skipped.");
+            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
+            return null;
+        }
 
         recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_REPLAY);
 

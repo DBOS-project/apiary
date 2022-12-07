@@ -411,7 +411,12 @@ public class ApiaryWorker {
             // Commit the nextCommitTxid and update the variables.
             Connection commitConn = pendingCommits.get(nextCommitTxid);
             assert (commitConn != null);
-            commitConn.commit();
+            try {
+                commitConn.commit();
+            } catch (Exception e) {
+                // TODO: how to handle commit failures? Now assume they are serialization errors.
+                logger.warn("Failed to commit {}, skipped.", nextCommitTxid);
+            }
             connPool.add(commitConn);
             pendingCommits.remove(nextCommitTxid);
             if (commitOrderRs.next()) {

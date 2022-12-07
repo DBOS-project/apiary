@@ -274,27 +274,32 @@ public class ProvenanceTests {
         }
 
         // Try many times until we find duplications.
-        int userId = 123;
-        int forumId = 555;
-
-        // Push two concurrent tasks.
-        List<SubsTask> tasks = new ArrayList<>();
-        tasks.add(new SubsTask(userId, forumId));
-        tasks.add(new SubsTask(userId, forumId));
-        // Then another two tasks. Should not affect the result.
-        tasks.add(new SubsTask(userId, forumId));
-        tasks.add(new SubsTask(userId, forumId));
-        List<Future<Integer>> futures = threadPool.invokeAll(tasks);
-        for (Future<Integer> future : futures) {
-            if (!future.isCancelled()) {
-                int res = future.get();
-                assertTrue(res != -1);
+        int maxTry = 1000;
+        int[] resList = null;
+        for (int i = 0; i < maxTry; i++) {
+            // Push two concurrent tasks.
+            List<SubsTask> tasks = new ArrayList<>();
+            tasks.add(new SubsTask(i, i+maxTry));
+            tasks.add(new SubsTask(i, i+maxTry));
+            List<Future<Integer>> futures = threadPool.invokeAll(tasks);
+            for (Future<Integer> future : futures) {
+                if (!future.isCancelled()) {
+                    int res = future.get();
+                    assertTrue(res != -1);
+                }
+            }
+            // Check subscriptions.
+            resList = client.get().executeFunction("PostgresFetchSubscribers", i+maxTry).getIntArray();
+            if (resList.length > 1) {
+                logger.info("Found duplications! User: {}, Forum: {}", i, i+maxTry);
+                break;
             }
         }
-        // Check subscriptions.
-        int[] resList = client.get().executeFunction("PostgresFetchSubscribers", forumId).getIntArray();
 
         // Only continue the test if we have found duplications.
+        if (resList == null || resList.length == 1) {
+            logger.warn("Did not find duplicates. Skip test");
+        }
         assumeTrue(resList.length > 1);
         threadPool.shutdown();
 
@@ -304,7 +309,7 @@ public class ProvenanceTests {
         // Check the original execution.
         Connection provConn = provBuff.conn.get();
         Statement stmt = provConn.createStatement();
-        String provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID);
+        String provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         ResultSet rs = stmt.executeQuery(provQuery);
         rs.next();
         long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
@@ -336,7 +341,6 @@ public class ProvenanceTests {
         conn.truncateTable("ForumSubscription", false);
         int[] retroList = client.get().retroReplay(resExecId).getIntArray();
         assertEquals(1, retroList.length);
-        assertEquals(userId, retroList[0]);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 

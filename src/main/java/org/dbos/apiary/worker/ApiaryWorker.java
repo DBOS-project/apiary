@@ -445,14 +445,15 @@ public class ApiaryWorker {
         FunctionOutput fo;
         // Only support primary functions.
         if (!workerContext.functionExists(funcName)) {
-            logger.error("Unrecognized function: {}, cannot replay.", funcName);
-            throw new RuntimeException("Unrecognized function, cannot replay.");
+            logger.info("Unrecognized function: {}, cannot replay, skipped.", funcName);
+            return false;
         }
         String type = workerContext.getFunctionType(funcName);
         if (!workerContext.getPrimaryConnectionType().equals(type)) {
             logger.error("Replay only support primary functions!");
             throw new RuntimeException("Replay only support primary functions!");
         }
+
         ApiaryConnection c = workerContext.getPrimaryConnection();
 
         if (funcId == 0l) {

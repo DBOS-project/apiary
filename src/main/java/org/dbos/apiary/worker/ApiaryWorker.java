@@ -311,7 +311,7 @@ public class ApiaryWorker {
         assert (startOrderRs.next());  // Should have at least one execution.
 
         // This query finds the commit order of transactions.
-        String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDERY BY %s;", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
+        String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
                 ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT, ProvenanceBuffer.PROV_END_TIMESTAMP);
         Statement commitOrderStmt = conn.createStatement();

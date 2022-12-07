@@ -483,6 +483,7 @@ public class ApiaryWorker {
             fo = c.replayCallFunction(conn, funcName, workerContext, "retroReplay", execId, funcId,
                     replayMode, inputs);
             if (fo == null) {
+                logger.warn("Repaly function output is null.");
                 return false;
             }
             execFuncIdToValue.putIfAbsent(execId, new HashMap<>());
@@ -511,6 +512,7 @@ public class ApiaryWorker {
             // Remove this task from the map.
             pendingTasks.get(execId).remove(funcId);
             if (fo == null) {
+                logger.warn("Repaly function output is null.");
                 return false; // TODO: better error handling?
             }
         }

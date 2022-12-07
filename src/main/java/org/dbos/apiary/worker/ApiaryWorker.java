@@ -349,7 +349,7 @@ public class ApiaryWorker {
         int connPoolSize = 10;  // Connection pool size. TODO: tune this.
         Queue<Connection> connPool = new ConcurrentLinkedQueue<>();
         for (int i = 0; i < connPoolSize; i++) {
-            connPool.add(workerContext.getPrimaryConnection().getRawConnection());
+            connPool.add(workerContext.getPrimaryConnection().createNewConnection());
         }
 
         // A pending commit map from transaction ID to connection. <txid, connection>

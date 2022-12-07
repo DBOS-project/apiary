@@ -42,6 +42,11 @@ public class ProvenanceTests {
 
     @BeforeAll
     public static void testConnection() {
+        // Set the isolation level to serializable.
+        ApiaryConfig.isolationLevel = ApiaryConfig.SERIALIZABLE;
+        // Disable XDB transactions.
+        ApiaryConfig.XDBTransactions = false;
+
         assumeTrue(TestUtils.testPostgresConnection());
         ApiaryConfig.recordInput = true;
     }

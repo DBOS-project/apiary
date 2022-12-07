@@ -357,7 +357,7 @@ public class ApiaryWorker {
         assert (commitOrderRs.next());
         long nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
 
-        while (commitOrderRs.next()) {
+        while (nextCommitTxid > 0) {
             // Execute until nextCommitTxid is in the snapshot of that original transaction.
             while (true) {
                 long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
@@ -411,7 +411,11 @@ public class ApiaryWorker {
             commitConn.commit();
             connPool.add(commitConn);
             pendingCommits.remove(nextCommitTxid);
-            nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            if (commitOrderRs.next()) {
+                nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            } else {
+                nextCommitTxid = 0;
+            }
         }
 
         if (!pendingTasks.isEmpty()) {

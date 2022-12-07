@@ -399,7 +399,10 @@ public class ApiaryWorker {
                     // TODO: optimize for empty transactions?
                     processReplayFunction(currConn, resExecId, resFuncId, resName, replayMode, currInputs, pendingTasks, execFuncIdToValue, execIdToFinalOutput);
                     pendingCommits.put(resTxId, currConn);
-                    startOrderRs.next();  // Process the next one.
+                    if (!startOrderRs.next()) {
+                        // No more to process.
+                        break;
+                    }
                 } else {
                     break;  // Need to wait until nextCommitTxid to commit.
                 }

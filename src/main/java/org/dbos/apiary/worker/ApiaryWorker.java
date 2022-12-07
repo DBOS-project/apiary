@@ -1,10 +1,7 @@
 package org.dbos.apiary.worker;
 
 import com.google.common.util.concurrent.AtomicDouble;
-import com.google.protobuf.Api;
-import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.apache.zookeeper_voltpatches.data.Stat;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.client.InternalApiaryWorkerClient;
@@ -22,7 +19,6 @@ import zmq.ZError;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.*;
@@ -270,27 +266,28 @@ public class ApiaryWorker {
     }
 
     private void retroExecuteAll(long targetExecID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws Exception {
-        logger.info("retro execute all!");
+        logger.info("Retro execute the entire trace!");
         assert(workerContext.provBuff != null);
-        Connection conn = workerContext.provBuff.conn.get();
+        Connection provConn = workerContext.provBuff.conn.get();
 
         // Turn off provenance capture for replay.
+        boolean origUpdateFlag = ApiaryConfig.captureUpdates;
+        boolean origReadFlag = ApiaryConfig.captureReads;
         ApiaryConfig.captureUpdates = false;
         ApiaryConfig.captureReads = false;
 
         // Find previous execution history, only execute later committed transactions.
-        // TODO: maybe re-execute aborted transaction, especially for bug reproduction?
+        // TODO: should we re-execute aborted transaction (non-recoverable failures), especially for bug reproduction?
         String provQuery = String.format("SELECT %s, %s FROM %s WHERE %s = %d AND %s=0 AND %s=0 AND %s=\'%s\';",
-                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID, ApiaryConfig.tableFuncInvocations,
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
+                ApiaryConfig.tableFuncInvocations,
                 ProvenanceBuffer.PROV_EXECUTIONID, targetExecID, ProvenanceBuffer.PROV_FUNCID,
                 ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT);
-        Statement stmt = conn.createStatement();
+        Statement stmt = provConn.createStatement();
         ResultSet historyRs = stmt.executeQuery(provQuery);
         long origTxid = -1;
-        long origExecId = -1;
         if (historyRs.next()) {
             origTxid = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-            origExecId = historyRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
         } else {
             logger.error("No corresponding original transaction for execution {}", targetExecID);
             throw new RuntimeException("Cannot find original transaction!");
@@ -298,20 +295,28 @@ public class ApiaryWorker {
         historyRs.close();
 
         // Replay based on the snapshot info, because transaction/commit order != actual serial order.
-        // Start transactions based on their original txid order, but commit based on commit order. And maintain a pool of connections to the backend database to concurrently execute transactions.
+        // Start transactions based on their original txid order, but commit based on commit order.
+        // Maintain a pool of connections to the backend database to concurrently execute transactions.
 
-        // This query arranges the starting order of transactions.
-        String startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
-                ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        // This query finds the starting order of transactions.
+        String startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;",
+                ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
+                ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         ResultSet startOrderRs = stmt.executeQuery(startOrderQuery);
         assert (startOrderRs.next());  // Should have at least one execution.
 
         // This query finds the commit order of transactions.
-        String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
+        String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;",
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
-                ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT, ProvenanceBuffer.PROV_END_TIMESTAMP);
-        Statement commitOrderStmt = conn.createStatement();
+                ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                ProvenanceBuffer.PROV_END_TIMESTAMP);
+        Statement commitOrderStmt = provConn.createStatement();
         ResultSet commitOrderRs = commitOrderStmt.executeQuery(commitOrderQuery);
+        // Next commit transaction ID, the next to be committed.
+        assert (commitOrderRs.next());
+        long nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
 
         // This query finds the original input.
         String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
@@ -320,10 +325,11 @@ public class ApiaryWorker {
                 ProvenanceBuffer.PROV_REQ_BYTES, ApiaryConfig.tableRecordedInputs,
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID,
                 ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
-                origTxid, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                origTxid, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY,
+                ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
         );
-        Statement inputStmt = conn.createStatement();
+        Statement inputStmt = provConn.createStatement();
         ResultSet inputRs = inputStmt.executeQuery(inputQuery);
 
         // Cache inputs of the original execution. <execId, input>
@@ -349,19 +355,15 @@ public class ApiaryWorker {
         // A pending commit map from transaction ID to connection. <txid, connection>
         Map<Long, Connection> pendingCommits = new HashMap<>();
 
-        // Next commit transaction ID, the next to be committed.
-        assert (commitOrderRs.next());
-        long nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-
         while (nextCommitTxid > 0) {
-            // Execute until nextCommitTxid is in the snapshot of that original transaction.
+            // Execute all following functions until nextCommitTxid is in the snapshot of that original transaction.
+            // If the nextCommitTxid is in the snapshot, then that function needs to start after it commits.
             while (true) {
                 long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
                 long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
                 long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
                 String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
                 String resName = resNames[resNames.length - 1]; // Extract the actual function name.
-                logger.info("CHECKING txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
                 String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
                 long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
                 List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
@@ -392,8 +394,9 @@ public class ApiaryWorker {
                         }
                     }
 
-                    // TODO: optimize for empty transactions?
-                    processReplayFunction(currConn, resExecId, resFuncId, resName, replayMode, currInputs, pendingTasks, execFuncIdToValue, execIdToFinalOutput);
+                    // TODO: Can we skip empty transactions?
+                    processReplayFunction(currConn, resExecId, resFuncId, resName, replayMode, currInputs, pendingTasks,
+                            execFuncIdToValue, execIdToFinalOutput);
                     pendingCommits.put(resTxId, currConn);
                     if (!startOrderRs.next()) {
                         // No more to process.
@@ -405,6 +408,7 @@ public class ApiaryWorker {
             }
 
             // Commit the nextCommitTxid and update the variables.
+            // The connection must be not null because it has to have started.
             Connection commitConn = pendingCommits.get(nextCommitTxid);
             assert (commitConn != null);
             try {
@@ -413,6 +417,7 @@ public class ApiaryWorker {
                 // TODO: how to handle commit failures? Now assume they are serialization errors.
                 logger.warn("Failed to commit {}, skipped.", nextCommitTxid);
             }
+            // Put it back to the connection pool.
             connPool.add(commitConn);
             pendingCommits.remove(nextCommitTxid);
             if (commitOrderRs.next()) {
@@ -420,6 +425,10 @@ public class ApiaryWorker {
             } else {
                 nextCommitTxid = 0;
             }
+        }
+
+        if (!pendingCommits.isEmpty()) {
+            throw new RuntimeException("Still more pending transactions to be committed!");
         }
 
         if (!pendingTasks.isEmpty()) {
@@ -430,19 +439,31 @@ public class ApiaryWorker {
         ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, output);
         outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
 
-        // Clean up connection pool.
+        // Clean up connection pool and statements.
         while (!connPool.isEmpty()) {
             Connection currConn = connPool.poll();
             if (currConn != null) {
                 currConn.close();
             }
         }
+
+        startOrderRs.close();
+        stmt.close();
+        inputRs.close();
+        inputStmt.close();
+        commitOrderRs.close();
+        commitOrderStmt.close();
+
+        // Reset flags.
+        ApiaryConfig.captureUpdates = origUpdateFlag;
+        ApiaryConfig.captureReads = origReadFlag;
     }
 
     // Return true if executed the function, false if nothing executed.
-    private boolean processReplayFunction(Connection conn, long execId, long funcId, String funcName, int replayMode, Object[] inputs, Map<Long, Map<Long, Task>> pendingTasks,
+    private boolean processReplayFunction(Connection conn, long execId, long funcId, String funcName, int replayMode,
+                                          Object[] inputs, Map<Long, Map<Long, Task>> pendingTasks,
                                           Map<Long, Map<Long, Object>> execFuncIdToValue,
-                                          Map<Long, Object> execIdToFinalOutput) throws Exception {
+                                          Map<Long, Object> execIdToFinalOutput) {
         FunctionOutput fo;
         // Only support primary functions.
         if (!workerContext.functionExists(funcName)) {
@@ -459,7 +480,8 @@ public class ApiaryWorker {
 
         if (funcId == 0l) {
             // This is the first function of a request.
-            fo = c.replayCallFunction(conn, funcName, workerContext, "retroReplay", execId, funcId, replayMode, inputs);
+            fo = c.replayCallFunction(conn, funcName, workerContext, "retroReplay", execId, funcId,
+                    replayMode, inputs);
             if (fo == null) {
                 return false;
             }
@@ -467,7 +489,8 @@ public class ApiaryWorker {
             execIdToFinalOutput.putIfAbsent(execId, fo.output);
             pendingTasks.putIfAbsent(execId, new HashMap<>());
         } else {
-            // Skip the task if it is absent. Because we allow reducing the number of called functions (currently does not support adding more).
+            // Skip the task if it is absent. Because we allow reducing the number of called function
+            // (currently does not support adding more).
             if (!pendingTasks.containsKey(execId) || !pendingTasks.get(execId).containsKey(funcId)) {
                 logger.info("Skip function ID {}, not found in pending tasks.", funcId);
                 return false;
@@ -483,7 +506,8 @@ public class ApiaryWorker {
                 throw new RuntimeException("Retro replay failed to dereference input.");
             }
 
-            fo = c.replayCallFunction(conn, currTask.funcName, workerContext,  "retroReplay", execId, funcId, replayMode, currTask.input);
+            fo = c.replayCallFunction(conn, currTask.funcName, workerContext,  "retroReplay", execId, funcId,
+                    replayMode, currTask.input);
             // Remove this task from the map.
             pendingTasks.get(execId).remove(funcId);
             if (fo == null) {

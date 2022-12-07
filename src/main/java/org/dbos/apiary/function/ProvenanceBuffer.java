@@ -50,6 +50,7 @@ public class ProvenanceBuffer {
     public static final String PROV_STATUS_ROLLBACK = "rollback";
     public static final String PROV_STATUS_ABORT = "abort";
     public static final String PROV_STATUS_EMBEDDED = "embedded";
+    public static final String PROV_STATUS_REPLAY = "replayed";
 
     /**
      * Enum class for provenance operations.

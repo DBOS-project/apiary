@@ -4,6 +4,7 @@ import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 
+import java.sql.Connection;
 import java.util.Map;
 import java.util.Set;
 
@@ -54,5 +55,14 @@ public interface ApiaryConnection {
      * @return
      */
     Map<Integer, String> getPartitionHostMap();
+
+    default Connection getRawConnection() {
+        return null;
+    }
+
+    default FunctionOutput replayCallFunction(Connection conn, String functionName, WorkerContext workerContext, String service, long execID, long functionID,
+                                int replayMode, Object... inputs) throws Exception {
+        return null;
+    }
 
 }

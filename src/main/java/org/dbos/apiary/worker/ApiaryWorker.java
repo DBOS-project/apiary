@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.AtomicDouble;
 import com.google.protobuf.Api;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.apache.zookeeper_voltpatches.data.Stat;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.client.InternalApiaryWorkerClient;
@@ -11,6 +12,7 @@ import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.mysql.MysqlContext;
+import org.dbos.apiary.postgres.PostgresUtilities;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
@@ -282,15 +284,17 @@ public class ApiaryWorker {
 
         // Find previous execution history, only execute later committed transactions.
         // TODO: maybe re-execute aborted transaction, especially for bug reproduction?
-        String provQuery = String.format("SELECT %s FROM %s WHERE %s = %d AND %s=0 AND %s=0 AND %s=\'%s\';",
-                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ApiaryConfig.tableFuncInvocations,
+        String provQuery = String.format("SELECT %s, %s FROM %s WHERE %s = %d AND %s=0 AND %s=0 AND %s=\'%s\';",
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID, ApiaryConfig.tableFuncInvocations,
                 ProvenanceBuffer.PROV_EXECUTIONID, targetExecID, ProvenanceBuffer.PROV_FUNCID,
                 ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT);
         Statement stmt = conn.createStatement();
         ResultSet historyRs = stmt.executeQuery(provQuery);
         long origTxid = -1;
+        long origExecId = -1;
         if (historyRs.next()) {
             origTxid = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            origExecId = historyRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
         } else {
             logger.error("No corresponding original transaction for execution {}", targetExecID);
             throw new RuntimeException("Cannot find original transaction!");
@@ -298,17 +302,37 @@ public class ApiaryWorker {
         historyRs.close();
 
         // Replay based on the snapshot info, because transaction/commit order != actual serial order.
-        provQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
-                ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT, ProvenanceBuffer.PROV_END_TIMESTAMP);
-        historyRs = stmt.executeQuery(provQuery);
+        // Start transactions based on their original txid order, but commit based on commit order. And maintain a pool of connections to the backend database to concurrently execute transactions.
 
-        // Find previous input of execution ID.
-        Statement stmt2 = conn.createStatement();
-        ResultSet inputRs = null;
+        // This query arranges the starting order of transactions.
+        String startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
+                ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        ResultSet startOrderRs = stmt.executeQuery(startOrderQuery);
+        assert (startOrderRs.next());  // Should have at least one execution.
+
+        // This query finds the commit order of transactions.
+        String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDERY BY %s;", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
+                ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
+                ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT, ProvenanceBuffer.PROV_END_TIMESTAMP);
+        Statement commitOrderStmt = conn.createStatement();
+        ResultSet commitOrderRs = commitOrderStmt.executeQuery(commitOrderQuery);
+
+        // This query finds the original input.
+        String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
+                        "WHERE %s >= %d AND %s = 0 AND %s = 0 AND %s=\'%s\' ORDER BY %s;",
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
+                ProvenanceBuffer.PROV_REQ_BYTES, ApiaryConfig.tableRecordedInputs,
+                ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID,
+                ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
+                origExecId, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
+        );
+        Statement inputStmt = conn.createStatement();
+        ResultSet inputRs = inputStmt.executeQuery(inputQuery);
 
         // Cache inputs of the original execution. <execId, input>
-        long origExecId = -1;
-        Object[] origInputs = null;
+        long currInputExecId = -1;
+        Object[] currInputs = null;
 
         // Store currently unresolved tasks. <execId, funcId, task>
         Map<Long, Map<Long, Task>> pendingTasks = new HashMap<>();
@@ -319,108 +343,163 @@ public class ApiaryWorker {
         // Store execID to final output map. Because the output could be a future.
         Map<Long, Object> execIdToFinalOutput = new HashMap<>();
 
-        // Re-execute one by one.
-        Object output = null;
-        while (historyRs.next()) {
-            long resTxId = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-            long resExecId = historyRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-            long resFuncId = historyRs.getLong(ProvenanceBuffer.PROV_FUNCID);
-            String[] resNames = historyRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
-            String resName = resNames[resNames.length - 1]; // Extract the actual function name.
-            logger.info("Retro-executing txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
-            if ((resExecId != origExecId) && (resFuncId == 0l)) {
-                if (origExecId == -1) {
-                    // Get the input data.
-                    String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
-                                    "WHERE %s >= %d AND %s = 0 AND %s = 0 AND %s=\'%s\' ORDER BY %s;",
-                            ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
-                            ProvenanceBuffer.PROV_REQ_BYTES, ApiaryConfig.tableRecordedInputs,
-                            ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID,
-                            ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
-                            resTxId, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
-                            ProvenanceBuffer.PROV_END_TIMESTAMP
-                    );
-                    inputRs = stmt2.executeQuery(inputQuery);
-                }
-                // Read the input for this execution ID.
-                if (inputRs.next()) {
-                    origExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-                    byte[] recordInput = inputRs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
-                    ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
-                    origInputs = Utilities.getArgumentsFromRequest(req);
-                    if (origExecId != resExecId) {
-                        logger.error("Input execID {} does not match the expected ID {}!", origExecId, resExecId);
-                        throw new RuntimeException("Retro replay failed due to mismatched IDs.");
+        // A connection pool to the backend database. For concurrent executions.
+        int connPoolSize = 10;  // Connection pool size. TODO: tune this.
+        Queue<Connection> connPool = new ConcurrentLinkedQueue<>();
+        for (int i = 0; i < connPoolSize; i++) {
+            connPool.add(workerContext.getPrimaryConnection().getRawConnection());
+        }
+
+        // A pending commit map from transaction ID to connection. <txid, connection>
+        Map<Long, Connection> pendingCommits = new HashMap<>();
+
+        // Next commit transaction ID, the next to be committed.
+        assert (commitOrderRs.next());
+        long nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+
+        while (commitOrderRs.next()) {
+            // Execute until nextCommitTxid is in the snapshot of that original transaction.
+            while (true) {
+                long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+                long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+                long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
+                String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
+                String resName = resNames[resNames.length - 1]; // Extract the actual function name.
+                String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
+                long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
+                List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
+                startOrderRs.next();
+                if ((resTxId == nextCommitTxid) || (nextCommitTxid >= xmax) || (activeTxns.contains(nextCommitTxid))) {
+                    // Not in its snapshot. Start a new transaction.
+                    Connection currConn = connPool.poll();
+                    if (currConn == null) {
+                        throw new RuntimeException("Not enough connections to replay!");
                     }
-                    logger.info("Original arguments execid {}, inputs {}", origExecId, origInputs);
+
+                    // Execute the function.
+                    // Get inputs.
+                    if ((resExecId != currInputExecId) && (resFuncId == 0l)) {
+                        // Read the input for this execution ID.
+                        if (inputRs.next()) {
+                            currInputExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+                            byte[] recordInput = inputRs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
+                            ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
+                            currInputs = Utilities.getArgumentsFromRequest(req);
+                            if (currInputExecId != resExecId) {
+                                logger.error("Input execID {} does not match the expected ID {}!", currInputExecId, resExecId);
+                                throw new RuntimeException("Retro replay failed due to mismatched IDs.");
+                            }
+                            logger.info("Original arguments execid {}, inputs {}", currInputExecId, currInputs);
+                        } else {
+                            logger.error("Could not find the input for this execution ID {} ", resExecId);
+                            throw new RuntimeException("Retro replay failed due to missing input.");
+                        }
+                    }
+
+                    // TODO: optimize for empty transactions?
+                    processReplayFunction(currConn, resExecId, resFuncId, resName, replayMode, currInputs, pendingTasks, execFuncIdToValue, execIdToFinalOutput);
+                    pendingCommits.put(resTxId, currConn);
                 } else {
-                    logger.error("Could not find the input for this execution ID {} ", resExecId);
-                    throw new RuntimeException("Retro replay failed due to missing input.");
+                    break;  // Need to wait until nextCommitTxid to commit.
                 }
             }
 
-            FunctionOutput fo;
-            if (resFuncId == 0l) {
-                // This is the first function of a request.
-                fo = callFunctionInternal(resName, "retroReplay", resExecId, resFuncId, replayMode, origInputs);
-                assert (fo != null);
-                execFuncIdToValue.putIfAbsent(resExecId, new HashMap<>());
-                execIdToFinalOutput.putIfAbsent(resExecId, fo.output);
-                pendingTasks.putIfAbsent(resExecId, new HashMap<>());
-            } else {
-                // Skip the task if it is absent. Because we allow reducing the number of called functions (currently does not support adding more).
-                if (!pendingTasks.containsKey(resExecId) || !pendingTasks.get(resExecId).containsKey(resFuncId)) {
-                    logger.info("Skip function ID {}, not found in pending tasks.", resFuncId);
-                    continue;
-                }
-                // Find the task in the stash. Make sure that all futures have been resolved.
-                Task currTask = pendingTasks.get(resExecId).get(resFuncId);
-
-                // Resolve input for this task. Must success.
-                Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(resExecId);
-
-                if (!currTask.dereferenceFutures(currFuncIdToValue)) {
-                    logger.error("Failed to dereference input for execId {}, funcId {}. Aborted", resExecId, resFuncId);
-                    throw new RuntimeException("Retro replay failed to dereference input.");
-                }
-
-                fo = callFunctionInternal(currTask.funcName, "retroReplay", resExecId, resFuncId, replayMode, currTask.input);
-                assert (fo != null);
-                // Remove this task from the map.
-                pendingTasks.get(resExecId).remove(resFuncId);
-            }
-            // Store output value.
-            execFuncIdToValue.get(resExecId).putIfAbsent(resFuncId, fo.output);
-            // Queue all of its async tasks to the pending map.
-            for (Task t : fo.queuedTasks) {
-                if (pendingTasks.get(resExecId).containsKey(t.functionID)) {
-                    logger.error("ExecID {} funcID {} has duplicated outputs!", resExecId, t.functionID);
-                }
-                pendingTasks.get(resExecId).putIfAbsent(t.functionID, t);
-            }
-
-            if (pendingTasks.get(resExecId).isEmpty()) {
-                // Check if we need to update the final output map.
-                Object o = execIdToFinalOutput.get(resExecId);
-                if (o instanceof ApiaryFuture) {
-                    ApiaryFuture futureOutput = (ApiaryFuture) o;
-                    assert (execFuncIdToValue.get(resExecId).containsKey(futureOutput.futureID));
-                    Object resFo = execFuncIdToValue.get(resExecId).get(futureOutput.futureID);
-                    execIdToFinalOutput.put(resExecId, resFo);
-                }
-                // Clean up.
-                execFuncIdToValue.remove(resExecId);
-                pendingTasks.remove(resExecId);
-            }
+            // Commit the nextCommitTxid and update the variables.
+            Connection commitConn = pendingCommits.get(nextCommitTxid);
+            assert (commitConn != null);
+            commitConn.commit();
+            connPool.add(commitConn);
+            pendingCommits.remove(nextCommitTxid);
+            nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         }
 
         if (!pendingTasks.isEmpty()) {
             throw new RuntimeException("Still more pending tasks to be solved! Currently do not support adding transactions.");
         }
 
-        output = execIdToFinalOutput.get(origExecId);  // The last execution ID.
+        Object output = execIdToFinalOutput.get(currInputExecId);  // The last execution ID.
         ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, output);
         outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
+
+        // Clean up connection pool.
+        while (!connPool.isEmpty()) {
+            Connection currConn = connPool.poll();
+            if (currConn != null) {
+                currConn.close();
+            }
+        }
+    }
+
+    // Return true if executed the function, false if nothing executed.
+    private boolean processReplayFunction(Connection conn, long execId, long funcId, String funcName, int replayMode, Object[] inputs, Map<Long, Map<Long, Task>> pendingTasks,
+                                          Map<Long, Map<Long, Object>> execFuncIdToValue,
+                                          Map<Long, Object> execIdToFinalOutput) throws Exception {
+        FunctionOutput fo;
+        // Only support primary functions.
+        if (!workerContext.functionExists(funcName)) {
+            logger.error("Unrecognized function: {}, cannot replay.", funcName);
+            throw new RuntimeException("Unrecognized function, cannot replay.");
+        }
+        String type = workerContext.getFunctionType(funcName);
+        if (!workerContext.getPrimaryConnectionType().equals(type)) {
+            logger.error("Replay only support primary functions!");
+            throw new RuntimeException("Replay only support primary functions!");
+        }
+        ApiaryConnection c = workerContext.getPrimaryConnection();
+
+        if (funcId == 0l) {
+            // This is the first function of a request.
+            fo = c.replayCallFunction(conn, funcName, workerContext, "retroReplay", execId, funcId, replayMode, inputs);
+            assert (fo != null);
+            execFuncIdToValue.putIfAbsent(execId, new HashMap<>());
+            execIdToFinalOutput.putIfAbsent(execId, fo.output);
+            pendingTasks.putIfAbsent(execId, new HashMap<>());
+        } else {
+            // Skip the task if it is absent. Because we allow reducing the number of called functions (currently does not support adding more).
+            if (!pendingTasks.containsKey(execId) || !pendingTasks.get(execId).containsKey(funcId)) {
+                logger.info("Skip function ID {}, not found in pending tasks.", funcId);
+                return false;
+            }
+            // Find the task in the stash. Make sure that all futures have been resolved.
+            Task currTask = pendingTasks.get(execId).get(funcId);
+
+            // Resolve input for this task. Must success.
+            Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(execId);
+
+            if (!currTask.dereferenceFutures(currFuncIdToValue)) {
+                logger.error("Failed to dereference input for execId {}, funcId {}. Aborted", execId, funcId);
+                throw new RuntimeException("Retro replay failed to dereference input.");
+            }
+
+            fo = c.replayCallFunction(conn, currTask.funcName, workerContext,  "retroReplay", execId, funcId, replayMode, currTask.input);
+            assert (fo != null);
+            // Remove this task from the map.
+            pendingTasks.get(execId).remove(funcId);
+        }
+        // Store output value.
+        execFuncIdToValue.get(execId).putIfAbsent(funcId, fo.output);
+        // Queue all of its async tasks to the pending map.
+        for (Task t : fo.queuedTasks) {
+            if (pendingTasks.get(execId).containsKey(t.functionID)) {
+                logger.error("ExecID {} funcID {} has duplicated outputs!", execId, t.functionID);
+            }
+            pendingTasks.get(execId).putIfAbsent(t.functionID, t);
+        }
+
+        if (pendingTasks.get(execId).isEmpty()) {
+            // Check if we need to update the final output map.
+            Object o = execIdToFinalOutput.get(execId);
+            if (o instanceof ApiaryFuture) {
+                ApiaryFuture futureOutput = (ApiaryFuture) o;
+                assert (execFuncIdToValue.get(execId).containsKey(futureOutput.futureID));
+                Object resFo = execFuncIdToValue.get(execId).get(futureOutput.futureID);
+                execIdToFinalOutput.put(execId, resFo);
+            }
+            // Clean up.
+            execFuncIdToValue.remove(execId);
+            pendingTasks.remove(execId);
+        }
+        return true;
     }
 
     private class RequestRunnable implements Runnable, Comparable<RequestRunnable> {

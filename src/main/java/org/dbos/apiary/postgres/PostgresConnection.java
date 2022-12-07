@@ -54,23 +54,7 @@ public class PostgresConnection implements ApiaryConnection {
         this.ds.setSsl(false);
 
         logger.info("Postgres isolation level: {}", ApiaryConfig.isolationLevel);
-        this.connection = ThreadLocal.withInitial(() -> {
-           try {
-               Connection conn = ds.getConnection();
-               conn.setAutoCommit(false);
-               if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-                   conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
-               } else if (ApiaryConfig.isolationLevel == ApiaryConfig.SERIALIZABLE) {
-                   conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
-               } else {
-                   logger.info("Invalid isolation level: {}", ApiaryConfig.isolationLevel);
-               }
-               return conn;
-           } catch (SQLException e) {
-               e.printStackTrace();
-           }
-           return null;
-        });
+        this.connection = ThreadLocal.withInitial(() -> getRawConnection());
         this.bgConnection = ThreadLocal.withInitial(() -> {
             try {
                 Connection conn = ds.getConnection();
@@ -208,6 +192,25 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
+    public Connection getRawConnection() {
+        try {
+            Connection conn = ds.getConnection();
+            conn.setAutoCommit(false);
+            if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
+                conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+            } else if (ApiaryConfig.isolationLevel == ApiaryConfig.SERIALIZABLE) {
+                conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+            } else {
+                logger.info("Invalid isolation level: {}", ApiaryConfig.isolationLevel);
+            }
+            return conn;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
     public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID,
                                        long functionID, int replayMode, Object... inputs) {
         Connection c = connection.get();
@@ -288,6 +291,21 @@ public class PostgresConnection implements ApiaryConnection {
                 break;
             }
         }
+
+        return f;
+    }
+
+    @Override
+    public FunctionOutput replayCallFunction(Connection conn, String functionName, WorkerContext workerContext, String service, long execID, long functionID,
+                                      int replayMode, Object... inputs) throws Exception {
+        // Fast path for replayed functions.
+        FunctionOutput f = null;
+        long startTime = Utilities.getMicroTimestamp();
+        PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
+                new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
+        f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+
+        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_REPLAY);
 
         return f;
     }

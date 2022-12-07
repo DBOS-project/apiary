@@ -104,10 +104,11 @@ public class PostgresConnection implements ApiaryConnection {
                 + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_FUNCID + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_ISREPLAY + " SMALLINT NOT NULL, "
-                + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(1024) NOT NULL, "
-                + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(1024) NOT NULL, "
+                + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(256) NOT NULL, "
+                + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(512) NOT NULL, "
                 + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
-                + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20) ");
+                + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20), "
+                + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(1024) ");
         createTable(ProvenanceBuffer.PROV_ApiaryMetadata,
                 "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
         createTable(ProvenanceBuffer.PROV_QueryMetadata,
@@ -349,6 +350,7 @@ public class PostgresConnection implements ApiaryConnection {
                 logger.error("Failed to get commit timestamp.");
             }
         }
-        workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status);
+        String txnSnapshot = PostgresUtilities.constuctSnapshotStr(ctxt.txc.xmin, ctxt.txc.xmax, ctxt.txc.activeTransactions);
+        workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot);
     }
 }

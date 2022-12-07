@@ -39,4 +39,11 @@ public class PostgresUtilities {
             return new ArrayList<>();
         }
     }
+
+    public static String constuctSnapshotStr(long xmin, long xmax, List<Long> activeTxns) {
+        List<String> activeStr = activeTxns.stream()
+                .map(String::valueOf)
+                .collect(Collectors.toList());
+        return String.format("%d:%d:%s", xmin, xmax, String.join(",", activeStr));
+    }
 }

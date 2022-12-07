@@ -52,13 +52,17 @@ public class PostgresContext extends ApiaryContext {
             long xmin = PostgresUtilities.parseXmin(snapshotString);
             long xmax = PostgresUtilities.parseXmax(snapshotString);
             List<Long> activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
-            activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < xmax).collect(Collectors.toList()));
-            for (TransactionContext t: activeTransactions) {
-                if (t.txID < xmax && !activeTxIDs.contains(t.txID)) {
-                    rs = stmt.executeQuery("select txid_status(" + t.txID + ");");
-                    rs.next();
-                    if (rs.getString("txid_status").equals("aborted")) {
-                        activeTxIDs.add(t.txID);
+
+            // For epoxy transactions only.
+            if (ApiaryConfig.XDBTransactions) {
+                activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < xmax).collect(Collectors.toList()));
+                for (TransactionContext t : activeTransactions) {
+                    if (t.txID < xmax && !activeTxIDs.contains(t.txID)) {
+                        rs = stmt.executeQuery("select txid_status(" + t.txID + ");");
+                        rs.next();
+                        if (rs.getString("txid_status").equals("aborted")) {
+                            activeTxIDs.add(t.txID);
+                        }
                     }
                 }
             }

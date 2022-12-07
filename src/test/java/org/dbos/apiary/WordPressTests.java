@@ -132,7 +132,6 @@ public class WordPressTests {
     public void testWPConcurrentRetro() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         // Try to reproduce the bug where the new comment comes between post trashed and comment trashed. So the new comment would be marked as trashed but cannot be restored afterwards.
         logger.info("testWPConcurrentRetro");
-        ApiaryConfig.workerAsyncDelay = true;
         ApiaryConfig.recordInput = true;
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
@@ -283,8 +282,8 @@ public class WordPressTests {
         strAryRes = client.get().retroReplay(resExecId).getStringArray();
         assertEquals(1, strAryRes.length);
 
-        ApiaryConfig.workerAsyncDelay = false;  // Reset flags.
-        ApiaryConfig.recordInput = false;
+        ApiaryConfig.recordInput = false; // Reset flags.
+
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }

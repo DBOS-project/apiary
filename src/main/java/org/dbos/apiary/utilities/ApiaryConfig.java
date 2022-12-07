@@ -58,7 +58,5 @@ public class ApiaryConfig {
     public static Boolean recordInput = false;  // If true, capture input of the entry function and record in a table.
     public static final String tableRecordedInputs = "RECORDEDINPUTS";
 
-    // For fault injection.
-    public static Boolean workerAsyncDelay = false;  // If true, add a few milliseconds of delay between async function invocations.
     public static Boolean trackCommitTimestamp = false;  // If true, Postgres is configured to track commit timestamp of each transaction.
 }

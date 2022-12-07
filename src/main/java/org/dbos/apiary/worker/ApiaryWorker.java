@@ -166,10 +166,6 @@ public class ApiaryWorker {
                             workerContext.getPrimaryConnection().getPartitionHostMap().get(0)
                             : workerContext.getPrimaryConnection().getHostname(subtask.input);
                     // Push to the outgoing queue.
-                    if (ApiaryConfig.workerAsyncDelay) {
-                        // Add some delay if we are trying to do fault injection.
-                        Thread.sleep(ThreadLocalRandom.current().nextInt(10));
-                    }
                     byte[] reqBytes = InternalApiaryWorkerClient.serializeExecuteRequest(subtask.funcName, currTask.service, currTask.execId, currTask.replayMode, currCallerID, subtask.functionID, subtask.input);
                     outgoingReqMsgQueue.add(new OutgoingMsg(address, reqBytes));
                 }

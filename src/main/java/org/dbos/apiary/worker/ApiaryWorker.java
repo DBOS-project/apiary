@@ -365,10 +365,10 @@ public class ApiaryWorker {
                 long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
                 String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
                 String resName = resNames[resNames.length - 1]; // Extract the actual function name.
+                logger.info("CHECKING txid {}, execid {}, funcid {}, name {}", resTxId, resExecId, resFuncId, resName);
                 String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
                 long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
                 List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
-                startOrderRs.next();
                 if ((resTxId == nextCommitTxid) || (nextCommitTxid >= xmax) || (activeTxns.contains(nextCommitTxid))) {
                     // Not in its snapshot. Start a new transaction.
                     Connection currConn = connPool.poll();
@@ -399,6 +399,7 @@ public class ApiaryWorker {
                     // TODO: optimize for empty transactions?
                     processReplayFunction(currConn, resExecId, resFuncId, resName, replayMode, currInputs, pendingTasks, execFuncIdToValue, execIdToFinalOutput);
                     pendingCommits.put(resTxId, currConn);
+                    startOrderRs.next();  // Process the next one.
                 } else {
                     break;  // Need to wait until nextCommitTxid to commit.
                 }

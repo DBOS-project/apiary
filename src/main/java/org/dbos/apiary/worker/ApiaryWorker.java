@@ -480,7 +480,7 @@ public class ApiaryWorker {
 
         if (funcId == 0l) {
             // This is the first function of a request.
-            fo = c.replayCallFunction(conn, funcName, workerContext, "retroReplay", execId, funcId,
+            fo = c.replayFunction(conn, funcName, workerContext, "retroReplay", execId, funcId,
                     replayMode, inputs);
             if (fo == null) {
                 logger.warn("Repaly function output is null.");
@@ -507,7 +507,7 @@ public class ApiaryWorker {
                 throw new RuntimeException("Retro replay failed to dereference input.");
             }
 
-            fo = c.replayCallFunction(conn, currTask.funcName, workerContext,  "retroReplay", execId, funcId,
+            fo = c.replayFunction(conn, currTask.funcName, workerContext,  "retroReplay", execId, funcId,
                     replayMode, currTask.input);
             // Remove this task from the map.
             pendingTasks.get(execId).remove(funcId);

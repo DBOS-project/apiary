@@ -54,7 +54,7 @@ public class PostgresConnection implements ApiaryConnection {
         this.ds.setSsl(false);
 
         logger.info("Postgres isolation level: {}", ApiaryConfig.isolationLevel);
-        this.connection = ThreadLocal.withInitial(() -> getRawConnection());
+        this.connection = ThreadLocal.withInitial(() -> createNewConnection());
         this.bgConnection = ThreadLocal.withInitial(() -> {
             try {
                 Connection conn = ds.getConnection();
@@ -192,7 +192,7 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
-    public Connection getRawConnection() {
+    public Connection createNewConnection() {
         try {
             Connection conn = ds.getConnection();
             conn.setAutoCommit(false);
@@ -296,9 +296,9 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput replayCallFunction(Connection conn, String functionName, WorkerContext workerContext,
-                                             String service, long execID, long functionID,int replayMode,
-                                             Object... inputs) {
+    public FunctionOutput replayFunction(Connection conn, String functionName, WorkerContext workerContext,
+                                         String service, long execID, long functionID, int replayMode,
+                                         Object... inputs) {
         // Fast path for replayed functions.
         FunctionOutput f;
         long startTime = Utilities.getMicroTimestamp();

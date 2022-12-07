@@ -56,7 +56,7 @@ public interface ApiaryConnection {
      */
     Map<Integer, String> getPartitionHostMap();
 
-    default Connection getRawConnection() {
+    default Connection createNewConnection() {
         return null;
     }
 
@@ -72,9 +72,9 @@ public interface ApiaryConnection {
      * @param inputs
      * @return
      */
-    default FunctionOutput replayCallFunction(Connection conn, String functionName, WorkerContext workerContext,
-                                              String service, long execID, long functionID, int replayMode,
-                                              Object... inputs) {
+    default FunctionOutput replayFunction(Connection conn, String functionName, WorkerContext workerContext,
+                                          String service, long execID, long functionID, int replayMode,
+                                          Object... inputs) {
         return null;
     }
 

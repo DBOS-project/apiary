@@ -4,6 +4,7 @@ import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 
+import java.sql.Connection;
 import java.util.Map;
 import java.util.Set;
 
@@ -54,5 +55,27 @@ public interface ApiaryConnection {
      * @return
      */
     Map<Integer, String> getPartitionHostMap();
+
+    default Connection createNewConnection() {
+        return null;
+    }
+
+    /**
+     * for internal use only. Similar to callFunction, but is only used for replay, because the worker can explicitly specify a connection to the database.
+     * @param conn
+     * @param functionName
+     * @param workerContext
+     * @param service
+     * @param execID
+     * @param functionID
+     * @param replayMode
+     * @param inputs
+     * @return
+     */
+    default FunctionOutput replayFunction(Connection conn, String functionName, WorkerContext workerContext,
+                                          String service, long execID, long functionID, int replayMode,
+                                          Object... inputs) {
+        return null;
+    }
 
 }

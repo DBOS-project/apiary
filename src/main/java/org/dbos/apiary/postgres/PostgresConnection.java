@@ -54,23 +54,7 @@ public class PostgresConnection implements ApiaryConnection {
         this.ds.setSsl(false);
 
         logger.info("Postgres isolation level: {}", ApiaryConfig.isolationLevel);
-        this.connection = ThreadLocal.withInitial(() -> {
-           try {
-               Connection conn = ds.getConnection();
-               conn.setAutoCommit(false);
-               if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-                   conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
-               } else if (ApiaryConfig.isolationLevel == ApiaryConfig.SERIALIZABLE) {
-                   conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
-               } else {
-                   logger.info("Invalid isolation level: {}", ApiaryConfig.isolationLevel);
-               }
-               return conn;
-           } catch (SQLException e) {
-               e.printStackTrace();
-           }
-           return null;
-        });
+        this.connection = ThreadLocal.withInitial(() -> createNewConnection());
         this.bgConnection = ThreadLocal.withInitial(() -> {
             try {
                 Connection conn = ds.getConnection();
@@ -104,10 +88,11 @@ public class PostgresConnection implements ApiaryConnection {
                 + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_FUNCID + " BIGINT NOT NULL, "
                 + ProvenanceBuffer.PROV_ISREPLAY + " SMALLINT NOT NULL, "
-                + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(1024) NOT NULL, "
-                + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(1024) NOT NULL, "
+                + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(256) NOT NULL, "
+                + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(512) NOT NULL, "
                 + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
-                + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20) ");
+                + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20), "
+                + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(1024) ");
         createTable(ProvenanceBuffer.PROV_ApiaryMetadata,
                 "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
         createTable(ProvenanceBuffer.PROV_QueryMetadata,
@@ -207,6 +192,25 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
+    public Connection createNewConnection() {
+        try {
+            Connection conn = ds.getConnection();
+            conn.setAutoCommit(false);
+            if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
+                conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+            } else if (ApiaryConfig.isolationLevel == ApiaryConfig.SERIALIZABLE) {
+                conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+            } else {
+                logger.info("Invalid isolation level: {}", ApiaryConfig.isolationLevel);
+            }
+            return conn;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
     public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID,
                                        long functionID, int replayMode, Object... inputs) {
         Connection c = connection.get();
@@ -292,6 +296,29 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
+    public FunctionOutput replayFunction(Connection conn, String functionName, WorkerContext workerContext,
+                                         String service, long execID, long functionID, int replayMode,
+                                         Object... inputs) {
+        // Fast path for replayed functions.
+        FunctionOutput f;
+        long startTime = Utilities.getMicroTimestamp();
+        PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
+                new HashSet<>(), new HashSet<>());
+        try {
+            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+        } catch (Exception e) {
+            // TODO: better error handling? For now, ignore those errors.
+            logger.warn("Failed execution during replay.");
+            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
+            return null;
+        }
+
+        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_REPLAY);
+
+        return f;
+    }
+
+    @Override
     public Set<TransactionContext> getActiveTransactions() {
         activeTransactionsLock.writeLock().lock();
         Set<TransactionContext> txSnapshot = new HashSet<>(activeTransactions);
@@ -349,6 +376,7 @@ public class PostgresConnection implements ApiaryConnection {
                 logger.error("Failed to get commit timestamp.");
             }
         }
-        workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status);
+        String txnSnapshot = PostgresUtilities.constuctSnapshotStr(ctxt.txc.xmin, ctxt.txc.xmax, ctxt.txc.activeTransactions);
+        workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot);
     }
 }

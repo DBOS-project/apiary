@@ -44,10 +44,13 @@ public class ProvenanceBuffer {
     public static final String PROV_END_TIMESTAMP = "APIARY_END_TIMESTAMP";
     // For the status column.
     public static final String PROV_FUNC_STATUS = "APIARY_FUNC_STATUS";
+    // For the transaction snapshot column.
+    public static final String PROV_TXN_SNAPSHOT = "APIARY_TXN_SNAPSHOT";
     public static final String PROV_STATUS_COMMIT = "commit";
     public static final String PROV_STATUS_ROLLBACK = "rollback";
     public static final String PROV_STATUS_ABORT = "abort";
     public static final String PROV_STATUS_EMBEDDED = "embedded";
+    public static final String PROV_STATUS_REPLAY = "replayed";
 
     /**
      * Enum class for provenance operations.

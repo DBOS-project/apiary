@@ -23,4 +23,4 @@ fi
 
 sleep 10
 
-docker exec -i apiary-postgres psql -h localhost -U postgres -t < init_postgres.sql
+docker exec -i apiary-postgres psql -h localhost -U postgres -t < ${SCRIPT_DIR}/init_postgres.sql

@@ -267,7 +267,7 @@ public class ApiaryWorker {
     }
 
     private void retroExecuteAll(long targetExecID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws Exception {
-        logger.info("Retro execute the entire trace!");
+        logger.info("Replay the entire trace!");
         assert(workerContext.provBuff != null);
         Connection provConn = workerContext.provBuff.conn.get();
 
@@ -423,8 +423,8 @@ public class ApiaryWorker {
                 commitConn.commit();
             } catch (Exception e) {
                 // TODO: how to handle commit failures? Now assume they are serialization errors.
-                logger.info(e.getMessage());
-                logger.warn("Failed to commit {}, skipped.", nextCommitTxid);
+                logger.debug(e.getMessage());
+                logger.debug("Failed to commit {}, skipped.", nextCommitTxid);
             }
             // Put it back to the connection pool.
             connPool.add(commitConn);
@@ -477,7 +477,7 @@ public class ApiaryWorker {
         FunctionOutput fo;
         // Only support primary functions.
         if (!workerContext.functionExists(funcName)) {
-            logger.info("Unrecognized function: {}, cannot replay, skipped.", funcName);
+            logger.debug("Unrecognized function: {}, cannot replay, skipped.", funcName);
             return false;
         }
         String type = workerContext.getFunctionType(funcName);

@@ -99,17 +99,12 @@ public class RetroDemo {
         // Replay, or retro replay.
         if (replayMode != DemoMode.NOT_REPLAY.getValue()) {
             int[] retroResList = client.get().retroReplay(targetExecId).getIntArray();
-            if (retroResList.length >= 1) {
-                if (Utilities.checkDuplicates(retroResList)) {
-                    logger.info("Replay found no duplications!");
-                } else {
-                    logger.info("Replay found duplications!");
-                }
-            } else {
+            if (retroResList.length < 1) {
                 logger.error("Replay failed.");
+            } else {
+                logger.info("Replay finished!");
             }
             apiaryWorker.shutdown();
-            logger.info("Replay finished!");
             Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
             return;
         }
@@ -153,9 +148,7 @@ public class RetroDemo {
 
         // Finally, fetch subscribers list for the initial forum.
         int[] resList = client.get().executeFunction("PostgresFetchSubscribers", initialForumId).getIntArray();
-        if (!Utilities.checkDuplicates(resList)) {
-            logger.info("Found duplicated subscriptions for forum {}", initialForumId);
-        } else {
+        if (resList.length <= 1) {
             logger.error("Failed to generate duplication for forum {}", initialForumId);
         }
 

@@ -306,7 +306,10 @@ public class ApiaryWorker {
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         Statement startOrderStmt = provConn.createStatement();
         ResultSet startOrderRs = startOrderStmt.executeQuery(startOrderQuery);
-        assert (startOrderRs.next());  // Should have at least one execution.
+        if (!startOrderRs.next()) {
+            logger.error("Cannot find start order with query: {}", startOrderQuery);
+            return;
+        }
 
         // This query finds the commit order of transactions.
         String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;",
@@ -317,7 +320,10 @@ public class ApiaryWorker {
         Statement commitOrderStmt = provConn.createStatement();
         ResultSet commitOrderRs = commitOrderStmt.executeQuery(commitOrderQuery);
         // Next commit transaction ID, the next to be committed.
-        assert (commitOrderRs.next());
+        if (!commitOrderRs.next()) {
+            logger.error("Cannot find commit order with query: {}", commitOrderQuery);
+            return;
+        }
         long nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
 
         // This query finds the original input.
@@ -450,6 +456,7 @@ public class ApiaryWorker {
         }
 
         startOrderRs.close();
+        startOrderStmt.close();
         stmt.close();
         inputRs.close();
         inputStmt.close();

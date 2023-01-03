@@ -252,7 +252,7 @@ public class ProvenanceBuffer {
         if (rowCnt > 0) {
             pstmt.executeBatch();
         }
-        logger.info("Exported table {}, {} rows", table, numEntries);
+        logger.debug("Exported table {}, {} rows", table, numEntries);
     }
 
     private static void setColumn(PreparedStatement pstmt, int colIndex, int colType, Object val) throws SQLException {

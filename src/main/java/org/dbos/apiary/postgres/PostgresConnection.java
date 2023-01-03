@@ -53,7 +53,7 @@ public class PostgresConnection implements ApiaryConnection {
         this.ds.setPassword(databasePassword);
         this.ds.setSsl(false);
 
-        logger.info("Postgres isolation level: {}", ApiaryConfig.isolationLevel);
+        logger.debug("Postgres isolation level: {}", ApiaryConfig.isolationLevel);
         this.connection = ThreadLocal.withInitial(() -> createNewConnection());
         this.bgConnection = ThreadLocal.withInitial(() -> {
             try {
@@ -72,10 +72,10 @@ public class PostgresConnection implements ApiaryConnection {
             rs.next();
             if (rs.getString(1).equals("on")) {
                 ApiaryConfig.trackCommitTimestamp = true;
-                logger.info("Postgres track_commit_timestamp = on!");
+                logger.debug("Postgres track_commit_timestamp = on!");
             } else {
                 ApiaryConfig.trackCommitTimestamp = false;
-                logger.info("Postgres track_commit_timestamp = off!");
+                logger.debug("Postgres track_commit_timestamp = off!");
             }
             testConn.close();
         } catch (SQLException e) {

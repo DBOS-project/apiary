@@ -133,11 +133,12 @@ public class RetroDemo {
         // Submit duplicated concurrent requests.
         threadPool.submit(r);
         threadPool.submit(r);
+        Thread.sleep(200);
 
         // Submit other requests.
         for (int i = 0; i < totalRequests; i++) {
-            Thread.sleep(20);
             threadPool.submit(r);
+            Thread.sleep(20);
         }
 
         // Clean up.

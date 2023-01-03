@@ -70,7 +70,7 @@ public class RetroDemo {
             }
             ApiaryConfig.recordInput = false;
             // Only reset the application table.
-            resetAllTables(dbAddr);
+            resetAppTables(dbAddr);
         }
 
         PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");

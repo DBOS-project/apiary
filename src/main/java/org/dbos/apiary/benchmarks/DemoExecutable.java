@@ -5,16 +5,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DemoExecutable {
-    private static final Logger logger = LoggerFactory.getLogger(DemoExecutable.class);
-
     public static void main(String[] args) throws Exception {
         Options options = new Options();
 
         options.addOption("mainHostAddr", true, "Address of the main host to connect to.");
         options.addOption("execId", true, "The target execution ID for replay.");
         options.addOption("mode", true, "0-not replay, 1-replay the original trace, 2-replay with the modified code.");
-        HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp("java -jar target/demo-exec.jar <options>", options);
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);

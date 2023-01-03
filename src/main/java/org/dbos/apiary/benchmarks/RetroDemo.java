@@ -1,6 +1,7 @@
 package org.dbos.apiary.benchmarks;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.checkerframework.checker.units.qual.A;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
@@ -20,6 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RetroDemo {
     private static final Logger logger = LoggerFactory.getLogger(RetroDemo.class);
@@ -114,11 +116,12 @@ public class RetroDemo {
 
         // Otherwise, generate the initial execution trace.
         ExecutorService threadPool = Executors.newFixedThreadPool(threadPoolSize);
-        boolean initialRun = true;
+        AtomicInteger execCnt = new AtomicInteger(0);
 
         Runnable r = () -> {
             try {
-                if (initialRun) {
+                int cnt = execCnt.getAndIncrement();
+                if (cnt < 2) {
                     // Insert a subscription for the initial user + forum.
                     int res = client.get().executeFunction("PostgresIsSubscribed", initialUserId, initialForumId).getInt();
                     assert (res == initialUserId);
@@ -144,6 +147,10 @@ public class RetroDemo {
             Thread.sleep(ThreadLocalRandom.current().nextInt(10));
         }
 
+        // Clean up.
+        threadPool.shutdown();
+        threadPool.awaitTermination(10, TimeUnit.SECONDS);
+
         // Finally, fetch subscribers list for the initial forum.
         int[] resList = client.get().executeFunction("PostgresFetchSubscribers", initialForumId).getIntArray();
         if (!Utilities.checkDuplicates(resList)) {
@@ -152,9 +159,6 @@ public class RetroDemo {
             logger.error("Failed to generate duplication for forum {}", initialForumId);
         }
 
-        // Clean up.
-        threadPool.shutdown();
-        threadPool.awaitTermination(10, TimeUnit.SECONDS);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
         apiaryWorker.shutdown();
     }

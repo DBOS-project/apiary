@@ -19,6 +19,7 @@ import zmq.ZError;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.*;
@@ -303,7 +304,8 @@ public class ApiaryWorker {
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
                 ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-        ResultSet startOrderRs = stmt.executeQuery(startOrderQuery);
+        Statement startOrderStmt = provConn.createStatement();
+        ResultSet startOrderRs = startOrderStmt.executeQuery(startOrderQuery);
         assert (startOrderRs.next());  // Should have at least one execution.
 
         // This query finds the commit order of transactions.

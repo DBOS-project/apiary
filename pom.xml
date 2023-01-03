@@ -87,6 +87,22 @@
                         </configuration>
                     </execution>
                     <execution>
+                        <id>demo-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>org.dbos.apiary.benchmarks.DemoExecutable</mainClass>
+                                </manifest>
+                            </archive>
+                            <finalName>demo-exec</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>worker-assembly</id>
                         <phase>package</phase>
                         <goals>
@@ -166,7 +182,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.4.1</version>
+            <version>42.5.1</version>
         </dependency>
         <dependency>
             <groupId>mysql</groupId>

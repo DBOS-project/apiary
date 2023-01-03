@@ -423,6 +423,7 @@ public class ApiaryWorker {
                 commitConn.commit();
             } catch (Exception e) {
                 // TODO: how to handle commit failures? Now assume they are serialization errors.
+                logger.info(e.getMessage());
                 logger.warn("Failed to commit {}, skipped.", nextCommitTxid);
             }
             // Put it back to the connection pool.

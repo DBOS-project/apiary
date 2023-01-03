@@ -102,8 +102,8 @@ public class RetroDemo {
             } else {
                 logger.info("Replay finished!");
             }
-            apiaryWorker.shutdown();
             Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
+            apiaryWorker.shutdown();
             return;
         }
 
@@ -136,8 +136,8 @@ public class RetroDemo {
 
         // Submit other requests.
         for (int i = 0; i < totalRequests; i++) {
+            Thread.sleep(20);
             threadPool.submit(r);
-            Thread.sleep(10);
         }
 
         // Clean up.

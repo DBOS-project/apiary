@@ -26,7 +26,7 @@ public class DemoExecutable {
 
         int replayMode = 0;
         long execId = 0l;
-        if (cmd.hasOption("retroMode")) {
+        if (cmd.hasOption("mode")) {
             replayMode = Integer.parseInt(cmd.getOptionValue("mode"));
             if (replayMode > 0) {
                 execId = Long.parseLong(cmd.getOptionValue("execId"));

@@ -107,23 +107,23 @@ public class PostgresTests {
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
-        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
-        apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
-        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
+        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
+        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int res;
-        res = client.executeFunction("PostgresIsSubscribed", 123, 555).getInt();
+        res = client.executeFunction("MDLIsSubscribed", 123, 555).getInt();
         assertEquals(123, res);
 
         // Subscribe again, should return the same userId.
-        res = client.executeFunction("PostgresIsSubscribed", 123, 555).getInt();
+        res = client.executeFunction("MDLIsSubscribed", 123, 555).getInt();
         assertEquals(123, res);
 
         // Get a list of subscribers, should only contain one user entry.
-        int[] resList = client.executeFunction("PostgresFetchSubscribers",555).getIntArray();
+        int[] resList = client.executeFunction("MDLFetchSubscribers",555).getIntArray();
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);
     }
@@ -136,9 +136,9 @@ public class PostgresTests {
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
-        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
-        apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
-        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
+        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
+        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
@@ -159,7 +159,7 @@ public class PostgresTests {
             public Integer call() {
                 int res;
                 try {
-                    res = client.get().executeFunction("PostgresIsSubscribed", userId, forumId).getInt();
+                    res = client.get().executeFunction("MDLIsSubscribed", userId, forumId).getInt();
                 } catch (Exception e) {
                     res = -1;
                 }
@@ -182,7 +182,7 @@ public class PostgresTests {
                 }
             }
             // Check subscriptions.
-            int[] resList = client.get().executeFunction("PostgresFetchSubscribers", i+maxTry).getIntArray();
+            int[] resList = client.get().executeFunction("MDLFetchSubscribers", i+maxTry).getIntArray();
             if (resList.length > 1) {
                 logger.info("Found duplications! User: {}, Forum: {}", i, i+maxTry);
                 break;

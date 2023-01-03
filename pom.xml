@@ -51,7 +51,6 @@
                     <execution>
                         <goals>
                             <goal>compile</goal>
-                            <goal>test-compile</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -84,6 +83,22 @@
                                 </manifest>
                             </archive>
                             <finalName>apiary-bench-exec</finalName>
+                            <skipAssembly>true</skipAssembly>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>demo-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>org.dbos.apiary.benchmarks.DemoExecutable</mainClass>
+                                </manifest>
+                            </archive>
+                            <finalName>demo</finalName>
                         </configuration>
                     </execution>
                     <execution>
@@ -99,6 +114,7 @@
                                 </manifest>
                             </archive>
                             <finalName>apiary-worker-exec</finalName>
+                            <skipAssembly>true</skipAssembly>
                         </configuration>
                     </execution>
                 </executions>
@@ -166,7 +182,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.4.1</version>
+            <version>42.5.1</version>
         </dependency>
         <dependency>
             <groupId>mysql</groupId>
@@ -201,6 +217,12 @@
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-storage</artifactId>
             <version>2.8.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.jcabi</groupId>
+            <artifactId>jcabi-log</artifactId>
+            <version>0.22.0</version>
         </dependency>
     </dependencies>
 

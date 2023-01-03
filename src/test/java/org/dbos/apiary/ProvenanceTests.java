@@ -4,10 +4,10 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.replay.PostgresFetchSubscribers;
-import org.dbos.apiary.procedures.postgres.replay.PostgresForumSubscribe;
-import org.dbos.apiary.procedures.postgres.replay.PostgresIsSubscribed;
-import org.dbos.apiary.procedures.postgres.retro.PostgresIsSubscribedTxn;
+import org.dbos.apiary.procedures.postgres.replay.MDLFetchSubscribers;
+import org.dbos.apiary.procedures.postgres.replay.MDLForumInsert;
+import org.dbos.apiary.procedures.postgres.replay.MDLIsSubscribed;
+import org.dbos.apiary.procedures.postgres.retro.MDLSubscribeTxn;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceBasic;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceJoins;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceMultiRows;
@@ -89,9 +89,9 @@ public class ProvenanceTests {
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
-        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
-        apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
-        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
+        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
+        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
@@ -100,15 +100,15 @@ public class ProvenanceTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int res;
-        res = client.executeFunction("PostgresIsSubscribed", 123, 555).getInt();
+        res = client.executeFunction("MDLIsSubscribed", 123, 555).getInt();
         assertEquals(123, res);
 
         // Subscribe again, should return the same userId.
-        res = client.executeFunction("PostgresIsSubscribed", 123, 555).getInt();
+        res = client.executeFunction("MDLIsSubscribed", 123, 555).getInt();
         assertEquals(123, res);
 
         // Get a list of subscribers, should only contain one user entry.
-        int[] resList = client.executeFunction("PostgresFetchSubscribers",555).getIntArray();
+        int[] resList = client.executeFunction("MDLFetchSubscribers",555).getIntArray();
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);
 
@@ -124,7 +124,7 @@ public class ProvenanceTests {
         long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertTrue(resExecId >= 0);
-        assertEquals("PostgresIsSubscribed", resFuncName);
+        assertEquals("MDLIsSubscribed", resFuncName);
 
         // The second function should be a subscribe function.
         rs.next();
@@ -148,7 +148,7 @@ public class ProvenanceTests {
         assertEquals(resFuncId, resFuncId4);
 
         // Replay the execution of the first one.
-        res = client.replayFunction(resExecId,"PostgresIsSubscribed", 123, 555).getInt();
+        res = client.replayFunction(resExecId,"MDLIsSubscribed", 123, 555).getInt();
         assertEquals(123, res);
 
         // Check provenance.
@@ -166,7 +166,7 @@ public class ProvenanceTests {
         assertEquals(1, resIsReplay);
 
         // Replay the next execution. Which should skip the subscribe function.
-        res = client.replayFunction(resExecId3, "PostgresIsSubscribed", 123, 555).getInt();
+        res = client.replayFunction(resExecId3, "MDLIsSubscribed", 123, 555).getInt();
         assertEquals(123, res);
         rs.close();
 
@@ -239,9 +239,9 @@ public class ProvenanceTests {
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
-        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
-        apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
-        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
+        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
+        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
@@ -265,7 +265,7 @@ public class ProvenanceTests {
             public Integer call() {
                 int res;
                 try {
-                    res = client.get().executeFunction("PostgresIsSubscribed", userId, forumId).getInt();
+                    res = client.get().executeFunction("MDLIsSubscribed", userId, forumId).getInt();
                 } catch (Exception e) {
                     res = -1;
                 }
@@ -289,7 +289,7 @@ public class ProvenanceTests {
                 }
             }
             // Check subscriptions.
-            resList = client.get().executeFunction("PostgresFetchSubscribers", i+maxTry).getIntArray();
+            resList = client.get().executeFunction("MDLFetchSubscribers", i+maxTry).getIntArray();
             if (resList.length > 1) {
                 logger.info("Found duplications! User: {}, Forum: {}", i, i+maxTry);
                 break;
@@ -317,7 +317,7 @@ public class ProvenanceTests {
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertTrue(resExecId >= 0);
         assumeTrue(resFuncId == 0);
-        assertEquals("PostgresIsSubscribed", resFuncName);
+        assertEquals("MDLIsSubscribed", resFuncName);
 
         // Reset the table and replay all.
         conn.truncateTable("ForumSubscription", false);
@@ -330,9 +330,9 @@ public class ProvenanceTests {
         apiaryWorker.shutdown(); // Stop the existing worker.
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
-        apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribedTxn::new);  // Register the new one.
+        apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new);  // Register the new one.
         // Do not register the second subscribe function.
-        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 
         provBuff = apiaryWorker.workerContext.provBuff;

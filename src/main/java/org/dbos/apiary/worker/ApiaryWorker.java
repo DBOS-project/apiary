@@ -19,6 +19,7 @@ import zmq.ZError;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.*;
@@ -266,7 +267,7 @@ public class ApiaryWorker {
     }
 
     private void retroExecuteAll(long targetExecID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws Exception {
-        logger.info("Retro execute the entire trace!");
+        logger.debug("Replay the entire trace!");
         assert(workerContext.provBuff != null);
         Connection provConn = workerContext.provBuff.conn.get();
 
@@ -303,8 +304,12 @@ public class ApiaryWorker {
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
                 ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-        ResultSet startOrderRs = stmt.executeQuery(startOrderQuery);
-        assert (startOrderRs.next());  // Should have at least one execution.
+        Statement startOrderStmt = provConn.createStatement();
+        ResultSet startOrderRs = startOrderStmt.executeQuery(startOrderQuery);
+        if (!startOrderRs.next()) {
+            logger.error("Cannot find start order with query: {}", startOrderQuery);
+            return;
+        }
 
         // This query finds the commit order of transactions.
         String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;",
@@ -315,7 +320,10 @@ public class ApiaryWorker {
         Statement commitOrderStmt = provConn.createStatement();
         ResultSet commitOrderRs = commitOrderStmt.executeQuery(commitOrderQuery);
         // Next commit transaction ID, the next to be committed.
-        assert (commitOrderRs.next());
+        if (!commitOrderRs.next()) {
+            logger.error("Cannot find commit order with query: {}", commitOrderQuery);
+            return;
+        }
         long nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
 
         // This query finds the original input.
@@ -387,7 +395,7 @@ public class ApiaryWorker {
                                 logger.error("Input execID {} does not match the expected ID {}!", currInputExecId, resExecId);
                                 throw new RuntimeException("Retro replay failed due to mismatched IDs.");
                             }
-                            logger.info("Original arguments execid {}, inputs {}", currInputExecId, currInputs);
+                            logger.debug("Original arguments execid {}, inputs {}", currInputExecId, currInputs);
                         } else {
                             logger.error("Could not find the input for this execution ID {} ", resExecId);
                             throw new RuntimeException("Retro replay failed due to missing input.");
@@ -415,7 +423,8 @@ public class ApiaryWorker {
                 commitConn.commit();
             } catch (Exception e) {
                 // TODO: how to handle commit failures? Now assume they are serialization errors.
-                logger.warn("Failed to commit {}, skipped.", nextCommitTxid);
+                logger.debug(e.getMessage());
+                logger.debug("Failed to commit {}, skipped.", nextCommitTxid);
             }
             // Put it back to the connection pool.
             connPool.add(commitConn);
@@ -448,6 +457,7 @@ public class ApiaryWorker {
         }
 
         startOrderRs.close();
+        startOrderStmt.close();
         stmt.close();
         inputRs.close();
         inputStmt.close();
@@ -467,7 +477,7 @@ public class ApiaryWorker {
         FunctionOutput fo;
         // Only support primary functions.
         if (!workerContext.functionExists(funcName)) {
-            logger.info("Unrecognized function: {}, cannot replay, skipped.", funcName);
+            logger.debug("Unrecognized function: {}, cannot replay, skipped.", funcName);
             return false;
         }
         String type = workerContext.getFunctionType(funcName);
@@ -478,12 +488,17 @@ public class ApiaryWorker {
 
         ApiaryConnection c = workerContext.getPrimaryConnection();
 
+        // Wait for user input to continue.
+        logger.warn("Press Enter key to continue TROD replay...");
+        Scanner scn = new Scanner(System.in);
+        scn.nextLine();
+
         if (funcId == 0l) {
             // This is the first function of a request.
             fo = c.replayFunction(conn, funcName, workerContext, "retroReplay", execId, funcId,
                     replayMode, inputs);
             if (fo == null) {
-                logger.warn("Repaly function output is null.");
+                logger.warn("Replay function output is null.");
                 return false;
             }
             execFuncIdToValue.putIfAbsent(execId, new HashMap<>());

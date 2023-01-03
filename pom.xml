@@ -98,8 +98,7 @@
                                     <mainClass>org.dbos.apiary.benchmarks.DemoExecutable</mainClass>
                                 </manifest>
                             </archive>
-                            <finalName>demo-exec</finalName>
-                            <appendAssemblyId>false</appendAssemblyId>
+                            <finalName>demo</finalName>
                         </configuration>
                     </execution>
                     <execution>

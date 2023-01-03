@@ -137,7 +137,7 @@ public class RetroDemo {
         // Submit other requests.
         for (int i = 0; i < totalRequests; i++) {
             threadPool.submit(r);
-            Thread.sleep(ThreadLocalRandom.current().nextInt(10));
+            Thread.sleep(10);
         }
 
         // Clean up.

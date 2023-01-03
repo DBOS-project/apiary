@@ -8,14 +8,17 @@ import java.sql.SQLException;
 
 // Check if a user is subscribed to a forum.
 public class PostgresIsSubscribed extends PostgresFunction {
-    private static final String isSubscribed = "SELECT UserId, ForumId FROM ForumSubscription WHERE UserId=? AND ForumId=?";
+    private static final String isSubscribed =
+            "SELECT UserId, ForumId FROM ForumSubscription WHERE UserId=? AND ForumId=?";
 
-    public static Object runFunction(PostgresContext ctxt, int userId, int forumId) throws SQLException {
+    public static Object runFunction(PostgresContext ctxt,
+                                     int userId, int forumId) throws SQLException {
         // Check if the user has been subscribed to the forum before.
         ResultSet r = ctxt.executeQuery(isSubscribed, userId, forumId);
 
         if (r.next()) {
-            // If a subscription exists, then directly return the userID without subscribing a new one.
+            // If a subscription exists, then directly return the userID
+            // without subscribing a new one.
             return r.getInt(1);
         }
 

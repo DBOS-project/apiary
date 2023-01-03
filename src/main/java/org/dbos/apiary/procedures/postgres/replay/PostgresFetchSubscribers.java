@@ -10,10 +10,12 @@ import java.util.List;
 
 public class PostgresFetchSubscribers extends PostgresFunction {
 
-    private static final String getSubscribers = "SELECT UserId FROM ForumSubscription WHERE ForumId=?";
+    private static final String getSubscribers =
+            "SELECT UserId FROM ForumSubscription WHERE ForumId=?";
 
-    public static int[] runFunction(PostgresContext ctxt, int forumId) throws SQLException {
-        // Check subscribers of a forum.
+    public static int[] runFunction(PostgresContext ctxt,
+                                    int forumId) throws SQLException {
+        // Return a list of subscribers of a forum.
         ResultSet r = ctxt.executeQuery(getSubscribers, forumId);
         List<Integer> subscribers = new ArrayList<>();
         while (r.next()) {

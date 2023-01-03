@@ -15,7 +15,7 @@ public class DemoExecutable {
 
         options.addOption("mainHostAddr", true, "Address of the main host to connect to.");
         options.addOption("execId", true, "The target execution ID for replay.");
-        options.addOption("mode", true, "0-not replay, 2-replay all after the target execID.");
+        options.addOption("mode", true, "0-not replay, 1-replay the original trace, 2-replay with the modified code.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);

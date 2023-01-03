@@ -7,9 +7,11 @@ import java.sql.SQLException;
 
 // Subscribe a user to a forum.
 public class PostgresForumSubscribe extends PostgresFunction {
-    private static final String subscribe = "INSERT INTO ForumSubscription(UserId, ForumId) VALUES (?, ?);";
+    private static final String subscribe =
+            "INSERT INTO ForumSubscription(UserId, ForumId) VALUES (?, ?);";
 
-    public static int runFunction(PostgresContext ctxt, int userId, int forumId) throws SQLException {
+    public static int runFunction(PostgresContext ctxt,
+                                  int userId, int forumId) throws SQLException {
         ctxt.executeUpdate(subscribe, userId, forumId);
         return userId;
     }

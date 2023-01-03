@@ -4,54 +4,24 @@ import com.google.protobuf.ByteString;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.function.ProvenanceBuffer;
-import org.dbos.apiary.worker.ApiaryWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class Utilities {
+    private static final Logger logger = LoggerFactory.getLogger(Utilities.class);
     public static int stringType = 1;
     public static int stringArrayType = 2;
     public static int intType = 3;
     public static int intArrayType = 4;
-    private static final Logger logger = LoggerFactory.getLogger(Utilities.class);
-
-    public static byte[] objectToByteArray(Serializable obj) {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutput out;
-        try {
-            out = new ObjectOutputStream(bos);
-            out.writeObject(obj);
-            out.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-            logger.error("Serialization Failed {} {}", obj, e);
-            assert(false);
-        }
-        return bos.toByteArray();
-    }
-
-    public static Object byteArrayToObject(byte[] b) {
-        ByteArrayInputStream bis = new ByteArrayInputStream(b);
-        Object obj = null;
-        try {
-            ObjectInput in = new ObjectInputStream(bis);
-            obj = in.readObject();
-            in.close();
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
-            logger.error("Deserialization Failed {} {}", b, e);
-            assert(false);
-        }
-        return obj;
-    }
 
     public static byte[] intArrayToByteArray(int[] ints) {
         byte[] bytes = new byte[ints.length * 4];
@@ -243,5 +213,18 @@ public class Utilities {
             }
         }
         return arguments;
+    }
+
+    // Return true if no duplicates found. Return false if lst contains duplicates.
+    public static boolean checkDuplicates(int[] lst) {
+        Set<Integer> unique = new HashSet<>();
+        boolean noDup = true;
+        for (int i : lst) {
+            if (!unique.add(i)) {
+                logger.info("Duplicated entry for {}", i);
+                noDup = false;
+            }
+        }
+        return noDup;
     }
 }

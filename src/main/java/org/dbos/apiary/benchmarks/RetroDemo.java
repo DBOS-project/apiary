@@ -9,6 +9,7 @@ import org.dbos.apiary.procedures.postgres.replay.PostgresForumSubscribe;
 import org.dbos.apiary.procedures.postgres.replay.PostgresIsSubscribed;
 import org.dbos.apiary.procedures.postgres.retro.PostgresIsSubscribedTxn;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.slf4j.Logger;
@@ -57,7 +58,7 @@ public class RetroDemo {
         ApiaryConfig.captureReads = true;
 
         if (replayMode == DemoMode.NOT_REPLAY.getValue()) {
-            logger.info("Non-replay mode.")
+            logger.info("Non-replay mode.");
             ApiaryConfig.recordInput = true;
             // Reset all tables if we do initial runs.
             resetAllTables(dbAddr);
@@ -96,10 +97,12 @@ public class RetroDemo {
         // Replay, or retro replay.
         if (replayMode != DemoMode.NOT_REPLAY.getValue()) {
             int[] retroResList = client.get().retroReplay(targetExecId).getIntArray();
-            if (retroResList.length > 1) {
-                logger.info("Replay found duplications!");
-            } else if (retroResList.length == 1) {
-                logger.info("Replay found no duplications!");
+            if (retroResList.length >= 1) {
+                if (Utilities.checkDuplicates(retroResList)) {
+                    logger.info("Replay found no duplications!");
+                } else {
+                    logger.info("Replay found duplications!");
+                }
             } else {
                 logger.error("Replay failed.");
             }
@@ -143,7 +146,7 @@ public class RetroDemo {
 
         // Finally, fetch subscribers list for the initial forum.
         int[] resList = client.get().executeFunction("PostgresFetchSubscribers", initialForumId).getIntArray();
-        if (resList.length > 1) {
+        if (!Utilities.checkDuplicates(resList)) {
             logger.info("Found duplicated subscriptions for forum {}", initialForumId);
         } else {
             logger.error("Failed to generate duplication for forum {}", initialForumId);

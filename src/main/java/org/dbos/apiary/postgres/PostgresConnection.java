@@ -305,7 +305,7 @@ public class PostgresConnection implements ApiaryConnection {
         PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
                 new HashSet<>(), new HashSet<>());
         try {
-            logger.info("Replaying function [{}], original execID {}", functionName, execID);
+            logger.info("Replaying function [{}], inputs {}", functionName, inputs);
             f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
         } catch (Exception e) {
             // TODO: better error handling? For now, ignore those errors.
@@ -315,7 +315,7 @@ public class PostgresConnection implements ApiaryConnection {
         }
 
         recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_REPLAY);
-
+        logger.info("Completed function [{}]", functionName);
         return f;
     }
 

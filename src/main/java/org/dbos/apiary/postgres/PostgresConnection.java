@@ -150,7 +150,7 @@ public class PostgresConnection implements ApiaryConnection {
         Connection conn = bgConnection.get();
         Statement s = conn.createStatement();
         s.execute(String.format("CREATE TABLE IF NOT EXISTS %s (%s);", tableName, specStr));
-        if (!specStr.contains("APIARY_TRANSACTION_ID")) {
+        if (!specStr.contains(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID)) {
             ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
             ResultSetMetaData rsmd = r.getMetaData();
             StringBuilder provTable = new StringBuilder(String.format(

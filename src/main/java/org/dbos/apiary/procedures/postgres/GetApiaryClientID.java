@@ -1,5 +1,6 @@
 package org.dbos.apiary.procedures.postgres;
 
+import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;
 
@@ -8,8 +9,9 @@ import java.sql.SQLException;
 
 public class GetApiaryClientID extends PostgresFunction {
 
-    private static final String get = "SELECT Value from ApiaryMetadata WHERE Key=?;";
-    private static final String insert = "INSERT INTO ApiaryMetadata(Key, Value) VALUES (?, ?) ON CONFLICT (Key) DO UPDATE SET Value = EXCLUDED.Value;";
+    private static final String get = String.format("SELECT Value from %s WHERE Key=?;", ProvenanceBuffer.PROV_ApiaryMetadata);
+    private static final String insert = String.format("INSERT INTO %s(Key, Value) VALUES (?, ?) ON CONFLICT (Key) DO UPDATE SET Value = EXCLUDED.Value;",
+            ProvenanceBuffer.PROV_ApiaryMetadata);
 
     private static final String clientIDName = "ClientID";
 

@@ -8,8 +8,8 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 
 // Subscribe a user to a forum.
-public class PostgresForumSubscribe extends PostgresFunction {
-    private static final Logger logger = LoggerFactory.getLogger(PostgresForumSubscribe.class);
+public class MDLForumSubscribe extends PostgresFunction {
+    private static final Logger logger = LoggerFactory.getLogger(MDLForumSubscribe.class);
 
     private static final String subscribe =
             "INSERT INTO ForumSubscription(UserId, ForumId) VALUES (?, ?);";

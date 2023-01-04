@@ -12,8 +12,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class PostgresFetchSubscribers extends PostgresFunction {
-    private static final Logger logger = LoggerFactory.getLogger(PostgresFetchSubscribers.class);
+public class MDLFetchSubscribers extends PostgresFunction {
+    private static final Logger logger = LoggerFactory.getLogger(MDLFetchSubscribers.class);
 
     private static final String getSubscribers =
             "SELECT UserId FROM ForumSubscription WHERE ForumId=?";

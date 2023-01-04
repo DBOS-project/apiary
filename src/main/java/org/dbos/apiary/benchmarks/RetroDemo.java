@@ -4,10 +4,10 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.replay.PostgresFetchSubscribers;
-import org.dbos.apiary.procedures.postgres.replay.PostgresForumSubscribe;
-import org.dbos.apiary.procedures.postgres.replay.PostgresIsSubscribed;
-import org.dbos.apiary.procedures.postgres.retro.PostgresSubscribeTxn;
+import org.dbos.apiary.procedures.postgres.replay.MDLForumSubscribe;
+import org.dbos.apiary.procedures.postgres.replay.MDLIsSubscribed;
+import org.dbos.apiary.procedures.postgres.replay.MDLFetchSubscribers;
+import org.dbos.apiary.procedures.postgres.retro.MDLSubscribeTxn;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -81,14 +81,14 @@ public class RetroDemo {
 
         if (replayMode != DemoMode.RETRO.getValue()) {
             // The buggy version.
-            apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
-            apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
+            apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
+            apiaryWorker.registerFunction("MDLForumSubscribe", ApiaryConfig.postgres, MDLForumSubscribe::new);
         } else {
             // The transactional version.
-            apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresSubscribeTxn::new);
+            apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new);
         }
 
-        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 
         ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient(dbAddr));
@@ -115,13 +115,13 @@ public class RetroDemo {
                 int cnt = execCnt.getAndIncrement();
                 if (cnt < 2) {
                     // Insert a subscription for the initial user + forum.
-                    int res = client.get().executeFunction("PostgresIsSubscribed", initialUserId, initialForumId).getInt();
+                    int res = client.get().executeFunction("MDLIsSubscribed", initialUserId, initialForumId).getInt();
                     assert (res == initialUserId);
                 } else {
                     // Insert a subscription for random user + forum.
                     int userId = ThreadLocalRandom.current().nextInt(0, numUsers);
                     int forumId = ThreadLocalRandom.current().nextInt(0, numForums);
-                    int res = client.get().executeFunction("PostgresIsSubscribed", userId, forumId).getInt();
+                    int res = client.get().executeFunction("MDLIsSubscribed", userId, forumId).getInt();
                     assert (res == userId);
                 }
             } catch (InvalidProtocolBufferException e) {
@@ -145,7 +145,7 @@ public class RetroDemo {
         threadPool.awaitTermination(10, TimeUnit.SECONDS);
 
         // Finally, fetch subscribers list for the initial forum.
-        int[] resList = client.get().executeFunction("PostgresFetchSubscribers", initialForumId).getIntArray();
+        int[] resList = client.get().executeFunction("MDLFetchSubscribers", initialForumId).getIntArray();
         if (resList.length <= 1) {
             logger.error("Failed to generate duplication for forum {}", initialForumId);
         }

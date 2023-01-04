@@ -267,7 +267,7 @@ public class ApiaryWorker {
     }
 
     private void retroExecuteAll(long targetExecID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws Exception {
-        logger.info("Replay the entire trace!");
+        logger.debug("Replay the entire trace!");
         assert(workerContext.provBuff != null);
         Connection provConn = workerContext.provBuff.conn.get();
 

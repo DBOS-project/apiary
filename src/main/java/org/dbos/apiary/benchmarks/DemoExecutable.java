@@ -1,8 +1,13 @@
 package org.dbos.apiary.benchmarks;
 
 import org.apache.commons.cli.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DemoExecutable {
+
+    private static final Logger logger = LoggerFactory.getLogger(DemoExecutable.class);
+
     public static void main(String[] args) throws Exception {
         Options options = new Options();
 
@@ -33,6 +38,9 @@ public class DemoExecutable {
                 replayMode = RetroDemo.DemoMode.REPLAY.getValue();
             } else if (modeStr.equals("retro")) {
                 replayMode = RetroDemo.DemoMode.RETRO.getValue();
+            } else {
+                logger.error("Unsupported mode: {}", modeStr);
+                return;
             }
             if (replayMode > 0) {
                 execId = Long.parseLong(cmd.getOptionValue("execId"));

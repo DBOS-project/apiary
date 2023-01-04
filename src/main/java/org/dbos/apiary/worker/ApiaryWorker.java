@@ -395,7 +395,7 @@ public class ApiaryWorker {
                                 logger.error("Input execID {} does not match the expected ID {}!", currInputExecId, resExecId);
                                 throw new RuntimeException("Retro replay failed due to mismatched IDs.");
                             }
-                            logger.info("Original arguments execid {}, inputs {}", currInputExecId, currInputs);
+                            logger.debug("Original arguments execid {}, inputs {}", currInputExecId, currInputs);
                         } else {
                             logger.error("Could not find the input for this execution ID {} ", resExecId);
                             throw new RuntimeException("Retro replay failed due to missing input.");
@@ -488,12 +488,17 @@ public class ApiaryWorker {
 
         ApiaryConnection c = workerContext.getPrimaryConnection();
 
+        // Wait for user input to continue.
+        logger.info("Press Enter key to continue...");
+        Scanner scn = new Scanner(System.in);
+        scn.nextLine();
+
         if (funcId == 0l) {
             // This is the first function of a request.
             fo = c.replayFunction(conn, funcName, workerContext, "retroReplay", execId, funcId,
                     replayMode, inputs);
             if (fo == null) {
-                logger.warn("Repaly function output is null.");
+                logger.warn("Replay function output is null.");
                 return false;
             }
             execFuncIdToValue.putIfAbsent(execId, new HashMap<>());

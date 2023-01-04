@@ -1,10 +1,7 @@
 package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.function.FunctionOutput;
-import org.dbos.apiary.function.ProvenanceBuffer;
-import org.dbos.apiary.function.TransactionContext;
-import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.postgresql.ds.PGSimpleDataSource;
@@ -305,8 +302,9 @@ public class PostgresConnection implements ApiaryConnection {
         PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
                 new HashSet<>(), new HashSet<>());
         try {
-            logger.info("Replaying function [{}], inputs {}", functionName, inputs);
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+            ApiaryFunction func = workerContext.getFunction(functionName);
+            logger.info("Replaying function [{}], inputs {}", func.getClassName().split("\\.")[-1], inputs);
+            f = func.apiaryRunFunction(ctxt, inputs);
         } catch (Exception e) {
             // TODO: better error handling? For now, ignore those errors.
             logger.warn("Failed execution during replay.");

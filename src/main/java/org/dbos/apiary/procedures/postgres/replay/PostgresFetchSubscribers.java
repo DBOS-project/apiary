@@ -2,14 +2,15 @@ package org.dbos.apiary.procedures.postgres.replay;
 
 import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;
-import org.dbos.apiary.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class PostgresFetchSubscribers extends PostgresFunction {
     private static final Logger logger = LoggerFactory.getLogger(PostgresFetchSubscribers.class);
@@ -28,10 +29,13 @@ public class PostgresFetchSubscribers extends PostgresFunction {
 
         // Check for duplicates.
         int[] resList = subscribers.stream().mapToInt(i -> i).toArray();
-        boolean noDup = Utilities.checkDuplicates(resList);
-        if (!noDup) {
-            logger.error("Found duplicates!");
+        Set<Integer> unique = new HashSet<>();
+        for (int i : resList) {
+            if (!unique.add(i)) {
+                logger.error("Duplicated subscriptions for forum {}, userId {}", forumId, i);
+            }
         }
+
         return resList;
     }
 }

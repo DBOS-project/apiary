@@ -214,17 +214,4 @@ public class Utilities {
         }
         return arguments;
     }
-
-    // Return true if no duplicates found. Return false if lst contains duplicates.
-    public static boolean checkDuplicates(int[] lst) {
-        Set<Integer> unique = new HashSet<>();
-        boolean noDup = true;
-        for (int i : lst) {
-            if (!unique.add(i)) {
-                logger.info("Duplicated entry for {}", i);
-                noDup = false;
-            }
-        }
-        return noDup;
-    }
 }

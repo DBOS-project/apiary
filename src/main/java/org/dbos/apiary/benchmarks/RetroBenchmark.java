@@ -96,7 +96,7 @@ public class RetroBenchmark {
         if (replayMode != ApiaryConfig.ReplayMode.ALL.getValue()) {
             // The buggy version.
             apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
-            apiaryWorker.registerFunction("MDLForumSubscribe", ApiaryConfig.postgres, MDLForumSubscribe::new);
+            apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
         } else {
             // The transactional version.
             apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new);

@@ -108,7 +108,7 @@ public class PostgresTests {
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
-        apiaryWorker.registerFunction("MDLForumSubscribe", ApiaryConfig.postgres, MDLForumSubscribe::new);
+        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
         apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 
@@ -137,7 +137,7 @@ public class PostgresTests {
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
-        apiaryWorker.registerFunction("MDLForumSubscribe", ApiaryConfig.postgres, MDLForumSubscribe::new);
+        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
         apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 

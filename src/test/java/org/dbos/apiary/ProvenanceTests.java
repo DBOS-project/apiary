@@ -5,7 +5,7 @@ import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.replay.MDLFetchSubscribers;
-import org.dbos.apiary.procedures.postgres.replay.MDLForumSubscribe;
+import org.dbos.apiary.procedures.postgres.replay.MDLForumInsert;
 import org.dbos.apiary.procedures.postgres.replay.MDLIsSubscribed;
 import org.dbos.apiary.procedures.postgres.retro.MDLSubscribeTxn;
 import org.dbos.apiary.procedures.postgres.tests.PostgresProvenanceBasic;
@@ -90,7 +90,7 @@ public class ProvenanceTests {
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
-        apiaryWorker.registerFunction("MDLForumSubscribe", ApiaryConfig.postgres, MDLForumSubscribe::new);
+        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
         apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 
@@ -240,7 +240,7 @@ public class ProvenanceTests {
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
-        apiaryWorker.registerFunction("MDLForumSubscribe", ApiaryConfig.postgres, MDLForumSubscribe::new);
+        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
         apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 

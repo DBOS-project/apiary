@@ -28,6 +28,6 @@ public class MDLIsSubscribed extends PostgresFunction {
         logger.info("User {} has not subscribed to forum {}.", userId, forumId);
 
         // Otherwise, call the ForumSubscribe function.
-        return ctxt.apiaryQueueFunction("MDLForumSubscribe", userId, forumId);
+        return ctxt.apiaryQueueFunction("MDLForumInsert", userId, forumId);
     }
 }

@@ -6,7 +6,7 @@ import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.replay.*;
-import org.dbos.apiary.procedures.postgres.retro.PostgresIsSubscribedTxn;
+import org.dbos.apiary.procedures.postgres.retro.PostgresSubscribeTxn;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -99,7 +99,7 @@ public class RetroBenchmark {
             apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
         } else {
             // The transactional version.
-            apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribedTxn::new);
+            apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresSubscribeTxn::new);
         }
         apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
         apiaryWorker.startServing();

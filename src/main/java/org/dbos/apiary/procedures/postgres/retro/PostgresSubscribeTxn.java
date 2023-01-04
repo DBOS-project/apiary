@@ -8,7 +8,7 @@ import java.sql.SQLException;
 
 // Transactionally check if a user is subscribed to a forum. If not, subscribe them.
 // This should be a bug fix for the non-atomic version.
-public class PostgresIsSubscribedTxn extends PostgresFunction {
+public class PostgresSubscribeTxn extends PostgresFunction {
     private static final String isSubscribed =
             "SELECT UserId, ForumId FROM ForumSubscription WHERE UserId=? AND ForumId=?";
 

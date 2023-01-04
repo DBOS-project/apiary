@@ -51,7 +51,6 @@
                     <execution>
                         <goals>
                             <goal>compile</goal>
-                            <goal>test-compile</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -84,6 +83,7 @@
                                 </manifest>
                             </archive>
                             <finalName>apiary-bench-exec</finalName>
+                            <skipAssembly>true</skipAssembly>
                         </configuration>
                     </execution>
                     <execution>
@@ -114,6 +114,7 @@
                                 </manifest>
                             </archive>
                             <finalName>apiary-worker-exec</finalName>
+                            <skipAssembly>true</skipAssembly>
                         </configuration>
                     </execution>
                 </executions>

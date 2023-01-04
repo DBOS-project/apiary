@@ -489,7 +489,7 @@ public class ApiaryWorker {
         ApiaryConnection c = workerContext.getPrimaryConnection();
 
         // Wait for user input to continue.
-        logger.info("Press Enter key to continue...");
+        logger.info("Press Enter key to continue TROD replay...");
         Scanner scn = new Scanner(System.in);
         scn.nextLine();
 

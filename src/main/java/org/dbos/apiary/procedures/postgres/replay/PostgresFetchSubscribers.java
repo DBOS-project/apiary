@@ -29,6 +29,7 @@ public class PostgresFetchSubscribers extends PostgresFunction {
 
         // Check for duplicates.
         int[] resList = subscribers.stream().mapToInt(i -> i).toArray();
+        logger.info("Forum {} has subscribers: {}", forumId, resList);
         Set<Integer> unique = new HashSet<>();
         for (int i : resList) {
             if (!unique.add(i)) {

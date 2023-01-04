@@ -30,7 +30,6 @@ public class RetroDemo {
     // Users can subscribe to forums.
     private static final int numUsers = 10;
     private static final int numForums = 10;
-    private static final int totalRequests = 10;
 
     private static final int initialUserId = 11;
     private static final int initialForumId = 22;
@@ -51,7 +50,7 @@ public class RetroDemo {
         }
     }
 
-    public static void benchmark(String dbAddr, int replayMode, long targetExecId) throws SQLException, InvalidProtocolBufferException, InterruptedException {
+    public static void benchmark(String dbAddr, int replayMode, long targetExecId, int numRequests) throws SQLException, InvalidProtocolBufferException, InterruptedException {
         ApiaryConfig.isolationLevel = ApiaryConfig.SERIALIZABLE;
         ApiaryConfig.XDBTransactions = false;
         ApiaryConfig.captureUpdates = true;
@@ -136,7 +135,7 @@ public class RetroDemo {
         Thread.sleep(200);
 
         // Submit other requests.
-        for (int i = 0; i < totalRequests; i++) {
+        for (int i = 0; i < numRequests; i++) {
             threadPool.submit(r);
             Thread.sleep(20);
         }

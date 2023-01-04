@@ -57,15 +57,15 @@ public class RetroDemo {
         ApiaryConfig.captureReads = true;
 
         if (replayMode == DemoMode.NOT_REPLAY.getValue()) {
-            logger.info("Non-replay mode.");
+            logger.warn("Non-replay mode.");
             ApiaryConfig.recordInput = true;
             // Reset all tables if we do initial runs.
             resetAllTables(dbAddr);
         } else {
             if (replayMode == DemoMode.REPLAY.getValue()) {
-                logger.info("Replay mode. Replay the original trace.");
+                logger.warn("Replay mode. Replay the original trace.");
             } else {
-                logger.info("Retroactive programming mode. Replay with the bug fix code.");
+                logger.warn("Retroactive programming mode. Replay with the bug fix code.");
             }
             ApiaryConfig.recordInput = false;
             // Only reset the application table.
@@ -99,7 +99,7 @@ public class RetroDemo {
             if (retroResList.length < 1) {
                 logger.error("Replay failed.");
             } else {
-                logger.info("Replay finished!");
+                logger.warn("Replay finished!");
             }
             Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
             apiaryWorker.shutdown();

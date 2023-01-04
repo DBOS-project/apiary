@@ -305,12 +305,12 @@ public class PostgresConnection implements ApiaryConnection {
             ApiaryFunction func = workerContext.getFunction(functionName);
             String[] actualNames = func.getClassName().split("\\.");
             String actualName = actualNames[actualNames.length-1];
-            logger.info("Replaying function [{}], inputs {}", actualName, inputs);
+            logger.warn("Replaying function [{}], inputs {}", actualName, inputs);
             f = func.apiaryRunFunction(ctxt, inputs);
-            logger.info("Completed function [{}]", actualName);
+            logger.warn("Completed function [{}]", actualName);
         } catch (Exception e) {
             // TODO: better error handling? For now, ignore those errors.
-            logger.warn("Failed execution during replay.");
+            logger.error("Failed execution during replay.");
             recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
             return null;
         }

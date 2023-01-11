@@ -76,7 +76,7 @@ public class PostgresContext extends ApiaryContext {
                 rs = pstmt.executeQuery();
                 if (rs.next()) {
                     tmpReplayTxID = rs.getLong(1);
-                    logger.info("Current transaction {} is a replay of executionID: {}, functionID: {}, original tranasction ID: {}", txID, execID, functionID, tmpReplayTxID);
+                    logger.debug("Current transaction {} is a replay of executionID: {}, functionID: {}, original tranasction ID: {}", txID, execID, functionID, tmpReplayTxID);
                 } else {
                     throw new RuntimeException("Cannot find the original transaction ID for this replay!");
                 }
@@ -139,7 +139,7 @@ public class PostgresContext extends ApiaryContext {
             } else if (o instanceof Timestamp) {
                 ps.setTimestamp(i + 1, (Timestamp) o);
             } else {
-                logger.info("type {} for input {} not recognized ", o.toString(), i);
+                logger.warn("type {} for input {} not recognized ", o.toString(), i);
                 assert (false); // TODO: More types.
             }
         }
@@ -334,7 +334,7 @@ public class PostgresContext extends ApiaryContext {
     private void replayUpdate(String procedure, Object... input) throws SQLException {
         // TODO: support multiple replay modes. The current mode skips the insert during replay.
         int seqNum = this.txc.querySeqNum.getAndIncrement();
-        logger.info("Replay update. Original transaction: {} querySeqNum: {}",
+        logger.debug("Replay update. Original transaction: {} querySeqNum: {}",
                 this.replayTxID, seqNum);
 
         PreparedStatement pstmt;
@@ -353,7 +353,7 @@ public class PostgresContext extends ApiaryContext {
         if (rs.next()) {
             originalQuery = rs.getString(ProvenanceBuffer.PROV_QUERY_STRING);
             assert (currentQuery.equalsIgnoreCase(originalQuery));
-            logger.info("Replay original update: {}", originalQuery.split(" RETURNING")[0]);
+            logger.debug("Replay original update: {}", originalQuery.split(" RETURNING")[0]);
         } else {
             throw new RuntimeException("Failed to find original update.");
         }
@@ -362,7 +362,7 @@ public class PostgresContext extends ApiaryContext {
     private ResultSet replayQuery(String procedure, Object... input) throws SQLException {
         // TODO: support multiple replay modes. The current mode queries the original provenance data and returns the results.
         int seqNum = this.txc.querySeqNum.getAndIncrement();
-        logger.info("Replay query. Original transaction: {} querySeqNum: {}",
+        logger.debug("Replay query. Original transaction: {} querySeqNum: {}",
                 this.replayTxID, seqNum);
 
         PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
@@ -382,7 +382,7 @@ public class PostgresContext extends ApiaryContext {
         if (rs.next()) {
             originalQuery = rs.getString(ProvenanceBuffer.PROV_QUERY_STRING);
             assert (currentQuery.equalsIgnoreCase(originalQuery));
-            logger.info("Replay original query: {}", originalQuery);
+            logger.debug("Replay original query: {}", originalQuery);
             String tableString = rs.getString(ProvenanceBuffer.PROV_QUERY_TABLENAMES);
             tables = List.of(tableString.split(","));
             projection = rs.getString(ProvenanceBuffer.PROV_QUERY_PROJECTION);

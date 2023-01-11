@@ -83,7 +83,7 @@ public class ProvenanceBuffer {
     public ProvenanceBuffer(String databaseType, String databaseAddress) throws ClassNotFoundException {
         this.databaseType = databaseType;
         if (databaseType == null) {
-            logger.info("No provenance buffer!");
+            logger.debug("No provenance buffer!");
             this.conn = null;
             this.hasConnection = false;
             return;

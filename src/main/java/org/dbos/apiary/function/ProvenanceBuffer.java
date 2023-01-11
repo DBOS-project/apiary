@@ -26,24 +26,24 @@ public class ProvenanceBuffer {
     public static final int exportInterval = 1000;
 
     // Constant variables.
-    public static final String PROV_ApiaryMetadata = "Metadata";
-    public static final String PROV_QueryMetadata = "QueryMetadata";
-    public static final String PROV_APIARY_TRANSACTION_ID = "TXNID";
-    public static final String PROV_APIARY_TIMESTAMP = "TIMESTAMP";
-    public static final String PROV_EXECUTIONID = "EXECID";
-    public static final String PROV_FUNCID ="FUNCID";
+    public static final String PROV_ApiaryMetadata = "ApiaryMetadata";
+    public static final String PROV_QueryMetadata = "ApiaryQueryMetadata";
+    public static final String PROV_APIARY_TRANSACTION_ID = "APIARY_TRANSACTION_ID";
+    public static final String PROV_APIARY_TIMESTAMP = "APIARY_TIMESTAMP";
+    public static final String PROV_EXECUTIONID = "APIARY_EXECUTIONID";
+    public static final String PROV_FUNCID ="APIARY_FUNCID";
     public static final String PROV_SERVICE = "APIARY_SERVICE";
-    public static final String PROV_PROCEDURENAME = "FUNCNAME";
-    public static final String PROV_ISREPLAY = "ISREPLAY";
-    public static final String PROV_APIARY_OPERATION_TYPE = "OP_TYPE";
-    public static final String PROV_QUERY_STRING = "QUERY_STRING";
-    public static final String PROV_QUERY_SEQNUM = "SEQNUM";
-    public static final String PROV_QUERY_TABLENAMES = "TABLES";
+    public static final String PROV_PROCEDURENAME = "APIARY_PROCEDURENAME";
+    public static final String PROV_ISREPLAY = "APIARY_ISREPLAY";
+    public static final String PROV_APIARY_OPERATION_TYPE = "APIARY_OPERATION_TYPE";
+    public static final String PROV_QUERY_STRING = "APIARY_QUERY_STRING";
+    public static final String PROV_QUERY_SEQNUM = "APIARY_QUERY_SEQNUM";
+    public static final String PROV_QUERY_TABLENAMES = "APIARY_QUERY_TABLENAMES";
     public static final String PROV_QUERY_PROJECTION = "APIARY_QUERY_PROJECTION";
-    public static final String PROV_REQ_BYTES = "REQ_BYTES";
-    public static final String PROV_END_TIMESTAMP = "COMMIT_TS";
+    public static final String PROV_REQ_BYTES = "APIARY_REQ_BYTES";
+    public static final String PROV_END_TIMESTAMP = "APIARY_END_TIMESTAMP";
     // For the status column.
-    public static final String PROV_FUNC_STATUS = "STATUS";
+    public static final String PROV_FUNC_STATUS = "APIARY_FUNC_STATUS";
     // For the transaction snapshot column.
     public static final String PROV_TXN_SNAPSHOT = "APIARY_TXN_SNAPSHOT";
     public static final String PROV_STATUS_COMMIT = "commit";

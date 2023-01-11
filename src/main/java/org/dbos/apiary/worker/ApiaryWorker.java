@@ -423,8 +423,7 @@ public class ApiaryWorker {
                 commitConn.commit();
             } catch (Exception e) {
                 // TODO: how to handle commit failures? Now assume they are serialization errors.
-                logger.debug(e.getMessage());
-                logger.debug("Failed to commit {}, skipped.", nextCommitTxid);
+                logger.warn("Failed to commit {}, skipped. Error message: {}", nextCommitTxid, e.getMessage());
             }
             // Put it back to the connection pool.
             connPool.add(commitConn);
@@ -487,11 +486,6 @@ public class ApiaryWorker {
         }
 
         ApiaryConnection c = workerContext.getPrimaryConnection();
-
-        // Wait for user input to continue.
-        logger.warn("Press Enter key to continue TROD replay...");
-        Scanner scn = new Scanner(System.in);
-        scn.nextLine();
 
         if (funcId == 0l) {
             // This is the first function of a request.

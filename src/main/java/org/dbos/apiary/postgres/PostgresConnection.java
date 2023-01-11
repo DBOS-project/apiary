@@ -298,16 +298,17 @@ public class PostgresConnection implements ApiaryConnection {
                                          Object... inputs) {
         // Fast path for replayed functions.
         FunctionOutput f;
+        String actualName = functionName;
         long startTime = Utilities.getMicroTimestamp();
         PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
                 new HashSet<>(), new HashSet<>());
         try {
             ApiaryFunction func = workerContext.getFunction(functionName);
             String[] actualNames = func.getClassName().split("\\.");
-            String actualName = actualNames[actualNames.length-1];
-            logger.warn("Replaying function [{}], inputs {}", actualName, inputs);
+            actualName = actualNames[actualNames.length-1];
+            logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
             f = func.apiaryRunFunction(ctxt, inputs);
-            logger.warn("Completed function [{}]", actualName);
+            logger.debug("Completed function [{}]", actualName);
         } catch (Exception e) {
             // TODO: better error handling? For now, ignore those errors.
             logger.error("Failed execution during replay.");
@@ -315,7 +316,7 @@ public class PostgresConnection implements ApiaryConnection {
             return null;
         }
 
-        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_REPLAY);
+        recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_REPLAY);
         return f;
     }
 

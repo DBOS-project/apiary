@@ -83,22 +83,7 @@
                                 </manifest>
                             </archive>
                             <finalName>apiary-bench-exec</finalName>
-                            <skipAssembly>true</skipAssembly>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>demo-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <archive>
-                                <manifest>
-                                    <mainClass>org.dbos.apiary.benchmarks.DemoExecutable</mainClass>
-                                </manifest>
-                            </archive>
-                            <finalName>demo</finalName>
+                            <skipAssembly>false</skipAssembly>
                         </configuration>
                     </execution>
                     <execution>
@@ -114,7 +99,7 @@
                                 </manifest>
                             </archive>
                             <finalName>apiary-worker-exec</finalName>
-                            <skipAssembly>true</skipAssembly>
+                            <skipAssembly>false</skipAssembly>
                         </configuration>
                     </execution>
                 </executions>

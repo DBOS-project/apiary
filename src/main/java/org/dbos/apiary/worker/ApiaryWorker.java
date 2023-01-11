@@ -403,7 +403,8 @@ public class ApiaryWorker {
                     }
 
                     // TODO: Can we skip empty transactions?
-                    processReplayFunction(currConn, resExecId, resFuncId, resName, replayMode, currInputs, pendingTasks,
+                    ReplayTask rpTask = new ReplayTask(resExecId, resFuncId, resName, currInputs);
+                    processReplayFunction(currConn, rpTask, replayMode, pendingTasks,
                             execFuncIdToValue, execIdToFinalOutput);
                     pendingCommits.put(resTxId, currConn);
                     if (!startOrderRs.next()) {
@@ -424,6 +425,9 @@ public class ApiaryWorker {
             } catch (Exception e) {
                 // TODO: how to handle commit failures? Now assume they are serialization errors.
                 logger.warn("Failed to commit {}, skipped. Error message: {}", nextCommitTxid, e.getMessage());
+
+                // Retry the pending commit function.
+
             }
             // Put it back to the connection pool.
             connPool.add(commitConn);
@@ -469,17 +473,16 @@ public class ApiaryWorker {
     }
 
     // Return true if executed the function, false if nothing executed.
-    private boolean processReplayFunction(Connection conn, long execId, long funcId, String funcName, int replayMode,
-                                          Object[] inputs, Map<Long, Map<Long, Task>> pendingTasks,
+    private boolean processReplayFunction(Connection conn, ReplayTask task, int replayMode, Map<Long, Map<Long, Task>> pendingTasks,
                                           Map<Long, Map<Long, Object>> execFuncIdToValue,
                                           Map<Long, Object> execIdToFinalOutput) {
         FunctionOutput fo;
         // Only support primary functions.
-        if (!workerContext.functionExists(funcName)) {
-            logger.debug("Unrecognized function: {}, cannot replay, skipped.", funcName);
+        if (!workerContext.functionExists(task.funcName)) {
+            logger.debug("Unrecognized function: {}, cannot replay, skipped.", task.funcName);
             return false;
         }
-        String type = workerContext.getFunctionType(funcName);
+        String type = workerContext.getFunctionType(task.funcName);
         if (!workerContext.getPrimaryConnectionType().equals(type)) {
             logger.error("Replay only support primary functions!");
             throw new RuntimeException("Replay only support primary functions!");
@@ -487,66 +490,66 @@ public class ApiaryWorker {
 
         ApiaryConnection c = workerContext.getPrimaryConnection();
 
-        if (funcId == 0l) {
+        if (task.funcId == 0l) {
             // This is the first function of a request.
-            fo = c.replayFunction(conn, funcName, workerContext, "retroReplay", execId, funcId,
-                    replayMode, inputs);
+            fo = c.replayFunction(conn, task.funcName, workerContext, "retroReplay", task.execId, task.funcId,
+                    replayMode, task.inputs);
             if (fo == null) {
                 logger.warn("Replay function output is null.");
                 return false;
             }
-            execFuncIdToValue.putIfAbsent(execId, new HashMap<>());
-            execIdToFinalOutput.putIfAbsent(execId, fo.output);
-            pendingTasks.putIfAbsent(execId, new HashMap<>());
+            execFuncIdToValue.putIfAbsent(task.execId, new HashMap<>());
+            execIdToFinalOutput.putIfAbsent(task.execId, fo.output);
+            pendingTasks.putIfAbsent(task.execId, new HashMap<>());
         } else {
             // Skip the task if it is absent. Because we allow reducing the number of called function
             // (currently does not support adding more).
-            if (!pendingTasks.containsKey(execId) || !pendingTasks.get(execId).containsKey(funcId)) {
-                logger.info("Skip function ID {}, not found in pending tasks.", funcId);
+            if (!pendingTasks.containsKey(task.execId) || !pendingTasks.get(task.execId).containsKey(task.funcId)) {
+                logger.info("Skip function ID {}, not found in pending tasks.", task.funcId);
                 return false;
             }
             // Find the task in the stash. Make sure that all futures have been resolved.
-            Task currTask = pendingTasks.get(execId).get(funcId);
+            Task currTask = pendingTasks.get(task.execId).get(task.funcId);
 
             // Resolve input for this task. Must success.
-            Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(execId);
+            Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(task.execId);
 
             if (!currTask.dereferenceFutures(currFuncIdToValue)) {
-                logger.error("Failed to dereference input for execId {}, funcId {}. Aborted", execId, funcId);
+                logger.error("Failed to dereference input for execId {}, funcId {}. Aborted", task.execId, task.funcId);
                 throw new RuntimeException("Retro replay failed to dereference input.");
             }
 
-            fo = c.replayFunction(conn, currTask.funcName, workerContext,  "retroReplay", execId, funcId,
+            fo = c.replayFunction(conn, currTask.funcName, workerContext,  "retroReplay", task.execId, task.funcId,
                     replayMode, currTask.input);
             // Remove this task from the map.
-            pendingTasks.get(execId).remove(funcId);
+            pendingTasks.get(task.execId).remove(task.funcId);
             if (fo == null) {
                 logger.warn("Repaly function output is null.");
                 return false; // TODO: better error handling?
             }
         }
         // Store output value.
-        execFuncIdToValue.get(execId).putIfAbsent(funcId, fo.output);
+        execFuncIdToValue.get(task.execId).putIfAbsent(task.funcId, fo.output);
         // Queue all of its async tasks to the pending map.
         for (Task t : fo.queuedTasks) {
-            if (pendingTasks.get(execId).containsKey(t.functionID)) {
-                logger.error("ExecID {} funcID {} has duplicated outputs!", execId, t.functionID);
+            if (pendingTasks.get(task.execId).containsKey(t.functionID)) {
+                logger.error("ExecID {} funcID {} has duplicated outputs!", task.execId, t.functionID);
             }
-            pendingTasks.get(execId).putIfAbsent(t.functionID, t);
+            pendingTasks.get(task.execId).putIfAbsent(t.functionID, t);
         }
 
-        if (pendingTasks.get(execId).isEmpty()) {
+        if (pendingTasks.get(task.execId).isEmpty()) {
             // Check if we need to update the final output map.
-            Object o = execIdToFinalOutput.get(execId);
+            Object o = execIdToFinalOutput.get(task.execId);
             if (o instanceof ApiaryFuture) {
                 ApiaryFuture futureOutput = (ApiaryFuture) o;
-                assert (execFuncIdToValue.get(execId).containsKey(futureOutput.futureID));
-                Object resFo = execFuncIdToValue.get(execId).get(futureOutput.futureID);
-                execIdToFinalOutput.put(execId, resFo);
+                assert (execFuncIdToValue.get(task.execId).containsKey(futureOutput.futureID));
+                Object resFo = execFuncIdToValue.get(task.execId).get(futureOutput.futureID);
+                execIdToFinalOutput.put(task.execId, resFo);
             }
             // Clean up.
-            execFuncIdToValue.remove(execId);
-            pendingTasks.remove(execId);
+            execFuncIdToValue.remove(task.execId);
+            pendingTasks.remove(task.execId);
         }
         return true;
     }

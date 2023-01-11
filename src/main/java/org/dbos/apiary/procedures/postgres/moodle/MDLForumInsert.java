@@ -1,4 +1,4 @@
-package org.dbos.apiary.procedures.postgres.replay;
+package org.dbos.apiary.procedures.postgres.moodle;
 
 import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;

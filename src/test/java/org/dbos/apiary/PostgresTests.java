@@ -4,7 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.replay.*;
+import org.dbos.apiary.procedures.postgres.moodle.*;
 import org.dbos.apiary.procedures.postgres.retwis.*;
 import org.dbos.apiary.procedures.postgres.tests.*;
 import org.dbos.apiary.utilities.ApiaryConfig;

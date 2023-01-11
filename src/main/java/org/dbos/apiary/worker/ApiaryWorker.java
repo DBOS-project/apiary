@@ -12,15 +12,14 @@ import org.dbos.apiary.mysql.MysqlContext;
 import org.dbos.apiary.postgres.PostgresUtilities;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.*;
 import zmq.ZError;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -362,6 +361,8 @@ public class ApiaryWorker {
 
         // A pending commit map from transaction ID to connection. <txid, connection>
         Map<Long, Connection> pendingCommits = new HashMap<>();
+        // A map storing the task info for a pending commit transaction. GC after the task is committed.
+        Map<Long, ReplayTask> pendingCommitTask = new HashMap<>();
 
         while (nextCommitTxid > 0) {
             // Execute all following functions until nextCommitTxid is in the snapshot of that original transaction.
@@ -404,6 +405,7 @@ public class ApiaryWorker {
 
                     // TODO: Can we skip empty transactions?
                     ReplayTask rpTask = new ReplayTask(resExecId, resFuncId, resName, currInputs);
+                    pendingCommitTask.put(resTxId, rpTask);
                     processReplayFunction(currConn, rpTask, replayMode, pendingTasks,
                             execFuncIdToValue, execIdToFinalOutput);
                     pendingCommits.put(resTxId, currConn);
@@ -423,10 +425,24 @@ public class ApiaryWorker {
             try {
                 commitConn.commit();
             } catch (Exception e) {
-                // TODO: how to handle commit failures? Now assume they are serialization errors.
-                logger.warn("Failed to commit {}, skipped. Error message: {}", nextCommitTxid, e.getMessage());
-
-                // Retry the pending commit function.
+                // Retry the pending commit function if it's a serialization error.
+                if (e instanceof PSQLException) {
+                    PSQLException p = (PSQLException) e;
+                    if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                        logger.debug("Retry transaction {} due to serilization error. ", nextCommitTxid);
+                        try {
+                            ReplayTask rt = pendingCommitTask.get(nextCommitTxid);
+                            assert (rt != null);
+                            processReplayFunction(commitConn, rt, replayMode, pendingTasks,
+                                    execFuncIdToValue, execIdToFinalOutput);
+                            commitConn.commit();
+                        } catch (SQLException ex) {
+                            ex.printStackTrace();
+                        }
+                    } else {
+                        logger.error("Unrecoverable error. Failed to commit {}, skipped. Error message: {}", nextCommitTxid, e.getMessage());
+                    }
+                }
 
             }
             // Put it back to the connection pool.

@@ -1,7 +1,6 @@
 package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.ExecuteFunctionRequest;
-import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
@@ -262,7 +261,7 @@ public class PostgresRetroReplay {
             throw new RuntimeException("Replay only support primary functions!");
         }
 
-        ApiaryConnection c = workerContext.getPrimaryConnection();
+        PostgresConnection c = (PostgresConnection) workerContext.getPrimaryConnection();
 
         if (task.funcId == 0l) {
             // This is the first function of a request.

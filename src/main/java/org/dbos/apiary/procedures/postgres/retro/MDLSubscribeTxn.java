@@ -6,8 +6,7 @@ import org.dbos.apiary.postgres.PostgresFunction;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-// Transactionally check if a user is subscribed to a forum. If not, subscribe them.
-// This should be a bug fix for the non-atomic version.
+// Check if a user is subscribed to a forum and subscribe in one transaction.
 public class MDLSubscribeTxn extends PostgresFunction {
     private static final String isSubscribed =
             "SELECT UserId, ForumId FROM ForumSubscription WHERE UserId=? AND ForumId=?";

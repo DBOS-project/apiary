@@ -22,10 +22,9 @@ public class MDLIsSubscribed extends PostgresFunction {
         if (r.next()) {
             // If a subscription exists, then directly return the userID
             // without subscribing a new one.
-            logger.info("User {} has subscribed to forum {}.", userId, forumId);
             return r.getInt(1);
         }
-        logger.info("User {} has not subscribed to forum {}.", userId, forumId);
+        // logger.info("User {} hasn't subscribed to forum {}.", userId, forumId);
 
         // Otherwise, call the ForumSubscribe function.
         return ctxt.apiaryQueueFunction("MDLForumInsert", userId, forumId);

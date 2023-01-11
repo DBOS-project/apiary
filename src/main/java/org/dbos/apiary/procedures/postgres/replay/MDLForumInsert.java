@@ -17,7 +17,7 @@ public class MDLForumInsert extends PostgresFunction {
     public static int runFunction(PostgresContext ctxt,
                                   int userId, int forumId) throws SQLException {
         ctxt.executeUpdate(subscribe, userId, forumId);
-        logger.info("Added a subscription for user {}, forum {}", userId, forumId);
+        //logger.info("Added a subscription for user {}, forum {}", userId, forumId);
         return userId;
     }
 }

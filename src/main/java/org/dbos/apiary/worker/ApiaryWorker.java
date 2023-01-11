@@ -433,16 +433,19 @@ public class ApiaryWorker {
                         logger.debug("Retry transaction {} due to serilization error. ", nextCommitTxid);
                         try {
                             commitConn.rollback();
+                            logger.debug("Rolled back failed to commit transaction.");
                             ReplayTask rt = pendingCommitTask.get(nextCommitTxid);
                             assert (rt != null);
                             processReplayFunction(commitConn, rt, replayMode, pendingTasks,
                                     execFuncIdToValue, execIdToFinalOutput);
                             commitConn.commit();
+                            logger.debug("Committed retried transaction.");
                         } catch (SQLException ex) {
                             ex.printStackTrace();
                         }
                     } else {
                         logger.error("Unrecoverable error. Failed to commit {}, skipped. Error message: {}", nextCommitTxid, e.getMessage());
+                        throw new RuntimeException("Unrecoverable error during replay.");
                     }
                 }
 

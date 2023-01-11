@@ -426,6 +426,7 @@ public class ApiaryWorker {
                 commitConn.commit();
             } catch (Exception e) {
                 // Retry the pending commit function if it's a serialization error.
+                // Note: this should only happen during retroactive programming. Because normal replay should only replay originally committed transactions.
                 if (e instanceof PSQLException) {
                     PSQLException p = (PSQLException) e;
                     if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
@@ -445,9 +446,10 @@ public class ApiaryWorker {
                 }
 
             }
-            // Put it back to the connection pool.
+            // Put it back to the connection pool and delete stored inputs.
             connPool.add(commitConn);
             pendingCommits.remove(nextCommitTxid);
+            pendingCommitTask.remove(nextCommitTxid);
             if (commitOrderRs.next()) {
                 nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             } else {
@@ -459,8 +461,12 @@ public class ApiaryWorker {
             throw new RuntimeException("Still more pending transactions to be committed!");
         }
 
+        if (!pendingCommitTask.isEmpty()) {
+            throw new RuntimeException("Still more pending commit tasks not garbage collected!");
+        }
+
         if (!pendingTasks.isEmpty()) {
-            throw new RuntimeException("Still more pending tasks to be solved! Currently do not support adding transactions.");
+            throw new RuntimeException("Still more pending tasks to be resolved! Currently do not support adding transactions.");
         }
 
         Object output = execIdToFinalOutput.get(currInputExecId);  // The last execution ID.

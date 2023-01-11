@@ -432,6 +432,7 @@ public class ApiaryWorker {
                     if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
                         logger.debug("Retry transaction {} due to serilization error. ", nextCommitTxid);
                         try {
+                            commitConn.rollback();
                             ReplayTask rt = pendingCommitTask.get(nextCommitTxid);
                             assert (rt != null);
                             processReplayFunction(commitConn, rt, replayMode, pendingTasks,

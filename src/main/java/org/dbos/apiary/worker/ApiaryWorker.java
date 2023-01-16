@@ -321,7 +321,7 @@ public class ApiaryWorker {
                     // ExecID = 0l means the initial service function, ignore.
                     workerContext.provBuff.addEntry(ApiaryConfig.tableRecordedInputs, execID, req.toByteArray());
                 }
-                if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
+                if ((replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) || (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue())) {
                     // Must be the first function in a workflow.
                     assert (functionID == 0l);
                     // Retroactive replay mode goes through a separate function.

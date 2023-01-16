@@ -226,11 +226,12 @@ public class PostgresRetroReplay {
                         }
                     }
                 }
+                // Put it back to the connection pool and delete stored inputs.
+                connPool.add(commitConn);
+                pendingCommits.remove(nextCommitTxid);
+                pendingCommitTask.remove(nextCommitTxid);
             }
-            // Put it back to the connection pool and delete stored inputs.
-            connPool.add(commitConn);
-            pendingCommits.remove(nextCommitTxid);
-            pendingCommitTask.remove(nextCommitTxid);
+
             if (commitOrderRs.next()) {
                 nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             } else {

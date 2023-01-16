@@ -337,5 +337,12 @@ public class MoodleTests {
         int[] retroList = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
         assertEquals(1, retroList.length);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
+        // Retro replay again, but now we enable selective replay.
+        conn.truncateTable("ForumSubscription", false);
+        // TODO: what is a better stop strategy?
+        int retroRes = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.SELECTIVE.getValue()).getInt();
+        assertTrue(retroRes != -1);
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 }

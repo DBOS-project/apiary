@@ -164,7 +164,7 @@ public class PostgresRetroReplay {
 
                     // Check if we can skip this function execution. If so, add to the skip list. Otherwise, execute the replay.
 
-                    boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds);
+                    boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds, replayMode);
 
                     if (isSkipped) {
                         logger.debug("Skipping transaction {}, execution ID {}", resTxId, resExecId);
@@ -272,8 +272,13 @@ public class PostgresRetroReplay {
     }
 
     // Return true if the function execution can be skipped.
-    private static boolean checkSkipFunc(WorkerContext workerContext, ReplayTask rpTask, Set<Long> skippedExecIds) {
-        // The current heuristic:
+    private static boolean checkSkipFunc(WorkerContext workerContext, ReplayTask rpTask, Set<Long> skippedExecIds, int replayMode) {
+        if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
+            // Do not skip if we are replaying everything.
+            return false;
+        }
+
+        // The current selective replay heuristic:
         // 1) If a request has been skipped, then all following functions will be skipped.
         // 2) If a function name is not in the list of retroFunctions, then we can skip. TODO: update this because a function may not be in retroFunctions but still need to be replayed. Need to use the write set to check.
         if (skippedExecIds.contains(rpTask.execId)) {

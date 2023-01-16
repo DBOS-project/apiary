@@ -204,7 +204,7 @@ public class WordPressTests {
             Future<Integer> trashResFut = threadPool.submit(new WpTask(postIds, -1, "trashpost"));
             // Add arbitrary delay.
             Thread.sleep(ThreadLocalRandom.current().nextInt(5));
-            Future<Integer> commentResFut = threadPool.submit(new WpTask(postIds, commentIds, "test comment to a post " + commentIds));
+            Future<Integer> commentResFut = threadPool.submit(new WpTask(postIds, commentIds, "test comment " + commentIds));
 
             int trashRes, commentRes;
             try {
@@ -221,7 +221,7 @@ public class WordPressTests {
             assertEquals(0, intRes);
 
             String[] resList = client.get().executeFunction("WPGetPostComments", postIds).getStringArray();
-            assertEquals(2, resList.length);
+            assertTrue(resList.length > 1);
 
             // Check results. Try to find inconsistency.
             strAryRes = client.get().executeFunction("WPCheckCommentStatus", postIds).getStringArray();

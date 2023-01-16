@@ -48,8 +48,8 @@ public class MoodleTests {
         // Disable XDB transactions.
         ApiaryConfig.XDBTransactions = false;
 
-        // Disable read tracking.
-        ApiaryConfig.captureReads = false;
+        ApiaryConfig.captureReads = true;
+        ApiaryConfig.captureUpdates = true;
     }
 
     @BeforeEach

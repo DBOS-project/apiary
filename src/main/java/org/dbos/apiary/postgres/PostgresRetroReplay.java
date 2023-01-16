@@ -167,7 +167,8 @@ public class PostgresRetroReplay {
 
                     boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds, replayMode);
 
-                    if (isSkipped) {
+                    if (isSkipped && (lastNonSkippedExecId != -1)) {
+                        // Do not skip the first execution.
                         logger.debug("Skipping transaction {}, execution ID {}", resTxId, resExecId);
                         skippedExecIds.add(resExecId);
                     } else {

@@ -4,6 +4,7 @@ import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.procedures.postgres.GetApiaryClientID;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.utilities.Utilities;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,6 +14,9 @@ public class WorkerContext {
     public final Map<String, ApiarySecondaryConnection> secondaryConnections = new HashMap<>();
     private final Map<String, Callable<ApiaryFunction>> functions = new HashMap<>();
     private final Map<String, String> functionTypes = new HashMap<>();
+
+    // Record a mapping between the old function name and its new class name. Used by retroactive programming.
+    private final Map<String, String> retroFunctions = new HashMap<>();
     private ApiaryConnection primaryConnection = null;
     private String primaryConnectionType;
 
@@ -40,6 +44,17 @@ public class WorkerContext {
     public void registerFunction(String name, String type, Callable<ApiaryFunction> function) {
         functions.put(name, function);
         functionTypes.put(name, type);
+    }
+
+    public void registerFunction(String name, String type, Callable<ApiaryFunction> function, boolean isRetro) {
+        registerFunction(name, type, function);
+        if (isRetro) {
+            // If isRetro is true, then we need to remember it in the map, so we can track which function is the modified ones.
+            ApiaryFunction func = getFunction(name);
+            assert (func != null);
+            String actualName = Utilities.getFunctionClassName(func);
+            retroFunctions.put(name, actualName);
+        }
     }
 
     public String getFunctionType(String function) {

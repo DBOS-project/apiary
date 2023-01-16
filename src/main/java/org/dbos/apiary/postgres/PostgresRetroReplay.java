@@ -24,7 +24,14 @@ public class PostgresRetroReplay {
     private static final Logger logger = LoggerFactory.getLogger(PostgresRetroReplay.class);
 
     public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, int replayMode) throws Exception {
-        logger.debug("Replay the entire trace!");
+        if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
+            logger.debug("Replay the entire trace!");
+        } else if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
+            logger.debug("Selective replay!");
+        } else {
+            logger.error("Do not support replay mode: {}", replayMode);
+            return null;
+        }
         assert(workerContext.provBuff != null);
         Connection provConn = workerContext.provBuff.conn.get();
 

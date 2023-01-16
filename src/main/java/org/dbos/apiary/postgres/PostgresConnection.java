@@ -304,8 +304,7 @@ public class PostgresConnection implements ApiaryConnection {
                 new HashSet<>(), new HashSet<>());
         try {
             ApiaryFunction func = workerContext.getFunction(functionName);
-            String[] actualNames = func.getClassName().split("\\.");
-            actualName = actualNames[actualNames.length-1];
+            actualName = Utilities.getFunctionClassName(func);
             logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
             f = func.apiaryRunFunction(ctxt, inputs);
             logger.debug("Completed function [{}]", actualName);

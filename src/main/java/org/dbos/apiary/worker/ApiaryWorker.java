@@ -89,6 +89,10 @@ public class ApiaryWorker {
         workerContext.registerFunction(name, type, function);
     }
 
+    public void registerFunction(String name, String type, Callable<ApiaryFunction> function, boolean isRetro) {
+        workerContext.registerFunction(name, type, function, isRetro);
+    }
+
     public void startServing() {
         garbageCollectorThread = new Thread(this::garbageCollectorThread);
         garbageCollectorThread.start();

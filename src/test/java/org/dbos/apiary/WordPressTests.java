@@ -254,7 +254,7 @@ public class WordPressTests {
         conn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);
         conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
 
-        strAryRes = client.get().retroReplay(resExecId).getStringArray();
+        strAryRes = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.ALL.getValue()).getStringArray();
         assertTrue(strAryRes.length > 1);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
@@ -264,7 +264,7 @@ public class WordPressTests {
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new);
         // Use the new code.
-        apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddCommentFixed::new);
+        apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddCommentFixed::new, true);
         apiaryWorker.registerFunction("WPGetPostComments", ApiaryConfig.postgres, WPGetPostComments::new);
         apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new);
         apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new);
@@ -279,7 +279,7 @@ public class WordPressTests {
         conn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);
         conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
 
-        strAryRes = client.get().retroReplay(resExecId).getStringArray();
+        strAryRes = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.ALL.getValue()).getStringArray();
         assertEquals(1, strAryRes.length);
 
         ApiaryConfig.recordInput = false; // Reset flags.

@@ -111,6 +111,7 @@ public class PostgresRetroReplay {
 
         // Store a list of skipped requests. Used for selective replay.
         Set<Long> skippedExecIds = new HashSet<>();
+        long lastNonSkippedExecId = -1;  // The last not-skipped execution ID. Useful to decide the final output.
 
         // A connection pool to the backend database. For concurrent executions.
         int connPoolSize = 10;  // Connection pool size. TODO: tune this.
@@ -170,6 +171,7 @@ public class PostgresRetroReplay {
                         logger.debug("Skipping transaction {}, execution ID {}", resTxId, resExecId);
                         skippedExecIds.add(resExecId);
                     } else {
+                        lastNonSkippedExecId = resExecId;
                         pendingCommitTask.put(resTxId, rpTask);
                         Connection currConn = connPool.poll();
                         if (currConn == null) {
@@ -251,7 +253,7 @@ public class PostgresRetroReplay {
             throw new RuntimeException("Still more pending tasks to be resolved! Currently do not support adding transactions.");
         }
 
-        Object output = execIdToFinalOutput.get(currInputExecId);  // The last execution ID.
+        Object output = execIdToFinalOutput.get(lastNonSkippedExecId);  // The last non-skipped execution ID.
 
         // Clean up connection pool and statements.
         while (!connPool.isEmpty()) {

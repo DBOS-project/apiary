@@ -14,10 +14,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class PostgresRetroReplay {
@@ -109,7 +106,11 @@ public class PostgresRetroReplay {
         Map<Long, Map<Long, Object>> execFuncIdToValue = new HashMap<>();
 
         // Store execID to final output map. Because the output could be a future.
+        // TODO: garbage collect this map.
         Map<Long, Object> execIdToFinalOutput = new HashMap<>();
+
+        // Store a list of skipped requests. Used for selective replay.
+        Set<Long> skippedExecIds = new HashSet<>();
 
         // A connection pool to the backend database. For concurrent executions.
         int connPoolSize = 10;  // Connection pool size. TODO: tune this.
@@ -135,14 +136,10 @@ public class PostgresRetroReplay {
                 String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
                 long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
                 List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
+
                 if ((resTxId == nextCommitTxid) || (nextCommitTxid >= xmax) || (activeTxns.contains(nextCommitTxid))) {
                     // Not in its snapshot. Start a new transaction.
-                    Connection currConn = connPool.poll();
-                    if (currConn == null) {
-                        throw new RuntimeException("Not enough connections to replay!");
-                    }
 
-                    // Execute the function.
                     // Get inputs.
                     if ((resExecId != currInputExecId) && (resFuncId == 0l)) {
                         // Read the input for this execution ID.
@@ -164,50 +161,71 @@ public class PostgresRetroReplay {
 
                     // TODO: Can we skip empty transactions?
                     ReplayTask rpTask = new ReplayTask(resExecId, resFuncId, resName, currInputs);
-                    pendingCommitTask.put(resTxId, rpTask);
-                    processReplayFunction(workerContext, currConn, rpTask, replayMode, pendingTasks,
-                            execFuncIdToValue, execIdToFinalOutput);
-                    pendingCommits.put(resTxId, currConn);
-                    if (!startOrderRs.next()) {
-                        // No more to process.
-                        break;
+
+                    // Check if we can skip this function execution. If so, add to the skip list. Otherwise, execute the replay.
+
+                    boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds);
+
+                    if (isSkipped) {
+                        logger.debug("Skipping transaction {}, execution ID {}", resTxId, resExecId);
+                        skippedExecIds.add(resExecId);
+                    } else {
+                        pendingCommitTask.put(resTxId, rpTask);
+                        Connection currConn = connPool.poll();
+                        if (currConn == null) {
+                            throw new RuntimeException("Not enough connections to replay!");
+                        }
+
+                        // Execute the function.
+                        processReplayFunction(workerContext, currConn, rpTask, replayMode, pendingTasks,
+                                execFuncIdToValue, execIdToFinalOutput);
+                        pendingCommits.put(resTxId, currConn);
                     }
                 } else {
                     break;  // Need to wait until nextCommitTxid to commit.
                 }
+
+                if (!startOrderRs.next()) {
+                    // No more to process.
+                    break;
+                }
             }
 
-            // Commit the nextCommitTxid and update the variables.
+            // Commit the nextCommitTxid and update the variables. Pass skipped functions.
             // The connection must be not null because it has to have started.
             Connection commitConn = pendingCommits.get(nextCommitTxid);
-            assert (commitConn != null);
-            try {
-                commitConn.commit();
-            } catch (Exception e) {
-                // Retry the pending commit function if it's a serialization error.
-                // Note: this should only happen during retroactive programming. Because normal replay should only replay originally committed transactions.
-                if (e instanceof PSQLException) {
-                    PSQLException p = (PSQLException) e;
-                    if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
-                        logger.debug("Retry transaction {} due to serilization error. ", nextCommitTxid);
-                        try {
-                            commitConn.rollback();
-                            logger.debug("Rolled back failed to commit transaction.");
-                            ReplayTask rt = pendingCommitTask.get(nextCommitTxid);
-                            assert (rt != null);
-                            processReplayFunction(workerContext, commitConn, rt, replayMode, pendingTasks,
-                                    execFuncIdToValue, execIdToFinalOutput);
-                            commitConn.commit();
-                            logger.debug("Committed retried transaction.");
-                        } catch (SQLException ex) {
-                            ex.printStackTrace();
+
+            // If commitConn is null, then the transaction was skipped.
+            if (commitConn == null) {
+                logger.debug("Transaction {} was skipped. No connection found.", nextCommitTxid);
+            } else {
+                try {
+                    commitConn.commit();
+                } catch (Exception e) {
+                    // Retry the pending commit function if it's a serialization error.
+                    // Note: this should only happen during retroactive programming. Because normal replay should only replay originally committed transactions.
+                    if (e instanceof PSQLException) {
+                        PSQLException p = (PSQLException) e;
+                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                            logger.debug("Retry transaction {} due to serilization error. ", nextCommitTxid);
+                            try {
+                                commitConn.rollback();
+                                logger.debug("Rolled back failed to commit transaction.");
+                                ReplayTask rt = pendingCommitTask.get(nextCommitTxid);
+                                assert (rt != null);
+                                processReplayFunction(workerContext, commitConn, rt, replayMode, pendingTasks,
+                                        execFuncIdToValue, execIdToFinalOutput);
+                                commitConn.commit();
+                                logger.debug("Committed retried transaction.");
+                            } catch (SQLException ex) {
+                                ex.printStackTrace();
+                            }
+                        } else {
+                            logger.error("Unrecoverable error. Failed to commit {}, skipped. Error message: {}", nextCommitTxid, e.getMessage());
+                            throw new RuntimeException("Unrecoverable error during replay.");
                         }
-                    } else {
-                        logger.error("Unrecoverable error. Failed to commit {}, skipped. Error message: {}", nextCommitTxid, e.getMessage());
-                        throw new RuntimeException("Unrecoverable error during replay.");
                     }
                 }
-
             }
             // Put it back to the connection pool and delete stored inputs.
             connPool.add(commitConn);
@@ -250,6 +268,22 @@ public class PostgresRetroReplay {
         commitOrderRs.close();
         commitOrderStmt.close();
         return output;
+    }
+
+    // Return true if the function execution can be skipped.
+    private static boolean checkSkipFunc(WorkerContext workerContext, ReplayTask rpTask, Set<Long> skippedExecIds) {
+        // The current heuristic:
+        // 1) If a request has been skipped, then all following functions will be skipped.
+        // 2) If a function name is not in the list of retroFunctions, then we can skip. TODO: update this because a function may not be in retroFunctions but still need to be replayed. Need to use the write set to check.
+        if (skippedExecIds.contains(rpTask.execId)) {
+            return true;
+        }
+
+        if (!workerContext.retroFunctionExists(rpTask.funcName)) {
+            return true;
+        }
+
+        return false;
     }
 
     // Return true if executed the function, false if nothing executed.

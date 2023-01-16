@@ -10,6 +10,10 @@ import java.lang.reflect.Method;
 public interface ApiaryFunction {
     void recordInvocation(ApiaryContext ctxt, String funcName);
 
+    default String getClassName() {
+        return this.getClass().getName();
+    }
+
     default FunctionOutput apiaryRunFunction(ApiaryContext ctxt, Object... input) throws Exception {
         // Use reflection to find internal runFunction.
         Method functionMethod = Utilities.getFunctionMethod(this, "runFunction");

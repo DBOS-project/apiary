@@ -188,7 +188,7 @@ public class WordPressTests {
         // Try many times until we find inconsistency.
         int postIds = 0;
         int commentIds = 0;
-        int maxTry = 100;
+        int maxTry = 200;
         int intRes;
         String[] strAryRes;
         boolean foundInconsistency = false;

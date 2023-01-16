@@ -83,7 +83,7 @@ public class ProvenanceBuffer {
     public ProvenanceBuffer(String databaseType, String databaseAddress) throws ClassNotFoundException {
         this.databaseType = databaseType;
         if (databaseType == null) {
-            logger.info("No provenance buffer!");
+            logger.debug("No provenance buffer!");
             this.conn = null;
             this.hasConnection = false;
             return;
@@ -252,7 +252,7 @@ public class ProvenanceBuffer {
         if (rowCnt > 0) {
             pstmt.executeBatch();
         }
-        logger.info("Exported table {}, {} rows", table, numEntries);
+        logger.debug("Exported table {}, {} rows", table, numEntries);
     }
 
     private static void setColumn(PreparedStatement pstmt, int colIndex, int colType, Object val) throws SQLException {

@@ -1,10 +1,7 @@
 package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
-import org.dbos.apiary.function.FunctionOutput;
-import org.dbos.apiary.function.ProvenanceBuffer;
-import org.dbos.apiary.function.TransactionContext;
-import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.postgresql.ds.PGSimpleDataSource;
@@ -53,7 +50,7 @@ public class PostgresConnection implements ApiaryConnection {
         this.ds.setPassword(databasePassword);
         this.ds.setSsl(false);
 
-        logger.info("Postgres isolation level: {}", ApiaryConfig.isolationLevel);
+        logger.debug("Postgres isolation level: {}", ApiaryConfig.isolationLevel);
         this.connection = ThreadLocal.withInitial(() -> createNewConnection());
         this.bgConnection = ThreadLocal.withInitial(() -> {
             try {
@@ -72,10 +69,10 @@ public class PostgresConnection implements ApiaryConnection {
             rs.next();
             if (rs.getString(1).equals("on")) {
                 ApiaryConfig.trackCommitTimestamp = true;
-                logger.info("Postgres track_commit_timestamp = on!");
+                logger.debug("Postgres track_commit_timestamp = on!");
             } else {
                 ApiaryConfig.trackCommitTimestamp = false;
-                logger.info("Postgres track_commit_timestamp = off!");
+                logger.debug("Postgres track_commit_timestamp = off!");
             }
             testConn.close();
         } catch (SQLException e) {
@@ -153,7 +150,7 @@ public class PostgresConnection implements ApiaryConnection {
         Connection conn = bgConnection.get();
         Statement s = conn.createStatement();
         s.execute(String.format("CREATE TABLE IF NOT EXISTS %s (%s);", tableName, specStr));
-        if (!specStr.contains("APIARY_TRANSACTION_ID")) {
+        if (!specStr.contains(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID)) {
             ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
             ResultSetMetaData rsmd = r.getMetaData();
             StringBuilder provTable = new StringBuilder(String.format(
@@ -301,20 +298,25 @@ public class PostgresConnection implements ApiaryConnection {
                                          Object... inputs) {
         // Fast path for replayed functions.
         FunctionOutput f;
+        String actualName = functionName;
         long startTime = Utilities.getMicroTimestamp();
         PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
                 new HashSet<>(), new HashSet<>());
         try {
-            f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+            ApiaryFunction func = workerContext.getFunction(functionName);
+            String[] actualNames = func.getClassName().split("\\.");
+            actualName = actualNames[actualNames.length-1];
+            logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
+            f = func.apiaryRunFunction(ctxt, inputs);
+            logger.debug("Completed function [{}]", actualName);
         } catch (Exception e) {
             // TODO: better error handling? For now, ignore those errors.
-            logger.warn("Failed execution during replay.");
+            logger.error("Failed execution during replay.");
             recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
             return null;
         }
 
-        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_REPLAY);
-
+        recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_REPLAY);
         return f;
     }
 

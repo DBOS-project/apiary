@@ -5,8 +5,8 @@ import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.replay.*;
-import org.dbos.apiary.procedures.postgres.retro.PostgresIsSubscribedTxn;
+import org.dbos.apiary.procedures.postgres.moodle.*;
+import org.dbos.apiary.procedures.postgres.moodle.MDLSubscribeTxn;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -53,7 +53,7 @@ public class RetroBenchmark {
         public Integer call() {
             int res;
             try {
-                res = client.get().executeFunction("PostgresIsSubscribed", userId, forumId).getInt();
+                res = client.get().executeFunction("MDLIsSubscribed", userId, forumId).getInt();
             } catch (Exception e) {
                 res = -1;
             }
@@ -95,13 +95,13 @@ public class RetroBenchmark {
 
         if (replayMode != ApiaryConfig.ReplayMode.ALL.getValue()) {
             // The buggy version.
-            apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribed::new);
-            apiaryWorker.registerFunction("PostgresForumSubscribe", ApiaryConfig.postgres, PostgresForumSubscribe::new);
+            apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
+            apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
         } else {
             // The transactional version.
-            apiaryWorker.registerFunction("PostgresIsSubscribed", ApiaryConfig.postgres, PostgresIsSubscribedTxn::new);
+            apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new);
         }
-        apiaryWorker.registerFunction("PostgresFetchSubscribers", ApiaryConfig.postgres, PostgresFetchSubscribers::new);
+        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 
         if (replayMode > 0) {
@@ -109,7 +109,7 @@ public class RetroBenchmark {
             replayExec(replayMode, targetExecId);
             long elapsedTime = System.currentTimeMillis() - startTime;
             ApiaryConfig.recordInput = true;  // Record again.
-            int[] resList = client.get().executeFunction("PostgresFetchSubscribers", initialForumId).getIntArray();
+            int[] resList = client.get().executeFunction("MDLFetchSubscribers", initialForumId).getIntArray();
             if (resList.length > 1) {
                 logger.info("Replay found duplications!");
             } else {
@@ -135,7 +135,7 @@ public class RetroBenchmark {
         }
 
         // Check subscriptions.
-        int[] resList = client.get().executeFunction("PostgresFetchSubscribers", initialForumId).getIntArray();
+        int[] resList = client.get().executeFunction("MDLFetchSubscribers", initialForumId).getIntArray();
         assert (resList.length > 1);
 
         long startTime = System.currentTimeMillis();
@@ -148,7 +148,7 @@ public class RetroBenchmark {
                 // Check the list of subscribers of a random forum.
                 int forumId = ThreadLocalRandom.current().nextInt(0, numForums);
                 try {
-                    client.get().executeFunction("PostgresFetchSubscribers", forumId).getIntArray();
+                    client.get().executeFunction("MDLFetchSubscribers", forumId).getIntArray();
                 } catch (InvalidProtocolBufferException e) {
                     e.printStackTrace();
                 }
@@ -158,7 +158,7 @@ public class RetroBenchmark {
                 int userId = ThreadLocalRandom.current().nextInt(0, numUsers);
                 int forumId = ThreadLocalRandom.current().nextInt(0, numForums);
                 try {
-                    int res = client.get().executeFunction("PostgresIsSubscribed", userId, forumId).getInt();
+                    int res = client.get().executeFunction("MDLIsSubscribed", userId, forumId).getInt();
                     assert (res == userId);
                 } catch (InvalidProtocolBufferException e) {
                     throw new RuntimeException(e);
@@ -214,7 +214,7 @@ public class RetroBenchmark {
     private static void replayExec(int replayMode, long targetExecId) throws InvalidProtocolBufferException {
         if (replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
             // Replay a single execution.
-            int res = client.get().replayFunction(targetExecId, "PostgresIsSubscribed", initialUserId, initialForumId).getInt();
+            int res = client.get().replayFunction(targetExecId, "MDLIsSubscribed", initialUserId, initialForumId).getInt();
             assert (res == initialUserId);
         } else if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()){
             FunctionOutput res = client.get().retroReplay(targetExecId);

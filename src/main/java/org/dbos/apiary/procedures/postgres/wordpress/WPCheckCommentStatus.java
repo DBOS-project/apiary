@@ -23,7 +23,7 @@ public class WPCheckCommentStatus extends PostgresFunction {
         while (r.next()) {
             String status = r.getString(WPUtil.WP_COMMENT_STATUS);
             long cnt = r.getLong(2);
-            logger.info("Post {}, comment status {}, count {}", postId, status, cnt);
+            logger.debug("Post {}, comment status {}, count {}", postId, status, cnt);
             statusList.add(status);
         }
         return statusList.toArray(new String[0]);

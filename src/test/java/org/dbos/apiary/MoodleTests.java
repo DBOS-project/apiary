@@ -8,7 +8,6 @@ import org.dbos.apiary.procedures.postgres.moodle.MDLFetchSubscribers;
 import org.dbos.apiary.procedures.postgres.moodle.MDLForumInsert;
 import org.dbos.apiary.procedures.postgres.moodle.MDLIsSubscribed;
 import org.dbos.apiary.procedures.postgres.moodle.MDLSubscribeTxn;
-import org.dbos.apiary.procedures.postgres.wordpress.WPUtil;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
@@ -50,6 +49,7 @@ public class MoodleTests {
 
         ApiaryConfig.captureReads = true;
         ApiaryConfig.captureUpdates = true;
+        ApiaryConfig.recordInput = true;
     }
 
     @BeforeEach
@@ -80,7 +80,7 @@ public class MoodleTests {
     @Test
     public void testForumSubscribeReplay() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         logger.info("testForumSubscribeReplay");
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);

@@ -288,11 +288,12 @@ public class PostgresRetroReplay {
             return true;
         }
 
-        if (!workerContext.retroFunctionExists(rpTask.funcName)) {
-            return true;
+        if (workerContext.retroFunctionExists(rpTask.funcName)) {
+            // Always replay modified functions.
+            return false;
         }
 
-        return false;
+        return true;
     }
 
     // Return true if executed the function, false if nothing executed.

@@ -220,6 +220,9 @@ public class WordPressTests {
             intRes = client.get().executeFunction("WPUntrashPost", postIds).getInt();
             assertEquals(0, intRes);
 
+            String[] resList = client.get().executeFunction("WPGetPostComments", postIds).getStringArray();
+            assertEquals(2, resList.length);
+
             // Check results. Try to find inconsistency.
             strAryRes = client.get().executeFunction("WPCheckCommentStatus", postIds).getStringArray();
             if (strAryRes.length > 1) {
@@ -266,9 +269,9 @@ public class WordPressTests {
         // Use the new code.
         apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddCommentFixed::new, true);
         apiaryWorker.registerFunction("WPGetPostComments", ApiaryConfig.postgres, WPGetPostComments::new);
-        apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new);
-        apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new);
-        apiaryWorker.registerFunction("WPUntrashPost", ApiaryConfig.postgres, WPUntrashPost::new);
+        apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new, true);
+        apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new, true);
+        apiaryWorker.registerFunction("WPUntrashPost", ApiaryConfig.postgres, WPUntrashPost::new, true);
         apiaryWorker.registerFunction("WPCheckCommentStatus", ApiaryConfig.postgres, WPCheckCommentStatus::new);
         apiaryWorker.startServing();
 
@@ -285,6 +288,15 @@ public class WordPressTests {
         ApiaryConfig.recordInput = false; // Reset flags.
 
         // Check provenance.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
+        // Retro replay again, but use selective replay.
+        conn.truncateTable(WPUtil.WP_POSTS_TABLE, false);
+        conn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);
+        conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
+
+        intRes = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.SELECTIVE.getValue()).getInt();
+        assertEquals(0, intRes); // Should successfully untrashed the last post.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 }

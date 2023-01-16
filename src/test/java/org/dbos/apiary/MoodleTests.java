@@ -75,6 +75,8 @@ public class MoodleTests {
         if (apiaryWorker != null) {
             apiaryWorker.shutdown();
         }
+        // Reset flags.
+        ApiaryConfig.recordInput = false;
     }
 
     @Test

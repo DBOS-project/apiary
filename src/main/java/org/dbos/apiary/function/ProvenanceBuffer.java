@@ -302,6 +302,16 @@ public class ProvenanceBuffer {
         } else if (colType == Types.BINARY) {
             // The bytea type.
             pstmt.setBytes(colIndex, (byte[]) val);
+        } else if (colType == Types.BOOLEAN) {
+            boolean boolVal = false;
+            if (val instanceof Boolean) {
+                boolVal = (Boolean) val;
+            } else if (val instanceof String) {
+                boolVal = Boolean.parseBoolean((String) val);
+            } else {
+                boolVal = ((Long) val == 0);
+            }
+            pstmt.setBoolean(colIndex, boolVal);
         } else {
             // Everything else will be passed directly as string.
             logger.warn(String.format("Failed to convert type: %d. Use String", colType));

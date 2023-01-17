@@ -302,7 +302,8 @@ public class ProvenanceBuffer {
         } else if (colType == Types.BINARY) {
             // The bytea type.
             pstmt.setBytes(colIndex, (byte[]) val);
-        } else if (colType == Types.BOOLEAN) {
+        } else if ((colType == Types.BOOLEAN) || (colType == Types.BIT)) {
+            // Somehow Postgres JDBC uses BIT type.
             boolean boolVal = false;
             if (val instanceof Boolean) {
                 boolVal = (Boolean) val;

@@ -285,7 +285,7 @@ public class PostgresRetroReplay {
         // The current selective replay heuristic:
         // 1) If a request has been skipped, then all following functions will be skipped.
         // 2) If a function name is in the list of retroFunctions, then we cannot skip.
-        // 3) Cannot skip functions that contain writes.
+        // 3) Cannot skip a request if any of its function contains writes.
         // TODO: update heuristics, improve it.
         if (skippedExecIds.contains(rpTask.execId)) {
             return true;
@@ -297,6 +297,9 @@ public class PostgresRetroReplay {
         }
 
         if (!rpTask.readOnly) {
+            // TODO: need to improve this because the first function of a request might be read-only, but the downstream contains write.
+            // Also, the issue is that a function sometimes could become read-only if the write query is not executed. We should check all function invocations.
+            // Maybe even decide a function is read-only or not during registration.
             return false;
         }
 

@@ -151,6 +151,7 @@ public class PostgresContext extends ApiaryContext {
      * @param input     input parameters for the SQL statement.
      */
     public void executeUpdate(String procedure, Object... input) throws SQLException {
+        txc.readOnly = false;
         // Replay.
         if (this.replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
             replayUpdate(procedure, input);
@@ -209,6 +210,7 @@ public class PostgresContext extends ApiaryContext {
      * @param inputs     an array of input parameters for the SQL statement.
      */
     public void insertMany(String procedure, List<Object[]> inputs) throws SQLException {
+        txc.readOnly = false;
         PreparedStatement pstmt = conn.prepareStatement(procedure);
         for (Object[] input : inputs) {
             prepareStatement(pstmt, input);
@@ -216,7 +218,6 @@ public class PostgresContext extends ApiaryContext {
         }
         pstmt.executeBatch();
         pstmt.close();
-        return;
     }
 
     /**

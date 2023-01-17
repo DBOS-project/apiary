@@ -135,6 +135,7 @@ public class PostgresRetroReplay {
                 String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
                 String resName = resNames[resNames.length - 1]; // Extract the actual function name.
                 String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
+                boolean resReadOnly = startOrderRs.getBoolean(ProvenanceBuffer.PROV_READONLY);
                 long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
                 List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
 
@@ -161,7 +162,7 @@ public class PostgresRetroReplay {
                     }
 
                     // TODO: Can we skip empty transactions?
-                    ReplayTask rpTask = new ReplayTask(resExecId, resFuncId, resName, currInputs);
+                    ReplayTask rpTask = new ReplayTask(resExecId, resFuncId, resName, currInputs, resReadOnly);
 
                     // Check if we can skip this function execution. If so, add to the skip list. Otherwise, execute the replay.
 
@@ -283,13 +284,19 @@ public class PostgresRetroReplay {
 
         // The current selective replay heuristic:
         // 1) If a request has been skipped, then all following functions will be skipped.
-        // 2) If a function name is not in the list of retroFunctions, then we can skip. TODO: update this because a function may not be in retroFunctions but still need to be replayed. Need to use the write set to check.
+        // 2) If a function name is in the list of retroFunctions, then we cannot skip.
+        // 3) Cannot skip functions that contain writes.
+        // TODO: update heuristics, improve it.
         if (skippedExecIds.contains(rpTask.execId)) {
             return true;
         }
 
         if (workerContext.retroFunctionExists(rpTask.funcName)) {
             // Always replay modified functions.
+            return false;
+        }
+
+        if (!rpTask.readOnly) {
             return false;
         }
 

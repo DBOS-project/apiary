@@ -46,6 +46,7 @@ public class ProvenanceBuffer {
     public static final String PROV_FUNC_STATUS = "APIARY_FUNC_STATUS";
     // For the transaction snapshot column.
     public static final String PROV_TXN_SNAPSHOT = "APIARY_TXN_SNAPSHOT";
+    public static final String PROV_READONLY = "APIARY_READONLY";
     public static final String PROV_STATUS_COMMIT = "commit";
     public static final String PROV_STATUS_ROLLBACK = "rollback";
     public static final String PROV_STATUS_ABORT = "abort";

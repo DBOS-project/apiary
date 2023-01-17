@@ -89,7 +89,8 @@ public class PostgresConnection implements ApiaryConnection {
                 + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(512) NOT NULL, "
                 + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
                 + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20), "
-                + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(1024) ");
+                + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(1024), "
+                + ProvenanceBuffer.PROV_READONLY + "BOOLEAN NOT NULL ");
         createTable(ProvenanceBuffer.PROV_ApiaryMetadata,
                 "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
         createTable(ProvenanceBuffer.PROV_QueryMetadata,
@@ -378,6 +379,6 @@ public class PostgresConnection implements ApiaryConnection {
             }
         }
         String txnSnapshot = PostgresUtilities.constuctSnapshotStr(ctxt.txc.xmin, ctxt.txc.xmax, ctxt.txc.activeTransactions);
-        workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot);
+        workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot, ctxt.txc.readOnly);
     }
 }

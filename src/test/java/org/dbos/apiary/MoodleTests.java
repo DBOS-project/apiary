@@ -12,10 +12,7 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +72,10 @@ public class MoodleTests {
         if (apiaryWorker != null) {
             apiaryWorker.shutdown();
         }
-        // Reset flags.
+    }
+
+    @AfterAll
+    public static void resetFlags() {
         ApiaryConfig.recordInput = false;
     }
 

@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class PostgresRetroReplay {
@@ -28,6 +29,9 @@ public class PostgresRetroReplay {
         }
         assert(workerContext.provBuff != null);
         Connection provConn = workerContext.provBuff.conn.get();
+
+        // Record a list of modified tables. Track dependencies for replaying requests.
+        Set<String> replayWrittenTables = ConcurrentHashMap.newKeySet();
 
         // Find previous execution history, only execute later committed transactions.
         // TODO: should we re-execute aborted transaction (non-recoverable failures), especially for bug reproduction?
@@ -132,7 +136,6 @@ public class PostgresRetroReplay {
                 String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
                 String resName = resNames[resNames.length - 1]; // Extract the actual function name.
                 String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
-                boolean resReadOnly = startOrderRs.getBoolean(ProvenanceBuffer.PROV_READONLY);
                 long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
                 List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
 
@@ -159,11 +162,11 @@ public class PostgresRetroReplay {
                     }
 
                     // TODO: Can we skip empty transactions?
-                    ReplayTask rpTask = new ReplayTask(resExecId, resFuncId, resName, currInputs, resReadOnly);
+                    ReplayTask rpTask = new ReplayTask(resExecId, resFuncId, resName, currInputs);
 
                     // Check if we can skip this function execution. If so, add to the skip list. Otherwise, execute the replay.
 
-                    boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds, replayMode);
+                    boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds, replayMode, replayWrittenTables);
 
                     if (isSkipped && (lastNonSkippedExecId != -1)) {
                         // Do not skip the first execution.
@@ -179,7 +182,7 @@ public class PostgresRetroReplay {
 
                         // Execute the function.
                         processReplayFunction(workerContext, currConn, rpTask, replayMode, pendingTasks,
-                                execFuncIdToValue, execIdToFinalOutput);
+                                execFuncIdToValue, execIdToFinalOutput, replayWrittenTables);
                         pendingCommits.put(resTxId, currConn);
                     }
                 } else {
@@ -215,7 +218,7 @@ public class PostgresRetroReplay {
                                 ReplayTask rt = pendingCommitTask.get(nextCommitTxid);
                                 assert (rt != null);
                                 processReplayFunction(workerContext, commitConn, rt, replayMode, pendingTasks,
-                                        execFuncIdToValue, execIdToFinalOutput);
+                                        execFuncIdToValue, execIdToFinalOutput, replayWrittenTables);
                                 commitConn.commit();
                                 logger.debug("Committed retried transaction.");
                             } catch (SQLException ex) {
@@ -273,7 +276,8 @@ public class PostgresRetroReplay {
     }
 
     // Return true if the function execution can be skipped.
-    private static boolean checkSkipFunc(WorkerContext workerContext, ReplayTask rpTask, Set<Long> skippedExecIds, int replayMode) throws SQLException {
+    private static boolean checkSkipFunc(WorkerContext workerContext, ReplayTask rpTask, Set<Long> skippedExecIds, int replayMode, Set<String> replayWrittenTables) throws SQLException {
+        logger.debug("Replay written tables: {}", replayWrittenTables.toString());
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
             // Do not skip if we are replaying everything.
             return false;
@@ -282,7 +286,7 @@ public class PostgresRetroReplay {
         // The current selective replay heuristic:
         // 1) If a request has been skipped, then all following functions will be skipped.
         // 2) If a function name is in the list of retroFunctions, then we cannot skip.
-        // 3) Cannot skip a request if any of its function contains writes.
+        // 3) Cannot skip a request if any of its function contains writes and touches the write set.
         // TODO: update heuristics, improve it.
         if (skippedExecIds.contains(rpTask.execId)) {
             return true;
@@ -316,6 +320,7 @@ public class PostgresRetroReplay {
         pstmt.close();
         if (!isReadOnly) {
             // TODO: need to improve this: the issue is that a function sometimes could become read-only if the write query is not executed. The best way is to do static analysis.
+            // TODO: implement logic where if a request has nothing to do with the related table, we can skip it even if it contains writes.
             return false;
         }
 
@@ -325,7 +330,8 @@ public class PostgresRetroReplay {
     // Return true if executed the function, false if nothing executed.
     private static boolean processReplayFunction(WorkerContext workerContext, Connection conn, ReplayTask task, int replayMode, Map<Long, Map<Long, Task>> pendingTasks,
                                           Map<Long, Map<Long, Object>> execFuncIdToValue,
-                                          Map<Long, Object> execIdToFinalOutput) {
+                                          Map<Long, Object> execIdToFinalOutput,
+                                                 Set<String> replayWrittenTables) {
         FunctionOutput fo;
         // Only support primary functions.
         if (!workerContext.functionExists(task.funcName)) {
@@ -343,7 +349,7 @@ public class PostgresRetroReplay {
         if (task.funcId == 0l) {
             // This is the first function of a request.
             fo = c.replayFunction(conn, task.funcName, workerContext, "retroReplay", task.execId, task.funcId,
-                    replayMode, task.inputs);
+                    replayMode, replayWrittenTables, task.inputs);
             if (fo == null) {
                 logger.warn("Replay function output is null.");
                 return false;
@@ -370,7 +376,7 @@ public class PostgresRetroReplay {
             }
 
             fo = c.replayFunction(conn, currTask.funcName, workerContext,  "retroReplay", task.execId, task.funcId,
-                    replayMode, currTask.input);
+                    replayMode, replayWrittenTables, currTask.input);
             // Remove this task from the map.
             pendingTasks.get(task.execId).remove(task.funcId);
             if (fo == null) {

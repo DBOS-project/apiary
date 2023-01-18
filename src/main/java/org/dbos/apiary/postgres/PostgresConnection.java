@@ -218,7 +218,7 @@ public class PostgresConnection implements ApiaryConnection {
             long startTime = Utilities.getMicroTimestamp();
             activeTransactionsLock.readLock().lock();
             PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID, replayMode,
-                    new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
+                    new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions), new HashSet<>());
             activeTransactions.add(ctxt.txc);
             latestTransactionContext = ctxt.txc;
             if (ctxt.txc.xmin > biggestxmin) {
@@ -296,13 +296,14 @@ public class PostgresConnection implements ApiaryConnection {
     @Override
     public FunctionOutput replayFunction(Connection conn, String functionName, WorkerContext workerContext,
                                          String service, long execID, long functionID, int replayMode,
+                                         Set<String> replayWrittenTables,
                                          Object... inputs) {
         // Fast path for replayed functions.
         FunctionOutput f;
         String actualName = functionName;
         long startTime = Utilities.getMicroTimestamp();
         PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
-                new HashSet<>(), new HashSet<>());
+                new HashSet<>(), new HashSet<>(), new HashSet<>(replayWrittenTables));
         try {
             ApiaryFunction func = workerContext.getFunction(functionName);
             actualName = Utilities.getFunctionClassName(func);

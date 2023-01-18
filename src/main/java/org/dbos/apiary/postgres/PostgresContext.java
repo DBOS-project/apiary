@@ -26,6 +26,8 @@ public class PostgresContext extends ApiaryContext {
 
     private final long replayTxID;  // The replayed transaction ID.
 
+    private final Set<String> replayWrittenTables;
+
     private static final String checkReplayTxID = String.format("SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=0", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
             ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY);
 
@@ -37,10 +39,12 @@ public class PostgresContext extends ApiaryContext {
 
     public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID,
                            int replayMode,
-                           Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions) {
+                           Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions,
+                           Set<String> replayWrittenTables) {
         super(workerContext, service, execID, functionID, replayMode);
         this.conn = c;
         long tmpReplayTxID = -1;
+        this.replayWrittenTables = replayWrittenTables;
         try {
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("select txid_current();");
@@ -158,7 +162,8 @@ public class PostgresContext extends ApiaryContext {
             return;
         }
 
-        if (ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) {
+        if ((ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) ||
+                (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue())) {
             // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
             int querySeqNum = txc.querySeqNum.getAndIncrement();
             String interceptedQuery = interceptUpdate((String) procedure);
@@ -172,6 +177,12 @@ public class PostgresContext extends ApiaryContext {
             rs = pstmt.executeQuery();
             rsmd = rs.getMetaData();
             tableName = rsmd.getTableName(1);
+
+            // If it's a selective replay, then record tableName in the write set.
+            if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
+                this.replayWrittenTables.add(tableName);
+                return;
+            }
             long timestamp = Utilities.getMicroTimestamp();
             int numCol = rsmd.getColumnCount();
             // Record query metadata.

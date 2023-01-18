@@ -10,10 +10,7 @@ import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -276,7 +273,7 @@ public class PostgresRetroReplay {
     }
 
     // Return true if the function execution can be skipped.
-    private static boolean checkSkipFunc(WorkerContext workerContext, ReplayTask rpTask, Set<Long> skippedExecIds, int replayMode) {
+    private static boolean checkSkipFunc(WorkerContext workerContext, ReplayTask rpTask, Set<Long> skippedExecIds, int replayMode) throws SQLException {
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
             // Do not skip if we are replaying everything.
             return false;
@@ -289,6 +286,10 @@ public class PostgresRetroReplay {
         // TODO: update heuristics, improve it.
         if (skippedExecIds.contains(rpTask.execId)) {
             return true;
+        } else if (rpTask.funcId > 0) {
+            // If a request wasn't skipped at the first function, then the following functions cannot be skipped as well.
+            // Reduce the number of checks.
+            return false;
         }
 
         if (workerContext.retroFunctionExists(rpTask.funcName)) {
@@ -296,10 +297,25 @@ public class PostgresRetroReplay {
             return false;
         }
 
-        if (!rpTask.readOnly) {
-            // TODO: need to improve this because the first function of a request might be read-only, but the downstream contains write.
-            // Also, the issue is that a function sometimes could become read-only if the write query is not executed. We should check all function invocations.
-            // Maybe even decide a function is read-only or not during registration.
+        // Check if an execution contains any writes, check all downstream functions.
+        Connection provConn = workerContext.provBuff.conn.get();
+        String checkQuery = String.format("SELECT bool_and(%s) FROM %s WHERE %s = ?;",
+                ProvenanceBuffer.PROV_READONLY, ApiaryConfig.tableFuncInvocations,
+                ProvenanceBuffer.PROV_EXECUTIONID);
+        PreparedStatement pstmt = provConn.prepareStatement(checkQuery);
+        pstmt.setLong(1, rpTask.execId);
+        ResultSet rs = pstmt.executeQuery();
+        if (!rs.next()) {
+            logger.error("Failed to find readonly info for execution {}. Fall back to no skipping.", rpTask.execId);
+            rs.close();
+            pstmt.close();
+            return false;
+        }
+        boolean isReadOnly = rs.getBoolean(1);
+        rs.close();
+        pstmt.close();
+        if (!isReadOnly) {
+            // TODO: need to improve this: the issue is that a function sometimes could become read-only if the write query is not executed. The best way is to do static analysis.
             return false;
         }
 

@@ -26,7 +26,7 @@ public class PostgresContext extends ApiaryContext {
 
     private final long replayTxID;  // The replayed transaction ID.
 
-    private final Set<String> replayWrittenTables;
+    public final Set<String> replayWrittenTables;
 
     private static final String checkReplayTxID = String.format("SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=0", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
             ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY);

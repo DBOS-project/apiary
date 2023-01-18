@@ -318,6 +318,8 @@ public class PostgresConnection implements ApiaryConnection {
         }
 
         recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_REPLAY);
+        // TODO: fix this redundancy.
+        replayWrittenTables.addAll(ctxt.replayWrittenTables);
         return f;
     }
 

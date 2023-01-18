@@ -303,7 +303,7 @@ public class PostgresConnection implements ApiaryConnection {
         String actualName = functionName;
         long startTime = Utilities.getMicroTimestamp();
         PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
-                new HashSet<>(), new HashSet<>(), new HashSet<>(replayWrittenTables));
+                new HashSet<>(), new HashSet<>(), new HashSet<>());
         try {
             ApiaryFunction func = workerContext.getFunction(functionName);
             actualName = Utilities.getFunctionClassName(func);
@@ -318,7 +318,7 @@ public class PostgresConnection implements ApiaryConnection {
         }
 
         recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_REPLAY);
-        // TODO: fix this redundancy.
+        // Collect all written tables.
         replayWrittenTables.addAll(ctxt.replayWrittenTables);
         return f;
     }

@@ -21,8 +21,6 @@ public class PostgresContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresContext.class);
     // This connection ties to all prepared statements in one transaction.
     final Connection conn;
-    private AtomicLong functionIDCounter = new AtomicLong(0);
-    private long currentID = functionID;
 
     private final long replayTxID;  // The replayed transaction ID.
 
@@ -252,12 +250,19 @@ public class PostgresContext extends ApiaryContext {
             metaData[0] = txc.txID;
             metaData[1] = querySeqNum;
             metaData[2] = pstmt.toString();
-            if (!ApiaryConfig.captureReads) {
-                metaData[3] = "N/A";
+            if (!ApiaryConfig.captureReads && (this.replayMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue())) {
+                // Only capture metadata.
+                ResultSetMetaData rsmd = rs.getMetaData();
+                Set<String> tableNames = new HashSet<>();
+                int colCnt = rsmd.getColumnCount();
+                for (int i = 1; i <= colCnt; i++) {
+                    tableNames.add(rsmd.getTableName(i));
+                }
+                metaData[3] = String.join(",", tableNames);
                 metaData[4] = "N/A";
                 // Only capture metadata.
                 workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
-            } else {
+            } else if (ApiaryConfig.captureReads) {
                 long timestamp = Utilities.getMicroTimestamp();
                 int exportOperation = Utilities.getQueryType(procedure);
                 // Record provenance data.

@@ -277,11 +277,12 @@ public class PostgresRetroReplay {
 
     // Return true if the function execution can be skipped.
     private static boolean checkSkipFunc(WorkerContext workerContext, ReplayTask rpTask, Set<Long> skippedExecIds, int replayMode, Set<String> replayWrittenTables) throws SQLException {
-        logger.debug("Replay written tables: {}", replayWrittenTables.toString());
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
             // Do not skip if we are replaying everything.
             return false;
         }
+
+        logger.debug("Replay written tables: {}", replayWrittenTables.toString());
 
         // The current selective replay heuristic:
         // 1) If a request has been skipped, then all following functions will be skipped.
@@ -320,7 +321,9 @@ public class PostgresRetroReplay {
         pstmt.close();
         if (!isReadOnly) {
             // TODO: need to improve this: the issue is that a function sometimes could become read-only if the write query is not executed. The best way is to do static analysis.
-            // TODO: implement logic where if a request has nothing to do with the related table, we can skip it even if it contains writes.
+            // If a request contains write but has nothing to do with the related table, we can skip it. Check query metadata table and see if any transaction related to this execution touches the written table.
+
+
             return false;
         }
 

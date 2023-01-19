@@ -12,6 +12,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * PostgresContext is a context for Apiary-Postgres functions.
@@ -250,16 +251,23 @@ public class PostgresContext extends ApiaryContext {
             metaData[0] = txc.txID;
             metaData[1] = querySeqNum;
             metaData[2] = pstmt.toString();
+            Set<String> tableNames = new HashSet<>();
+            List<String> projection = new ArrayList<>();
+
             if (!ApiaryConfig.captureReads && (this.replayMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue())) {
                 // Only capture metadata.
                 ResultSetMetaData rsmd = rs.getMetaData();
-                Set<String> tableNames = new HashSet<>();
                 int colCnt = rsmd.getColumnCount();
                 for (int i = 1; i <= colCnt; i++) {
                     tableNames.add(rsmd.getTableName(i));
+                    projection.add(rsmd.getColumnName(i));
                 }
-                metaData[3] = String.join(",", tableNames);
-                metaData[4] = "N/A";
+                metaData[3] = tableNames.stream()
+                        .filter(s -> s != null && !s.isEmpty())
+                        .collect(Collectors.joining(","));
+                metaData[4] = projection.stream()
+                        .filter(s -> s != null && !s.isEmpty())
+                        .collect(Collectors.joining(","));
                 // Only capture metadata.
                 workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
             } else if (ApiaryConfig.captureReads) {
@@ -267,8 +275,6 @@ public class PostgresContext extends ApiaryContext {
                 int exportOperation = Utilities.getQueryType(procedure);
                 // Record provenance data.
                 Map<String, Object[]> tableToRowData = new HashMap<>();
-                List<String> tableNames = new ArrayList<>();
-                List<String> projection = new ArrayList<>();
                 if (!rs.next()) {
                     // Still need to record the table name and projection.
                     for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
@@ -315,8 +321,12 @@ public class PostgresContext extends ApiaryContext {
                 }
                 // Record query metadata.
                 // TODO: maybe find ways to parse SQL qeury and record metadata before execution.
-                metaData[3] = String.join(",", tableNames);
-                metaData[4] = String.join(",", projection);
+                metaData[3] = tableNames.stream()
+                        .filter(s -> s != null && !s.isEmpty())
+                        .collect(Collectors.joining(","));
+                metaData[4] = projection.stream()
+                        .filter(s -> s != null && !s.isEmpty())
+                        .collect(Collectors.joining(","));
                 workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
                 rs.beforeFirst();
             }

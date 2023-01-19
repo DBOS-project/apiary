@@ -67,6 +67,8 @@ public class WorkerContext {
 
     public boolean retroFunctionExists(String function) { return retroFunctions.containsKey(function); }
 
+    public boolean hasRetroFunctions() { return !retroFunctions.isEmpty(); }
+
     public ApiaryFunction getFunction(String function) {
         try {
             return functions.get(function).call();

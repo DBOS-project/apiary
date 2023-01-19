@@ -266,7 +266,7 @@ public class ApiaryWorker {
         return o;
     }
 
-    private void retroExecuteAll(long targetExecID, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws Exception {
+    private void retroExecuteAll(long targetExecID, long endExecId, int replayMode, ZFrame replyAddr, long senderTimestampNano) throws Exception {
         // Turn off provenance capture for replay.
         boolean origUpdateFlag = ApiaryConfig.captureUpdates;
         boolean origReadFlag = ApiaryConfig.captureReads;
@@ -274,7 +274,7 @@ public class ApiaryWorker {
         ApiaryConfig.captureReads = false;
 
         // Currently only support Postgres retro replay.
-        Object output = PostgresRetroReplay.retroExecuteAll(workerContext, targetExecID, replayMode);
+        Object output = PostgresRetroReplay.retroExecuteAll(workerContext, targetExecID, endExecId, replayMode);
 
         ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, output);
         outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
@@ -324,8 +324,9 @@ public class ApiaryWorker {
                 if ((replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) || (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue())) {
                     // Must be the first function in a workflow.
                     assert (functionID == 0l);
+                    long endExecId = req.getEndExecId();
                     // Retroactive replay mode goes through a separate function.
-                    retroExecuteAll(execID, replayMode, address, req.getSenderTimestampNano());
+                    retroExecuteAll(execID, endExecId, replayMode, address, req.getSenderTimestampNano());
                 } else {
                     executeFunction(req.getName(), req.getService(), execID, callerID, functionID,
                             replayMode, address, req.getSenderTimestampNano(), arguments);

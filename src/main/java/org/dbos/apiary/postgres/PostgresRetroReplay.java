@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class PostgresRetroReplay {
     private static final Logger logger = LoggerFactory.getLogger(PostgresRetroReplay.class);
 
-    public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, int replayMode) throws Exception {
+    public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, long endExecId, int replayMode) throws Exception {
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
             logger.debug("Replay the entire trace!");
         } else if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
@@ -133,6 +133,13 @@ public class PostgresRetroReplay {
                 long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
                 long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
                 long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
+
+                if (resExecId > endExecId) {
+                    // Stop at the last execution Id.
+                    // TODO: need to stop the outer loop at a proper position as well.
+                    break;
+                }
+
                 String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
                 String resName = resNames[resNames.length - 1]; // Extract the actual function name.
                 String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);

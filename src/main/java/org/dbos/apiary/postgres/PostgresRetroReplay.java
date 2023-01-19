@@ -329,7 +329,7 @@ public class PostgresRetroReplay {
                     ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_ISREPLAY);
             PreparedStatement tablePstmt = provConn.prepareStatement(tableQuery);
             tablePstmt.setLong(1, rpTask.execId);
-            ResultSet tableRs = pstmt.executeQuery();
+            ResultSet tableRs = tablePstmt.executeQuery();
 
             if (!tableRs.next()) {
                 // Not found, but to be cautious we have to replay it.

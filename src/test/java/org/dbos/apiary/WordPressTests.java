@@ -196,7 +196,7 @@ public class WordPressTests {
             // Add a new post and a comment.
             intRes = client.get().executeFunction("WPAddPost", postIds, "test post " + postIds).getInt();
             assertEquals(0, intRes);
-            intRes = client.get().executeFunction("WPAddComment", postIds, commentIds, "test comment to a post " + commentIds).getInt();
+            intRes = client.get().executeFunction("WPAddComment", postIds, commentIds, "test comment " + commentIds).getInt();
             commentIds++;
             assertEquals(0, intRes);
 
@@ -204,7 +204,7 @@ public class WordPressTests {
             Future<Integer> trashResFut = threadPool.submit(new WpTask(postIds, -1, "trashpost"));
             // Add arbitrary delay.
             Thread.sleep(ThreadLocalRandom.current().nextInt(5));
-            Future<Integer> commentResFut = threadPool.submit(new WpTask(postIds, commentIds, "test comment " + commentIds));
+            Future<Integer> commentResFut = threadPool.submit(new WpTask(postIds, commentIds, "test comment concurrent " + commentIds));
 
             int trashRes, commentRes;
             try {
@@ -269,9 +269,9 @@ public class WordPressTests {
         // Use the new code.
         apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddCommentFixed::new, true);
         apiaryWorker.registerFunction("WPGetPostComments", ApiaryConfig.postgres, WPGetPostComments::new);
-        apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new, true);
-        apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new, true);
-        apiaryWorker.registerFunction("WPUntrashPost", ApiaryConfig.postgres, WPUntrashPost::new, true);
+        apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new);
+        apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new);
+        apiaryWorker.registerFunction("WPUntrashPost", ApiaryConfig.postgres, WPUntrashPost::new);
         apiaryWorker.registerFunction("WPCheckCommentStatus", ApiaryConfig.postgres, WPCheckCommentStatus::new);
         apiaryWorker.startServing();
 

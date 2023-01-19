@@ -19,7 +19,7 @@ message ExecuteFunctionRequest {
   int64 senderTimestampNano = 6;
   string service = 7;
   int64 executionId = 8;  // Unique global IDs for an entire workflow.
-  int32 replayMode = 9;  // 0: not replay, 1: replay a single request, 2: replay a request and everything after.
+  int32 replayMode = 9;  // 0: not replay, 1: replay a single request, 2: replay a request and everything after, 3: selective replay.
 }
 
 message ExecuteFunctionReply {

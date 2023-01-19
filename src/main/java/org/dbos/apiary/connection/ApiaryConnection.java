@@ -73,7 +73,7 @@ public interface ApiaryConnection {
      * @return
      */
     default FunctionOutput replayFunction(Connection conn, String functionName, WorkerContext workerContext,
-                                          String service, long execID, long functionID, int replayMode,
+                                          String service, long execID, long functionID, int replayMode, Set<String> replayWrittenTables,
                                           Object... inputs) {
         return null;
     }

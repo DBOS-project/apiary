@@ -42,7 +42,8 @@ public class ApiaryConfig {
     public enum ReplayMode {
         NOT_REPLAY(0),
         SINGLE(1),
-        ALL(2);
+        ALL(2),
+        SELECTIVE(3);
 
         private int value;
 

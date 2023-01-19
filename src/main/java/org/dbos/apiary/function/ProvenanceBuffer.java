@@ -46,6 +46,7 @@ public class ProvenanceBuffer {
     public static final String PROV_FUNC_STATUS = "APIARY_FUNC_STATUS";
     // For the transaction snapshot column.
     public static final String PROV_TXN_SNAPSHOT = "APIARY_TXN_SNAPSHOT";
+    public static final String PROV_READONLY = "APIARY_READONLY";
     public static final String PROV_STATUS_COMMIT = "commit";
     public static final String PROV_STATUS_ROLLBACK = "rollback";
     public static final String PROV_STATUS_ABORT = "abort";
@@ -301,6 +302,17 @@ public class ProvenanceBuffer {
         } else if (colType == Types.BINARY) {
             // The bytea type.
             pstmt.setBytes(colIndex, (byte[]) val);
+        } else if ((colType == Types.BOOLEAN) || (colType == Types.BIT)) {
+            // Somehow Postgres JDBC uses BIT type.
+            boolean boolVal = false;
+            if (val instanceof Boolean) {
+                boolVal = (Boolean) val;
+            } else if (val instanceof String) {
+                boolVal = Boolean.parseBoolean((String) val);
+            } else {
+                boolVal = ((Long) val == 0);
+            }
+            pstmt.setBoolean(colIndex, boolVal);
         } else {
             // Everything else will be passed directly as string.
             logger.warn(String.format("Failed to convert type: %d. Use String", colType));

@@ -15,6 +15,6 @@ public class StatelessFunction implements ApiaryFunction {
             return;
         }
         long timestamp = Utilities.getMicroTimestamp();
-        ctxt.workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ApiaryConfig.statelessTxid, timestamp, ctxt.execID, ctxt.service, funcName);
+        ctxt.workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ApiaryConfig.statelessTxid, timestamp, ctxt.execID, ctxt.service, funcName, /*readonly=*/true);
     }
 }

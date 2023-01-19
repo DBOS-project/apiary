@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -21,10 +20,10 @@ public class PostgresContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresContext.class);
     // This connection ties to all prepared statements in one transaction.
     final Connection conn;
-    private AtomicLong functionIDCounter = new AtomicLong(0);
-    private long currentID = functionID;
 
     private final long replayTxID;  // The replayed transaction ID.
+
+    public final Set<String> replayWrittenTables;
 
     private static final String checkReplayTxID = String.format("SELECT %s FROM %s WHERE %s=? AND %s=? AND %s=0", ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
             ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY);
@@ -37,10 +36,12 @@ public class PostgresContext extends ApiaryContext {
 
     public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID,
                            int replayMode,
-                           Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions) {
+                           Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions,
+                           Set<String> replayWrittenTables) {
         super(workerContext, service, execID, functionID, replayMode);
         this.conn = c;
         long tmpReplayTxID = -1;
+        this.replayWrittenTables = replayWrittenTables;
         try {
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("select txid_current();");
@@ -151,13 +152,15 @@ public class PostgresContext extends ApiaryContext {
      * @param input     input parameters for the SQL statement.
      */
     public void executeUpdate(String procedure, Object... input) throws SQLException {
+        txc.readOnly = false;
         // Replay.
         if (this.replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
             replayUpdate(procedure, input);
             return;
         }
 
-        if (ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) {
+        if ((ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) ||
+                (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue())) {
             // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
             int querySeqNum = txc.querySeqNum.getAndIncrement();
             String interceptedQuery = interceptUpdate((String) procedure);
@@ -171,6 +174,12 @@ public class PostgresContext extends ApiaryContext {
             rs = pstmt.executeQuery();
             rsmd = rs.getMetaData();
             tableName = rsmd.getTableName(1);
+
+            // If it's a selective replay, then record tableName in the write set.
+            if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
+                this.replayWrittenTables.add(tableName);
+                return;
+            }
             long timestamp = Utilities.getMicroTimestamp();
             int numCol = rsmd.getColumnCount();
             // Record query metadata.
@@ -209,6 +218,7 @@ public class PostgresContext extends ApiaryContext {
      * @param inputs     an array of input parameters for the SQL statement.
      */
     public void insertMany(String procedure, List<Object[]> inputs) throws SQLException {
+        txc.readOnly = false;
         PreparedStatement pstmt = conn.prepareStatement(procedure);
         for (Object[] input : inputs) {
             prepareStatement(pstmt, input);
@@ -216,7 +226,6 @@ public class PostgresContext extends ApiaryContext {
         }
         pstmt.executeBatch();
         pstmt.close();
-        return;
     }
 
     /**
@@ -240,18 +249,30 @@ public class PostgresContext extends ApiaryContext {
             metaData[0] = txc.txID;
             metaData[1] = querySeqNum;
             metaData[2] = pstmt.toString();
-            if (!ApiaryConfig.captureReads) {
-                metaData[3] = "N/A";
-                metaData[4] = "N/A";
+            Set<String> tableNames = new HashSet<>();
+            List<String> projection = new ArrayList<>();
+
+            if (!ApiaryConfig.captureReads && (this.replayMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue())) {
+                // Only capture metadata.
+                ResultSetMetaData rsmd = rs.getMetaData();
+                int colCnt = rsmd.getColumnCount();
+                for (int i = 1; i <= colCnt; i++) {
+                    tableNames.add(rsmd.getTableName(i));
+                    projection.add(rsmd.getColumnName(i));
+                }
+                metaData[3] = tableNames.stream()
+                        .filter(s -> s != null && !s.isEmpty())
+                        .collect(Collectors.joining(","));
+                metaData[4] = projection.stream()
+                        .filter(s -> s != null && !s.isEmpty())
+                        .collect(Collectors.joining(","));
                 // Only capture metadata.
                 workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
-            } else {
+            } else if (ApiaryConfig.captureReads) {
                 long timestamp = Utilities.getMicroTimestamp();
                 int exportOperation = Utilities.getQueryType(procedure);
                 // Record provenance data.
                 Map<String, Object[]> tableToRowData = new HashMap<>();
-                List<String> tableNames = new ArrayList<>();
-                List<String> projection = new ArrayList<>();
                 if (!rs.next()) {
                     // Still need to record the table name and projection.
                     for (int colNum = 1; colNum <= rs.getMetaData().getColumnCount(); colNum++) {
@@ -298,8 +319,12 @@ public class PostgresContext extends ApiaryContext {
                 }
                 // Record query metadata.
                 // TODO: maybe find ways to parse SQL qeury and record metadata before execution.
-                metaData[3] = String.join(",", tableNames);
-                metaData[4] = String.join(",", projection);
+                metaData[3] = tableNames.stream()
+                        .filter(s -> s != null && !s.isEmpty())
+                        .collect(Collectors.joining(","));
+                metaData[4] = projection.stream()
+                        .filter(s -> s != null && !s.isEmpty())
+                        .collect(Collectors.joining(","));
                 workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
                 rs.beforeFirst();
             }

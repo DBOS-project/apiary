@@ -3,6 +3,7 @@ package org.dbos.apiary.utilities;
 import com.google.protobuf.ByteString;
 import org.dbos.apiary.ExecuteFunctionReply;
 import org.dbos.apiary.ExecuteFunctionRequest;
+import org.dbos.apiary.function.ApiaryFunction;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,6 +139,11 @@ public class Utilities {
             }
         }
         return null;
+    }
+
+    public static String getFunctionClassName(ApiaryFunction func) {
+        String[] actualNames = func.getClassName().split("\\.");
+        return actualNames[actualNames.length-1];
     }
 
     public static long getMicroTimestamp() {

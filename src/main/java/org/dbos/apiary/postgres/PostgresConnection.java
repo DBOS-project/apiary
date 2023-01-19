@@ -89,7 +89,8 @@ public class PostgresConnection implements ApiaryConnection {
                 + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(512) NOT NULL, "
                 + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
                 + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20), "
-                + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(1024) ");
+                + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(1024), "
+                + ProvenanceBuffer.PROV_READONLY + " BOOLEAN ");
         createTable(ProvenanceBuffer.PROV_ApiaryMetadata,
                 "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
         createTable(ProvenanceBuffer.PROV_QueryMetadata,
@@ -217,7 +218,7 @@ public class PostgresConnection implements ApiaryConnection {
             long startTime = Utilities.getMicroTimestamp();
             activeTransactionsLock.readLock().lock();
             PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID, replayMode,
-                    new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));
+                    new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions), new HashSet<>());
             activeTransactions.add(ctxt.txc);
             latestTransactionContext = ctxt.txc;
             if (ctxt.txc.xmin > biggestxmin) {
@@ -295,17 +296,17 @@ public class PostgresConnection implements ApiaryConnection {
     @Override
     public FunctionOutput replayFunction(Connection conn, String functionName, WorkerContext workerContext,
                                          String service, long execID, long functionID, int replayMode,
+                                         Set<String> replayWrittenTables,
                                          Object... inputs) {
         // Fast path for replayed functions.
         FunctionOutput f;
         String actualName = functionName;
         long startTime = Utilities.getMicroTimestamp();
         PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
-                new HashSet<>(), new HashSet<>());
+                new HashSet<>(), new HashSet<>(), new HashSet<>());
         try {
             ApiaryFunction func = workerContext.getFunction(functionName);
-            String[] actualNames = func.getClassName().split("\\.");
-            actualName = actualNames[actualNames.length-1];
+            actualName = Utilities.getFunctionClassName(func);
             logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
             f = func.apiaryRunFunction(ctxt, inputs);
             logger.debug("Completed function [{}]", actualName);
@@ -317,6 +318,8 @@ public class PostgresConnection implements ApiaryConnection {
         }
 
         recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_REPLAY);
+        // Collect all written tables.
+        replayWrittenTables.addAll(ctxt.replayWrittenTables);
         return f;
     }
 
@@ -379,6 +382,6 @@ public class PostgresConnection implements ApiaryConnection {
             }
         }
         String txnSnapshot = PostgresUtilities.constuctSnapshotStr(ctxt.txc.xmin, ctxt.txc.xmax, ctxt.txc.activeTransactions);
-        workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot);
+        workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot, ctxt.txc.readOnly);
     }
 }

@@ -217,7 +217,7 @@ public class RetroBenchmark {
             int res = client.get().replayFunction(targetExecId, "MDLIsSubscribed", initialUserId, initialForumId).getInt();
             assert (res == initialUserId);
         } else if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()){
-            FunctionOutput res = client.get().retroReplay(targetExecId);
+            FunctionOutput res = client.get().retroReplay(targetExecId, ApiaryConfig.ReplayMode.ALL.getValue());
             assert (res != null);
         } else {
             logger.error("Do not support replay mode {}", replayMode);

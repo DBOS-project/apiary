@@ -196,7 +196,7 @@ public class WordPressTests {
             // Add a new post and a comment.
             intRes = client.get().executeFunction("WPAddPost", postIds, "test post " + postIds).getInt();
             assertEquals(0, intRes);
-            intRes = client.get().executeFunction("WPAddComment", postIds, commentIds, "test comment to a post " + commentIds).getInt();
+            intRes = client.get().executeFunction("WPAddComment", postIds, commentIds, "test comment " + commentIds).getInt();
             commentIds++;
             assertEquals(0, intRes);
 
@@ -204,7 +204,7 @@ public class WordPressTests {
             Future<Integer> trashResFut = threadPool.submit(new WpTask(postIds, -1, "trashpost"));
             // Add arbitrary delay.
             Thread.sleep(ThreadLocalRandom.current().nextInt(5));
-            Future<Integer> commentResFut = threadPool.submit(new WpTask(postIds, commentIds, "test comment to a post " + commentIds));
+            Future<Integer> commentResFut = threadPool.submit(new WpTask(postIds, commentIds, "test comment concurrent " + commentIds));
 
             int trashRes, commentRes;
             try {
@@ -219,6 +219,9 @@ public class WordPressTests {
             // Restore the post.
             intRes = client.get().executeFunction("WPUntrashPost", postIds).getInt();
             assertEquals(0, intRes);
+
+            String[] resList = client.get().executeFunction("WPGetPostComments", postIds).getStringArray();
+            assertTrue(resList.length > 1);
 
             // Check results. Try to find inconsistency.
             strAryRes = client.get().executeFunction("WPCheckCommentStatus", postIds).getStringArray();
@@ -254,7 +257,7 @@ public class WordPressTests {
         conn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);
         conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
 
-        strAryRes = client.get().retroReplay(resExecId).getStringArray();
+        strAryRes = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.ALL.getValue()).getStringArray();
         assertTrue(strAryRes.length > 1);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
@@ -264,7 +267,7 @@ public class WordPressTests {
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new);
         // Use the new code.
-        apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddCommentFixed::new);
+        apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddCommentFixed::new, true);
         apiaryWorker.registerFunction("WPGetPostComments", ApiaryConfig.postgres, WPGetPostComments::new);
         apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new);
         apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new);
@@ -279,12 +282,21 @@ public class WordPressTests {
         conn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);
         conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
 
-        strAryRes = client.get().retroReplay(resExecId).getStringArray();
+        strAryRes = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.ALL.getValue()).getStringArray();
         assertEquals(1, strAryRes.length);
 
         ApiaryConfig.recordInput = false; // Reset flags.
 
         // Check provenance.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
+        // Retro replay again, but use selective replay.
+        conn.truncateTable(WPUtil.WP_POSTS_TABLE, false);
+        conn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);
+        conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
+
+        intRes = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.SELECTIVE.getValue()).getInt();
+        assertEquals(0, intRes); // Should successfully untrashed the last post.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 }

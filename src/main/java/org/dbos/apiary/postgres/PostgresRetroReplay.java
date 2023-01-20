@@ -35,21 +35,34 @@ public class PostgresRetroReplay {
 
         // Find previous execution history, only execute later committed transactions.
         // TODO: should we re-execute aborted transaction (non-recoverable failures), especially for bug reproduction?
-        String provQuery = String.format("SELECT %s, %s FROM %s WHERE %s = %d AND %s=0 AND %s=0 AND %s=\'%s\';",
+        String provQuery = String.format("SELECT %s, %s FROM %s WHERE %s = ? AND %s=0 AND %s=0 AND %s=\'%s\';",
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
                 ApiaryConfig.tableFuncInvocations,
-                ProvenanceBuffer.PROV_EXECUTIONID, targetExecID, ProvenanceBuffer.PROV_FUNCID,
+                ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID,
                 ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT);
-        Statement stmt = provConn.createStatement();
-        ResultSet historyRs = stmt.executeQuery(provQuery);
+        PreparedStatement stmt = provConn.prepareStatement(provQuery);
+        stmt.setLong(1, targetExecID);
+        ResultSet historyRs = stmt.executeQuery();
         long origTxid = -1;
         if (historyRs.next()) {
             origTxid = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            logger.debug("Replay start transaction ID: {}", origTxid);
         } else {
-            logger.error("No corresponding original transaction for execution {}", targetExecID);
+            logger.error("No corresponding original transaction for start execution {}", targetExecID);
             throw new RuntimeException("Cannot find original transaction!");
         }
         historyRs.close();
+
+        // Find the transaction ID of the last transaction. Only need to find the first function.
+        stmt.setLong(1, endExecId);
+        ResultSet endRs = stmt.executeQuery();
+        long endTxId = Long.MAX_VALUE;
+        if (endRs.next()) {
+            endTxId = endRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            logger.debug("Replay end transaction ID (excluded): {}", endTxId);
+        } else {
+            logger.debug("No corresponding original transaction for end execution {}. Execute the entire trace!", endExecId);
+        }
 
         // Replay based on the snapshot info, because transaction/commit order != actual serial order.
         // Start transactions based on their original txid order, but commit based on commit order.
@@ -126,17 +139,19 @@ public class PostgresRetroReplay {
         // A map storing the task info for a pending commit transaction. GC after the task is committed.
         Map<Long, ReplayTask> pendingCommitTask = new HashMap<>();
 
-        while (nextCommitTxid > 0) {
+        // Current transaction ID, execution ID, and function ID.
+        long resTxId = -1, resExecId = -1, resFuncId = -1;
+
+        while ((nextCommitTxid > 0) && (resTxId >= endTxId)) {
             // Execute all following functions until nextCommitTxid is in the snapshot of that original transaction.
             // If the nextCommitTxid is in the snapshot, then that function needs to start after it commits.
             while (true) {
-                long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-                long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-                long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
+                resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+                resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+                resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
 
-                if (resExecId > endExecId) {
-                    // Stop at the last execution Id.
-                    // TODO: need to stop the outer loop at a proper position as well.
+                if (resTxId >= endTxId) {
+                    // Stop at the last transaction Id.
                     break;
                 }
 

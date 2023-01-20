@@ -219,11 +219,10 @@ public class MoodleTests {
         rs.close();
 
         // Retroactively execute all.
-        // Reset the database and re-execute.
+        // Reset the database and re-execute, stop before the last execution.
         conn.truncateTable("ForumSubscription", false);
-        resList = client.retroReplay(resExecId, resExecId4, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
-        assertEquals(1, resList.length);
-        assertEquals(123, resList[0]);
+        res = client.retroReplay(resExecId, resExecId4, ApiaryConfig.ReplayMode.ALL.getValue()).getInt();
+        assertEquals(123, res);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 

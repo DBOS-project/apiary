@@ -219,11 +219,17 @@ public class MoodleTests {
         rs.close();
 
         // Retroactively execute all.
-        // Reset the database and re-execute.
+        // Reset the database and re-execute, stop before the last execution.
         conn.truncateTable("ForumSubscription", false);
-        resList = client.retroReplay(resExecId, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
+        res = client.retroReplay(resExecId, resExecId4, ApiaryConfig.ReplayMode.ALL.getValue()).getInt();
+        assertEquals(123, res);
+
+        // Retro replay again, but this time replay the entire trace.
+        conn.truncateTable("ForumSubscription", false);
+        resList = client.retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);
+
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 
@@ -318,7 +324,7 @@ public class MoodleTests {
 
         // Reset the table and replay all.
         conn.truncateTable("ForumSubscription", false);
-        int[] retroResList = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
+        int[] retroResList = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
         assertEquals(resList.length, retroResList.length);
         assertTrue(Arrays.equals(resList, retroResList));
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
@@ -336,14 +342,13 @@ public class MoodleTests {
         assert(provBuff != null);
 
         conn.truncateTable("ForumSubscription", false);
-        int[] retroList = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
+        int[] retroList = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
         assertEquals(1, retroList.length);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         // Retro replay again, but now we enable selective replay.
         conn.truncateTable("ForumSubscription", false);
-        // TODO: what is a better stop strategy?
-        int retroRes = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.SELECTIVE.getValue()).getInt();
+        int retroRes = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.SELECTIVE.getValue()).getInt();
         assertTrue(retroRes != -1);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }

@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class PostgresRetroReplay {
     private static final Logger logger = LoggerFactory.getLogger(PostgresRetroReplay.class);
 
-    public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, int replayMode) throws Exception {
+    public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, long endExecId, int replayMode) throws Exception {
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
             logger.debug("Replay the entire trace!");
         } else if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
@@ -35,21 +35,35 @@ public class PostgresRetroReplay {
 
         // Find previous execution history, only execute later committed transactions.
         // TODO: should we re-execute aborted transaction (non-recoverable failures), especially for bug reproduction?
-        String provQuery = String.format("SELECT %s, %s FROM %s WHERE %s = %d AND %s=0 AND %s=0 AND %s=\'%s\';",
+        String provQuery = String.format("SELECT %s, %s FROM %s WHERE %s = ? AND %s=0 AND %s=0 AND %s=\'%s\';",
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
                 ApiaryConfig.tableFuncInvocations,
-                ProvenanceBuffer.PROV_EXECUTIONID, targetExecID, ProvenanceBuffer.PROV_FUNCID,
+                ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID,
                 ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT);
-        Statement stmt = provConn.createStatement();
-        ResultSet historyRs = stmt.executeQuery(provQuery);
+        PreparedStatement stmt = provConn.prepareStatement(provQuery);
+        stmt.setLong(1, targetExecID);
+        ResultSet historyRs = stmt.executeQuery();
         long origTxid = -1;
         if (historyRs.next()) {
             origTxid = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            logger.debug("Replay start transaction ID: {}", origTxid);
         } else {
-            logger.error("No corresponding original transaction for execution {}", targetExecID);
+            logger.error("No corresponding original transaction for start execution {}", targetExecID);
             throw new RuntimeException("Cannot find original transaction!");
         }
         historyRs.close();
+
+        // Find the transaction ID of the last execution. Only need to find the transaction ID of the first function.
+        // Execute everything between [origTxid, endTxId)
+        stmt.setLong(1, endExecId);
+        ResultSet endRs = stmt.executeQuery();
+        long endTxId = Long.MAX_VALUE;
+        if (endRs.next()) {
+            endTxId = endRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            logger.debug("Replay end transaction ID (excluded): {}", endTxId);
+        } else {
+            logger.debug("No corresponding original transaction for end execution {}. Execute the entire trace!", endExecId);
+        }
 
         // Replay based on the snapshot info, because transaction/commit order != actual serial order.
         // Start transactions based on their original txid order, but commit based on commit order.
@@ -126,7 +140,7 @@ public class PostgresRetroReplay {
         // A map storing the task info for a pending commit transaction. GC after the task is committed.
         Map<Long, ReplayTask> pendingCommitTask = new HashMap<>();
 
-        while (nextCommitTxid > 0) {
+        while ((nextCommitTxid > 0) && (nextCommitTxid < endTxId)) {
             // Execute all following functions until nextCommitTxid is in the snapshot of that original transaction.
             // If the nextCommitTxid is in the snapshot, then that function needs to start after it commits.
             while (true) {

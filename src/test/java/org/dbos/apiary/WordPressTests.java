@@ -257,7 +257,7 @@ public class WordPressTests {
         conn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);
         conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
 
-        strAryRes = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.ALL.getValue()).getStringArray();
+        strAryRes = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getStringArray();
         assertTrue(strAryRes.length > 1);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
@@ -282,7 +282,7 @@ public class WordPressTests {
         conn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);
         conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
 
-        strAryRes = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.ALL.getValue()).getStringArray();
+        strAryRes = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getStringArray();
         assertEquals(1, strAryRes.length);
 
         ApiaryConfig.recordInput = false; // Reset flags.
@@ -295,7 +295,7 @@ public class WordPressTests {
         conn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);
         conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
 
-        intRes = client.get().retroReplay(resExecId, ApiaryConfig.ReplayMode.SELECTIVE.getValue()).getInt();
+        intRes = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.SELECTIVE.getValue()).getInt();
         assertEquals(0, intRes); // Should successfully untrashed the last post.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }

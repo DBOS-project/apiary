@@ -53,7 +53,8 @@ public class PostgresRetroReplay {
         }
         historyRs.close();
 
-        // Find the transaction ID of the last transaction. Only need to find the first function.
+        // Find the transaction ID of the last execution. Only need to find the transaction ID of the first function.
+        // Execute everything between [origTxid, endTxId)
         stmt.setLong(1, endExecId);
         ResultSet endRs = stmt.executeQuery();
         long endTxId = Long.MAX_VALUE;
@@ -146,12 +147,6 @@ public class PostgresRetroReplay {
                 long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
                 long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
                 long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
-
-                if (resTxId >= endTxId) {
-                    // Stop at the last transaction Id.
-                    break;
-                }
-
                 String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
                 String resName = resNames[resNames.length - 1]; // Extract the actual function name.
                 String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);

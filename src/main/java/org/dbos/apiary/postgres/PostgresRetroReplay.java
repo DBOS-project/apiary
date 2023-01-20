@@ -142,7 +142,7 @@ public class PostgresRetroReplay {
         // Current transaction ID, execution ID, and function ID.
         long resTxId = -1, resExecId = -1, resFuncId = -1;
 
-        while ((nextCommitTxid > 0) && (resTxId >= endTxId)) {
+        while ((nextCommitTxid > 0) && (resTxId < endTxId)) {
             // Execute all following functions until nextCommitTxid is in the snapshot of that original transaction.
             // If the nextCommitTxid is in the snapshot, then that function needs to start after it commits.
             while (true) {

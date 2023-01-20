@@ -223,6 +223,13 @@ public class MoodleTests {
         conn.truncateTable("ForumSubscription", false);
         res = client.retroReplay(resExecId, resExecId4, ApiaryConfig.ReplayMode.ALL.getValue()).getInt();
         assertEquals(123, res);
+
+        // Retro replay again, but this time replay the entire trace.
+        conn.truncateTable("ForumSubscription", false);
+        resList = client.retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
+        assertEquals(1, resList.length);
+        assertEquals(123, resList[0]);
+
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 

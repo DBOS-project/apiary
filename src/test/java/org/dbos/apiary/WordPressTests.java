@@ -58,6 +58,8 @@ public class WordPressTests {
             conn.createTable(WPUtil.WP_POSTMETA_TABLE, WPUtil.WP_POSTMETA_SCHEMA);
             conn.dropTable(WPUtil.WP_COMMENTS_TABLE);
             conn.createTable(WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_COMMENTS_SCHEMA);
+            conn.dropTable(WPUtil.WP_OPTIONS_TABLE);
+            conn.createTable(WPUtil.WP_OPTIONS_TABLE, WPUtil.WP_OPTIONS_SCHEMA);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");
@@ -74,8 +76,8 @@ public class WordPressTests {
     }
 
     @Test
-    public void testWPSerialized() throws SQLException, InvalidProtocolBufferException, InterruptedException {
-        logger.info("testWPSerialized");
+    public void testPostSerialized() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        logger.info("testPostSerialized");
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
@@ -129,7 +131,7 @@ public class WordPressTests {
     }
 
     @Test
-    public void testWPConcurrentRetro() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+    public void testPostConcurrentRetro() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         // Try to reproduce the bug where the new comment comes between post trashed and comment trashed. So the new comment would be marked as trashed but cannot be restored afterwards.
         logger.info("testWPConcurrentRetro");
         ApiaryConfig.recordInput = true;
@@ -299,4 +301,34 @@ public class WordPressTests {
         assertEquals(0, intRes); // Should successfully untrashed the last post.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
+
+    @Test
+    public void testOptionSerialized() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        logger.info("testOptionSerialized");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("WPGetOption", ApiaryConfig.postgres, WPGetOption::new);
+        apiaryWorker.registerFunction("WPOptionExists", ApiaryConfig.postgres, WPOptionExists::new);
+        apiaryWorker.registerFunction("WPInsertOption", ApiaryConfig.postgres, WPInsertOption::new);
+        apiaryWorker.startServing();
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("WPOptionExists", "option1", "value1", "no").getInt();
+        assertEquals(0, res); // return 0 as we newly inserted the option.
+
+        // Add again, should return 1 because the option already exists.
+        res = client.executeFunction("WPOptionExists", "option1", "value2", "no").getInt();
+        assertEquals(1, res);
+
+        // Get option value.
+        String resStr = client.executeFunction("WPGetOption", "option1").getString();
+        assertEquals("value1", resStr);
+
+        // Check provenance.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+    }
+
 }

@@ -33,4 +33,13 @@ public class WPUtil {
     public static final String WP_STATUS_VISIBLE = "visible";
     public static final String WP_STATUS_TRASHED = "trashed";
     public static final String WP_STATUS_POST_TRASHED = "post-trashed";
+
+    // For the options table.
+    public static final String WP_OPTIONS_TABLE = "WP_OPTIONS";
+    public static final String WP_OPTION_NAME = "OPTION_NAME";
+    public static final String WP_OPTION_VALUE = "OPTION_VALUE";
+    public static final String WP_AUTOLOAD = "AUTOLOAD";
+    public static final String WP_OPTIONS_SCHEMA = WP_OPTION_NAME + " VARCHAR(128) PRIMARY KEY NOT NULL, "
+            + WP_OPTION_VALUE + " VARCHAR(2000) NOT NULL, "
+            + WP_AUTOLOAD + " VARCHAR(20) NOT NULL DEFAULT 'yes' ";
 }

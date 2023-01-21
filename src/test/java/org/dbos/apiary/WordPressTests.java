@@ -21,8 +21,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 // To test the bug and fixes of WordPress-11073: https://core.trac.wordpress.org/ticket/11073
@@ -331,4 +330,84 @@ public class WordPressTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 
+    @Test
+    public void testOptionConcurrent() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        logger.info("testOptionConcurrent");
+
+        // Run concurrent requests until we find an error. Then retroactively replay.
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("WPGetOption", ApiaryConfig.postgres, WPGetOption::new);
+        apiaryWorker.registerFunction("WPOptionExists", ApiaryConfig.postgres, WPOptionExists::new);
+        apiaryWorker.registerFunction("WPInsertOption", ApiaryConfig.postgres, WPInsertOption::new);
+        apiaryWorker.startServing();
+
+        ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
+        assert(provBuff != null);
+
+        ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
+
+        // Start a thread pool.
+        ExecutorService threadPool = Executors.newFixedThreadPool(2);
+
+        class OpsTask implements Callable<Integer> {
+            private final String opName;
+            private final String opValue;
+            private final String opAutoLoad;
+
+            public OpsTask(String opName, String opValue, String opAutoLoad) {
+                this.opName = opName;
+                this.opValue = opValue;
+                this.opAutoLoad = opAutoLoad;
+            }
+
+            @Override
+            public Integer call() {
+                int res;
+                try {
+                    res = client.get().executeFunction("WPOptionExists", opName, opValue, opAutoLoad).getInt();
+                } catch (Exception e) {
+                    res = -2;
+                }
+                return res;
+            }
+        }
+
+        // Try many times until we find duplications.
+        int maxTry = 1000;
+        int res = -2;
+        int i;
+        for (i = 0; i < maxTry; i++) {
+            // Launch concurrent tasks.
+            Future<Integer> res1Fut = threadPool.submit(new OpsTask("option-" + i, "value0-" + i, "no"));
+            // Add arbitrary delay.
+            Thread.sleep(ThreadLocalRandom.current().nextInt(2));
+            Future<Integer> res2Fut = threadPool.submit(new OpsTask("option-" + i, "value1-" + i, "no"));
+
+            int res1, res2;
+            try {
+                res1 = res1Fut.get();
+                res2 = res2Fut.get();
+                assertEquals(0, res1); // The first one should success.
+                assertNotEquals(-2, res2);
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+
+            // Check the option, should be the first one.
+            String resStr = client.get().executeFunction("WPGetOption", "option-" + i).getString();
+            assertTrue(resStr.equals("value0-" + i));
+            if (res2 == -1) {
+                logger.info("Found error! Option: {}", i);
+                break;
+            }
+        }
+        threadPool.shutdown();
+        assumeTrue(i < maxTry);
+
+        // Wait for provenance to be exported.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+    }
 }

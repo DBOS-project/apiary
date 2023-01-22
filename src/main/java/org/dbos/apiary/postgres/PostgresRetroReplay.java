@@ -35,11 +35,12 @@ public class PostgresRetroReplay {
 
         // Find previous execution history, only execute later committed transactions.
         // TODO: should we re-execute aborted transaction (non-recoverable failures), especially for bug reproduction?
-        String provQuery = String.format("SELECT %s, %s FROM %s WHERE %s = ? AND %s=0 AND %s=0 AND %s=\'%s\';",
+        String provQuery = String.format("SELECT %s, %s FROM %s WHERE %s = ? AND %s=0 AND %s=0 AND (%s=\'%s\' OR %s=\'%s\');",
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
                 ApiaryConfig.tableFuncInvocations,
                 ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID,
-                ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT);
+                ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_ABORT);
         PreparedStatement stmt = provConn.prepareStatement(provQuery);
         stmt.setLong(1, targetExecID);
         ResultSet historyRs = stmt.executeQuery();
@@ -70,9 +71,10 @@ public class PostgresRetroReplay {
         // Maintain a pool of connections to the backend database to concurrently execute transactions.
 
         // This query finds the starting order of transactions.
-        String startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;",
+        String startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
                 ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_ABORT,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         Statement startOrderStmt = provConn.createStatement();
         ResultSet startOrderRs = startOrderStmt.executeQuery(startOrderQuery);
@@ -82,10 +84,11 @@ public class PostgresRetroReplay {
         }
 
         // This query finds the commit order of transactions.
-        String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;",
+        String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
                 ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_ABORT,
                 ProvenanceBuffer.PROV_END_TIMESTAMP);
         Statement commitOrderStmt = provConn.createStatement();
         ResultSet commitOrderRs = commitOrderStmt.executeQuery(commitOrderQuery);
@@ -98,13 +101,14 @@ public class PostgresRetroReplay {
 
         // This query finds the original input.
         String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
-                        "WHERE %s >= %d AND %s = 0 AND %s = 0 AND %s=\'%s\' ORDER BY %s;",
+                        "WHERE %s >= %d AND %s = 0 AND %s = 0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
                 ProvenanceBuffer.PROV_REQ_BYTES, ApiaryConfig.tableRecordedInputs,
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID,
                 ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
                 origTxid, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY,
                 ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_ABORT,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
         );
         Statement inputStmt = provConn.createStatement();

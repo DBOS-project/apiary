@@ -409,5 +409,25 @@ public class WordPressTests {
 
         // Wait for provenance to be exported.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        Connection provConn = provBuff.conn.get();
+        Statement stmt = provConn.createStatement();
+        String provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID);
+        ResultSet rs = stmt.executeQuery(provQuery);
+        rs.next();
+        long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
+        assertTrue(resExecId >= 0);
+        assumeTrue(resFuncId == 0);
+        assertEquals("WPOptionExists", resFuncName);
+
+        // Reset the table and replay all.
+        conn.truncateTable(WPUtil.WP_OPTIONS_TABLE, false);
+
+        // Replay everything and check we get the same result.
+        String resStr = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getString();
+        assertTrue(resStr.equals("value0-" + i));
+
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 }

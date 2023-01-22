@@ -375,8 +375,10 @@ public class PostgresConnection implements ApiaryConnection {
                 if (rs.next()) {
                     long tmpTime = rs.getLong(1);
                     if (tmpTime > 0) {
-                        // TODO: find a better way to do this. tmpTime=0 means the transaction aborted.
+                        // TODO: find a better way to identify this.
+                        // tmpTime=0 means the transaction aborted.
                         commitTime = tmpTime;
+                        status = ProvenanceBuffer.PROV_STATUS_ABORT;
                     }
                 }
                 rs.close();

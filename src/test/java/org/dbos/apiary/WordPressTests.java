@@ -8,10 +8,7 @@ import org.dbos.apiary.procedures.postgres.wordpress.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +38,9 @@ public class WordPressTests {
 
         // Disable read tracking.
         ApiaryConfig.captureReads = false;
+
+        // Record input.
+        ApiaryConfig.recordInput = true;
     }
 
     @BeforeEach
@@ -72,6 +72,11 @@ public class WordPressTests {
         if (apiaryWorker != null) {
             apiaryWorker.shutdown();
         }
+    }
+
+    @AfterAll
+    public static void resetFlags() {
+        ApiaryConfig.recordInput = false;
     }
 
     @Test
@@ -133,7 +138,6 @@ public class WordPressTests {
     public void testPostConcurrentRetro() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         // Try to reproduce the bug where the new comment comes between post trashed and comment trashed. So the new comment would be marked as trashed but cannot be restored afterwards.
         logger.info("testWPConcurrentRetro");
-        ApiaryConfig.recordInput = true;
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
@@ -285,8 +289,6 @@ public class WordPressTests {
 
         strAryRes = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getStringArray();
         assertEquals(1, strAryRes.length);
-
-        ApiaryConfig.recordInput = false; // Reset flags.
 
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);

@@ -374,7 +374,7 @@ public class PostgresConnection implements ApiaryConnection {
                 ResultSet rs = stmt.executeQuery(String.format("SELECT CAST(extract(epoch from pg_xact_commit_timestamp(\'%s\'::xid)) * 1000000 AS BIGINT);", ctxt.txc.txID));
                 if (rs.next()) {
                     long tmpTime = rs.getLong(1);
-                    if (tmpTime > 0) {
+                    if (tmpTime <= 0) {
                         // TODO: find a better way to identify this.
                         // tmpTime=0 means the transaction aborted.
                         commitTime = tmpTime;

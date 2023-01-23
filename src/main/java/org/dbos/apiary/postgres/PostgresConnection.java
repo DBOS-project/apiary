@@ -1,5 +1,6 @@
 package org.dbos.apiary.postgres;
 
+import org.apache.velocity.runtime.directive.Break;
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -249,7 +250,6 @@ public class PostgresConnection implements ApiaryConnection {
                     recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
                 }
             } catch (Exception e) {
-                f = new FunctionOutput(e.getMessage());
                 if (e instanceof InvocationTargetException) {
                     Throwable innerException = e;
                     while (innerException instanceof InvocationTargetException) {
@@ -258,16 +258,20 @@ public class PostgresConnection implements ApiaryConnection {
                     }
                     if (innerException instanceof PSQLException) {
                         PSQLException p = (PSQLException) innerException;
+                        f = new FunctionOutput(p.getMessage());
+                        try {
+                            rollback(ctxt);
+                        } catch (SQLException ex) {
+                            ex.printStackTrace();
+                        }
                         if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
-                            try {
-                                rollback(ctxt);
-                                recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
-                                continue;
-                            } catch (SQLException ex) {
-                                ex.printStackTrace();
-                            }
+                            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
+                            continue;  // Retry.
                         } else {
+                            // Abort and return.
                             logger.error("Unrecoverable inner PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
+                            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
+                            break;
                         }
                     } else {
                       logger.error("Unrecoverable InvocationTargetException: {}", e.getMessage());
@@ -275,30 +279,26 @@ public class PostgresConnection implements ApiaryConnection {
                     break;
                 } else if (e instanceof PSQLException) {
                     PSQLException p = (PSQLException) e;
-                    if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
-                        try {
-                            rollback(ctxt);
-                            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
-                            continue;
-                        } catch (SQLException ex) {
-                            ex.printStackTrace();
-                        }
-                    } else {
-                        logger.error("Unrecoverable top-level PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
-                    }
-                    break;
-                } else if (e instanceof SQLException) {
-                    logger.error("Abort and rollback function due to SQL Exception: {}", e.getMessage());
+
+                    f = new FunctionOutput(p.getMessage());
                     try {
                         rollback(ctxt);
-                        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
                     } catch (SQLException ex) {
                         ex.printStackTrace();
                     }
-                    break;
+                    if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
+                        continue;  // Retry.
+                    } else {
+                        // Abort and return.
+                        logger.error("Unrecoverable top-level PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
+                        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
+                        break;
+                    }
                 }
                 logger.error("Unrecoverable error in function execution: {}", e.getMessage());
                 e.printStackTrace();
+                f = new FunctionOutput(e.getMessage());
                 recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
                 break;
             }

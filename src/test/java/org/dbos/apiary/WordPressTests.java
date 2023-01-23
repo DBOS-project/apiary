@@ -372,7 +372,7 @@ public class WordPressTests {
                 int res;
                 try {
                     FunctionOutput fo = client.get().executeFunction("WPOptionExists", opName, opValue, opAutoLoad);
-                    if (fo.errorMsg != null) {
+                    if ((fo.errorMsg != null) && !fo.errorMsg.isEmpty()) {
                         logger.info("Function error message: {}", fo.errorMsg);
                     }
                     res = fo.getInt();

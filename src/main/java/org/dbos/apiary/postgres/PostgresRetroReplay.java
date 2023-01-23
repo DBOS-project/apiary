@@ -12,11 +12,11 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.*;
 
 public class PostgresRetroReplay {
     private static final Logger logger = LoggerFactory.getLogger(PostgresRetroReplay.class);
+    private static int numReplayThreads = 64;
 
     public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, long endExecId, int replayMode) throws Exception {
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
@@ -141,10 +141,9 @@ public class PostgresRetroReplay {
 
         // A pending commit map from original transaction ID to Postgres replay task.
         Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
-        // A pending commit map from transaction ID to connection. <txid, connection>
-        // Map<Long, Connection> pendingCommits = new ConcurrentHashMap<>();
-        // A map storing the task info for a pending commit transaction. GC after the task is committed.
-        // Map<Long, ReplayTask> pendingCommitTask = new ConcurrentHashMap<>();
+
+        // A thread pool for concurrent function executions.
+        ExecutorService threadPool = Executors.newFixedThreadPool(numReplayThreads);
 
         while ((nextCommitTxid > 0) && (nextCommitTxid < endTxId)) {
             // Execute all following functions until nextCommitTxid is in the snapshot of that original transaction.
@@ -181,11 +180,9 @@ public class PostgresRetroReplay {
                         }
                     }
 
-                    // TODO: Can we skip empty transactions?
                     ReplayTask rpTask = new ReplayTask(resExecId, resFuncId, resName, currInputs);
 
                     // Check if we can skip this function execution. If so, add to the skip list. Otherwise, execute the replay.
-
                     boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds, replayMode, replayWrittenTables);
 
                     if (isSkipped && (lastNonSkippedExecId != -1)) {
@@ -202,8 +199,8 @@ public class PostgresRetroReplay {
 
                         // Execute the function.
                         PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
-                        processReplayFunction(workerContext, pgRpTask, replayMode, pendingTasks,
-                                execFuncIdToValue, execIdToFinalOutput, replayWrittenTables);
+                        pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
+                                execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
                         pendingCommitTasks.put(resTxId, pgRpTask);
                     }
                 } else {
@@ -225,7 +222,13 @@ public class PostgresRetroReplay {
                 logger.debug("Transaction {} was skipped. No connection found.", nextCommitTxid);
             } else {
                 try {
-                    commitPgRpTask.conn.commit();
+                    // Wait for the task to finish.
+                    int res = commitPgRpTask.resFut.get(10, TimeUnit.SECONDS);
+                    if (res == 0) {
+                        commitPgRpTask.conn.commit();
+                    } else {
+                        logger.error("Replayed task failed. result: {}, Error message: {}", res, commitPgRpTask.fo.errorMsg);
+                    }
                 } catch (Exception e) {
                     // Retry the pending commit function if it's a serialization error.
                     // Note: this should only happen during retroactive programming. Because normal replay should only replay originally committed transactions.
@@ -238,12 +241,14 @@ public class PostgresRetroReplay {
                                 logger.debug("Rolled back failed to commit transaction.");
 
                                 // TODO: this part may also cause deadlock because the new transaction may depend on other uncommitted ones. Need to process it async.
-                                processReplayFunction(workerContext, commitPgRpTask, replayMode, pendingTasks,
-                                        execFuncIdToValue, execIdToFinalOutput, replayWrittenTables);
+                                commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, commitPgRpTask, replayMode, pendingTasks,
+                                        execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
+                                commitPgRpTask.resFut.get(10, TimeUnit.SECONDS);
                                 commitPgRpTask.conn.commit();
                                 logger.debug("Committed retried transaction.");
-                            } catch (SQLException ex) {
+                            } catch (Exception ex) {
                                 ex.printStackTrace();
+                                throw new RuntimeException("Unrecoverable error during retry.");
                             }
                         } else {
                             logger.error("Unrecoverable error. Failed to commit {}, skipped. Error message: {}", nextCommitTxid, e.getMessage());
@@ -367,88 +372,4 @@ public class PostgresRetroReplay {
         return true;
     }
 
-    // Return true if executed the function, false if nothing executed.
-    private static boolean processReplayFunction(WorkerContext workerContext, PostgresReplayTask rpTask, int replayMode, Map<Long, Map<Long, Task>> pendingTasks,
-                                          Map<Long, Map<Long, Object>> execFuncIdToValue,
-                                          Map<Long, Object> execIdToFinalOutput,
-                                                 Set<String> replayWrittenTables) {
-        FunctionOutput fo;
-        // Only support primary functions.
-        if (!workerContext.functionExists(rpTask.task.funcName)) {
-            logger.debug("Unrecognized function: {}, cannot replay, skipped.", rpTask.task.funcName);
-            return false;
-        }
-        String type = workerContext.getFunctionType(rpTask.task.funcName);
-        if (!workerContext.getPrimaryConnectionType().equals(type)) {
-            logger.error("Replay only support primary functions!");
-            throw new RuntimeException("Replay only support primary functions!");
-        }
-
-        PostgresConnection c = (PostgresConnection) workerContext.getPrimaryConnection();
-
-        if (rpTask.task.funcId == 0l) {
-            // This is the first function of a request.
-            fo = c.replayFunction(rpTask.conn, rpTask.task.funcName, workerContext, "retroReplay", rpTask.task.execId, rpTask.task.funcId,
-                    replayMode, replayWrittenTables, rpTask.task.inputs);
-            if (fo == null) {
-                logger.warn("Replay function output is null.");
-                return false;
-            }
-            rpTask.fo = fo;
-            execFuncIdToValue.putIfAbsent(rpTask.task.execId, new ConcurrentHashMap<>());
-            execIdToFinalOutput.putIfAbsent(rpTask.task.execId, fo.output);
-            pendingTasks.putIfAbsent(rpTask.task.execId, new ConcurrentHashMap<>());
-        } else {
-            // Skip the task if it is absent. Because we allow reducing the number of called function
-            // (currently does not support adding more).
-            if (!pendingTasks.containsKey(rpTask.task.execId) || !pendingTasks.get(rpTask.task.execId).containsKey(rpTask.task.funcId)) {
-                logger.info("Skip function ID {}, not found in pending tasks.", rpTask.task.funcId);
-                return false;
-            }
-            // Find the task in the stash. Make sure that all futures have been resolved.
-            Task currTask = pendingTasks.get(rpTask.task.execId).get(rpTask.task.funcId);
-
-            // Resolve input for this task. Must success.
-            Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(rpTask.task.execId);
-
-            if (!currTask.dereferenceFutures(currFuncIdToValue)) {
-                logger.error("Failed to dereference input for execId {}, funcId {}. Aborted", rpTask.task.execId, rpTask.task.funcId);
-                throw new RuntimeException("Retro replay failed to dereference input.");
-            }
-
-            fo = c.replayFunction(rpTask.conn, currTask.funcName, workerContext,  "retroReplay", rpTask.task.execId, rpTask.task.funcId,
-                    replayMode, replayWrittenTables, currTask.input);
-            // Remove this task from the map.
-            pendingTasks.get(rpTask.task.execId).remove(rpTask.task.funcId);
-            if (fo == null) {
-                logger.warn("Repaly function output is null.");
-                return false; // TODO: better error handling?
-            }
-            rpTask.fo = fo;
-        }
-        // Store output value.
-        execFuncIdToValue.get(rpTask.task.execId).putIfAbsent(rpTask.task.funcId, fo.output);
-        // Queue all of its async tasks to the pending map.
-        for (Task t : fo.queuedTasks) {
-            if (pendingTasks.get(rpTask.task.execId).containsKey(t.functionID)) {
-                logger.error("ExecID {} funcID {} has duplicated outputs!", rpTask.task.execId, t.functionID);
-            }
-            pendingTasks.get(rpTask.task.execId).putIfAbsent(t.functionID, t);
-        }
-
-        if (pendingTasks.get(rpTask.task.execId).isEmpty()) {
-            // Check if we need to update the final output map.
-            Object o = execIdToFinalOutput.get(rpTask.task.execId);
-            if (o instanceof ApiaryFuture) {
-                ApiaryFuture futureOutput = (ApiaryFuture) o;
-                assert (execFuncIdToValue.get(rpTask.task.execId).containsKey(futureOutput.futureID));
-                Object resFo = execFuncIdToValue.get(rpTask.task.execId).get(futureOutput.futureID);
-                execIdToFinalOutput.put(rpTask.task.execId, resFo);
-            }
-            // Clean up.
-            execFuncIdToValue.remove(rpTask.task.execId);
-            pendingTasks.remove(rpTask.task.execId);
-        }
-        return true;
-    }
 }

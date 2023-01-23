@@ -316,6 +316,7 @@ public class PostgresConnection implements ApiaryConnection {
         FunctionOutput f;
         String actualName = functionName;
         long startTime = Utilities.getMicroTimestamp();
+        String replayStatus = ProvenanceBuffer.PROV_STATUS_REPLAY;
         PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
                 new HashSet<>(), new HashSet<>(), new HashSet<>());
         try {
@@ -324,16 +325,21 @@ public class PostgresConnection implements ApiaryConnection {
             logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
             f = func.apiaryRunFunction(ctxt, inputs);
             logger.debug("Completed function [{}]", actualName);
+            // Collect all written tables.
+            replayWrittenTables.addAll(ctxt.replayWrittenTables);
         } catch (Exception e) {
             // TODO: better error handling? For now, ignore those errors.
-            logger.error("Failed execution during replay.");
-            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
-            return null;
+            try {
+                rollback(ctxt);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+            logger.error("Failed execution during replay. Error: {}", e.getMessage());
+            replayStatus = ProvenanceBuffer.PROV_STATUS_ABORT;
+            f = new FunctionOutput(e.getMessage());
         }
 
-        recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_REPLAY);
-        // Collect all written tables.
-        replayWrittenTables.addAll(ctxt.replayWrittenTables);
+        recordTransactionInfo(workerContext, ctxt, startTime, actualName, replayStatus);
         return f;
     }
 

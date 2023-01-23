@@ -182,7 +182,9 @@ public class ApiaryWorker {
         ApiaryTaskStash callerTask = callerStashMap.get(callerID);
         assert (callerTask != null);
         callerTask.functionIDToValue.put(functionID, output);
-        callerTask.errorMsg.concat("funcId: " + functionID + ", error: " + errorMsg);
+        if ((errorMsg != null) && !errorMsg.isEmpty()) {
+            callerTask.errorMsg += " funcId: " + functionID + ", error: " + errorMsg;
+        }
         processQueuedTasks(callerTask, callerID);
 
         int finishedTasks = callerTask.numFinishedTasks.incrementAndGet();

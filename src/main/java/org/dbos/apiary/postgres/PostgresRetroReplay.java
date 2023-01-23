@@ -231,7 +231,7 @@ public class PostgresRetroReplay {
                             logger.debug("Skip commit {} due to Error message: {}", nextCommitTxid, commitPgRpTask.fo.errorMsg);
                         }
                     } else {
-                        logger.error("Replayed task failed for transaction {}. result: {}", nextCommitTxid, res);
+                        logger.debug("Replayed task failed or skipped for transaction {}. result: {}", nextCommitTxid, res);
                     }
                 } catch (Exception e) {
                     // Retry the pending commit function if it's a serialization error.

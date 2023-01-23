@@ -328,7 +328,6 @@ public class PostgresConnection implements ApiaryConnection {
             // Collect all written tables.
             replayWrittenTables.addAll(ctxt.replayWrittenTables);
         } catch (Exception e) {
-            // TODO: better error handling? For now, ignore those errors.
             try {
                 rollback(ctxt);
             } catch (SQLException ex) {

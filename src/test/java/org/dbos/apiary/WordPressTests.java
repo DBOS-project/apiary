@@ -249,7 +249,7 @@ public class WordPressTests {
         assert(provBuff != null);
         Connection provConn = provBuff.conn.get();
         Statement stmt = provConn.createStatement();
-        String provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID);
+        String provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         ResultSet rs = stmt.executeQuery(provQuery);
         rs.next();
         long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
@@ -419,14 +419,14 @@ public class WordPressTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
         Connection provConn = provBuff.conn.get();
         Statement stmt = provConn.createStatement();
-        String provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID);
+        String provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         ResultSet rs = stmt.executeQuery(provQuery);
         rs.next();
         long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
         long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertTrue(resExecId >= 0);
-        assumeTrue(resFuncId == 0);
+        assertTrue(resFuncId == 0);
         assertEquals("WPOptionExists", resFuncName);
 
         // Reset the table and replay all.

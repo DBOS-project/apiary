@@ -249,6 +249,7 @@ public class PostgresConnection implements ApiaryConnection {
                     recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
                 }
             } catch (Exception e) {
+                f = new FunctionOutput(e.getMessage());
                 if (e instanceof InvocationTargetException) {
                     Throwable innerException = e;
                     while (innerException instanceof InvocationTargetException) {
@@ -266,9 +267,12 @@ public class PostgresConnection implements ApiaryConnection {
                                 ex.printStackTrace();
                             }
                         } else {
-                            logger.info("Unrecoverable inner PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
+                            logger.error("Unrecoverable inner PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
                         }
+                    } else {
+                      logger.error("Unrecoverable InvocationTargetException: {}", e.getMessage());
                     }
+                    break;
                 } else if (e instanceof PSQLException) {
                     PSQLException p = (PSQLException) e;
                     if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
@@ -280,10 +284,20 @@ public class PostgresConnection implements ApiaryConnection {
                             ex.printStackTrace();
                         }
                     } else {
-                        logger.info("Unrecoverable top-level PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
+                        logger.error("Unrecoverable top-level PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
                     }
+                    break;
+                } else if (e instanceof SQLException) {
+                    logger.error("Abort and rollback function due to SQL Exception: {}", e.getMessage());
+                    try {
+                        rollback(ctxt);
+                        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                    }
+                    break;
                 }
-                logger.info("Unrecoverable error in function execution: {}", e.getMessage());
+                logger.error("Unrecoverable error in function execution: {}", e.getMessage());
                 e.printStackTrace();
                 recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
                 break;

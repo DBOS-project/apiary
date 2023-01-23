@@ -2,6 +2,7 @@ package org.dbos.apiary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
+import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.wordpress.*;
@@ -17,6 +18,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.*;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -369,7 +371,11 @@ public class WordPressTests {
             public Integer call() {
                 int res;
                 try {
-                    res = client.get().executeFunction("WPOptionExists", opName, opValue, opAutoLoad).getInt();
+                    FunctionOutput fo = client.get().executeFunction("WPOptionExists", opName, opValue, opAutoLoad);
+                    if (fo.errorMsg != null) {
+                        logger.info("Function error message: {}", fo.errorMsg);
+                    }
+                    res = fo.getInt();
                 } catch (Exception e) {
                     res = -2;
                 }

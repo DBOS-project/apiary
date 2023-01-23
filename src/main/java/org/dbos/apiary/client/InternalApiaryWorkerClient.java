@@ -98,7 +98,7 @@ public class InternalApiaryWorkerClient {
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
         Object output = Utilities.getOutputFromReply(rep);
-        return new FunctionOutput(output, null);
+        return new FunctionOutput(output, null, rep.getErrorMsg());
     }
 
     public FunctionOutput retroReplay(String address, String name, String service, long startExecId, long endExecId,
@@ -109,7 +109,7 @@ public class InternalApiaryWorkerClient {
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
         Object output = Utilities.getOutputFromReply(rep);
-        return new FunctionOutput(output, null);
+        return new FunctionOutput(output, null, rep.getErrorMsg());
     }
 
     private static void serializeArguments (List<ByteString> byteArguments, List<Integer> argumentTypes, Object[] arguments) {

@@ -192,7 +192,7 @@ public class ApiaryWorker {
             assert (finalOutput != null);
             // Send back the response only once.
             ExecuteFunctionReply.Builder b = Utilities.constructReply(callerTask.callerId, callerTask.functionID,
-                    callerTask.senderTimestampNano, finalOutput);
+                    callerTask.senderTimestampNano, finalOutput, callerTask.errorMsg);
             outgoingReplyMsgQueue.add(new OutgoingMsg(callerTask.replyAddr, b.build().toByteArray()));
 
             // Clean up the stash map.
@@ -221,6 +221,7 @@ public class ApiaryWorker {
         currTask.totalQueuedTasks = o.queuedTasks.size();
         // Queue the task.
         currTask.queuedTasks.addAll(o.queuedTasks);
+        currTask.errorMsg = o.errorMsg;
 
         processQueuedTasks(currTask, currCallerID);
         if (currTask.totalQueuedTasks != currTask.numFinishedTasks.get()) {
@@ -230,7 +231,7 @@ public class ApiaryWorker {
         Object output = currTask.getFinalOutput();
         // If the output is not null, meaning everything is done. Directly return.
         if (output != null) {
-            ExecuteFunctionReply.Builder b = Utilities.constructReply(callerID, functionID, senderTimestampNano, output);
+            ExecuteFunctionReply.Builder b = Utilities.constructReply(callerID, functionID, senderTimestampNano, output, currTask.errorMsg);
             outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
         }
         // Record runtime.
@@ -276,7 +277,8 @@ public class ApiaryWorker {
         // Currently only support Postgres retro replay.
         Object output = PostgresRetroReplay.retroExecuteAll(workerContext, targetExecID, endExecId, replayMode);
 
-        ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, output);
+        // TODO: handle error message. Retro replay should return error message.
+        ExecuteFunctionReply.Builder b = Utilities.constructReply(0l, 0l, senderTimestampNano, output, null);
         outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
 
         // Reset flags.

@@ -17,7 +17,7 @@ public class FunctionOutput {
         assert(output != null);
         this.output = output;
         this.queuedTasks = queuedTasks;
-        this.errorMsg = null;
+        this.errorMsg = "";
     }
 
     public FunctionOutput(String errMsg) {

@@ -178,10 +178,11 @@ public class ApiaryWorker {
     }
 
     // Resume the execution of the caller function, then send back a reply if everything is finished.
-    private void resumeExecution(long callerID, long functionID, Object output) throws InterruptedException {
+    private void resumeExecution(long callerID, long functionID, Object output, String errorMsg) throws InterruptedException {
         ApiaryTaskStash callerTask = callerStashMap.get(callerID);
         assert (callerTask != null);
         callerTask.functionIDToValue.put(functionID, output);
+        callerTask.errorMsg.concat("funcId: " + functionID + ", error: " + errorMsg);
         processQueuedTasks(callerTask, callerID);
 
         int finishedTasks = callerTask.numFinishedTasks.incrementAndGet();
@@ -359,8 +360,9 @@ public class ApiaryWorker {
                 Object output = Utilities.getOutputFromReply(reply);
                 long callerID = reply.getCallerId();
                 long functionID = reply.getFunctionId();
+                String errorMsg = reply.getErrorMsg();
                 // Resume execution.
-                resumeExecution(callerID, functionID, output);
+                resumeExecution(callerID, functionID, output, errorMsg);
             } catch (InvalidProtocolBufferException | InterruptedException e) {
                 e.printStackTrace();
             }

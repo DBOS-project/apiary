@@ -38,6 +38,7 @@ public class ApiaryTaskStash {
         functionIDToValue = new ConcurrentHashMap<>();
         queuedTasks = new ConcurrentLinkedQueue<>();
         totalQueuedTasks = 0;
+        errorMsg = "";
     }
 
     // If everything is resolved, then return the string value.

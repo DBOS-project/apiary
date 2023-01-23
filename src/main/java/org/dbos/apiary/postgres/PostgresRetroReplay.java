@@ -225,9 +225,13 @@ public class PostgresRetroReplay {
                     // Wait for the task to finish.
                     int res = commitPgRpTask.resFut.get(10, TimeUnit.SECONDS);
                     if (res == 0) {
-                        commitPgRpTask.conn.commit();
+                        if (commitPgRpTask.fo.errorMsg.isEmpty()) {
+                            commitPgRpTask.conn.commit();
+                        } else {
+                            logger.debug("Skip commit {} due to Error message: {}", nextCommitTxid, commitPgRpTask.fo.errorMsg);
+                        }
                     } else {
-                        logger.error("Replayed task failed. result: {}, Error message: {}", res, commitPgRpTask.fo.errorMsg);
+                        logger.error("Replayed task failed for transaction {}. result: {}", nextCommitTxid, res);
                     }
                 } catch (Exception e) {
                     // Retry the pending commit function if it's a serialization error.

@@ -334,9 +334,21 @@ public class PostgresConnection implements ApiaryConnection {
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
-            logger.error("Failed execution during replay. Error: {}", e.getMessage());
+            String errorMsg = e.getMessage();
+            if (e instanceof InvocationTargetException) {
+                Throwable innerException = e;
+                while (innerException instanceof InvocationTargetException) {
+                    InvocationTargetException i = (InvocationTargetException) innerException;
+                    innerException = i.getCause();
+                }
+                if (innerException instanceof PSQLException) {
+                    PSQLException p = (PSQLException) innerException;
+                    errorMsg = p.getMessage();
+                }
+            }
+            logger.error("Failed execution during replay. Error: {}", errorMsg);
             replayStatus = ProvenanceBuffer.PROV_STATUS_ABORT;
-            f = new FunctionOutput(e.getMessage());
+            f = new FunctionOutput(errorMsg);
         }
 
         recordTransactionInfo(workerContext, ctxt, startTime, actualName, replayStatus);

@@ -260,7 +260,7 @@ public class PostgresRetroReplay {
                             throw new RuntimeException("Unrecoverable error during replay.");
                         }
                     } else {
-                        logger.debug("Other failures during replay transaction {}: {}", nextCommitTxid, e.getMessage());
+                        logger.debug("Other failures during replay transaction {}: {} - {}", nextCommitTxid, e.getClass().getName(), e.getMessage());
                     }
                 }
                 // Put it back to the connection pool and delete stored inputs.

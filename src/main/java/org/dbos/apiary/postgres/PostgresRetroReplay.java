@@ -211,6 +211,8 @@ public class PostgresRetroReplay {
                     // No more to process.
                     break;
                 }
+                // Hack: force order...
+                Thread.sleep(5);
             }
 
             // Commit the nextCommitTxid and update the variables. Pass skipped functions.

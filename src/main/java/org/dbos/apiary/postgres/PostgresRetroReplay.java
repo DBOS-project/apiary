@@ -236,8 +236,9 @@ public class PostgresRetroReplay {
                 } catch (Exception e) {
                     // Retry the pending commit function if it's a serialization error.
                     // Note: this should only happen during retroactive programming. Because normal replay should only replay originally committed transactions.
-                    if ((e instanceof PSQLException) && (workerContext.hasRetroFunctions())) {
+                    if (e instanceof PSQLException) {
                         PSQLException p = (PSQLException) e;
+                        logger.debug("PSQLException during replay transaction {}: {}", nextCommitTxid, p.getMessage());
                         if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
                             logger.debug("Retry transaction {} due to serilization error. ", nextCommitTxid);
                             try {

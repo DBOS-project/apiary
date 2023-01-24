@@ -335,8 +335,8 @@ public class WordPressTests {
     }
 
     @Test
-    public void testOptionConcurrent() throws SQLException, InvalidProtocolBufferException, InterruptedException {
-        logger.info("testOptionConcurrent");
+    public void testOptionConcurrentRetro() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        logger.info("testOptionConcurrentRetro");
 
         // Run concurrent requests until we find an error. Then retroactively replay.
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
@@ -434,8 +434,17 @@ public class WordPressTests {
 
         // Replay everything and check we get the same result.
         String resStr = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getString();
-        assertTrue(resStr.equals("value0-" + i));
 
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        assertTrue(resStr.equals("value0-" + i));
+
+        // Register the new function and retro replay all.
+        conn.truncateTable(WPUtil.WP_OPTIONS_TABLE, false);
+        apiaryWorker.registerFunction("WPInsertOption", ApiaryConfig.postgres, WPInsertOptionFixed::new, true);
+
+        resStr = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getString();
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        // The fixed one should let the failed one commit.
+        assertTrue(resStr.equals("value1-" + i));
     }
 }

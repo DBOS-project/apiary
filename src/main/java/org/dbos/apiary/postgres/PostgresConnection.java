@@ -315,42 +315,52 @@ public class PostgresConnection implements ApiaryConnection {
         // Fast path for replayed functions.
         FunctionOutput f;
         String actualName = functionName;
-        long startTime = Utilities.getMicroTimestamp();
         String replayStatus = ProvenanceBuffer.PROV_STATUS_REPLAY;
-        PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
-                new HashSet<>(), new HashSet<>(), new HashSet<>());
-        try {
-            ApiaryFunction func = workerContext.getFunction(functionName);
-            actualName = Utilities.getFunctionClassName(func);
-            logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
-            f = func.apiaryRunFunction(ctxt, inputs);
-            logger.debug("Completed function [{}]", actualName);
-            // Collect all written tables.
-            replayWrittenTables.addAll(ctxt.replayWrittenTables);
-        } catch (Exception e) {
-            try {
-                rollback(ctxt);
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-            }
-            String errorMsg = e.getMessage();
-            if (e instanceof InvocationTargetException) {
-                Throwable innerException = e;
-                while (innerException instanceof InvocationTargetException) {
-                    InvocationTargetException i = (InvocationTargetException) innerException;
-                    innerException = i.getCause();
-                }
-                if (innerException instanceof PSQLException) {
-                    PSQLException p = (PSQLException) innerException;
-                    errorMsg = p.getMessage();
-                }
-            }
-            logger.error("Failed execution during replay. Error: {}", errorMsg);
-            replayStatus = ProvenanceBuffer.PROV_STATUS_ABORT;
-            f = new FunctionOutput(errorMsg);
-        }
 
-        recordTransactionInfo(workerContext, ctxt, startTime, actualName, replayStatus);
+        while (true) {
+            long startTime = Utilities.getMicroTimestamp();
+            PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
+                    new HashSet<>(), new HashSet<>(), new HashSet<>());
+            try {
+                ApiaryFunction func = workerContext.getFunction(functionName);
+                actualName = Utilities.getFunctionClassName(func);
+                logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
+                f = func.apiaryRunFunction(ctxt, inputs);
+                logger.debug("Completed function [{}]", actualName);
+                // Collect all written tables.
+                replayWrittenTables.addAll(ctxt.replayWrittenTables);
+                recordTransactionInfo(workerContext, ctxt, startTime, actualName, replayStatus);
+                break;
+            } catch (Exception e) {
+                try {
+                    rollback(ctxt);
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+                String errorMsg = e.getMessage();
+                if (e instanceof InvocationTargetException) {
+                    Throwable innerException = e;
+                    while (innerException instanceof InvocationTargetException) {
+                        InvocationTargetException i = (InvocationTargetException) innerException;
+                        innerException = i.getCause();
+                    }
+                    if (innerException instanceof PSQLException) {
+                        PSQLException p = (PSQLException) innerException;
+                        errorMsg = p.getMessage();
+                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
+                            logger.debug("Serialization failure during replay, will retry: {}", errorMsg);
+                            continue;  // Retry.
+                        }
+                    }
+                }
+                logger.error("Unrecoverable failed execution during replay. Error: {}", errorMsg);
+                replayStatus = ProvenanceBuffer.PROV_STATUS_ABORT;
+                f = new FunctionOutput(errorMsg);
+                recordTransactionInfo(workerContext, ctxt, startTime, actualName, replayStatus);
+                break;
+            }
+        }
         return f;
     }
 

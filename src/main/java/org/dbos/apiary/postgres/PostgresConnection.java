@@ -348,7 +348,7 @@ public class PostgresConnection implements ApiaryConnection {
                         PSQLException p = (PSQLException) innerException;
                         errorMsg = p.getMessage();
                         if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
-                            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
+                            recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
                             logger.debug("Serialization failure during replay, will retry: {}", errorMsg);
                             continue;  // Retry.
                         }

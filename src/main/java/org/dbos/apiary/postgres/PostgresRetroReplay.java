@@ -216,7 +216,7 @@ public class PostgresRetroReplay {
             // Commit the nextCommitTxid and update the variables. Pass skipped functions.
             // The connection must be not null because it has to have started.
             PostgresReplayTask commitPgRpTask = pendingCommitTasks.get(nextCommitTxid);
-
+            logger.debug("Processing commit txid: {}", nextCommitTxid);
             // If commitConn is null, then the transaction was skipped.
             if (commitPgRpTask == null) {
                 logger.debug("Transaction {} was skipped. No connection found.", nextCommitTxid);
@@ -258,6 +258,8 @@ public class PostgresRetroReplay {
                             logger.error("Unrecoverable error. Failed to commit {}, skipped. Error message: {}", nextCommitTxid, e.getMessage());
                             throw new RuntimeException("Unrecoverable error during replay.");
                         }
+                    } else {
+                        logger.debug("Other failures during replay transaction {}: {}", nextCommitTxid, e.getMessage());
                     }
                 }
                 // Put it back to the connection pool and delete stored inputs.
@@ -297,6 +299,8 @@ public class PostgresRetroReplay {
         inputStmt.close();
         commitOrderRs.close();
         commitOrderStmt.close();
+        threadPool.shutdown();
+        threadPool.awaitTermination(10, TimeUnit.SECONDS);
         return output;
     }
 

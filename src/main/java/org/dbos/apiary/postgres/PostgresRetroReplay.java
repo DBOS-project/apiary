@@ -75,7 +75,7 @@ public class PostgresRetroReplay {
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
                 ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
                 ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_ABORT,
-                ProvenanceBuffer.PROV_END_TIMESTAMP);
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         Statement startOrderStmt = provConn.createStatement();
         ResultSet startOrderRs = startOrderStmt.executeQuery(startOrderQuery);
         if (!startOrderRs.next()) {
@@ -109,7 +109,7 @@ public class PostgresRetroReplay {
                 origTxid, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY,
                 ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
                 ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_ABORT,
-                ProvenanceBuffer.PROV_END_TIMESTAMP
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
         );
         Statement inputStmt = provConn.createStatement();
         ResultSet inputRs = inputStmt.executeQuery(inputQuery);

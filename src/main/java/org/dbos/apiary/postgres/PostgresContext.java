@@ -57,23 +57,24 @@ public class PostgresContext extends ApiaryContext {
                 rs.next();
                 String snapshotString = rs.getString(1);
                 xmin = PostgresUtilities.parseXmin(snapshotString);
-                xmax = PostgresUtilities.parseXmax(snapshotString);
+                long currXmax = PostgresUtilities.parseXmax(snapshotString);
+                xmax = currXmax;
                 activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
-            }
 
-            // For epoxy transactions only.
-            if (ApiaryConfig.XDBTransactions) {
-                activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < xmax).collect(Collectors.toList()));
-                for (TransactionContext t : activeTransactions) {
-                    if (t.txID < xmax && !activeTxIDs.contains(t.txID)) {
-                        Statement stmt = conn.createStatement();
-                        ResultSet rs = stmt.executeQuery("select txid_status(" + t.txID + ");");
-                        rs.next();
-                        if (rs.getString("txid_status").equals("aborted")) {
-                            activeTxIDs.add(t.txID);
+                // For epoxy transactions only.
+                if (ApiaryConfig.XDBTransactions) {
+                    activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < currXmax).collect(Collectors.toList()));
+                    for (TransactionContext t : activeTransactions) {
+                        if (t.txID < xmax && !activeTxIDs.contains(t.txID)) {
+                            stmt = conn.createStatement();
+                            rs = stmt.executeQuery("select txid_status(" + t.txID + ");");
+                            rs.next();
+                            if (rs.getString("txid_status").equals("aborted")) {
+                                activeTxIDs.add(t.txID);
+                            }
+                            rs.close();
+                            stmt.close();
                         }
-                        rs.close();
-                        stmt.close();
                     }
                 }
             }

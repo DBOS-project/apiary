@@ -13,13 +13,6 @@ public class FunctionOutput {
     private Map<String, List<String>> writtenKeys;
     public final String errorMsg;
 
-    public FunctionOutput(Object output, List<Task> queuedTasks) {
-        assert(output != null);
-        this.output = output;
-        this.queuedTasks = queuedTasks;
-        this.errorMsg = "";
-    }
-
     public FunctionOutput(String errMsg) {
         this.output = -1;  // Store a negative value.
         this.queuedTasks = new ArrayList<>();

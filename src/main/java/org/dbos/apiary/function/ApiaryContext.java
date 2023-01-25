@@ -72,6 +72,6 @@ public abstract class ApiaryContext {
      * @return          the finalized output of a function.
      */
     public FunctionOutput getFunctionOutput(Object output) {
-        return new FunctionOutput(output, queuedTasks);
+        return new FunctionOutput(output, queuedTasks, "");
     }
 }

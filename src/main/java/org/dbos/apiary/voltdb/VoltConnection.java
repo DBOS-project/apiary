@@ -143,7 +143,7 @@ public class VoltConnection implements ApiaryConnection {
         for (int i = 1; i < res.length; i++) {
             calledFunctions.add(voltOutputToTask(res[i]));
         }
-        return new FunctionOutput(output, calledFunctions);
+        return new FunctionOutput(output, calledFunctions, "");
     }
 
     @Override

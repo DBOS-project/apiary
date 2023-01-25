@@ -53,10 +53,10 @@ class PostgresReplayCallable implements Callable<Integer> {
 
         PostgresConnection c = (PostgresConnection) workerContext.getPrimaryConnection();
 
-        if (rpTask.task.funcId == 0l) {
+        if (rpTask.task.functionID == 0l) {
             // This is the first function of a request.
-            rpTask.fo = c.replayFunction(rpTask.conn, rpTask.task.funcName, workerContext, "retroReplay", rpTask.task.execId, rpTask.task.funcId,
-                    replayMode, replayWrittenTables, rpTask.task.inputs);
+            rpTask.fo = c.replayFunction(rpTask.conn, rpTask.task.funcName, workerContext, "retroReplay", rpTask.task.execId, rpTask.task.functionID,
+                    replayMode, replayWrittenTables, rpTask.task.input);
             if (rpTask.fo == null) {
                 logger.warn("Replay function output is null.");
                 return -1;
@@ -72,25 +72,25 @@ class PostgresReplayCallable implements Callable<Integer> {
         } else {
             // Skip the task if it is absent. Because we allow reducing the number of called function
             // (currently does not support adding more).
-            if (!pendingTasks.containsKey(rpTask.task.execId) || !pendingTasks.get(rpTask.task.execId).containsKey(rpTask.task.funcId)) {
-                logger.warn("Skip function ID {}, not found in pending tasks.", rpTask.task.funcId);
+            if (!pendingTasks.containsKey(rpTask.task.execId) || !pendingTasks.get(rpTask.task.execId).containsKey(rpTask.task.functionID)) {
+                logger.warn("Skip function ID {}, not found in pending tasks.", rpTask.task.functionID);
                 return -1;
             }
             // Find the task in the stash. Make sure that all futures have been resolved.
-            Task currTask = pendingTasks.get(rpTask.task.execId).get(rpTask.task.funcId);
+            Task currTask = pendingTasks.get(rpTask.task.execId).get(rpTask.task.functionID);
 
             // Resolve input for this task. Must success.
             Map<Long, Object> currFuncIdToValue = execFuncIdToValue.get(rpTask.task.execId);
 
             if (!currTask.dereferenceFutures(currFuncIdToValue)) {
-                logger.error("Failed to dereference input for execId {}, funcId {}. Aborted", rpTask.task.execId, rpTask.task.funcId);
+                logger.error("Failed to dereference input for execId {}, funcId {}. Aborted", rpTask.task.execId, rpTask.task.functionID);
                 return -1;
             }
 
-            rpTask.fo = c.replayFunction(rpTask.conn, currTask.funcName, workerContext, "retroReplay", rpTask.task.execId, rpTask.task.funcId,
+            rpTask.fo = c.replayFunction(rpTask.conn, currTask.funcName, workerContext, "retroReplay", rpTask.task.execId, rpTask.task.functionID,
                     replayMode, replayWrittenTables, currTask.input);
             // Remove this task from the map.
-            pendingTasks.get(rpTask.task.execId).remove(rpTask.task.funcId);
+            pendingTasks.get(rpTask.task.execId).remove(rpTask.task.functionID);
             if (rpTask.fo == null) {
                 logger.warn("Repaly function output is null.");
                 return -1;
@@ -98,7 +98,7 @@ class PostgresReplayCallable implements Callable<Integer> {
         }
 
         // Store output value.
-        execFuncIdToValue.get(rpTask.task.execId).putIfAbsent(rpTask.task.funcId, rpTask.fo.output);
+        execFuncIdToValue.get(rpTask.task.execId).putIfAbsent(rpTask.task.functionID, rpTask.fo.output);
         // Queue all of its async tasks to the pending map.
         for (Task t : rpTask.fo.queuedTasks) {
             if (pendingTasks.get(rpTask.task.execId).containsKey(t.functionID)) {

@@ -4,7 +4,6 @@ import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
-import org.dbos.apiary.worker.ReplayTask;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
@@ -185,7 +184,7 @@ public class PostgresRetroReplay {
                         }
                     }
 
-                    ReplayTask rpTask = new ReplayTask(resExecId, resFuncId, resName, currInputs);
+                    Task rpTask = new Task(resExecId, resFuncId, resName, currInputs);
 
                     // Check if we can skip this function execution. If so, add to the skip list. Otherwise, execute the replay.
                     boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds, replayMode, replayWrittenTables);
@@ -331,7 +330,7 @@ public class PostgresRetroReplay {
     }
 
     // Return true if the function execution can be skipped.
-    private static boolean checkSkipFunc(WorkerContext workerContext, ReplayTask rpTask, Set<Long> skippedExecIds, int replayMode, Set<String> replayWrittenTables) throws SQLException {
+    private static boolean checkSkipFunc(WorkerContext workerContext, Task rpTask, Set<Long> skippedExecIds, int replayMode, Set<String> replayWrittenTables) throws SQLException {
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
             // Do not skip if we are replaying everything.
             return false;
@@ -346,7 +345,7 @@ public class PostgresRetroReplay {
         // TODO: update heuristics, improve it.
         if (skippedExecIds.contains(rpTask.execId)) {
             return true;
-        } else if (rpTask.funcId > 0) {
+        } else if (rpTask.functionID > 0) {
             // If a request wasn't skipped at the first function, then the following functions cannot be skipped as well.
             // Reduce the number of checks.
             return false;

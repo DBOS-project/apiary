@@ -106,7 +106,8 @@ public class VoltConnection implements ApiaryConnection {
                 throw new IllegalArgumentException();
             }
         }
-        return new Task(functionID, funcName, input);
+        // TODO: pass execution ID if needed.
+        return new Task(0l, functionID, funcName, input);
     }
 
     @Override

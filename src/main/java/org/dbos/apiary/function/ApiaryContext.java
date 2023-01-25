@@ -50,7 +50,7 @@ public abstract class ApiaryContext {
      */
     public ApiaryFuture apiaryQueueFunction(String name, Object... inputs) {
         long functionID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
-        Task futureTask = new Task(functionID, name, inputs);
+        Task futureTask = new Task(execID, functionID, name, inputs);
         queuedTasks.add(futureTask);
         return new ApiaryFuture(functionID);
     }

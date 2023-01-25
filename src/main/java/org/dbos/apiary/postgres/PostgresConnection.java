@@ -1,6 +1,5 @@
 package org.dbos.apiary.postgres;
 
-import org.apache.velocity.runtime.directive.Break;
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
@@ -275,6 +274,7 @@ public class PostgresConnection implements ApiaryConnection {
                         }
                     } else {
                       logger.error("Unrecoverable InvocationTargetException: {}", e.getMessage());
+                      recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
                     }
                     break;
                 } else if (e instanceof PSQLException) {

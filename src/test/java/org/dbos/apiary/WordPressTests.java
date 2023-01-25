@@ -2,16 +2,14 @@ package org.dbos.apiary;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
+import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.wordpress.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,9 +18,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.*;
+import java.util.function.Function;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 // To test the bug and fixes of WordPress-11073: https://core.trac.wordpress.org/ticket/11073
@@ -42,6 +40,9 @@ public class WordPressTests {
 
         // Disable read tracking.
         ApiaryConfig.captureReads = false;
+
+        // Record input.
+        ApiaryConfig.recordInput = true;
     }
 
     @BeforeEach
@@ -58,6 +59,8 @@ public class WordPressTests {
             conn.createTable(WPUtil.WP_POSTMETA_TABLE, WPUtil.WP_POSTMETA_SCHEMA);
             conn.dropTable(WPUtil.WP_COMMENTS_TABLE);
             conn.createTable(WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_COMMENTS_SCHEMA);
+            conn.dropTable(WPUtil.WP_OPTIONS_TABLE);
+            conn.createTable(WPUtil.WP_OPTIONS_TABLE, WPUtil.WP_OPTIONS_SCHEMA);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");
@@ -73,9 +76,14 @@ public class WordPressTests {
         }
     }
 
+    @AfterAll
+    public static void resetFlags() {
+        ApiaryConfig.recordInput = false;
+    }
+
     @Test
-    public void testWPSerialized() throws SQLException, InvalidProtocolBufferException, InterruptedException {
-        logger.info("testWPSerialized");
+    public void testPostSerialized() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        logger.info("testPostSerialized");
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
@@ -129,10 +137,9 @@ public class WordPressTests {
     }
 
     @Test
-    public void testWPConcurrentRetro() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+    public void testPostConcurrentRetro() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         // Try to reproduce the bug where the new comment comes between post trashed and comment trashed. So the new comment would be marked as trashed but cannot be restored afterwards.
         logger.info("testWPConcurrentRetro");
-        ApiaryConfig.recordInput = true;
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
@@ -242,7 +249,7 @@ public class WordPressTests {
         assert(provBuff != null);
         Connection provConn = provBuff.conn.get();
         Statement stmt = provConn.createStatement();
-        String provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID);
+        String provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         ResultSet rs = stmt.executeQuery(provQuery);
         rs.next();
         long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
@@ -285,8 +292,6 @@ public class WordPressTests {
         strAryRes = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getStringArray();
         assertEquals(1, strAryRes.length);
 
-        ApiaryConfig.recordInput = false; // Reset flags.
-
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
@@ -298,5 +303,148 @@ public class WordPressTests {
         intRes = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.SELECTIVE.getValue()).getInt();
         assertEquals(0, intRes); // Should successfully untrashed the last post.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+    }
+
+    @Test
+    public void testOptionSerialized() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        logger.info("testOptionSerialized");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("WPGetOption", ApiaryConfig.postgres, WPGetOption::new);
+        apiaryWorker.registerFunction("WPOptionExists", ApiaryConfig.postgres, WPOptionExists::new);
+        apiaryWorker.registerFunction("WPInsertOption", ApiaryConfig.postgres, WPInsertOption::new);
+        apiaryWorker.startServing();
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        int res;
+        res = client.executeFunction("WPOptionExists", "option1", "value1", "no").getInt();
+        assertEquals(0, res); // return 0 as we newly inserted the option.
+
+        // Add again, should return 1 because the option already exists.
+        res = client.executeFunction("WPOptionExists", "option1", "value2", "no").getInt();
+        assertEquals(1, res);
+
+        // Get option value.
+        String resStr = client.executeFunction("WPGetOption", "option1").getString();
+        assertEquals("value1", resStr);
+
+        // Check provenance.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+    }
+
+    @Test
+    public void testOptionConcurrentRetro() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        logger.info("testOptionConcurrentRetro");
+
+        // Run concurrent requests until we find an error. Then retroactively replay.
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("WPGetOption", ApiaryConfig.postgres, WPGetOption::new);
+        apiaryWorker.registerFunction("WPOptionExists", ApiaryConfig.postgres, WPOptionExists::new);
+        apiaryWorker.registerFunction("WPInsertOption", ApiaryConfig.postgres, WPInsertOption::new);
+        apiaryWorker.startServing();
+
+        ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
+        assert(provBuff != null);
+
+        ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
+
+        // Start a thread pool.
+        ExecutorService threadPool = Executors.newFixedThreadPool(2);
+
+        class OpsTask implements Callable<Integer> {
+            private final String opName;
+            private final String opValue;
+            private final String opAutoLoad;
+
+            public OpsTask(String opName, String opValue, String opAutoLoad) {
+                this.opName = opName;
+                this.opValue = opValue;
+                this.opAutoLoad = opAutoLoad;
+            }
+
+            @Override
+            public Integer call() {
+                int res;
+                try {
+                    FunctionOutput fo = client.get().executeFunction("WPOptionExists", opName, opValue, opAutoLoad);
+                    if ((fo.errorMsg != null) && !fo.errorMsg.isEmpty()) {
+                        logger.info("Function error message: {}", fo.errorMsg);
+                    }
+                    res = fo.getInt();
+                } catch (Exception e) {
+                    res = -2;
+                }
+                return res;
+            }
+        }
+
+        // Try many times until we find duplications.
+        int maxTry = 1000;
+        int res = -2;
+        int i;
+        for (i = 0; i < maxTry; i++) {
+            // Launch concurrent tasks.
+            Future<Integer> res1Fut = threadPool.submit(new OpsTask("option-" + i, "value0-" + i, "no"));
+            // Add arbitrary delay.
+            Thread.sleep(ThreadLocalRandom.current().nextInt(2));
+            Future<Integer> res2Fut = threadPool.submit(new OpsTask("option-" + i, "value1-" + i, "no"));
+
+            int res1, res2;
+            try {
+                res1 = res1Fut.get();
+                res2 = res2Fut.get();
+                assertNotEquals(-2, res1);
+                assertNotEquals(-2, res2);
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+
+            // Check the option, should be the first one.
+            String resStr = client.get().executeFunction("WPGetOption", "option-" + i).getString();
+            assertTrue(resStr.contains("value"));
+            if (res2 == -1) {
+                logger.info("Found error! Option: {}", i);
+                break;
+            }
+        }
+        threadPool.shutdown();
+        assumeTrue(i < maxTry);
+
+        // Wait for provenance to be exported.
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        Connection provConn = provBuff.conn.get();
+        Statement stmt = provConn.createStatement();
+        String provQuery = String.format("SELECT * FROM %s ORDER BY %s ASC;", ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        ResultSet rs = stmt.executeQuery(provQuery);
+        rs.next();
+        long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
+        assertTrue(resExecId >= 0);
+        assertTrue(resFuncId == 0);
+        assertEquals("WPOptionExists", resFuncName);
+
+        // Reset the table and replay all.
+        conn.truncateTable(WPUtil.WP_OPTIONS_TABLE, false);
+
+        // Replay everything and check we get the same result.
+        String resStr = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getString();
+
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        assertTrue(resStr.equals("value0-" + i));
+
+        // Register the new function and retro replay all.
+        conn.truncateTable(WPUtil.WP_OPTIONS_TABLE, false);
+        apiaryWorker.registerFunction("WPInsertOption", ApiaryConfig.postgres, WPInsertOptionFixed::new, true);
+
+        resStr = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getString();
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        // The fixed one should let the failed one commit.
+        assertTrue(resStr.equals("value1-" + i));
     }
 }

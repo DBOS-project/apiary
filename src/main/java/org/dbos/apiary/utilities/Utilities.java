@@ -165,7 +165,8 @@ public class Utilities {
     }
 
     public static ExecuteFunctionReply.Builder constructReply(
-            long callerID, long functionID, long senderTimestampNano, Object output) {
+            long callerID, long functionID, long senderTimestampNano, Object output,
+            String errorMsg) {
         ExecuteFunctionReply.Builder b = ExecuteFunctionReply.newBuilder()
                 .setCallerId(callerID)
                 .setFunctionId(functionID)
@@ -182,6 +183,9 @@ public class Utilities {
         } else if (output instanceof int[]) {
             b.setReplyType(intArrayType);
             b.setReplyArray(ByteString.copyFrom(intArrayToByteArray((int[]) output)));
+        }
+        if (errorMsg != null) {
+            b.setErrorMsg(errorMsg);
         }
         return b;
     }

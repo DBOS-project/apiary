@@ -1,14 +1,10 @@
 package org.dbos.apiary.function;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.GeneratedMessage;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,8 +44,8 @@ public class ProvenanceBuffer {
     public static final String PROV_TXN_SNAPSHOT = "APIARY_TXN_SNAPSHOT";
     public static final String PROV_READONLY = "APIARY_READONLY";
     public static final String PROV_STATUS_COMMIT = "commit";
-    public static final String PROV_STATUS_ROLLBACK = "rollback";
-    public static final String PROV_STATUS_ABORT = "abort";
+    public static final String PROV_STATUS_FAIL_RECOVERABLE = "fail_recoverable";
+    public static final String PROV_STATUS_FAIL_UNRECOVERABLE = "fail_unrecoverable";
     public static final String PROV_STATUS_EMBEDDED = "embedded";
     public static final String PROV_STATUS_REPLAY = "replayed";
 

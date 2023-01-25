@@ -31,4 +31,5 @@ message ExecuteFunctionReply {
   int64 functionId = 4;
   int64 senderTimestampNano = 5;
   int64 replyType = 6;
+  string errorMsg = 8;  // If the invocation failed, we can add an error message.
 }

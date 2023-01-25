@@ -1,5 +1,6 @@
 package org.dbos.apiary.function;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -10,11 +11,19 @@ public class FunctionOutput {
     public final Object output;
     public final List<Task> queuedTasks;
     private Map<String, List<String>> writtenKeys;
+    public final String errorMsg;
 
-    public FunctionOutput(Object output, List<Task> queuedTasks) {
+    public FunctionOutput(String errMsg) {
+        this.output = -1;  // Store a negative value.
+        this.queuedTasks = new ArrayList<>();
+        this.errorMsg = errMsg;
+    }
+
+    public FunctionOutput(Object output, List<Task> queuedTasks, String errorMsg) {
         assert(output != null);
         this.output = output;
         this.queuedTasks = queuedTasks;
+        this.errorMsg = errorMsg;
     }
 
     /**

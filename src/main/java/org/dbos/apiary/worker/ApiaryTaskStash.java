@@ -25,6 +25,7 @@ public class ApiaryTaskStash {
 
     public int totalQueuedTasks;
     public Object output;
+    public String errorMsg;
 
     public ApiaryTaskStash(String service, long execId, long callerId, long functionID, int replayMode, ZFrame replyAddr, long senderTimestampNano) {
         this.service = service;
@@ -37,6 +38,7 @@ public class ApiaryTaskStash {
         functionIDToValue = new ConcurrentHashMap<>();
         queuedTasks = new ConcurrentLinkedQueue<>();
         totalQueuedTasks = 0;
+        errorMsg = "";
     }
 
     // If everything is resolved, then return the string value.

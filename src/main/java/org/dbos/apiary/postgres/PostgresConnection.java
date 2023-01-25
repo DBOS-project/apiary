@@ -246,7 +246,7 @@ public class PostgresConnection implements ApiaryConnection {
                     break;
                 } else {
                     rollback(ctxt);
-                    recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
+                    recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
                 }
             } catch (Exception e) {
                 if (e instanceof InvocationTargetException) {
@@ -257,35 +257,49 @@ public class PostgresConnection implements ApiaryConnection {
                     }
                     if (innerException instanceof PSQLException) {
                         PSQLException p = (PSQLException) innerException;
-                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
-                            try {
-                                rollback(ctxt);
-                                recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
-                                continue;
-                            } catch (SQLException ex) {
-                                ex.printStackTrace();
-                            }
-                        } else {
-                            logger.info("Unrecoverable inner PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
-                        }
-                    }
-                } else if (e instanceof PSQLException) {
-                    PSQLException p = (PSQLException) e;
-                    if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                        f = new FunctionOutput(p.getMessage());
                         try {
                             rollback(ctxt);
-                            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ROLLBACK);
-                            continue;
                         } catch (SQLException ex) {
                             ex.printStackTrace();
                         }
+                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
+                            continue;  // Retry.
+                        } else {
+                            // Abort and return.
+                            logger.error("Unrecoverable inner PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
+                            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE);
+                            break;
+                        }
                     } else {
-                        logger.info("Unrecoverable top-level PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
+                      logger.error("Unrecoverable InvocationTargetException: {}", e.getMessage());
+                      recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE);
+                    }
+                    break;
+                } else if (e instanceof PSQLException) {
+                    PSQLException p = (PSQLException) e;
+
+                    f = new FunctionOutput(p.getMessage());
+                    try {
+                        rollback(ctxt);
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                    }
+                    if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
+                        continue;  // Retry.
+                    } else {
+                        // Abort and return.
+                        logger.error("Unrecoverable top-level PSQLException error: {}, SQLState: {}", p.getMessage(), p.getSQLState());
+                        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE);
+                        break;
                     }
                 }
-                logger.info("Unrecoverable error in function execution: {}", e.getMessage());
+                logger.error("Unrecoverable error in function execution: {}", e.getMessage());
                 e.printStackTrace();
-                recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
+                f = new FunctionOutput(e.getMessage());
+                recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE);
                 break;
             }
         }
@@ -301,25 +315,52 @@ public class PostgresConnection implements ApiaryConnection {
         // Fast path for replayed functions.
         FunctionOutput f;
         String actualName = functionName;
-        long startTime = Utilities.getMicroTimestamp();
-        PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
-                new HashSet<>(), new HashSet<>(), new HashSet<>());
-        try {
-            ApiaryFunction func = workerContext.getFunction(functionName);
-            actualName = Utilities.getFunctionClassName(func);
-            logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
-            f = func.apiaryRunFunction(ctxt, inputs);
-            logger.debug("Completed function [{}]", actualName);
-        } catch (Exception e) {
-            // TODO: better error handling? For now, ignore those errors.
-            logger.error("Failed execution during replay.");
-            recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_ABORT);
-            return null;
-        }
+        String replayStatus = ProvenanceBuffer.PROV_STATUS_REPLAY;
 
-        recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_REPLAY);
-        // Collect all written tables.
-        replayWrittenTables.addAll(ctxt.replayWrittenTables);
+        while (true) {
+            long startTime = Utilities.getMicroTimestamp();
+            PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
+                    new HashSet<>(), new HashSet<>(), new HashSet<>());
+            try {
+                ApiaryFunction func = workerContext.getFunction(functionName);
+                actualName = Utilities.getFunctionClassName(func);
+                logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
+                f = func.apiaryRunFunction(ctxt, inputs);
+                logger.debug("Completed function [{}]", actualName);
+                // Collect all written tables.
+                replayWrittenTables.addAll(ctxt.replayWrittenTables);
+                recordTransactionInfo(workerContext, ctxt, startTime, actualName, replayStatus);
+                break;
+            } catch (Exception e) {
+                try {
+                    rollback(ctxt);
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+                String errorMsg = e.getMessage();
+                if (e instanceof InvocationTargetException) {
+                    Throwable innerException = e;
+                    while (innerException instanceof InvocationTargetException) {
+                        InvocationTargetException i = (InvocationTargetException) innerException;
+                        innerException = i.getCause();
+                    }
+                    if (innerException instanceof PSQLException) {
+                        PSQLException p = (PSQLException) innerException;
+                        errorMsg = p.getMessage();
+                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                            recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
+                            logger.debug("Serialization failure during replay, will retry: {}", errorMsg);
+                            continue;  // Retry.
+                        }
+                    }
+                }
+                logger.error("Unrecoverable failed execution during replay. Error: {}", errorMsg);
+                replayStatus = ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE;
+                f = new FunctionOutput(errorMsg);
+                recordTransactionInfo(workerContext, ctxt, startTime, actualName, replayStatus);
+                break;
+            }
+        }
         return f;
     }
 
@@ -373,7 +414,14 @@ public class PostgresConnection implements ApiaryConnection {
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(String.format("SELECT CAST(extract(epoch from pg_xact_commit_timestamp(\'%s\'::xid)) * 1000000 AS BIGINT);", ctxt.txc.txID));
                 if (rs.next()) {
-                    commitTime = rs.getLong(1);
+                    long tmpTime = rs.getLong(1);
+                    if (tmpTime > 0) {
+                        // TODO: find a better way to identify this.
+                        commitTime = tmpTime;
+                    } else {
+                        // tmpTime=0 means the transaction aborted. Use the normal timestamp.
+                        status = ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE;
+                    }
                 }
                 rs.close();
                 stmt.close();

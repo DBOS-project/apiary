@@ -1,7 +1,5 @@
 package org.dbos.apiary.function;
 
-import org.dbos.apiary.function.ApiaryFuture;
-
 import java.io.Serializable;
 import java.util.Map;
 
@@ -10,12 +8,14 @@ import java.util.Map;
  */
 public class Task implements Serializable  {
 
+    public final long execId;
     public long functionID;  // Unique ID of this function.
     public final String funcName;
     public final Object[] input;
 
     // Initialize from user input.
-    public Task(long functionID, String funcName, Object[] input) {
+    public Task(long execId, long functionID, String funcName, Object[] input) {
+        this.execId = execId;
         this.functionID = functionID;
         this.funcName = funcName;
         this.input = input;

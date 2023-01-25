@@ -8,6 +8,8 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 public class BenchmarkingExecutable {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkingExecutable.class);
 
@@ -20,16 +22,19 @@ public class BenchmarkingExecutable {
         options.addOption("d", true, "Duration (sec)?");
         options.addOption("i", true, "Benchmark Interval (μs)");
         options.addOption("mainHostAddr", true, "Address of the main host to connect to.");
-        options.addOption("s", true, "Service Name");
+        options.addOption("s", true, "Service Name ([moodle, wordpress] in retro benchmark)");
         options.addOption("p1", true, "Percentage 1");
         options.addOption("p2", true, "Percentage 2");
         options.addOption("p3", true, "Percentage 3");
         options.addOption("p4", true, "Percentage 4");
+        options.addOption("p5", true, "Percentage 5");
         options.addOption("notxn", false, "Disable XDST transaction.");
-        options.addOption("skipLoad", false, "Skip data loading.");
+        options.addOption("skipLoad", false, "Skip data loading/table resets.");
         options.addOption("noProv", false, "Disable provenance tracing.");
-        options.addOption("execId", true, "Target execution ID for retro-replay.");
-        options.addOption("retroMode", true, "Replay mode: 0-not replay, 1-single replay execID, 2-replay all after execID.");
+        options.addOption("execId", true, "Start execution ID for retro-replay.");
+        options.addOption("endExecId", true, "End execution ID for retro-replay.");
+        options.addOption("retroMode", true, "Replay mode: 0-not replay, 1-single replay execID, 2-replay all [execId, endExecId), 3-selective replay [execId, endExecId).");
+        options.addOption("bugFix", true, "The name of the bug fix functions, if provided, will use the new code. Moodle: [subscribe], WordPress: [comment, option]");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -59,6 +64,7 @@ public class BenchmarkingExecutable {
             logger.info("Disabling provenance tracing!");
             ApiaryConfig.captureReads = false;
             ApiaryConfig.captureUpdates = false;
+            ApiaryConfig.recordInput = false;
         }
 
         if (cmd.hasOption("skipLoad")) {
@@ -128,18 +134,26 @@ public class BenchmarkingExecutable {
             logger.info("Mysql Microbenchmark {} {} {}", percentageRead, percentageNew, percentageUpdate);
             MysqlMicrobenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageNew, percentageUpdate);
         } else if (benchmark.equals("retro")) {
-            int percentageRead = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 100;
-            int percentageWrite = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 100;
-            logger.info("Retroactive Benchmark: read {}%, write {}%", percentageRead, percentageWrite);
-            int replayMode = 0;
-            long execId = 0l;
+            int p1 = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 0;
+            int p2 = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 0;
+            int p3 = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 0;
+            int p4 = cmd.hasOption("p4") ? Integer.parseInt(cmd.getOptionValue("p4")) : 0;
+            int p5 = cmd.hasOption("p5") ? Integer.parseInt(cmd.getOptionValue("p5")) : 0;
+            logger.info("Retroactive Benchmark, App: {}, Percentages: {}, {}, {}, {}, {}", service, p1, p2, p3, p4, p5);
+            int retroMode = 0;
+            long startExecId = 0l;
+            long endExecId = cmd.hasOption("endExecId") ? Long.parseLong(cmd.getOptionValue("endExecId")) : Long.MAX_VALUE;
+            String bugFix = cmd.hasOption("bugFix") ? cmd.getOptionValue("bugFix") : null;
             if (cmd.hasOption("retroMode")) {
-                replayMode = Integer.parseInt(cmd.getOptionValue("retroMode"));
-                if (replayMode > 0) {
-                    execId = Long.parseLong(cmd.getOptionValue("execId"));
+                retroMode = Integer.parseInt(cmd.getOptionValue("retroMode"));
+                if (retroMode > 0) {
+                    startExecId = Long.parseLong(cmd.getOptionValue("execId"));
                 }
+                logger.info("Replay mode {}, startExecId: {}, endExecId: {}", retroMode, startExecId, endExecId);
+            } else {
+                logger.info("Not replay mode.");
             }
-            RetroBenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageWrite, skipLoadData, replayMode, execId);
+            RetroBenchmark.benchmark(service, mainHostAddr, interval, duration, skipLoadData, retroMode, startExecId, endExecId, bugFix, List.of(p1, p2, p3, p4, p5));
         }
     }
 }

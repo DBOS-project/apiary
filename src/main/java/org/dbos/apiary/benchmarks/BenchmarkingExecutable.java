@@ -65,6 +65,11 @@ public class BenchmarkingExecutable {
             ApiaryConfig.captureReads = false;
             ApiaryConfig.captureUpdates = false;
             ApiaryConfig.recordInput = false;
+        } else {
+            logger.info("Provenance tracing enabled!");
+            ApiaryConfig.captureReads = true;
+            ApiaryConfig.captureUpdates = true;
+            ApiaryConfig.recordInput = true;
         }
 
         if (cmd.hasOption("skipLoad")) {

@@ -73,7 +73,7 @@ class PostgresReplayCallable implements Callable<Integer> {
             // Skip the task if it is absent. Because we allow reducing the number of called function
             // (currently does not support adding more).
             if (!pendingTasks.containsKey(rpTask.task.execId) || !pendingTasks.get(rpTask.task.execId).containsKey(rpTask.task.functionID)) {
-                logger.warn("Skip function ID {}, not found in pending tasks.", rpTask.task.functionID);
+                logger.debug("Skip function ID {}, not found in pending tasks.", rpTask.task.functionID);
                 return -1;
             }
             // Find the task in the stash. Make sure that all futures have been resolved.

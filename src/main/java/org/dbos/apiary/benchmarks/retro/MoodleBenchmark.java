@@ -221,6 +221,9 @@ public class MoodleBenchmark {
         } else if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()){
             FunctionOutput res = client.get().retroReplay(startExecId, endExecId, ApiaryConfig.ReplayMode.ALL.getValue());
             assert (res != null);
+        } else if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
+            FunctionOutput res = client.get().retroReplay(startExecId, endExecId, ApiaryConfig.ReplayMode.SELECTIVE.getValue());
+            assert (res != null);
         } else {
             logger.error("Do not support replay mode {}", replayMode);
         }

@@ -93,7 +93,7 @@ public class MoodleBenchmark {
         }
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pgConn);
 
-        if (bugFix != null) {
+        if ((bugFix != null) && bugFix.equalsIgnoreCase("subscribe")) {
             logger.info("Use Moodle bug fix: {}", MDLSubscribeTxn.class.getName());
             // Use the bug fix: transactional version.
             apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new, true);

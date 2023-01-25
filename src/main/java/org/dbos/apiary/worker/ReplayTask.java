@@ -1,7 +1,5 @@
 package org.dbos.apiary.worker;
 
-import java.sql.Connection;
-
 public class ReplayTask {
     public final long execId;
     public final long funcId;

@@ -145,6 +145,10 @@ public class PostgresRetroReplay {
         // A thread pool for concurrent function executions.
         ExecutorService threadPool = Executors.newFixedThreadPool(numReplayThreads);
 
+        // Caches for committed transactions and aborted transactions.
+        List<PostgresReplayTask> committedTasks = new ArrayList<>();
+        List<PostgresReplayTask> abortedTasks = new ArrayList<>();
+
         while ((nextCommitTxid > 0) && (nextCommitTxid < endTxId)) {
             // Execute all following functions until nextCommitTxid is in the snapshot of that original transaction.
             // If the nextCommitTxid is in the snapshot, then that function needs to start after it commits.
@@ -155,6 +159,7 @@ public class PostgresRetroReplay {
                 String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
                 String resName = resNames[resNames.length - 1]; // Extract the actual function name.
                 String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
+                String resStatus = startOrderRs.getString(ProvenanceBuffer.PROV_FUNC_STATUS);
                 long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
                 List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
 
@@ -197,10 +202,13 @@ public class PostgresRetroReplay {
                             throw new RuntimeException("Not enough connections to replay!");
                         }
 
-                        // Execute the function.
+                        // Store in the cache based on their status.
                         PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
-                        pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
-                                execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
+                        if (resStatus.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
+                            committedTasks.add(pgRpTask);
+                        } else {
+                            abortedTasks.add(pgRpTask);
+                        }
                         pendingCommitTasks.put(resTxId, pgRpTask);
                     }
                 } else {
@@ -211,9 +219,22 @@ public class PostgresRetroReplay {
                     // No more to process.
                     break;
                 }
-                // Hack: force order...
-                Thread.sleep(5);
             }
+
+            // Launch committed tasks first, then aborted tasks.
+            for (PostgresReplayTask pgRpTask : committedTasks) {
+                pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
+                        execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
+            }
+            committedTasks.clear();
+            // TODO: is there a better way to force the order?
+            Thread.sleep(5);
+
+            for (PostgresReplayTask pgRpTask : abortedTasks) {
+                pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
+                        execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
+            }
+            abortedTasks.clear();
 
             // Commit the nextCommitTxid and update the variables. Pass skipped functions.
             // The connection must be not null because it has to have started.

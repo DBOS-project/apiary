@@ -43,27 +43,37 @@ public class PostgresContext extends ApiaryContext {
         long tmpReplayTxID = -1;
         this.replayWrittenTables = replayWrittenTables;
         try {
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("select txid_current();");
-            rs.next();
-            long txID = rs.getLong(1);
-            rs = stmt.executeQuery("select pg_current_snapshot();");
-            rs.next();
-            String snapshotString = rs.getString(1);
-            long xmin = PostgresUtilities.parseXmin(snapshotString);
-            long xmax = PostgresUtilities.parseXmax(snapshotString);
-            List<Long> activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
+            long txID = -1;
+            long xmin = -1;
+            long xmax = -1;
+            List<Long> activeTxIDs = new ArrayList<>();
+            if ((workerContext.provBuff != null) || ApiaryConfig.XDBTransactions) {
+                // Only look up transaction ID and snapshot info if we enable provenance capture.
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select txid_current();");
+                rs.next();
+                txID = rs.getLong(1);
+                rs = stmt.executeQuery("select pg_current_snapshot();");
+                rs.next();
+                String snapshotString = rs.getString(1);
+                xmin = PostgresUtilities.parseXmin(snapshotString);
+                xmax = PostgresUtilities.parseXmax(snapshotString);
+                activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
+            }
 
             // For epoxy transactions only.
             if (ApiaryConfig.XDBTransactions) {
                 activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < xmax).collect(Collectors.toList()));
                 for (TransactionContext t : activeTransactions) {
                     if (t.txID < xmax && !activeTxIDs.contains(t.txID)) {
-                        rs = stmt.executeQuery("select txid_status(" + t.txID + ");");
+                        Statement stmt = conn.createStatement();
+                        ResultSet rs = stmt.executeQuery("select txid_status(" + t.txID + ");");
                         rs.next();
                         if (rs.getString("txid_status").equals("aborted")) {
                             activeTxIDs.add(t.txID);
                         }
+                        rs.close();
+                        stmt.close();
                     }
                 }
             }
@@ -74,7 +84,7 @@ public class PostgresContext extends ApiaryContext {
                 PreparedStatement pstmt = conn.prepareStatement(checkReplayTxID);
                 pstmt.setLong(1, execID);
                 pstmt.setLong(2, functionID);
-                rs = pstmt.executeQuery();
+                ResultSet rs = pstmt.executeQuery();
                 if (rs.next()) {
                     tmpReplayTxID = rs.getLong(1);
                     logger.debug("Current transaction {} is a replay of executionID: {}, functionID: {}, original tranasction ID: {}", txID, execID, functionID, tmpReplayTxID);

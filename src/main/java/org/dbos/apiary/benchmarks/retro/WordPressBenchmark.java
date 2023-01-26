@@ -146,8 +146,7 @@ public class WordPressBenchmark {
         int untrashPostPC = percentages.get(2);
         int getCommentsPC = percentages.get(3);
         int updateOptionPC = percentages.get(4);
-        int getOptionPC = percentages.get(5);
-        logger.info("Percentages: addComment {}, trashPost {}, untrashPost {}, getComments {}, updateOption {}, getOption{}", addCommentPC, trashPostPC, untrashPostPC, getCommentsPC, updateOptionPC, getOptionPC);
+        logger.info("Percentages: addComment {}, trashPost {}, untrashPost {}, getComments {}, updateOption {}, getOption{}", addCommentPC, trashPostPC, untrashPostPC, getCommentsPC, updateOptionPC);
 
         boolean hasProv = (ApiaryConfig.captureReads || ApiaryConfig.captureUpdates) ? true : false;  // Enable provenance?
 

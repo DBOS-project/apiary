@@ -1,6 +1,7 @@
 package org.dbos.apiary.benchmarks.retro;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.dbos.apiary.benchmarks.RetroBenchmark;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.ProvenanceBuffer;
@@ -108,7 +109,7 @@ public class MoodleBenchmark {
 
         if (retroMode > 0) {
             long startTime = System.currentTimeMillis();
-            retroReplayExec(retroMode, startExecId, endExecId);
+            RetroBenchmark.retroReplayExec(client.get(), retroMode, startExecId, endExecId);
             long elapsedTime = System.currentTimeMillis() - startTime;
             ApiaryConfig.recordInput = true;  // Record again.
             int[] resList = client.get().executeFunction("MDLFetchSubscribers", initialForumId).getIntArray();
@@ -211,22 +212,6 @@ public class MoodleBenchmark {
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
         apiaryWorker.shutdown();
-    }
-
-    private static void retroReplayExec(int replayMode, long startExecId, long endExecId) throws InvalidProtocolBufferException {
-        if (replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
-            // Replay a single execution.
-            int res = client.get().replayFunction(startExecId, "MDLIsSubscribed", initialUserId, initialForumId).getInt();
-            assert (res == initialUserId);
-        } else if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()){
-            FunctionOutput res = client.get().retroReplay(startExecId, endExecId, ApiaryConfig.ReplayMode.ALL.getValue());
-            assert (res != null);
-        } else if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
-            FunctionOutput res = client.get().retroReplay(startExecId, endExecId, ApiaryConfig.ReplayMode.SELECTIVE.getValue());
-            assert (res != null);
-        } else {
-            logger.error("Do not support replay mode {}", replayMode);
-        }
     }
 
     private static void resetAllTables(String dbAddr) {

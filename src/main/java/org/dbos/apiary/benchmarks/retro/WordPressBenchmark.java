@@ -146,7 +146,7 @@ public class WordPressBenchmark {
         int untrashPostPC = percentages.get(2);
         int getCommentsPC = percentages.get(3);
         int updateOptionPC = percentages.get(4);
-        logger.info("Percentages: addComment {}, trashPost {}, untrashPost {}, getComments {}, updateOption {}, getOption{}", addCommentPC, trashPostPC, untrashPostPC, getCommentsPC, updateOptionPC);
+        logger.info("Percentages: addComment {}, trashPost {}, untrashPost {}, getComments {}, updateOption {}, getOption {}", addCommentPC, trashPostPC, untrashPostPC, getCommentsPC, updateOptionPC, 100 - (addCommentPC + trashPostPC + untrashPostPC + getCommentsPC + updateOptionPC));
 
         boolean hasProv = (ApiaryConfig.captureReads || ApiaryConfig.captureUpdates) ? true : false;  // Enable provenance?
 
@@ -227,7 +227,7 @@ public class WordPressBenchmark {
             assert (res == 0);
             for (int j = 0; j < initCommentsPerPost; j++) {
                 int cid = commentId.incrementAndGet();
-                res = client.get().executeFunction(WPUtil.FUNC_ADDCOMMENT, postId, cid, String.format("Post {} comment {}", postId, cid)).getInt();
+                res = client.get().executeFunction(WPUtil.FUNC_ADDCOMMENT, postId, cid, String.format("Post %s comment %s", postId, cid)).getInt();
                 assert (res == 0);
             }
         }
@@ -240,7 +240,7 @@ public class WordPressBenchmark {
             Future<Integer> trashFut = threadPool.submit(new WpTask(clientPool, WPOpType.TRASH_POST, null, i, -1, ""));
             Thread.sleep(ThreadLocalRandom.current().nextInt(5));
             int cid = commentId.incrementAndGet();
-            Future<Integer> commentFut = threadPool.submit(new WpTask(clientPool, WPOpType.ADD_COMMENT, null, i, cid, String.format("Concurrent comment post {} comment {}", i, cid)));
+            Future<Integer> commentFut = threadPool.submit(new WpTask(clientPool, WPOpType.ADD_COMMENT, null, i, cid, String.format("Concurrent comment post %s comment %s", i, cid)));
 
             int trashRes, commentRes;
             try {
@@ -305,6 +305,11 @@ public class WordPressBenchmark {
             return;
         }
         // TODO: start actual benchmarks.
+
+        threadPool.shutdown();
+        threadPool.awaitTermination(100000, TimeUnit.SECONDS);
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
+        apiaryWorker.shutdown();
         return;
     }
 

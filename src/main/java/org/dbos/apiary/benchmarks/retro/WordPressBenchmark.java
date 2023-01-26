@@ -26,7 +26,7 @@ public class WordPressBenchmark {
     private static final int numOptions = 100;
     private static final int numPosts = 1000;
     private static final int initCommentsPerPost = 1;
-    private static final AtomicInteger commentId = new AtomicInteger(initCommentsPerPost);
+    private static final AtomicInteger commentId = new AtomicInteger(0);
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
 
@@ -225,7 +225,8 @@ public class WordPressBenchmark {
         for (int postId = 0; postId < numPosts; postId++) {
             int res = client.get().executeFunction(WPUtil.FUNC_ADDPOST, postId, "benchmark post " + postId).getInt();
             assert (res == 0);
-            for (int cid = 0; cid < initCommentsPerPost; cid++) {
+            for (int j = 0; j < initCommentsPerPost; j++) {
+                int cid = commentId.incrementAndGet();
                 res = client.get().executeFunction(WPUtil.FUNC_ADDCOMMENT, postId, cid, String.format("Post {} comment {}", postId, cid)).getInt();
                 assert (res == 0);
             }

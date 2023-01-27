@@ -1,6 +1,5 @@
 package org.dbos.apiary.benchmarks.retro;
 
-import com.google.protobuf.Internal;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.benchmarks.RetroBenchmark;
 import org.dbos.apiary.client.ApiaryWorkerClient;
@@ -16,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
-import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -33,7 +32,7 @@ public class WordPressBenchmark {
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
 
-    private static final Queue<Integer> trashedPosts = new ConcurrentLinkedQueue<>();
+    private static final Set<Integer> trashedPosts = ConcurrentHashMap.newKeySet();
 
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
     private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();
@@ -366,6 +365,7 @@ public class WordPressBenchmark {
                     postId = ThreadLocalRandom.current().nextInt(0, numPosts);
                 }
                 threadPool.submit(new WpTask(clientPool, WPOpType.UNTRASH_POST, wt, postId, -1, null));
+                trashedPosts.remove(postId);
             } else if (chooser < addCommentPC + trashPostPC + untrashPostPC + getCommentsPC) {
                 threadPool.submit(new WpTask(clientPool, WPOpType.GET_COMMENTS, rt, postId, -1, null));
             } else if (chooser < addCommentPC + trashPostPC + untrashPostPC + getCommentsPC + updateOptionPC) {

@@ -208,7 +208,25 @@ public class WordPressBenchmark {
             RetroBenchmark.retroReplayExec(client.get(), retroMode, startExecId, endExecId);
             long elapsedTime = System.currentTimeMillis() - startTime;
             ApiaryConfig.recordInput = true;  // Record again.
-            // TODO: Check inconsistencies and errors.
+
+            // Check inconsistency in comment table.
+            boolean hasInconsistency = false;
+            for (int i = 0; i < numPosts; i++) {
+                String[] resList = client.get().executeFunction(WPUtil.FUNC_COMMENTSTATUS, i).getStringArray();
+                if (resList.length > 1) {
+                    logger.info("Found inconsistency!");
+                    hasInconsistency = true;
+                    break;
+                }
+            }
+            if (hasInconsistency) {
+                logger.info("Found inconsistency in WP comments after replay.");
+            } else {
+                logger.info("No inconsistency in WP comments after replay.");
+            }
+
+            // TODO: how do we check the Option table? We can see the error message from the screen.
+
             apiaryWorker.shutdown();
             logger.info("Replay mode {}, execution time: {} ms", retroMode, elapsedTime);
             return;
@@ -304,7 +322,9 @@ public class WordPressBenchmark {
             threadPool.awaitTermination(10, TimeUnit.SECONDS);
             return;
         }
-        // TODO: start actual benchmarks.
+
+        // Actual benchmark loop.
+
 
         threadPool.shutdown();
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);

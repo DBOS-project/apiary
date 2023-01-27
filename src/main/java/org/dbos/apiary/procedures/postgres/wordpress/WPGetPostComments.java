@@ -22,12 +22,12 @@ public class WPGetPostComments extends PostgresFunction {
         List<String> resList = new ArrayList<>();
         ResultSet r = ctxt.executeQuery(getPost, postId);
         if (!r.next()) {
-            logger.error("Post {} does not exist!", postId);
+            logger.debug("Post {} does not exist!", postId);
             return resList.toArray(new String[0]);
         }
         String status = r.getString(WPUtil.WP_POST_STATUS);
         if (status.equals(WPUtil.WP_STATUS_TRASHED)) {
-            logger.error("Post {} is trashed, not visible!", postId);
+            logger.debug("Post {} is trashed, not visible!", postId);
             return resList.toArray(new String[0]);
         }
         String content = r.getString(WPUtil.WP_POST_CONTENT);

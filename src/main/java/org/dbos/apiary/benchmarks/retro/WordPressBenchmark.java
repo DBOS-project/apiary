@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
+import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -32,7 +32,7 @@ public class WordPressBenchmark {
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
 
-    private static final Set<Integer> trashedPosts = ConcurrentHashMap.newKeySet();
+    private static final Queue<Integer> trashedPosts = new ConcurrentLinkedQueue<>();
 
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
     private static final Collection<Long> writeTimes = new ConcurrentLinkedQueue<>();
@@ -257,10 +257,9 @@ public class WordPressBenchmark {
         }
 
         // Try to inject concurrent comments until we find inconsistency.
-        int maxTry = 200;
         boolean foundInconsistency = false;
         int numTry;
-        for (numTry = 0; numTry < maxTry; numTry++) {
+        for (numTry = 0; numTry < numPosts; numTry++) {
             Future<Integer> trashFut = threadPool.submit(new WpTask(clientPool, WPOpType.TRASH_POST, null, numTry, -1, ""));
             Thread.sleep(ThreadLocalRandom.current().nextInt(5));
             int cid = commentId.incrementAndGet();
@@ -344,7 +343,7 @@ public class WordPressBenchmark {
                 rt = readTimes;
                 wt = writeTimes;
             }
-            int postId = ThreadLocalRandom.current().nextInt(0, numPosts);
+            Integer postId = ThreadLocalRandom.current().nextInt(0, numPosts);
             int optionId = ThreadLocalRandom.current().nextInt(0, numOptions);
             if (chooser < addCommentPC) {
                 int cid = commentId.incrementAndGet();
@@ -361,11 +360,11 @@ public class WordPressBenchmark {
                     continue;
                 }
             } else if (chooser < addCommentPC + trashPostPC + untrashPostPC) {
-                while (!trashedPosts.contains(postId)) {
-                    postId = ThreadLocalRandom.current().nextInt(0, numPosts);
+                postId = trashedPosts.poll();
+                if (postId == null) {
+                    continue;
                 }
                 threadPool.submit(new WpTask(clientPool, WPOpType.UNTRASH_POST, wt, postId, -1, null));
-                trashedPosts.remove(postId);
             } else if (chooser < addCommentPC + trashPostPC + untrashPostPC + getCommentsPC) {
                 threadPool.submit(new WpTask(clientPool, WPOpType.GET_COMMENTS, rt, postId, -1, null));
             } else if (chooser < addCommentPC + trashPostPC + untrashPostPC + getCommentsPC + updateOptionPC) {

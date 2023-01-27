@@ -18,7 +18,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.*;
-import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -446,5 +445,11 @@ public class WordPressTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
         // The fixed one should let the failed one commit.
         assertTrue(resStr.equals("value1-" + i));
+
+        // Selective replay. The last one should be value1-i succeeded, so should return 0.
+        conn.truncateTable(WPUtil.WP_OPTIONS_TABLE, false);
+        res = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.SELECTIVE.getValue()).getInt();
+        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        assertEquals(0, res);
     }
 }

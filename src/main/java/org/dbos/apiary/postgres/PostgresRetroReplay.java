@@ -356,13 +356,23 @@ public class PostgresRetroReplay {
             return false;
         }
 
-        if (workerContext.retroFunctionExists(rpTask.funcName)) {
-            // Always replay modified functions.
-            return false;
+        Connection provConn = workerContext.provBuff.conn.get();
+        // Always replay a request if it contains modified functions.
+        String nameQuery = String.format("SELECT DISTINCT %s FROM %s WHERE %s = ? AND %s = 0",
+                ProvenanceBuffer.PROV_PROCEDURENAME, ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_ISREPLAY);
+        PreparedStatement namePs = provConn.prepareStatement(nameQuery);
+        namePs.setLong(1, rpTask.execId);
+        ResultSet nameRs = namePs.executeQuery();
+        while (nameRs.next()) {
+            String funcName = nameRs.getString(1);
+            if (workerContext.retroFunctionExists(funcName)) {
+                return false;
+            }
         }
+        nameRs.close();
+        namePs.close();
 
         // Check if an execution contains any writes, check all downstream functions.
-        Connection provConn = workerContext.provBuff.conn.get();
         String checkQuery = String.format("SELECT bool_and(%s) FROM %s WHERE %s = ?;",
                 ProvenanceBuffer.PROV_READONLY, ApiaryConfig.tableFuncInvocations,
                 ProvenanceBuffer.PROV_EXECUTIONID);

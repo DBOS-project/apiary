@@ -33,7 +33,7 @@ public class MDLFetchSubscribers extends PostgresFunction {
         Set<Integer> unique = new HashSet<>();
         for (int i : resList) {
             if (!unique.add(i)) {
-                logger.error("Duplicated subscriptions for forum {}, userId {}", forumId, i);
+                logger.debug("Duplicated subscriptions for forum {}, userId {}", forumId, i);
             }
         }
 

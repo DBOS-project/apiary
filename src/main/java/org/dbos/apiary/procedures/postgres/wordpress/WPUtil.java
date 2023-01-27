@@ -42,4 +42,16 @@ public class WPUtil {
     public static final String WP_OPTIONS_SCHEMA = WP_OPTION_NAME + " VARCHAR(128) PRIMARY KEY NOT NULL, "
             + WP_OPTION_VALUE + " VARCHAR(2000) NOT NULL, "
             + WP_AUTOLOAD + " VARCHAR(20) NOT NULL DEFAULT 'yes' ";
+
+    // For functions.
+    public static final String FUNC_ADDPOST = "WPAddPost";
+    public static final String FUNC_ADDCOMMENT = "WPAddComment";
+    public static final String FUNC_GETPOSTCOMMENTS= "WPGetPostComments";
+    public static final String FUNC_TRASHPOST = "WPTrashPost";
+    public static final String FUNC_TRASHCOMMENTS = "WPTrashComments";
+    public static final String FUNC_UNTRASHPOST = "WPUntrashPost";
+    public static final String FUNC_COMMENTSTATUS = "WPCheckCommentStatus";
+    public static final String FUNC_GETOPTION = "WPGetOption";
+    public static final String FUNC_OPTIONEXISTS = "WPOptionExists";
+    public static final String FUNC_INSERTOPTION = "WPInsertOption";
 }

@@ -230,6 +230,7 @@ public class WordPressBenchmark {
             } else {
                 logger.info("No inconsistency in WP comments after replay.");
             }
+            Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
 
             // TODO: how do we check the Option table? We can see the error message from the screen.
 
@@ -292,6 +293,9 @@ public class WordPressBenchmark {
             logger.error("Failed to find inconsistency in posts... exit.");
             threadPool.shutdown();
             threadPool.awaitTermination(10, TimeUnit.SECONDS);
+            Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
+
+            apiaryWorker.shutdown();
             return;
         }
 
@@ -325,6 +329,9 @@ public class WordPressBenchmark {
             logger.error("Failed to find inconsistency in options... exit.");
             threadPool.shutdown();
             threadPool.awaitTermination(10, TimeUnit.SECONDS);
+            Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
+
+            apiaryWorker.shutdown();
             return;
         }
 
@@ -408,7 +415,6 @@ public class WordPressBenchmark {
         threadPool.awaitTermination(100000, TimeUnit.SECONDS);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
         apiaryWorker.shutdown();
-        return;
     }
 
     private static void resetAllTables(String dbAddr) {

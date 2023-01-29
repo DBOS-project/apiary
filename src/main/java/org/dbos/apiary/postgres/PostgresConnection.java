@@ -347,7 +347,8 @@ public class PostgresConnection implements ApiaryConnection {
                     if (innerException instanceof PSQLException) {
                         PSQLException p = (PSQLException) innerException;
                         errorMsg = p.getMessage();
-                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                        // Only retry under retro mode. We should not have serialization error under faithful replay.
+                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState()) && workerContext.hasRetroFunctions()) {
                             recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
                             logger.debug("Serialization failure during replay, will retry: {}", errorMsg);
                             continue;  // Retry.

@@ -266,13 +266,13 @@ public class PostgresRetroReplay {
                     if (e instanceof PSQLException) {
                         PSQLException p = (PSQLException) e;
                         logger.debug("PSQLException during replay transaction {}: {}", nextCommitTxid, p.getMessage());
-                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState())) {
+                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState()) && workerContext.hasRetroFunctions()) {
                             logger.debug("Retry transaction {} due to serilization error. ", nextCommitTxid);
                             try {
                                 commitPgRpTask.conn.rollback();
                                 logger.debug("Rolled back failed to commit transaction.");
 
-                                // TODO: this part may also cause deadlock because the new transaction may depend on other uncommitted ones. Need to process it async.
+                                // TODO: this part may also cause deadlock because the new transaction may depend on other uncommitted ones. Need to process it async. The current heuristic is that the bug fix shouldn't cause deadlock, which indicates conflicting updates.
                                 commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, commitPgRpTask, replayMode, pendingTasks,
                                         execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
                                 commitPgRpTask.resFut.get(10, TimeUnit.SECONDS);

@@ -22,8 +22,8 @@ public class WorkerContext {
     // Record a mapping between the name of the first function and the set of functions in a workflow. Used by retroactive programming.
     private final Map<String, List<String>> functionSets = new HashMap<>();
 
-    // Record if a set of functions is read-only, the key is the first function name.
-    private final Map<String, Boolean> functionSetReadOnly = new HashMap<>();
+    // Record if a function is read-only.
+    private final Map<String, Boolean> functionReadOnly = new HashMap<>();
 
     private ApiaryConnection primaryConnection = null;
     private String primaryConnectionType;
@@ -54,8 +54,9 @@ public class WorkerContext {
         functionTypes.put(name, type);
     }
 
-    public void registerFunction(String name, String type, Callable<ApiaryFunction> function, boolean isRetro) {
+    public void registerFunction(String name, String type, Callable<ApiaryFunction> function, boolean isRetro, boolean isReadOnly) {
         registerFunction(name, type, function);
+        functionReadOnly.put(name, isReadOnly);
         if (isRetro) {
             // If isRetro is true, then we need to remember it in the map, so we can track which function is the modified ones.
             ApiaryFunction func = getFunction(name);
@@ -65,9 +66,8 @@ public class WorkerContext {
         }
     }
 
-    public void registerFunctionSet(String firstFunc, boolean isReadOnly, String[] funcNames) {
+    public void registerFunctionSet(String firstFunc, String[] funcNames) {
         functionSets.put(firstFunc, List.of(funcNames));
-        functionSetReadOnly.put(firstFunc, isReadOnly);
     }
 
     public List<String> getFunctionSet(String firstFunc) {
@@ -75,12 +75,25 @@ public class WorkerContext {
     }
 
     public boolean getFunctionSetReadOnly(String firstFunc) {
-        if (functionSetReadOnly.containsKey(firstFunc)) {
-            return functionSetReadOnly.get(firstFunc);
-        } else {
-            // Conservatively, assume it contains writes.
-            return false;
+        List<String> funcs = functionSets.get(firstFunc);
+        Boolean isRO;
+        // Return read-only info of this function, if cannot find func set info.
+        if ((funcs == null) || funcs.isEmpty()) {
+            isRO = functionReadOnly.get(firstFunc);
+            if (isRO == null) {
+                return false;
+            }
+            return isRO;
         }
+
+        // Check all functions in the func set.
+        for (String func : funcs) {
+            isRO = functionReadOnly.get(func);
+            if ((isRO == null) || !isRO) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public String getFunctionType(String function) {

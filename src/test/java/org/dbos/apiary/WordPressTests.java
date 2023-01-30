@@ -271,14 +271,15 @@ public class WordPressTests {
         apiaryWorker.shutdown();
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
-        apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new);
+        apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new, false, false);
         // Use the new code.
-        apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddCommentFixed::new, true);
-        apiaryWorker.registerFunction("WPGetPostComments", ApiaryConfig.postgres, WPGetPostComments::new);
-        apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new);
-        apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new);
-        apiaryWorker.registerFunction("WPUntrashPost", ApiaryConfig.postgres, WPUntrashPost::new);
-        apiaryWorker.registerFunction("WPCheckCommentStatus", ApiaryConfig.postgres, WPCheckCommentStatus::new);
+        apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddCommentFixed::new, true, false);
+        apiaryWorker.registerFunction("WPGetPostComments", ApiaryConfig.postgres, WPGetPostComments::new, false, true);
+        apiaryWorker.registerFunction("WPTrashPost", ApiaryConfig.postgres, WPTrashPost::new, false, false);
+        apiaryWorker.registerFunction("WPTrashComments", ApiaryConfig.postgres, WPTrashComments::new, false, false);
+        apiaryWorker.registerFunction("WPUntrashPost", ApiaryConfig.postgres, WPUntrashPost::new, false, false);
+        apiaryWorker.registerFunction("WPCheckCommentStatus", ApiaryConfig.postgres, WPCheckCommentStatus::new, false, true);
+        apiaryWorker.registerFunctionSet(WPUtil.FUNC_TRASHPOST, WPUtil.FUNC_TRASHPOST, WPUtil.FUNC_TRASHCOMMENTS);
         apiaryWorker.startServing();
 
         provBuff = apiaryWorker.workerContext.provBuff;
@@ -342,9 +343,9 @@ public class WordPressTests {
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
-        apiaryWorker.registerFunction("WPGetOption", ApiaryConfig.postgres, WPGetOption::new);
-        apiaryWorker.registerFunction("WPOptionExists", ApiaryConfig.postgres, WPOptionExists::new);
-        apiaryWorker.registerFunction("WPInsertOption", ApiaryConfig.postgres, WPInsertOption::new);
+        apiaryWorker.registerFunction("WPGetOption", ApiaryConfig.postgres, WPGetOption::new, false, true);
+        apiaryWorker.registerFunction("WPOptionExists", ApiaryConfig.postgres, WPOptionExists::new, false, true);
+        apiaryWorker.registerFunction("WPInsertOption", ApiaryConfig.postgres, WPInsertOption::new, false, false);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
@@ -439,7 +440,8 @@ public class WordPressTests {
 
         // Register the new function and retro replay all.
         conn.truncateTable(WPUtil.WP_OPTIONS_TABLE, false);
-        apiaryWorker.registerFunction("WPInsertOption", ApiaryConfig.postgres, WPInsertOptionFixed::new, true);
+        apiaryWorker.registerFunction(WPUtil.FUNC_INSERTOPTION, ApiaryConfig.postgres, WPInsertOptionFixed::new, true, false);
+        apiaryWorker.registerFunctionSet(WPUtil.FUNC_OPTIONEXISTS, WPUtil.FUNC_OPTIONEXISTS, WPUtil.FUNC_INSERTOPTION);
 
         resStr = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getString();
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);

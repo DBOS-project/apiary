@@ -183,25 +183,27 @@ public class WordPressBenchmark {
         apiaryWorker.registerConnection(ApiaryConfig.postgres, pgConn);
 
         // Register all functions.
-        apiaryWorker.registerFunction(WPUtil.FUNC_ADDPOST, ApiaryConfig.postgres, WPAddPost::new);
-        apiaryWorker.registerFunction(WPUtil.FUNC_ADDCOMMENT, ApiaryConfig.postgres, WPAddComment::new);
-        apiaryWorker.registerFunction(WPUtil.FUNC_GETPOSTCOMMENTS, ApiaryConfig.postgres, WPGetPostComments::new);
-        apiaryWorker.registerFunction(WPUtil.FUNC_TRASHPOST, ApiaryConfig.postgres, WPTrashPost::new);
-        apiaryWorker.registerFunction(WPUtil.FUNC_TRASHCOMMENTS, ApiaryConfig.postgres, WPTrashComments::new);
-        apiaryWorker.registerFunction(WPUtil.FUNC_UNTRASHPOST, ApiaryConfig.postgres, WPUntrashPost::new);
-        apiaryWorker.registerFunction(WPUtil.FUNC_COMMENTSTATUS, ApiaryConfig.postgres, WPCheckCommentStatus::new);
-        apiaryWorker.registerFunction(WPUtil.FUNC_GETOPTION, ApiaryConfig.postgres, WPGetOption::new);
-        apiaryWorker.registerFunction(WPUtil.FUNC_OPTIONEXISTS, ApiaryConfig.postgres, WPOptionExists::new);
-        apiaryWorker.registerFunction(WPUtil.FUNC_INSERTOPTION, ApiaryConfig.postgres, WPInsertOption::new);
+        apiaryWorker.registerFunction(WPUtil.FUNC_ADDPOST, ApiaryConfig.postgres, WPAddPost::new, false, false);
+        apiaryWorker.registerFunction(WPUtil.FUNC_ADDCOMMENT, ApiaryConfig.postgres, WPAddComment::new, false, false);
+        apiaryWorker.registerFunction(WPUtil.FUNC_GETPOSTCOMMENTS, ApiaryConfig.postgres, WPGetPostComments::new, false, true);
+        apiaryWorker.registerFunction(WPUtil.FUNC_TRASHPOST, ApiaryConfig.postgres, WPTrashPost::new, false, false);
+        apiaryWorker.registerFunction(WPUtil.FUNC_TRASHCOMMENTS, ApiaryConfig.postgres, WPTrashComments::new, false, false);
+        apiaryWorker.registerFunction(WPUtil.FUNC_UNTRASHPOST, ApiaryConfig.postgres, WPUntrashPost::new, false, false);
+        apiaryWorker.registerFunction(WPUtil.FUNC_COMMENTSTATUS, ApiaryConfig.postgres, WPCheckCommentStatus::new, false, true);
+        apiaryWorker.registerFunction(WPUtil.FUNC_GETOPTION, ApiaryConfig.postgres, WPGetOption::new, false, true);
+        apiaryWorker.registerFunction(WPUtil.FUNC_OPTIONEXISTS, ApiaryConfig.postgres, WPOptionExists::new, false, true);
+        apiaryWorker.registerFunction(WPUtil.FUNC_INSERTOPTION, ApiaryConfig.postgres, WPInsertOption::new, false, false);
+        apiaryWorker.registerFunctionSet(WPUtil.FUNC_TRASHPOST, WPUtil.FUNC_TRASHPOST, WPUtil.FUNC_TRASHCOMMENTS);
+        apiaryWorker.registerFunctionSet(WPUtil.FUNC_OPTIONEXISTS, WPUtil.FUNC_OPTIONEXISTS, WPUtil.FUNC_INSERTOPTION);
 
         if (bugFix != null) {
             // The fixed version.
             if (bugFix.equalsIgnoreCase("comment")) {
                 logger.info("Use WordPress bug fix for comment: {}", WPAddCommentFixed.class.getName());
-                apiaryWorker.registerFunction(WPUtil.FUNC_ADDCOMMENT, ApiaryConfig.postgres, WPAddCommentFixed::new, true);
+                apiaryWorker.registerFunction(WPUtil.FUNC_ADDCOMMENT, ApiaryConfig.postgres, WPAddCommentFixed::new, true, false);
             } else if (bugFix.equalsIgnoreCase("option")) {
                 logger.info("Use WordPress bug fix for option: {}", WPInsertOptionFixed.class.getName());
-                apiaryWorker.registerFunction(WPUtil.FUNC_INSERTOPTION, ApiaryConfig.postgres, WPInsertOptionFixed::new, true);
+                apiaryWorker.registerFunction(WPUtil.FUNC_INSERTOPTION, ApiaryConfig.postgres, WPInsertOptionFixed::new, true, false);
             }
         } else {
             // The buggy version.

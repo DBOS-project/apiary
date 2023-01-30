@@ -337,6 +337,9 @@ public class MoodleTests {
         // The old one.
         apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new, false, false);
         apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new, false, true);
+
+        // No need to register function set, because we have a single function now.
+        // apiaryWorker.registerFunctionSet("MDLIsSubscribed", "MDLIsSubscribed", "MDLForumInsert");
         apiaryWorker.startServing();
 
         provBuff = apiaryWorker.workerContext.provBuff;

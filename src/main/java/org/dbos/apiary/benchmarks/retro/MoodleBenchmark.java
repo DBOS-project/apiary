@@ -3,7 +3,6 @@ package org.dbos.apiary.benchmarks.retro;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.benchmarks.RetroBenchmark;
 import org.dbos.apiary.client.ApiaryWorkerClient;
-import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.moodle.MDLFetchSubscribers;
@@ -97,14 +96,16 @@ public class MoodleBenchmark {
         if ((bugFix != null) && bugFix.equalsIgnoreCase("subscribe")) {
             logger.info("Use Moodle bug fix: {}", MDLSubscribeTxn.class.getName());
             // Use the bug fix: transactional version.
-            apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new, true);
+            apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new, true, false);
         } else {
             // The buggy version.
             logger.info("Use Moodle buggy version: {}", MDLIsSubscribed.class.getName());
-            apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
+            apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new, false, true);
+            apiaryWorker.registerFunctionSet("MDLIsSubscribed", "MDLIsSubscribed", "MDLForumInsert");
         }
-        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
-        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
+        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new, false, false);
+        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new, false, true);
+
         apiaryWorker.startServing();
 
         if (retroMode > 0) {

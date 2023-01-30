@@ -224,12 +224,12 @@ public class PostgresRetroReplay {
             for (PostgresReplayTask pgRpTask : committedTasks) {
                 pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
                         execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
-                if (!workerContext.hasRetroFunctions()) {
-                    // A replay without any modified functions should never be blocked, so we wait for it to finish.
-                    // But retro mode could lead to new blocking scenarios, so we skip waiting.
-                    try {
-                        pgRpTask.resFut.get(10, TimeUnit.SECONDS);
-                    } catch (Exception e) {
+                // A replay without any modified functions should never be blocked, so we wait for it to finish.
+                // But retro mode could lead to new blocking scenarios, so we don't throw an error.
+                try {
+                    pgRpTask.resFut.get(5, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    if (!workerContext.hasRetroFunctions()) {
                         logger.error("Unrecoverable error. Failed to run transaction {}. Error message: {}", nextCommitTxid, e.getMessage());
                         throw new RuntimeException("Unrecoverable error during replay committed tasks.");
                     }
@@ -253,7 +253,7 @@ public class PostgresRetroReplay {
             } else {
                 try {
                     // Wait for the task to finish.
-                    int res = commitPgRpTask.resFut.get(10, TimeUnit.SECONDS);
+                    int res = commitPgRpTask.resFut.get(5, TimeUnit.SECONDS);
                     if (res == 0) {
                         if (commitPgRpTask.fo.errorMsg.isEmpty()) {
                             commitPgRpTask.conn.commit();

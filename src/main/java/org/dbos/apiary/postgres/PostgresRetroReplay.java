@@ -362,7 +362,7 @@ public class PostgresRetroReplay {
         // The current selective replay heuristic:
         // 1) If a request has been skipped, then all following functions will be skipped.
         // 2) If a function name is in the list of retroFunctions, then we cannot skip.
-        // 3) Cannot skip a request if any of its function contains writes and touches the write set.
+        // 3) Cannot skip a request if any of its function contains writes and touches write set.
         if (skippedExecIds.contains(rpTask.execId)) {
             return true;
         } else if (rpTask.functionID > 0) {
@@ -371,39 +371,24 @@ public class PostgresRetroReplay {
             return false;
         }
 
-        Connection provConn = workerContext.provBuff.conn.get();
         // Always replay a request if it contains modified functions.
-        String nameQuery = String.format("SELECT DISTINCT %s FROM %s WHERE %s = ? AND %s = 0",
-                ProvenanceBuffer.PROV_PROCEDURENAME, ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_ISREPLAY);
-        PreparedStatement namePs = provConn.prepareStatement(nameQuery);
-        namePs.setLong(1, rpTask.execId);
-        ResultSet nameRs = namePs.executeQuery();
-        while (nameRs.next()) {
-            String funcName = nameRs.getString(1);
+        List<String> funcSet = workerContext.getFunctionSet(rpTask.funcName);
+        if (funcSet == null) {
+            // Conservatively, replay it.
+            logger.debug("Does not find function set info, cannot skip.");
+            return false;
+        }
+        for (String funcName : funcSet) {
             if (workerContext.retroFunctionExists(funcName)) {
+                logger.debug("Contains retro modified function {}, cannot skip.", funcName);
                 return false;
             }
         }
-        nameRs.close();
-        namePs.close();
+
 
         // Check if an execution contains any writes, check all downstream functions.
-        // TODO: One optimization is to query once and check sequentially. Or introduce the idea of "workflow", index by the first function name.
-        String checkQuery = String.format("SELECT bool_and(%s) FROM %s WHERE %s = ?;",
-                ProvenanceBuffer.PROV_READONLY, ApiaryConfig.tableFuncInvocations,
-                ProvenanceBuffer.PROV_EXECUTIONID);
-        PreparedStatement pstmt = provConn.prepareStatement(checkQuery);
-        pstmt.setLong(1, rpTask.execId);
-        ResultSet rs = pstmt.executeQuery();
-        if (!rs.next()) {
-            logger.error("Failed to find readonly info for execution {}. Fall back to no skipping.", rpTask.execId);
-            rs.close();
-            pstmt.close();
-            return false;
-        }
-        boolean isReadOnly = rs.getBoolean(1);
-        rs.close();
-        pstmt.close();
+        boolean isReadOnly = workerContext.getFunctionSetReadOnly(rpTask.funcName);
+        logger.debug("Function set {} isReadonly? {}", rpTask.funcName, isReadOnly);
         if (!isReadOnly) {
             // If a request contains write but has nothing to do with the related table, we can skip it.
             // Check query metadata table and see if any transaction related to this execution touches any written tables.

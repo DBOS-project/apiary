@@ -93,6 +93,16 @@ public class ApiaryWorker {
         workerContext.registerFunction(name, type, function, isRetro);
     }
 
+    /**
+     * Register a list of a functions as an execution set -- they will be executed to serve one request. Mostly used for retroactive analysis.
+     * @param firstFunc     Name of the first function.
+     * @param isReadOnly    Is this set readOnly?
+     * @param funcNames     List of functions in the set, including the first function.
+     */
+    public void registerFunctionSet(String firstFunc, boolean isReadOnly, String... funcNames) {
+        workerContext.registerFunctionSet(firstFunc, isReadOnly, funcNames);
+    }
+
     public void startServing() {
         garbageCollectorThread = new Thread(this::garbageCollectorThread);
         garbageCollectorThread.start();

@@ -70,8 +70,13 @@ public class WorkerContext {
         functionSets.put(firstFunc, List.of(funcNames));
     }
 
+    // Try to find the function set info. If not found, return the first function name.
     public List<String> getFunctionSet(String firstFunc) {
-        return functionSets.get(firstFunc);
+        if (functionSets.containsKey(firstFunc)) {
+            return functionSets.get(firstFunc);
+        }
+        // Return the first function.
+        return List.of(firstFunc);
     }
 
     public boolean getFunctionSetReadOnly(String firstFunc) {

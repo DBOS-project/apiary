@@ -373,6 +373,7 @@ public class PostgresRetroReplay {
         namePs.close();
 
         // Check if an execution contains any writes, check all downstream functions.
+        // TODO: One optimization is to query once and check sequentially. Or introduce the idea of "workflow", index by the first function name.
         String checkQuery = String.format("SELECT bool_and(%s) FROM %s WHERE %s = ?;",
                 ProvenanceBuffer.PROV_READONLY, ApiaryConfig.tableFuncInvocations,
                 ProvenanceBuffer.PROV_EXECUTIONID);
@@ -392,6 +393,7 @@ public class PostgresRetroReplay {
             // TODO: need to improve this: the issue is that a function sometimes could become read-only if the write query is not executed. The best way is to do static analysis.
             // If a request contains write but has nothing to do with the related table, we can skip it.
             // Check query metadata table and see if any transaction related to this execution touches any written tables.
+            // TODO: run this query once to reduce overhead "select APIARY_EXECUTIONID, STRING_AGG(distinct APIARY_QUERY_TABLENAMES, ',') from ApiaryQueryMetadata AS r inner join FUNCINVOCATIONS AS f on r.APIARY_TRANSACTION_ID = f.APIARY_TRANSACTION_ID WHERE APIARY_ISREPLAY=0 group by APIARY_EXECUTIONID;"
             String tableQuery = String.format("select %s from %s AS r inner join %s AS f on r.%s = f.%s WHERE f.%s = ? and %s=0;",
                     ProvenanceBuffer.PROV_QUERY_TABLENAMES, ProvenanceBuffer.PROV_QueryMetadata, ApiaryConfig.tableFuncInvocations,
                     ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,

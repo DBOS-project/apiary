@@ -44,7 +44,7 @@ We provide an API for creating tables in Apiary, which uses
 conventional Postgres syntax:
 
 ```java
-PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort);
+PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 conn.createTable("WebsiteLogins", "Username VARCHAR(1000) PRIMARY KEY NOT NULL, Password VARCHAR(1000) NOT NULL");
 conn.createTable("WebsitePosts", "Sender VARCHAR(1000) NOT NULL, Receiver VARCHAR(1000) NOT NULL, PostText VARCHAR(10000) NOT NULL");
 ```
@@ -193,7 +193,10 @@ number of failed attempts:
 
 ```postgresql
 >> sudo docker exec -it apiary-postgres psql -h localhost -U postgres
-postgres=# SELECT COUNT(*) FROM WebsiteLoginsEvents WHERE username='peter' AND apiary_timestamp / 1000000 > (select extract(epoch from now()) - 300);
+postgres=# \c dbos
+You are now connected to database "dbos" as user "postgres".
+
+dbos=# SELECT COUNT(*) FROM WebsiteLoginsEvents WHERE username='peter' AND apiary_timestamp / 1000000 > (select extract(epoch from now()) - 300);
 count
 -------
     51
@@ -201,14 +204,3 @@ count
 ```
 We write the query like this because Apiary records timestamps in
 microseconds using Unix time, but Postgres reports timestamps in seconds.
-
-Another application of Apiary provenance is rollback.  Because we
-record all operations on data, we can roll back the database
-(and therefore all application state) to a previous time
-in case of corruption or attack.  For example, using our rollback
-script (source [here](src/main/java/org/dbos/apiary/postgresdemo/executable/RollbackExecutable.java)), you can roll back Nectar Network to
-any previous timestamp:
-
-    scripts/rollback.sh TIMESTAMP
-
-It will reset all application tables to the state right before the provided timestamp.

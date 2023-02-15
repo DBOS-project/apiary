@@ -333,7 +333,9 @@ public class PostgresConnection implements ApiaryConnection {
                 break;
             } catch (Exception e) {
                 try {
-                    rollback(ctxt);
+                    if (!ctxt.conn.isClosed()) {
+                        rollback(ctxt);
+                    }
                 } catch (SQLException ex) {
                     ex.printStackTrace();
                 }

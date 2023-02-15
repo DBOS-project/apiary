@@ -6,9 +6,7 @@ import org.dbos.apiary.procedures.postgres.GetApiaryClientID;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 public class WorkerContext {
@@ -24,6 +22,9 @@ public class WorkerContext {
 
     // Record if a function is read-only.
     private final Map<String, Boolean> functionReadOnly = new HashMap<>();
+
+    // Record tables a function may access.
+    private final Map<String, List<String>> functionAccessTables = new HashMap<>();
 
     private ApiaryConnection primaryConnection = null;
     private String primaryConnectionType;
@@ -54,9 +55,19 @@ public class WorkerContext {
         functionTypes.put(name, type);
     }
 
-    public void registerFunction(String name, String type, Callable<ApiaryFunction> function, boolean isRetro, boolean isReadOnly) {
+    public void registerFunction(String name, String type, Callable<ApiaryFunction> function, boolean isRetro) {
         registerFunction(name, type, function);
+        boolean isReadOnly;
+        List<String> accessTables;
+        try {
+            isReadOnly = function.call().isReadOnly();
+            accessTables = function.call().accessTables();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
+        }
         functionReadOnly.put(name, isReadOnly);
+        functionAccessTables.put(name, accessTables);
         if (isRetro) {
             // If isRetro is true, then we need to remember it in the map, so we can track which function is the modified ones.
             ApiaryFunction func = getFunction(name);
@@ -99,6 +110,26 @@ public class WorkerContext {
             }
         }
         return true;
+    }
+
+    public String[] getFunctionSetAccessTables(String firstFunc) {
+        List<String> funcs = functionSets.get(firstFunc);
+        Set<String> tables = new HashSet<>();
+        // Return table info of this function, if cannot find func set info.
+        if ((funcs == null) || funcs.isEmpty()) {
+            if (functionAccessTables.containsKey(firstFunc)) {
+                tables.addAll(functionAccessTables.get(firstFunc));
+            }
+            return tables.toArray(new String[0]);
+        }
+
+        // Check all functions in the function set.
+        for (String func : funcs) {
+            if (functionAccessTables.containsKey(func)) {
+                tables.addAll(functionAccessTables.get(func));
+            }
+        }
+        return tables.toArray(new String[0]);
     }
 
     public String getFunctionType(String function) {

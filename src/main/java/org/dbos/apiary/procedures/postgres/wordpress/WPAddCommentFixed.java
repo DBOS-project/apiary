@@ -5,6 +5,7 @@ import org.dbos.apiary.postgres.PostgresFunction;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 public class WPAddCommentFixed extends PostgresFunction {
     // The bug fix version of WP AddComment.
@@ -36,5 +37,13 @@ public class WPAddCommentFixed extends PostgresFunction {
         // Otherwise, add the comment to the post.
         ctxt.executeUpdate(addComment, commentId, postId, content, WPUtil.WP_STATUS_VISIBLE);
         return 0;
+    }
+
+    @Override
+    public boolean isReadOnly() { return false; }
+
+    @Override
+    public List<String> accessTables() {
+        return List.of(WPUtil.WP_POSTS_TABLE, WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_POSTMETA_TABLE);
     }
 }

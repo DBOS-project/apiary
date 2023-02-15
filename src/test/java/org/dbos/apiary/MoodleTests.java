@@ -9,7 +9,6 @@ import org.dbos.apiary.procedures.postgres.moodle.MDLForumInsert;
 import org.dbos.apiary.procedures.postgres.moodle.MDLIsSubscribed;
 import org.dbos.apiary.procedures.postgres.moodle.MDLSubscribeTxn;
 import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.junit.jupiter.api.*;
@@ -263,10 +262,10 @@ public class MoodleTests {
         apiaryWorker.shutdown(); // Stop the existing worker.
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
-        apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new, true, false);  // Register the new one.
+        apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new, true);  // Register the new one.
         // The old one.
-        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new, false, false);
-        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new, false, true);
+        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new, false);
+        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new, false);
 
         // No need to register function set, because we have a single function now.
         // apiaryWorker.registerFunctionSet("MDLIsSubscribed", "MDLIsSubscribed", "MDLForumInsert");

@@ -58,4 +58,11 @@ public class WPTrashPost extends PostgresFunction {
         return ctxt.apiaryQueueFunction("WPTrashComments", postId);
     }
 
+    @Override
+    public boolean isReadOnly() { return false; }
+
+    @Override
+    public List<String> accessTables() {
+        return List.of(WPUtil.WP_POSTS_TABLE, WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_POSTMETA_TABLE);
+    }
 }

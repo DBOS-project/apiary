@@ -2,6 +2,7 @@ package org.dbos.apiary.procedures.postgres.moodle;
 
 import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;
+import org.dbos.apiary.procedures.postgres.wordpress.WPUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +17,7 @@ public class MDLFetchSubscribers extends PostgresFunction {
     private static final Logger logger = LoggerFactory.getLogger(MDLFetchSubscribers.class);
 
     private static final String getSubscribers =
-            "SELECT UserId FROM ForumSubscription WHERE ForumId=?";
+            String.format("SELECT %s FROM %s WHERE %s=?", MDLUtil.MDL_USERID, MDLUtil.MDL_FORUMSUBS_TABLE, MDLUtil.MDL_FORUMID);
 
     public static int[] runFunction(PostgresContext ctxt,
                                     int forumId) throws SQLException {
@@ -38,5 +39,13 @@ public class MDLFetchSubscribers extends PostgresFunction {
         }
 
         return resList;
+    }
+
+    @Override
+    public boolean isReadOnly() { return true; }
+
+    @Override
+    public List<String> accessTables() {
+        return List.of(MDLUtil.MDL_FORUMSUBS_TABLE);
     }
 }

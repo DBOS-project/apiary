@@ -3,6 +3,7 @@ package org.dbos.apiary.function;
 import org.dbos.apiary.utilities.Utilities;
 
 import java.lang.reflect.Method;
+import java.util.List;
 
 /**
  * The base class for Apiary functions.
@@ -12,6 +13,14 @@ public interface ApiaryFunction {
 
     default String getClassName() {
         return this.getClass().getName();
+    }
+
+    default boolean isReadOnly() {
+        return false;
+    }
+
+    default List<String> accessTables() {
+        return List.of();
     }
 
     default FunctionOutput apiaryRunFunction(ApiaryContext ctxt, Object... input) throws Exception {

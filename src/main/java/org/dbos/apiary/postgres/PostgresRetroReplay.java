@@ -112,17 +112,8 @@ public class PostgresRetroReplay {
         Statement inputStmt = provConn.createStatement();
         ResultSet inputRs = inputStmt.executeQuery(inputQuery);
 
-        // This query finds all accessed tables of each request. Used for selective replay.
-        String accessQuery = String.format("SELECT %s, STRING_AGG(distinct %s, ',') from %s AS r inner join %s AS f on r.%s = f.%s WHERE %s=0 group by %s;",
-                ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_QUERY_TABLENAMES, ProvenanceBuffer.PROV_QueryMetadata, ApiaryConfig.tableFuncInvocations,
-                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
-                ProvenanceBuffer.PROV_ISREPLAY, ProvenanceBuffer.PROV_EXECUTIONID
-                );
-        Statement accessStmt = provConn.createStatement();
-        ResultSet accessRs = accessStmt.executeQuery(accessQuery);
-
-        // Cache accessed tables of a request. <execId, String (comma separted table names)>
-        Map<Long, String> execIdAccessedTables = new ConcurrentHashMap<>();
+        // Cache accessed tables of a function set. <firstFuncName, String[]>
+        Map<String, String[]> funcSetAccessTables = new ConcurrentHashMap<>();
 
         // Cache inputs of the original execution. <execId, input>
         long currInputExecId = -1;
@@ -197,7 +188,7 @@ public class PostgresRetroReplay {
                     Task rpTask = new Task(resExecId, resFuncId, resName, currInputs);
 
                     // Check if we can skip this function execution. If so, add to the skip list. Otherwise, execute the replay.
-                    boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds, replayMode, replayWrittenTables, accessRs, execIdAccessedTables);
+                    boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds, replayMode, replayWrittenTables, funcSetAccessTables);
 
                     if (isSkipped && (lastNonSkippedExecId != -1)) {
                         // Do not skip the first execution.
@@ -341,15 +332,13 @@ public class PostgresRetroReplay {
         inputStmt.close();
         commitOrderRs.close();
         commitOrderStmt.close();
-        accessRs.close();
-        accessStmt.close();
         threadPool.shutdown();
         threadPool.awaitTermination(10, TimeUnit.SECONDS);
         return output;
     }
 
     // Return true if the function execution can be skipped.
-    private static boolean checkSkipFunc(WorkerContext workerContext, Task rpTask, Set<Long> skippedExecIds, int replayMode, Set<String> replayWrittenTables, ResultSet accessRs, Map<Long, String> execIdAccessedTables) throws SQLException {
+    private static boolean checkSkipFunc(WorkerContext workerContext, Task rpTask, Set<Long> skippedExecIds, int replayMode, Set<String> replayWrittenTables, Map<String, String[]> funcSetAccessTables) throws SQLException {
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
             // Do not skip if we are replaying everything.
             return false;
@@ -390,25 +379,14 @@ public class PostgresRetroReplay {
         if (!isReadOnly) {
             // If a request contains write but has nothing to do with the related table, we can skip it.
             // Check query metadata table and see if any transaction related to this execution touches any written tables.
-            String tableStr = "";
-            if (execIdAccessedTables.containsKey(rpTask.execId)) {
-                tableStr = execIdAccessedTables.get(rpTask.execId);
-                execIdAccessedTables.remove(rpTask.execId); // Clean up the task.
+            String[] tables = {};
+            if (funcSetAccessTables.containsKey(rpTask.funcName)) {
+                tables = funcSetAccessTables.get(rpTask.funcName);
             } else {
-                // Try to find accessed tables through result set.
-                while (accessRs.next()) {
-                    long tmpId = accessRs.getLong(1);
-                    String tmpStr = accessRs.getString(2);
-                    if (tmpId == rpTask.execId) {
-                        tableStr = tmpStr;
-                        break;
-                    } else {
-                        execIdAccessedTables.put(tmpId, tmpStr);
-                    }
-                }
+                tables = workerContext.getFunctionSetAccessTables(rpTask.funcName);
+                funcSetAccessTables.put(rpTask.funcName, tables);
             }
 
-            String[] tables = tableStr.split(",");
             if (tables.length < 1) {
                 // Conservatively, cannot skip.
                 return false;

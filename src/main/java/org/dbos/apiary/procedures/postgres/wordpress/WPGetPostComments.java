@@ -41,4 +41,12 @@ public class WPGetPostComments extends PostgresFunction {
 
         return resList.toArray(new String[0]);
     }
+
+    @Override
+    public boolean isReadOnly() { return true; }
+
+    @Override
+    public List<String> accessTables() {
+        return List.of(WPUtil.WP_POSTS_TABLE, WPUtil.WP_COMMENTS_TABLE);
+    }
 }

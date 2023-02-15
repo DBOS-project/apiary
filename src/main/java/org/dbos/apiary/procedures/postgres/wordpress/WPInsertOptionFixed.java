@@ -4,6 +4,7 @@ import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;
 
 import java.sql.SQLException;
+import java.util.List;
 
 // This function fixes WPInsertOption function, by using ON CONFLICT to avoid failures.
 public class WPInsertOptionFixed extends PostgresFunction {
@@ -17,5 +18,13 @@ public class WPInsertOptionFixed extends PostgresFunction {
     public static int runFunction(PostgresContext ctxt, String optionName, String optionValue, String isAutoLoad) throws SQLException {
         ctxt.executeUpdate(insertOption, optionName, optionValue, isAutoLoad);
         return 0;
+    }
+
+    @Override
+    public boolean isReadOnly() { return false; }
+
+    @Override
+    public List<String> accessTables() {
+        return List.of(WPUtil.WP_OPTIONS_TABLE);
     }
 }

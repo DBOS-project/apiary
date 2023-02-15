@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 public class WPUntrashPost extends PostgresFunction {
     private static final Logger logger = LoggerFactory.getLogger(WPUntrashPost.class);
@@ -38,6 +39,14 @@ public class WPUntrashPost extends PostgresFunction {
         // Clean up metadata.
         ctxt.executeUpdate(deleteMeta, postId, WPUtil.WP_TRASH_KEY);
         return 0;
+    }
+
+    @Override
+    public boolean isReadOnly() { return false; }
+
+    @Override
+    public List<String> accessTables() {
+        return List.of(WPUtil.WP_POSTS_TABLE, WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_POSTMETA_TABLE);
     }
 
 }

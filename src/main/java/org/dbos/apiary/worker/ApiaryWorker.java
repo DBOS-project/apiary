@@ -89,8 +89,8 @@ public class ApiaryWorker {
         workerContext.registerFunction(name, type, function);
     }
 
-    public void registerFunction(String name, String type, Callable<ApiaryFunction> function, boolean isRetro, boolean isReadOnly) {
-        workerContext.registerFunction(name, type, function, isRetro, isReadOnly);
+    public void registerFunction(String name, String type, Callable<ApiaryFunction> function, boolean isRetro) {
+        workerContext.registerFunction(name, type, function, isRetro);
     }
 
     /**

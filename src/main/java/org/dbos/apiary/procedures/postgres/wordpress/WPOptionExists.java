@@ -5,6 +5,7 @@ import org.dbos.apiary.postgres.PostgresFunction;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 public class WPOptionExists extends PostgresFunction {
     private static final String getOptionValue = String.format("SELECT %s FROM %s WHERE %s = ?",
@@ -19,5 +20,13 @@ public class WPOptionExists extends PostgresFunction {
 
         // Otherwise, call the InsertOption function.
         return ctxt.apiaryQueueFunction("WPInsertOption", optionName, optionValue, isAutoLoad);
+    }
+
+    @Override
+    public boolean isReadOnly() { return true; }
+
+    @Override
+    public List<String> accessTables() {
+        return List.of(WPUtil.WP_OPTIONS_TABLE);
     }
 }

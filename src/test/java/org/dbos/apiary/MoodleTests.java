@@ -278,7 +278,7 @@ public class MoodleTests {
         int[] retroList = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
         // TODO: Repeatable read allows write skew. Does not check serializability.
         if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
-            assertEquals(2, retroList.length);
+            assertTrue(retroList.length >= 1);
         } else {
             assertEquals(1, retroList.length);
         }

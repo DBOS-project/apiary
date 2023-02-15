@@ -8,6 +8,7 @@ import org.dbos.apiary.utilities.Utilities;
 
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 public class WorkerContext {
     public final Map<String, ApiarySecondaryConnection> secondaryConnections = new HashMap<>();
@@ -58,7 +59,7 @@ public class WorkerContext {
         try {
             isReadOnly = function.call().isReadOnly();
             accessTables = function.call().accessTables();
-            accessTables.replaceAll(String::toUpperCase);
+            accessTables = accessTables.stream().map(String::toUpperCase).collect(Collectors.toList());
         } catch (Exception e) {
             e.printStackTrace();
             return;

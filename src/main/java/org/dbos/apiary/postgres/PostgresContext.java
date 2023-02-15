@@ -170,7 +170,7 @@ public class PostgresContext extends ApiaryContext {
             return;
         }
 
-        if ((ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) ||
+        if ((ApiaryConfig.captureMetadata && (this.workerContext.provBuff != null)) ||
                 (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue())) {
             // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
             int querySeqNum = txc.querySeqNum.getAndIncrement();
@@ -194,7 +194,6 @@ public class PostgresContext extends ApiaryContext {
             long timestamp = Utilities.getMicroTimestamp();
             int numCol = rsmd.getColumnCount();
             // Record query metadata.
-            // TODO: maybe we should record metaata before query execution. So we know what happened even if the query failed.
             Object[] metaData = new Object[5];
             metaData[0] = txc.txID;
             metaData[1] = querySeqNum;
@@ -204,17 +203,21 @@ public class PostgresContext extends ApiaryContext {
             workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
 
             // Record provenance data.
-            while (rs.next()) {
-                Object[] rowData = new Object[numCol + 4];
-                rowData[0] = txc.txID;
-                rowData[1] = timestamp;
-                rowData[2] = exportOperation;
-                rowData[3] = querySeqNum;
-                for (int i = 1; i <= numCol; i++) {
-                    rowData[i + 3] = rs.getObject(i);
+            if (ApiaryConfig.captureUpdates) {
+                while (rs.next()) {
+                    Object[] rowData = new Object[numCol + 4];
+                    rowData[0] = txc.txID;
+                    rowData[1] = timestamp;
+                    rowData[2] = exportOperation;
+                    rowData[3] = querySeqNum;
+                    for (int i = 1; i <= numCol; i++) {
+                        rowData[i + 3] = rs.getObject(i);
+                    }
+                    workerContext.provBuff.addEntry(tableName + "Events", rowData);
                 }
-                workerContext.provBuff.addEntry(tableName + "Events", rowData);
             }
+            rs.close();
+            pstmt.close();
         } else {
             // First, prepare statement. Then, execute.
             PreparedStatement pstmt = conn.prepareStatement(procedure);
@@ -254,7 +257,7 @@ public class PostgresContext extends ApiaryContext {
             prepareStatement(pstmt, input);
         }
         ResultSet rs = pstmt.executeQuery();
-        if (workerContext.provBuff != null) {
+        if ((workerContext.provBuff != null) && ApiaryConfig.captureMetadata) {
             int querySeqNum = txc.querySeqNum.getAndIncrement();
             Object[] metaData = new Object[5];
             metaData[0] = txc.txID;

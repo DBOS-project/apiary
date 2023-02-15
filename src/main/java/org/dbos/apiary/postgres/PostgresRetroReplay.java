@@ -15,7 +15,7 @@ import java.util.concurrent.*;
 
 public class PostgresRetroReplay {
     private static final Logger logger = LoggerFactory.getLogger(PostgresRetroReplay.class);
-    private static int numReplayThreads = 64;
+    private static int numReplayThreads = 10;
 
     public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, long endExecId, int replayMode) throws Exception {
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
@@ -143,9 +143,8 @@ public class PostgresRetroReplay {
         long lastNonSkippedExecId = -1;  // The last not-skipped execution ID. Useful to decide the final output.
 
         // A connection pool to the backend database. For concurrent executions.
-        int connPoolSize = 10;  // Connection pool size. TODO: tune this.
         Queue<Connection> connPool = new ConcurrentLinkedQueue<>();
-        for (int i = 0; i < connPoolSize; i++) {
+        for (int i = 0; i < numReplayThreads; i++) {
             connPool.add(workerContext.getPrimaryConnection().createNewConnection());
         }
 
@@ -224,7 +223,6 @@ public class PostgresRetroReplay {
                 } else {
                     break;  // Need to wait until nextCommitTxid to commit.
                 }
-
                 if (!startOrderRs.next()) {
                     // No more to process.
                     break;

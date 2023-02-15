@@ -9,8 +9,9 @@ public class ApiaryConfig {
     public static final long statelessTxid = 1L;
     public static final String tableFuncInvocations = "FUNCINVOCATIONS";
 
-    public static Boolean captureUpdates = true;
-    public static Boolean captureReads = true;
+    public static Boolean captureUpdates = false;
+    public static Boolean captureReads = false;
+    public static Boolean captureMetadata = true;
     public static final String provenanceDefaultAddress = "localhost";
 
     public static final int REPEATABLE_READ = 1;

@@ -211,7 +211,7 @@ public class WordPressTests {
             // Launch concurrent tasks.
             Future<Integer> trashResFut = threadPool.submit(new WpTask(postIds, -1, "trashpost"));
             // Add arbitrary delay.
-            Thread.sleep(ThreadLocalRandom.current().nextInt(5));
+            Thread.sleep(ThreadLocalRandom.current().nextInt(1, 5));
             Future<Integer> commentResFut = threadPool.submit(new WpTask(postIds, commentIds, "test comment concurrent " + commentIds));
 
             int trashRes, commentRes;
@@ -292,10 +292,10 @@ public class WordPressTests {
         conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
 
         strAryRes = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getStringArray();
-        assertEquals(1, strAryRes.length);
-
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+
+        assertEquals(1, strAryRes.length);
 
         // Retro replay again, but use selective replay.
         conn.truncateTable(WPUtil.WP_POSTS_TABLE, false);

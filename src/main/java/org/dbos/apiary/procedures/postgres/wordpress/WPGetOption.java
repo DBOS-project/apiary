@@ -5,6 +5,7 @@ import org.dbos.apiary.postgres.PostgresFunction;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 public class WPGetOption extends PostgresFunction {
 
@@ -14,9 +15,17 @@ public class WPGetOption extends PostgresFunction {
     public static String runFunction(PostgresContext ctxt, String optionName) throws SQLException {
         ResultSet rs = ctxt.executeQuery(getOptionValue, optionName);
         if (!rs.next()) {
-            return "";
+            return "none";
         }
         String optionValue = rs.getString(WPUtil.WP_OPTION_VALUE);
         return optionValue;
+    }
+
+    @Override
+    public boolean isReadOnly() { return true; }
+
+    @Override
+    public List<String> readTables() {
+        return List.of(WPUtil.WP_OPTIONS_TABLE);
     }
 }

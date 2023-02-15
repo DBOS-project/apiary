@@ -28,4 +28,12 @@ public class WPCheckCommentStatus extends PostgresFunction {
         }
         return statusList.toArray(new String[0]);
     }
+
+    @Override
+    public boolean isReadOnly() { return true; }
+
+    @Override
+    public List<String> readTables() {
+        return List.of(WPUtil.WP_COMMENTS_TABLE);
+    }
 }

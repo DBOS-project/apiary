@@ -27,7 +27,6 @@ public class WPTrashPost extends PostgresFunction {
     // Return -1 on error, return 0 on no queued function, return a queued function if it has comments.
     public static Object runFunction(PostgresContext ctxt, int postId) throws SQLException {
         ResultSet r = ctxt.executeQuery(checkPost, postId);
-
         if (!r.next()) {
             logger.error("Post {} does not exist. Cannot trash it.", postId);
             return -1;
@@ -58,4 +57,16 @@ public class WPTrashPost extends PostgresFunction {
         return ctxt.apiaryQueueFunction("WPTrashComments", postId);
     }
 
+    @Override
+    public boolean isReadOnly() { return false; }
+
+    @Override
+    public List<String> readTables() {
+        return List.of(WPUtil.WP_POSTS_TABLE, WPUtil.WP_COMMENTS_TABLE);
+    }
+
+    @Override
+    public List<String> writeTables() {
+        return List.of(WPUtil.WP_POSTS_TABLE, WPUtil.WP_POSTMETA_TABLE);
+    }
 }

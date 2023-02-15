@@ -277,7 +277,11 @@ public class MoodleTests {
         conn.truncateTable("ForumSubscription", false);
         int[] retroList = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
         // TODO: Repeatable read allows write skew. Does not check serializability.
-        assertTrue((retroList.length == 1) || (retroList.length == 2));
+        if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
+            assertEquals(2, retroList.length);
+        } else {
+            assertEquals(1, retroList.length);
+        }
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         // Retro replay again, but now we enable selective replay.

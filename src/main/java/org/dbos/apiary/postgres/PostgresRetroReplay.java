@@ -260,7 +260,7 @@ public class PostgresRetroReplay {
             } else {
                 try {
                     // Wait for the task to finish.
-                    int res = commitPgRpTask.resFut.get(5, TimeUnit.SECONDS);
+                    int res = commitPgRpTask.resFut.get(2, TimeUnit.SECONDS);
                     if (res == 0) {
                         if (commitPgRpTask.fo.errorMsg.isEmpty()) {
                             commitPgRpTask.conn.commit();
@@ -281,13 +281,11 @@ public class PostgresRetroReplay {
                             try {
                                 commitPgRpTask.conn.rollback();
                                 logger.debug("Rolled back failed to commit transaction.");
-
-                                // TODO: this part may also cause deadlock because the new transaction may depend on other uncommitted ones. Need to process it async. The current heuristic is that the bug fix shouldn't cause deadlock, which indicates conflicting updates.
                                 commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, commitPgRpTask, replayMode, pendingTasks,
                                         execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
-                                commitPgRpTask.resFut.get(10, TimeUnit.SECONDS);
+                                commitPgRpTask.resFut.get(2, TimeUnit.SECONDS);
                                 commitPgRpTask.conn.commit();
-                                logger.debug("Committed retried transaction.");
+                                logger.debug("Committed retried PSQLException transaction.");
                             } catch (Exception ex) {
                                 ex.printStackTrace();
                                 throw new RuntimeException("Unrecoverable error during retry.");
@@ -295,6 +293,20 @@ public class PostgresRetroReplay {
                         } else {
                             logger.error("Unrecoverable error. Failed to commit {}, skipped. Error message: {}", nextCommitTxid, e.getMessage());
                             throw new RuntimeException("Unrecoverable error during replay.");
+                        }
+                    } else if (e instanceof  TimeoutException) {
+                        // Timeout due to blocking, has to terminate it and retry.
+                        logger.debug("Timeout, retry transaction {} ", nextCommitTxid);
+                        try {
+                            commitPgRpTask.conn.rollback();
+                            commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, commitPgRpTask, replayMode, pendingTasks,
+                                    execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
+                            commitPgRpTask.resFut.get(2, TimeUnit.SECONDS);
+                            commitPgRpTask.conn.commit();
+                            logger.debug("Committed retried timed out transaction.");
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                            throw new RuntimeException("Unrecoverable error during retry.");
                         }
                     } else {
                         logger.debug("Other failures during replay transaction {}, cannot commit: {} - {}", nextCommitTxid, e.getClass().getName(), e.getMessage());

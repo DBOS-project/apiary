@@ -71,7 +71,6 @@ class PostgresReplayCallable implements Callable<Integer> {
             pendingTasks.putIfAbsent(rpTask.task.execId, new ConcurrentHashMap<>());
         } else {
             // Skip the task if it is absent. Because we allow reducing the number of called function
-            // (currently does not support adding more).
             if (!pendingTasks.containsKey(rpTask.task.execId) || !pendingTasks.get(rpTask.task.execId).containsKey(rpTask.task.functionID)) {
                 logger.debug("Skip function ID {}, not found in pending tasks.", rpTask.task.functionID);
                 return -1;

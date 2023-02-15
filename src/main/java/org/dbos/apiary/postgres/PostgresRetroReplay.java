@@ -69,11 +69,19 @@ public class PostgresRetroReplay {
         // Maintain a pool of connections to the backend database to concurrently execute transactions.
 
         // This query finds the starting order of transactions.
-        String startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
+        // Replay mode only consider committed transactions.
+        String startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;",
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
                 ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
-                ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        if (workerContext.hasRetroFunctions()) {
+            // Include abroted transactions.
+            startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
+                    ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
+                    ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                    ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE,
+                    ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        }
         Statement startOrderStmt = provConn.createStatement();
         ResultSet startOrderRs = startOrderStmt.executeQuery(startOrderQuery);
         if (!startOrderRs.next()) {
@@ -82,12 +90,19 @@ public class PostgresRetroReplay {
         }
 
         // This query finds the commit order of transactions.
-        String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
+        String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;",
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
                 ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
-                ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE,
                 ProvenanceBuffer.PROV_END_TIMESTAMP);
+        if (workerContext.hasRetroFunctions()) {
+            commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
+                    ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
+                    ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
+                    ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                    ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE,
+                    ProvenanceBuffer.PROV_END_TIMESTAMP);
+        }
         Statement commitOrderStmt = provConn.createStatement();
         ResultSet commitOrderRs = commitOrderStmt.executeQuery(commitOrderQuery);
         // Next commit transaction ID, the next to be committed.
@@ -224,19 +239,11 @@ public class PostgresRetroReplay {
             for (PostgresReplayTask pgRpTask : committedTasks) {
                 pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
                         execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
-                // A replay without any modified functions should never be blocked, so we wait for it to finish.
-                // But retro mode could lead to new blocking scenarios, so we don't throw an error.
-                try {
-                    pgRpTask.resFut.get(5, TimeUnit.SECONDS);
-                } catch (Exception e) {
-                    if (!workerContext.hasRetroFunctions()) {
-                        logger.error("Unrecoverable error. Failed to run transaction {}. Error message: {}", nextCommitTxid, e.getMessage());
-                        throw new RuntimeException("Unrecoverable error during replay committed tasks.");
-                    }
-                }
+                // A replay without any modified functions should never be blocked, so we don't need to wait.
             }
             committedTasks.clear();
 
+            // We should only have aborted tasks if under retro mode.
             for (PostgresReplayTask pgRpTask : abortedTasks) {
                 pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
                         execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
@@ -312,7 +319,37 @@ public class PostgresRetroReplay {
         }
 
         if (!pendingTasks.isEmpty()) {
-            throw new RuntimeException("Still more pending tasks to be resolved! Currently do not support adding transactions.");
+            // Execute everything left to be processed.
+            // TODO: a better way to execute new tasks?
+            logger.info("Process unfinished tasks.");
+            Connection currConn = connPool.poll();
+            for (long execId : pendingTasks.keySet()) {
+                Map<Long, Task> execFuncs = pendingTasks.get(execId);
+                while (!execFuncs.isEmpty()) {
+                    for (long funcId : execFuncs.keySet()) {
+                        Task rpTask = execFuncs.get(funcId);
+                        PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
+                        pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
+                                execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
+                        try {
+                            int res = pgRpTask.resFut.get(5, TimeUnit.SECONDS);
+                            if (res == 0) {
+                                if (pgRpTask.fo.errorMsg.isEmpty()) {
+                                    currConn.commit();
+                                } else {
+                                    logger.debug("Skip commit {} due to Error message: {}", nextCommitTxid, pgRpTask.fo.errorMsg);
+                                }
+                            } else {
+                                logger.debug("Replayed task failed or skipped for transaction {}. result: {}", nextCommitTxid, res);
+                            }
+                        } catch (Exception e) {
+                            logger.debug("Other failures during replay transaction {}, cannot commit: {} - {}", nextCommitTxid, e.getClass().getName(), e.getMessage());
+                            throw new RuntimeException("Unrecoverable error during commit.");
+                        }
+                    }
+                }
+            }
+            connPool.add(currConn);
         }
 
         Object output = execIdToFinalOutput.get(lastNonSkippedExecId);  // The last non-skipped execution ID.

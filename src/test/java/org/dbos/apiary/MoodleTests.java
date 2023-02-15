@@ -39,13 +39,17 @@ public class MoodleTests {
     public static void testConnection() {
         assumeTrue(TestUtils.testPostgresConnection());
         // Set the isolation level to serializable.
-        ApiaryConfig.isolationLevel = ApiaryConfig.SERIALIZABLE;
+        ApiaryConfig.isolationLevel = ApiaryConfig.REPEATABLE_READ;
 
         // Disable XDB transactions.
         ApiaryConfig.XDBTransactions = false;
 
-        ApiaryConfig.captureReads = true;
-        ApiaryConfig.captureUpdates = true;
+        // Disable provenance tracking.
+        ApiaryConfig.captureReads = false;
+        ApiaryConfig.captureUpdates = false;
+        ApiaryConfig.captureMetadata = false;
+
+        // Record Input.
         ApiaryConfig.recordInput = true;
     }
 

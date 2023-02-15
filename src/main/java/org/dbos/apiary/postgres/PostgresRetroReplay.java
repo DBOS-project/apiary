@@ -295,18 +295,14 @@ public class PostgresRetroReplay {
                             throw new RuntimeException("Unrecoverable error during replay.");
                         }
                     } else if (e instanceof  TimeoutException) {
-                        // Timeout due to blocking, has to terminate it and retry.
-                        logger.debug("Timeout, retry transaction {} ", nextCommitTxid);
+                        // Timeout due to blocking (write conflicts), has to terminate it.
+                        logger.debug("Transaction {} time out, may due to write conflicts.", nextCommitTxid);
                         try {
                             commitPgRpTask.conn.rollback();
-                            commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, commitPgRpTask, replayMode, pendingTasks,
-                                    execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
-                            commitPgRpTask.resFut.get(2, TimeUnit.SECONDS);
-                            commitPgRpTask.conn.commit();
-                            logger.debug("Committed retried timed out transaction.");
+                            logger.debug("Rolled back timeout transaction");
                         } catch (Exception ex) {
                             ex.printStackTrace();
-                            throw new RuntimeException("Unrecoverable error during retry.");
+                            throw new RuntimeException("Unrecoverable error during aborting timed out transaction.");
                         }
                     } else {
                         logger.debug("Other failures during replay transaction {}, cannot commit: {} - {}", nextCommitTxid, e.getClass().getName(), e.getMessage());

@@ -58,6 +58,7 @@ public class WorkerContext {
         try {
             isReadOnly = function.call().isReadOnly();
             accessTables = function.call().accessTables();
+            accessTables.replaceAll(String::toUpperCase);
         } catch (Exception e) {
             e.printStackTrace();
             return;

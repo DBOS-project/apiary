@@ -386,7 +386,6 @@ public class PostgresRetroReplay {
                 tables = workerContext.getFunctionSetAccessTables(rpTask.funcName);
                 funcSetAccessTables.put(rpTask.funcName, tables);
             }
-
             if (tables.length < 1) {
                 // Conservatively, cannot skip.
                 return false;

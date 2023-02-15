@@ -188,7 +188,7 @@ public class PostgresContext extends ApiaryContext {
 
             // If it's a selective replay, then record tableName in the write set.
             if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
-                this.replayWrittenTables.add(tableName);
+                this.replayWrittenTables.add(tableName.toUpperCase());
                 return;
             }
             long timestamp = Utilities.getMicroTimestamp();

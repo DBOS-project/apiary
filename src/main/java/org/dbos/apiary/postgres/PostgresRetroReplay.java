@@ -298,8 +298,9 @@ public class PostgresRetroReplay {
                         // Timeout due to blocking (write conflicts), has to terminate it.
                         logger.debug("Transaction {} time out, may due to write conflicts.", nextCommitTxid);
                         try {
-                            commitPgRpTask.conn.rollback();
+                            commitPgRpTask.conn.abort(Runnable::run);
                             logger.debug("Rolled back timeout transaction");
+                            commitPgRpTask.conn = workerContext.getPrimaryConnection().createNewConnection();
                         } catch (Exception ex) {
                             ex.printStackTrace();
                             throw new RuntimeException("Unrecoverable error during aborting timed out transaction.");

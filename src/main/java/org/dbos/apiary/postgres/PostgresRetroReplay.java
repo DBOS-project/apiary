@@ -318,8 +318,8 @@ public class PostgresRetroReplay {
             throw new RuntimeException("Still more pending transactions to be committed!");
         }
 
-        if (!pendingTasks.isEmpty()) {
-            // Execute everything left to be processed.
+        if (!pendingTasks.isEmpty() && workerContext.hasRetroFunctions()) {
+            // Execute everything left to be processed, only in retro mode.
             // TODO: a better way to execute new tasks?
             logger.info("Process unfinished tasks.");
             Connection currConn = connPool.poll();

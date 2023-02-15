@@ -53,10 +53,6 @@ public class WorkerContext {
     public void registerFunction(String name, String type, Callable<ApiaryFunction> function) {
         functions.put(name, function);
         functionTypes.put(name, type);
-    }
-
-    public void registerFunction(String name, String type, Callable<ApiaryFunction> function, boolean isRetro) {
-        registerFunction(name, type, function);
         boolean isReadOnly;
         List<String> accessTables;
         try {
@@ -68,6 +64,10 @@ public class WorkerContext {
         }
         functionReadOnly.put(name, isReadOnly);
         functionAccessTables.put(name, accessTables);
+    }
+
+    public void registerFunction(String name, String type, Callable<ApiaryFunction> function, boolean isRetro) {
+        registerFunction(name, type, function);
         if (isRetro) {
             // If isRetro is true, then we need to remember it in the map, so we can track which function is the modified ones.
             ApiaryFunction func = getFunction(name);

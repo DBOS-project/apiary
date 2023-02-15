@@ -379,7 +379,7 @@ public class PostgresRetroReplay {
         if (!isReadOnly) {
             // If a request contains write but has nothing to do with the related table, we can skip it.
             // Check query metadata table and see if any transaction related to this execution touches any written tables.
-            String[] tables = {};
+            String[] tables;
             if (funcSetAccessTables.containsKey(rpTask.funcName)) {
                 tables = funcSetAccessTables.get(rpTask.funcName);
             } else {

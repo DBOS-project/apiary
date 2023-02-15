@@ -303,8 +303,8 @@ public class WordPressTests {
         conn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
 
         intRes = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.SELECTIVE.getValue()).getInt();
-        assertEquals(0, intRes); // Should successfully untrashed the last post.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
+        assertEquals(0, intRes); // Should successfully untrashed the last post.
     }
 
     @Test

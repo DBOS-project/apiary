@@ -31,14 +31,14 @@ public class TestUtils {
     }
 
     public static boolean testPostgresConnection() {
+        // Set to the same port for testing.
+        ApiaryConfig.provenancePort = ApiaryConfig.postgresPort;
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
             return false;
         }
-        // Set to the same port for testing.
-        ApiaryConfig.provenancePort = ApiaryConfig.postgresPort;
         return true;
     }
 

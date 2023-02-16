@@ -297,7 +297,7 @@ public class ProvenanceBuffer {
             pstmt.setLong(colIndex, smallVal);
         } else if (colType == Types.VARCHAR) {
             pstmt.setString(colIndex, val.toString());
-        } else if (colType == Types.BINARY) {
+        } else if ((colType == Types.BINARY) || (colType == Types.VARBINARY)) {
             // The bytea type.
             pstmt.setBytes(colIndex, (byte[]) val);
         } else if ((colType == Types.BOOLEAN) || (colType == Types.BIT)) {

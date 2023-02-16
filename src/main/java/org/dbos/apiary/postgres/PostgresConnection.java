@@ -102,7 +102,7 @@ public class PostgresConnection implements ApiaryConnection {
                         + ProvenanceBuffer.PROV_APIARY_TIMESTAMP + " BIGINT NOT NULL, "
                         + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
                         + ProvenanceBuffer.PROV_FUNCID + " BIGINT NOT NULL, "
-                        + ProvenanceBuffer.PROV_ISREPLAY + " SMALLINT NOT NULL, "
+                        + ProvenanceBuffer.PROV_ISREPLAY + " BIGINT NOT NULL, "
                         + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(256) NOT NULL, "
                         + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(512) NOT NULL, "
                         + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
@@ -122,7 +122,7 @@ public class PostgresConnection implements ApiaryConnection {
         if (ApiaryConfig.recordInput) {
             // Record input for replay. Only need to record the input of the first function, so we only need to use execID to find the arguments.
             createTable(provConn, ApiaryConfig.tableRecordedInputs,
-                    ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT PRIMARY KEY, " +
+                    ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL PRIMARY KEY, " +
                             ProvenanceBuffer.PROV_REQ_BYTES + " BYTEA NOT NULL");
         }
 

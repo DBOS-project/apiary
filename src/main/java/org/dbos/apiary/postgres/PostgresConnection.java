@@ -89,7 +89,7 @@ public class PostgresConnection implements ApiaryConnection {
 
         this.provConnection = ThreadLocal.withInitial(() -> ProvenanceBuffer.createProvConnection(provDBType, provAddress));
 
-        createTable(connection.get(), ProvenanceBuffer.PROV_ApiaryMetadata,
+        createTable(this.bgConnection.get(), ProvenanceBuffer.PROV_ApiaryMetadata,
                 "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
 
         Connection provConn = provConnection.get();

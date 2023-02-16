@@ -181,7 +181,7 @@ public class PostgresConnection implements ApiaryConnection {
             ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
             ResultSetMetaData rsmd = r.getMetaData();
             StringBuilder provTable = new StringBuilder(String.format(
-                    "%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL, ",
+                    "%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL ",
                     ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
                     ProvenanceBuffer.PROV_APIARY_TIMESTAMP, ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE,
                     ProvenanceBuffer.PROV_QUERY_SEQNUM));
@@ -191,6 +191,7 @@ public class PostgresConnection implements ApiaryConnection {
                 provTable.append(" ");
                 provTable.append(rsmd.getColumnTypeName(i + 1));
             }
+            logger.info(provTable.toString());
             createTable(provConn, tableName + "Events", provTable.toString());
             r.close();
             s.close();

@@ -191,7 +191,6 @@ public class PostgresConnection implements ApiaryConnection {
                 provTable.append(" ");
                 provTable.append(rsmd.getColumnTypeName(i + 1));
             }
-            logger.info(provTable.toString());
             createTable(provConn, tableName + "Events", provTable.toString());
             r.close();
             s.close();

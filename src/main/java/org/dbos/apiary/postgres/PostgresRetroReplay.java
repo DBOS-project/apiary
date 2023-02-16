@@ -240,6 +240,7 @@ public class PostgresRetroReplay {
                 pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
                         execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
                 // A replay without any modified functions should never be blocked, so we don't need to wait.
+                // TODO: a minor issue is that submitted tasks are not guaranteed to start transaction in the same order. It does not affect correctness.
             }
             committedTasks.clear();
 
@@ -260,7 +261,7 @@ public class PostgresRetroReplay {
             } else {
                 try {
                     // Wait for the task to finish.
-                    int res = commitPgRpTask.resFut.get(2, TimeUnit.SECONDS);
+                    int res = commitPgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
                     if (res == 0) {
                         if (commitPgRpTask.fo.errorMsg.isEmpty()) {
                             commitPgRpTask.conn.commit();
@@ -283,7 +284,7 @@ public class PostgresRetroReplay {
                                 logger.debug("Rolled back failed to commit transaction.");
                                 commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, commitPgRpTask, replayMode, pendingTasks,
                                         execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
-                                commitPgRpTask.resFut.get(2, TimeUnit.SECONDS);
+                                commitPgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
                                 commitPgRpTask.conn.commit();
                                 logger.debug("Committed retried PSQLException transaction.");
                             } catch (Exception ex) {
@@ -296,6 +297,7 @@ public class PostgresRetroReplay {
                         }
                     } else if (e instanceof  TimeoutException) {
                         // Timeout due to blocking (write conflicts), has to terminate it.
+                        // TODO: maybe support retry?
                         logger.debug("Transaction {} time out, may due to write conflicts.", nextCommitTxid);
                         try {
                             commitPgRpTask.conn.abort(Runnable::run);
@@ -341,7 +343,7 @@ public class PostgresRetroReplay {
                         pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
                                 execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
                         try {
-                            int res = pgRpTask.resFut.get(5, TimeUnit.SECONDS);
+                            int res = pgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
                             if (res == 0) {
                                 if (pgRpTask.fo.errorMsg.isEmpty()) {
                                     currConn.commit();

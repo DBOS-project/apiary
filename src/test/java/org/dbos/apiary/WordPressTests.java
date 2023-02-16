@@ -31,7 +31,7 @@ public class WordPressTests {
     @BeforeAll
     public static void testConnection() {
         assumeTrue(TestUtils.testPostgresConnection());
-        // Set the isolation level to serializable.
+        // ApiaryConfig.provenancePort = 5433;
         ApiaryConfig.isolationLevel = ApiaryConfig.REPEATABLE_READ;
 
         // Disable XDB transactions.

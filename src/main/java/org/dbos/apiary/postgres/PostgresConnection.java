@@ -137,14 +137,16 @@ public class PostgresConnection implements ApiaryConnection {
      */
     public void dropTable(String tableName) throws SQLException {
         Connection conn = bgConnection.get();
-        Statement truncateTable = conn.createStatement();
-        truncateTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
-        truncateTable.close();
+        dropTable(conn, tableName);
 
         Connection provConn = provConnection.get();
-        truncateTable = provConn.createStatement();
-        truncateTable.execute(String.format("DROP TABLE IF EXISTS %sEvents;", tableName));
-        truncateTable.close();
+        dropTable(provConn, tableName + "Events");
+    }
+
+    static public void dropTable(Connection conn, String tableName) throws SQLException {
+        Statement dropTable = conn.createStatement();
+        dropTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
+        dropTable.close();
     }
 
     /**
@@ -197,7 +199,7 @@ public class PostgresConnection implements ApiaryConnection {
         }
     }
 
-    private void createTable(Connection conn, String tableName, String specStr) throws SQLException {
+    static private void createTable(Connection conn, String tableName, String specStr) throws SQLException {
         Statement s = conn.createStatement();
         s.execute(String.format("CREATE TABLE IF NOT EXISTS %s (%s);", tableName, specStr));
         s.close();

@@ -50,10 +50,11 @@ public class WordPressTests {
     public void resetTables() {
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
-            conn.dropTable(ApiaryConfig.tableFuncInvocations);
-            conn.dropTable(ApiaryConfig.tableRecordedInputs);
+            Connection provConn = conn.provConnection.get();
+            PostgresConnection.dropTable(provConn, ApiaryConfig.tableFuncInvocations);
+            PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);
+            PostgresConnection.dropTable(provConn, ProvenanceBuffer.PROV_QueryMetadata);
             conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
-            conn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
             conn.dropTable(WPUtil.WP_POSTS_TABLE);
             conn.createTable(WPUtil.WP_POSTS_TABLE, WPUtil.WP_POSTS_SCHEMA);
             conn.dropTable(WPUtil.WP_POSTMETA_TABLE);

@@ -26,6 +26,7 @@ public class PostgresConnection implements ApiaryConnection {
     private final PGSimpleDataSource ds;
     public final ThreadLocal<Connection> connection;
     public final ThreadLocal<Connection> bgConnection;  // For background tasks, not the critical one for function executions.
+    public final ThreadLocal<Connection> provConnection;  // Connect to the provenance database.
     private final ReadWriteLock activeTransactionsLock = new ReentrantReadWriteLock();
     private long biggestxmin = Long.MIN_VALUE;
     private final Set<TransactionContext> activeTransactions = ConcurrentHashMap.newKeySet();
@@ -42,6 +43,12 @@ public class PostgresConnection implements ApiaryConnection {
      * @throws SQLException
      */
     public PostgresConnection(String hostname, Integer port, String databaseUsername, String databasePassword) throws SQLException {
+        // If no provenance database provided, use itself.
+        this(hostname, port, databaseUsername, databasePassword, ApiaryConfig.postgres, hostname);
+    }
+
+    // With provenance.
+    public PostgresConnection(String hostname, Integer port, String databaseUsername, String databasePassword, String provDBType, String provAddress) throws SQLException {
         this.ds = new PGSimpleDataSource();
         this.ds.setServerNames(new String[] {hostname});
         this.ds.setPortNumbers(new int[] {port});
@@ -76,37 +83,47 @@ public class PostgresConnection implements ApiaryConnection {
             }
             testConn.close();
         } catch (SQLException e) {
-            logger.info("Failed to connect to Postgres");
+            logger.error("Failed to connect to Postgres");
             throw new RuntimeException("Failed to connect to Postgres");
         }
-        createTable(ApiaryConfig.tableFuncInvocations,
-                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_APIARY_TIMESTAMP + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_FUNCID + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_ISREPLAY + " SMALLINT NOT NULL, "
-                + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(256) NOT NULL, "
-                + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(512) NOT NULL, "
-                + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
-                + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20), "
-                + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(1024), "
-                + ProvenanceBuffer.PROV_READONLY + " BOOLEAN ");
-        createTable(ProvenanceBuffer.PROV_ApiaryMetadata,
+
+        this.provConnection = ThreadLocal.withInitial(() -> ProvenanceBuffer.createProvConnection(provDBType, provAddress));
+
+        createTable(bgConnection.get(), ProvenanceBuffer.PROV_ApiaryMetadata,
                 "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
-        createTable(ProvenanceBuffer.PROV_QueryMetadata,
+
+        Connection provConn = provConnection.get();
+        if (provConn == null) {
+            logger.error("Failed to connect to provenance DB.");
+            throw new RuntimeException("Failed to connect to provenance DB");
+        }
+        createTable(provConn, ApiaryConfig.tableFuncInvocations,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_QUERY_SEQNUM + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_QUERY_STRING + " VARCHAR(2048) NOT NULL, "
-                + ProvenanceBuffer.PROV_QUERY_TABLENAMES + " VARCHAR(1024) NOT NULL, "
-                + ProvenanceBuffer.PROV_QUERY_PROJECTION + " VARCHAR(1024) NOT NULL "
-        );
+                        + ProvenanceBuffer.PROV_APIARY_TIMESTAMP + " BIGINT NOT NULL, "
+                        + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
+                        + ProvenanceBuffer.PROV_FUNCID + " BIGINT NOT NULL, "
+                        + ProvenanceBuffer.PROV_ISREPLAY + " SMALLINT NOT NULL, "
+                        + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(256) NOT NULL, "
+                        + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(512) NOT NULL, "
+                        + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
+                        + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20), "
+                        + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(1024), "
+                        + ProvenanceBuffer.PROV_READONLY + " BOOLEAN ");
+        if (ApiaryConfig.captureMetadata) {
+            createTable(provConn, ProvenanceBuffer.PROV_QueryMetadata,
+                    ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
+                            + ProvenanceBuffer.PROV_QUERY_SEQNUM + " BIGINT NOT NULL, "
+                            + ProvenanceBuffer.PROV_QUERY_STRING + " VARCHAR(2048) NOT NULL, "
+                            + ProvenanceBuffer.PROV_QUERY_TABLENAMES + " VARCHAR(1024) NOT NULL, "
+                            + ProvenanceBuffer.PROV_QUERY_PROJECTION + " VARCHAR(1024) NOT NULL "
+            );
+        }
 
         if (ApiaryConfig.recordInput) {
             // Record input for replay. Only need to record the input of the first function, so we only need to use execID to find the arguments.
-            createTable(ApiaryConfig.tableRecordedInputs,
+            createTable(provConn, ApiaryConfig.tableRecordedInputs,
                     ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT PRIMARY KEY, " +
-                    ProvenanceBuffer.PROV_REQ_BYTES + " BYTEA NOT NULL");
-
+                            ProvenanceBuffer.PROV_REQ_BYTES + " BYTEA NOT NULL");
         }
 
         // TODO: add back recorded outputs later for fault tolerance.
@@ -122,6 +139,10 @@ public class PostgresConnection implements ApiaryConnection {
         Connection conn = bgConnection.get();
         Statement truncateTable = conn.createStatement();
         truncateTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
+        truncateTable.close();
+
+        Connection provConn = provConnection.get();
+        truncateTable = provConn.createStatement();
         truncateTable.execute(String.format("DROP TABLE IF EXISTS %sEvents;", tableName));
         truncateTable.close();
     }
@@ -135,10 +156,13 @@ public class PostgresConnection implements ApiaryConnection {
         Connection conn = bgConnection.get();
         Statement truncateTable = conn.createStatement();
         truncateTable.execute(String.format("TRUNCATE %s;", tableName));
-        if (deleteProvenance) {
-            truncateTable.execute(String.format("TRUNCATE %sEvents;", tableName));
-        }
         truncateTable.close();
+        if (deleteProvenance) {
+            Connection provConn = provConnection.get();
+            truncateTable = provConn.createStatement();
+            truncateTable.execute(String.format("TRUNCATE %sEvents;", tableName));
+            truncateTable.close();
+        }
     }
 
     /**
@@ -149,13 +173,15 @@ public class PostgresConnection implements ApiaryConnection {
      */
     public void createTable(String tableName, String specStr) throws SQLException {
         Connection conn = bgConnection.get();
-        Statement s = conn.createStatement();
-        s.execute(String.format("CREATE TABLE IF NOT EXISTS %s (%s);", tableName, specStr));
+        createTable(conn, tableName, specStr);
+
+        Connection provConn = provConnection.get();
         if (!specStr.contains(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID)) {
+            Statement s = conn.createStatement();
             ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
             ResultSetMetaData rsmd = r.getMetaData();
             StringBuilder provTable = new StringBuilder(String.format(
-                    "CREATE TABLE IF NOT EXISTS %sEvents (%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL",
+                    "%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL",
                     tableName, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
                     ProvenanceBuffer.PROV_APIARY_TIMESTAMP, ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE,
                     ProvenanceBuffer.PROV_QUERY_SEQNUM));
@@ -165,9 +191,15 @@ public class PostgresConnection implements ApiaryConnection {
                 provTable.append(" ");
                 provTable.append(rsmd.getColumnTypeName(i + 1));
             }
-            provTable.append(");");
-            s.execute(provTable.toString());
+            createTable(provConn, tableName + "Events", provTable.toString());
+            r.close();
+            s.close();
         }
+    }
+
+    private void createTable(Connection conn, String tableName, String specStr) throws SQLException {
+        Statement s = conn.createStatement();
+        s.execute(String.format("CREATE TABLE IF NOT EXISTS %s (%s);", tableName, specStr));
         s.close();
     }
 

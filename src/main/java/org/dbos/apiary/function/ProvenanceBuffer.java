@@ -85,55 +85,13 @@ public class ProvenanceBuffer {
             this.hasConnection = false;
             return;
         }
-        if (databaseType.equals(ApiaryConfig.vertica)) {
-            Class.forName("com.vertica.jdbc.Driver");
-            this.conn = ThreadLocal.withInitial(() -> {
-                // Connect to Vertica.
-                Properties verticaProp = new Properties();
-                verticaProp.put("user", "dbadmin");
-                verticaProp.put("password", "password");
-                verticaProp.put("loginTimeout", "35");
-                verticaProp.put("streamingBatchInsert", "True");
-                verticaProp.put("ConnectionLoadBalance", "1"); // Enable load balancing.
-                try {
-                    Connection c = DriverManager.getConnection(
-                            String.format("jdbc:vertica://%s/apiary_provenance", databaseAddress),
-                            verticaProp
-                    );
-                    return c;
-                } catch (SQLException e) {
-
-                }
-                return null;
-            });
-        } else {
-            assert(databaseType.equals(ApiaryConfig.postgres));
-            this.conn = ThreadLocal.withInitial(() -> {
-                // Connect to Postgres.
-                PGSimpleDataSource ds = new PGSimpleDataSource();
-                ds.setServerNames(new String[] {databaseAddress});
-                ds.setPortNumbers(new int[] {ApiaryConfig.postgresPort});
-                ds.setDatabaseName(ApiaryConfig.dbosDBName);
-                ds.setUser("postgres");
-                ds.setPassword("dbos");
-                ds.setSsl(false);
-                Connection conn;
-                try {
-                    conn = ds.getConnection();
-                    return conn;
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                    return null;
-                }
-            });
-        }
+        this.conn = ThreadLocal.withInitial(() -> createProvConnection(databaseType, databaseAddress));
 
         if (conn.get() == null) {
             logger.info("No DB instance for provenance!");
             this.hasConnection = false;
             return;
         }
-
 
         Runnable r = () -> {
             while(!Thread.currentThread().isInterrupted()) {
@@ -148,6 +106,50 @@ public class ProvenanceBuffer {
         exportThread = new Thread(r);
         exportThread.start();
         this.hasConnection = true;
+    }
+
+    public static Connection createProvConnection(String databaseType, String databaseAddress) {
+        if (databaseType.equals(ApiaryConfig.vertica)) {
+            try {
+                Class.forName("com.vertica.jdbc.Driver");
+            } catch (ClassNotFoundException e) {
+                return null;
+            }
+            // Connect to Vertica.
+            Properties verticaProp = new Properties();
+            verticaProp.put("user", "dbadmin");
+            verticaProp.put("password", "password");
+            verticaProp.put("loginTimeout", "35");
+            verticaProp.put("streamingBatchInsert", "True");
+            verticaProp.put("ConnectionLoadBalance", "1"); // Enable load balancing.
+            try {
+                Connection c = DriverManager.getConnection(
+                        String.format("jdbc:vertica://%s/apiary_provenance", databaseAddress),
+                        verticaProp
+                );
+                return c;
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        } else {
+            assert(databaseType.equals(ApiaryConfig.postgres));
+            // Connect to Postgres.
+            PGSimpleDataSource ds = new PGSimpleDataSource();
+            ds.setServerNames(new String[] {databaseAddress});
+            ds.setPortNumbers(new int[] {ApiaryConfig.provenancePort});
+            ds.setDatabaseName(ApiaryConfig.dbosDBName);
+            ds.setUser("postgres");
+            ds.setPassword("dbos");
+            ds.setSsl(false);
+            Connection conn;
+            try {
+                conn = ds.getConnection();
+                return conn;
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
     }
 
     public void close() {

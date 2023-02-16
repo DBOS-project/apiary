@@ -37,6 +37,8 @@ public class TestUtils {
             logger.info("Failed to connect to Postgres.");
             return false;
         }
+        // Set to the same port for testing.
+        ApiaryConfig.provenancePort = ApiaryConfig.postgresPort;
         return true;
     }
 

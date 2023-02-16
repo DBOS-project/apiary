@@ -273,7 +273,7 @@ public class WordPressTests {
 
         // Register the new code and see if we can get the correct result.
         apiaryWorker.shutdown();
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new, false);
         // Use the new code.

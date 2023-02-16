@@ -375,6 +375,10 @@ public class ProvenanceBuffer {
     }
 
     private Map<Integer, Integer> getColTypeMap(String table) {
+        if (table.equalsIgnoreCase(ProvenanceBuffer.PROV_ApiaryMetadata)) {
+            // Do not capture provenance for metadata table.
+            return null;
+        }
         Map<Integer, Integer> colTypeMap = new HashMap<>();
         try {
             Statement stmt = conn.get().createStatement();

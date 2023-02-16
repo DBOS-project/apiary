@@ -49,7 +49,8 @@ public class WordPressTests {
     @BeforeEach
     public void resetTables() {
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos",
+                    ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
             Connection provConn = conn.provConnection.get();
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableFuncInvocations);
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);
@@ -142,9 +143,9 @@ public class WordPressTests {
     public void testPostConcurrentRetro() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         // Try to reproduce the bug where the new comment comes between post trashed and comment trashed. So the new comment would be marked as trashed but cannot be restored afterwards.
         logger.info("testWPConcurrentRetro");
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos", ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new);
         apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddComment::new);

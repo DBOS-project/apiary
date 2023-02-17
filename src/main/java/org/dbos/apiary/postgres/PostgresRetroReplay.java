@@ -167,10 +167,11 @@ public class PostgresRetroReplay {
         List<PostgresReplayTask> committedTasks = new ArrayList<>();
         List<PostgresReplayTask> abortedTasks = new ArrayList<>();
 
+        boolean startHasNext = true;
         while ((nextCommitTxid > 0) && (nextCommitTxid < endTxId)) {
             // Execute all following functions until nextCommitTxid is in the snapshot of that original transaction.
             // If the nextCommitTxid is in the snapshot, then that function needs to start after it commits.
-            while (true) {
+            while (startHasNext) {
                 long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
                 long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
                 long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
@@ -234,6 +235,7 @@ public class PostgresRetroReplay {
                 }
                 if (!startOrderRs.next()) {
                     // No more to process.
+                    startHasNext = false;
                     break;
                 }
             }

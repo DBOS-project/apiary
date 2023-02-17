@@ -357,7 +357,7 @@ public class ProvenanceBuffer {
     }
 
     private List<String> getColNames(String table) {
-        if (table.equalsIgnoreCase(ProvenanceBuffer.PROV_ApiaryMetadata)) {
+        if (table.equalsIgnoreCase(ProvenanceBuffer.PROV_ApiaryMetadata + "Events")) {
             // Do not capture provenance for metadata table.
             return null;
         }
@@ -379,7 +379,7 @@ public class ProvenanceBuffer {
     }
 
     private Map<Integer, Integer> getColTypeMap(String table) {
-        if (table.equalsIgnoreCase(ProvenanceBuffer.PROV_ApiaryMetadata)) {
+        if (table.equalsIgnoreCase(ProvenanceBuffer.PROV_ApiaryMetadata + "Events")) {
             // Do not capture provenance for metadata table.
             return null;
         }

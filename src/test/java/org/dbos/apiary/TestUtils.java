@@ -37,7 +37,7 @@ public class TestUtils {
         // Set to the same port for testing.
         ApiaryConfig.provenancePort = provenancePort;
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", provenanceDB, provenanceAddr);
         } catch (Exception e) {
             logger.info("Failed to connect to Postgres.");
             return false;

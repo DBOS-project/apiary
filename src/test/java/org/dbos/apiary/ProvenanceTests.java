@@ -47,11 +47,12 @@ public class ProvenanceTests {
         try {
             ApiaryConfig.captureReads = true;
             ApiaryConfig.captureUpdates = true;
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
-            conn.dropTable(ApiaryConfig.tableFuncInvocations);
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", TestUtils.provenanceDB, TestUtils.provenanceAddr);
+            Connection provConn = conn.provConnection.get();
+            PostgresConnection.dropTable(provConn, ApiaryConfig.tableFuncInvocations);
+            PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);
+            PostgresConnection.dropTable(provConn, ProvenanceBuffer.PROV_QueryMetadata);
             conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
-            conn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
-            conn.dropTable(ApiaryConfig.tableRecordedInputs);
             conn.dropTable("KVTable");
             conn.createTable("KVTable", "KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL");
             conn.dropTable("KVTableTwo");
@@ -74,13 +75,13 @@ public class ProvenanceTests {
     @Test
     public void testProvenanceBuffer() throws InterruptedException, ClassNotFoundException, SQLException {
         logger.info("testProvenanceBuffer");
-        ProvenanceBuffer buf = new ProvenanceBuffer(ApiaryConfig.postgres, "localhost");
+        ProvenanceBuffer buf = new ProvenanceBuffer(TestUtils.provenanceDB, TestUtils.provenanceAddr);
         String table = ApiaryConfig.tableFuncInvocations;
 
         // Wait until previous exporter finished.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
-        PostgresConnection pgconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
-        Connection conn = pgconn.connection.get();
+        PostgresConnection pgconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", TestUtils.provenanceDB, TestUtils.provenanceAddr);
+        Connection conn = pgconn.provConnection.get();
         Statement stmt = conn.createStatement();
 
         // Add something to function invocation log table.

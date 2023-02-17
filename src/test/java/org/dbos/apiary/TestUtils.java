@@ -19,6 +19,9 @@ import org.slf4j.LoggerFactory;
 
 public class TestUtils {
     private static final Logger logger = LoggerFactory.getLogger(TestUtils.class);
+    static final int provenancePort = 5432;  // Change to 5433 for a separate Postgres or Vertica.
+    static final String provenanceDB = ApiaryConfig.postgres; // Change to Vertica as needed.
+    static final String provenanceAddr = "localhost"; // Change to other addresses as needed.
 
     public static boolean testVoltConnection() {
         try {
@@ -32,7 +35,7 @@ public class TestUtils {
 
     public static boolean testPostgresConnection() {
         // Set to the same port for testing.
-        ApiaryConfig.provenancePort = ApiaryConfig.postgresPort;
+        ApiaryConfig.provenancePort = provenancePort;
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         } catch (Exception e) {

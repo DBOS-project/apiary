@@ -134,7 +134,7 @@ public class PostgresTests {
         logger.info("testForumSubscribeConcurrent");
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
         apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
@@ -190,8 +190,6 @@ public class PostgresTests {
         }
 
         threadPool.shutdown();
-        // Check provenance.
-        Thread.sleep(ProvenanceBuffer.exportInterval * 2);
     }
 
     @Test
@@ -200,7 +198,7 @@ public class PostgresTests {
 
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("PostgresFibonacciFunction", ApiaryConfig.postgres, PostgresFibonacciFunction::new);
         apiaryWorker.registerFunction("PostgresFibSumFunction", ApiaryConfig.postgres, PostgresFibSumFunction::new);
@@ -225,7 +223,7 @@ public class PostgresTests {
 
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("RetwisPost", ApiaryConfig.postgres, RetwisPost::new);
         apiaryWorker.registerFunction("RetwisFollow", ApiaryConfig.postgres, RetwisFollow::new);

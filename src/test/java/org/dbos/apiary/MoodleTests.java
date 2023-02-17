@@ -55,7 +55,7 @@ public class MoodleTests {
     @BeforeEach
     public void resetTables() {
         try {
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos", TestUtils.provenanceDB, TestUtils.provenanceAddr);
             Connection provConn = conn.provConnection.get();
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableFuncInvocations);
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);
@@ -86,9 +86,9 @@ public class MoodleTests {
     @Test
     public void testForumSubscribeReplay() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         logger.info("testForumSubscribeReplay");
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos", TestUtils.provenanceDB, TestUtils.provenanceAddr);
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, TestUtils.provenanceDB, TestUtils.provenanceAddr);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
         apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
@@ -168,9 +168,9 @@ public class MoodleTests {
         logger.info("testForumSubscribeRetro");
 
         // Run concurrent test until we find duplications. Then retroactively replay everything.
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", TestUtils.provenanceDB, TestUtils.provenanceAddr);
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, TestUtils.provenanceDB, TestUtils.provenanceAddr);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
         apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
@@ -261,7 +261,7 @@ public class MoodleTests {
 
         // Now, register the new code and see if it can get the correct result.
         apiaryWorker.shutdown(); // Stop the existing worker.
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, TestUtils.provenanceDB, TestUtils.provenanceAddr);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new, true);  // Register the new one.
         // The old one.

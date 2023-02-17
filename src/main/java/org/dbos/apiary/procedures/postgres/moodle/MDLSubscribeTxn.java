@@ -19,7 +19,7 @@ public class MDLSubscribeTxn extends PostgresFunction {
     public static int runFunction(PostgresContext ctxt,
                                   int userId, int forumId) throws SQLException {
         // Check if the user has been subscribed to the forum before.
-        ResultSet r = ctxt.executeQuery(isSubscribed, userId, forumId);
+        ResultSet r = ctxt.executeQuery(isSubscribed, (long) userId, (long) forumId);
 
         if (r.next()) {
             // If a subscription exists, then directly return the userID
@@ -28,7 +28,7 @@ public class MDLSubscribeTxn extends PostgresFunction {
         }
 
         // Otherwise, subscribe the user to the forum.
-        ctxt.executeUpdate(subscribe, userId, forumId);
+        ctxt.executeUpdate(subscribe, (long) userId, (long) forumId);
         return userId;
     }
 

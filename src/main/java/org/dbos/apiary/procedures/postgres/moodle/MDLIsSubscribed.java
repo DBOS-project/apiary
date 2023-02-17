@@ -19,7 +19,7 @@ public class MDLIsSubscribed extends PostgresFunction {
     public static Object runFunction(PostgresContext ctxt,
                                      int userId, int forumId) throws SQLException {
         // Check if the user has been subscribed to the forum before.
-        ResultSet r = ctxt.executeQuery(isSubscribed, userId, forumId);
+        ResultSet r = ctxt.executeQuery(isSubscribed, (long) userId, (long) forumId);
 
         if (r.next()) {
             // If a subscription exists, then directly return the userID

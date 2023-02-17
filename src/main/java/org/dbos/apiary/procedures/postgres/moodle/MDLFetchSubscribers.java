@@ -25,7 +25,7 @@ public class MDLFetchSubscribers extends PostgresFunction {
         ResultSet r = ctxt.executeQuery(getSubscribers, forumId);
         List<Integer> subscribers = new ArrayList<>();
         while (r.next()) {
-            subscribers.add(r.getInt(1));
+            subscribers.add((int) r.getLong(1));
         }
 
         // Check for duplicates.

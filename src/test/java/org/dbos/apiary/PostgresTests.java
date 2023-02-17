@@ -31,6 +31,11 @@ public class PostgresTests {
 
     private ApiaryWorker apiaryWorker;
 
+    // Local provenance config.
+    private static final int provenancePort = ApiaryConfig.postgresPort;
+    private static final String provenanceDB = ApiaryConfig.postgres;
+    private static final String provenanceAddr = "localhost";
+
     @BeforeAll
     public static void testConnection() {
         assumeTrue(TestUtils.testPostgresConnection());
@@ -39,6 +44,7 @@ public class PostgresTests {
 
         // Disable XDB transactions.
         ApiaryConfig.XDBTransactions = false;
+        ApiaryConfig.provenancePort = provenancePort;
     }
 
     @BeforeEach

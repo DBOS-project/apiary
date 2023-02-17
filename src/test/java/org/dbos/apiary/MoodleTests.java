@@ -4,10 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.moodle.MDLFetchSubscribers;
-import org.dbos.apiary.procedures.postgres.moodle.MDLForumInsert;
-import org.dbos.apiary.procedures.postgres.moodle.MDLIsSubscribed;
-import org.dbos.apiary.procedures.postgres.moodle.MDLSubscribeTxn;
+import org.dbos.apiary.procedures.postgres.moodle.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -61,8 +58,8 @@ public class MoodleTests {
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);
             PostgresConnection.dropTable(provConn, ProvenanceBuffer.PROV_QueryMetadata);
             conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
-            conn.dropTable("ForumSubscription");
-            conn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");
+            conn.dropTable(MDLUtil.MDL_FORUMSUBS_TABLE);
+            conn.createTable(MDLUtil.MDL_FORUMSUBS_TABLE, MDLUtil.MDL_FORUM_SCHEMA);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");

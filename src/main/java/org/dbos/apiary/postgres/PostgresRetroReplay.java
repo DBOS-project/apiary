@@ -153,7 +153,7 @@ public class PostgresRetroReplay {
 
         // A connection pool to the backend database. For concurrent executions.
         Queue<Connection> connPool = new ConcurrentLinkedQueue<>();
-        for (int i = 0; i < workerContext.numWorkersThreads; i++) {
+        for (int i = 0; i < workerContext.numWorkersThreads + 10; i++) {
             connPool.add(workerContext.getPrimaryConnection().createNewConnection());
         }
 
@@ -161,7 +161,7 @@ public class PostgresRetroReplay {
         Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
 
         // A thread pool for concurrent function executions.
-        ExecutorService threadPool = Executors.newFixedThreadPool(workerContext.numWorkersThreads);
+        ExecutorService threadPool = Executors.newFixedThreadPool(workerContext.numWorkersThreads + 10);
 
         // Caches for committed transactions and aborted transactions.
         List<PostgresReplayTask> committedTasks = new ArrayList<>();
@@ -217,7 +217,6 @@ public class PostgresRetroReplay {
                         skippedExecIds.add(resExecId);
                     } else {
                         lastNonSkippedExecId = resExecId;
-
                         Connection currConn = connPool.poll();
                         if (currConn == null) {
                             throw new RuntimeException("Not enough connections to replay!");

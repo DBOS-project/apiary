@@ -30,6 +30,11 @@ public class ProvenanceTests {
 
     private ApiaryWorker apiaryWorker;
 
+    // Local provenance config.
+    private static final int provenancePort = ApiaryConfig.postgresPort;
+    private static final String provenanceDB = ApiaryConfig.postgres;
+    private static final String provenanceAddr = "localhost";
+
     @BeforeAll
     public static void testConnection() {
         // Set the isolation level to serializable.
@@ -47,7 +52,7 @@ public class ProvenanceTests {
         try {
             ApiaryConfig.captureReads = true;
             ApiaryConfig.captureUpdates = true;
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", TestUtils.provenanceDB, TestUtils.provenanceAddr);
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", provenanceDB, provenanceAddr);
             Connection provConn = conn.provConnection.get();
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableFuncInvocations);
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);
@@ -75,12 +80,12 @@ public class ProvenanceTests {
     @Test
     public void testProvenanceBuffer() throws InterruptedException, ClassNotFoundException, SQLException {
         logger.info("testProvenanceBuffer");
-        ProvenanceBuffer buf = new ProvenanceBuffer(TestUtils.provenanceDB, TestUtils.provenanceAddr);
+        ProvenanceBuffer buf = new ProvenanceBuffer(provenanceDB, provenanceAddr);
         String table = ApiaryConfig.tableFuncInvocations;
 
         // Wait until previous exporter finished.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
-        PostgresConnection pgconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", TestUtils.provenanceDB, TestUtils.provenanceAddr);
+        PostgresConnection pgconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", provenanceDB, provenanceAddr);
         Connection conn = pgconn.provConnection.get();
         Statement stmt = conn.createStatement();
 

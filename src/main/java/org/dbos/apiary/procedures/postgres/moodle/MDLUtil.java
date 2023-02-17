@@ -10,4 +10,5 @@ public class MDLUtil {
     public static final String FUNC_FETCH_SUBSCRIBERS = "MDLFetchSubscribers";
     public static final String FUNC_FORUM_INSERT = "MDLForumInsert";
     public static final String FUNC_IS_SUBSCRIBED = "MDLIsSubscribed";
+    public static final String FUNC_LOAD_DATA = "MDLLoadData";
 }

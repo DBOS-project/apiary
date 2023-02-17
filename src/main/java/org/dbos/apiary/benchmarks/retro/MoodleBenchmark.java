@@ -103,6 +103,7 @@ public class MoodleBenchmark {
         }
         apiaryWorker.registerFunction(MDLUtil.FUNC_FORUM_INSERT, ApiaryConfig.postgres, MDLForumInsert::new, false);
         apiaryWorker.registerFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS, ApiaryConfig.postgres, MDLFetchSubscribers::new, false);
+        apiaryWorker.registerFunction(MDLUtil.FUNC_LOAD_DATA, ApiaryConfig.postgres, MDLLoadData::new, false);
 
         apiaryWorker.startServing();
 
@@ -140,6 +141,16 @@ public class MoodleBenchmark {
         int[] resList = client.get().executeFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS, initialForumId).getIntArray();
         assert (resList.length > 1);
 
+        // Insert initial subscriptions.
+        int[] loadForums = new int[numForums];
+        int[] loadUsers = new int[numForums];
+        for (int i = 0; i < numForums; i++) {
+            loadForums[i] = i;
+            loadUsers[i] = 0; // Initial user 0;
+        }
+        int loadedRows = client.get().executeFunction(MDLUtil.FUNC_LOAD_DATA, loadUsers, loadForums).getInt();
+        logger.info("Loaded {} rows of data.", loadedRows);
+
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
 
@@ -157,7 +168,7 @@ public class MoodleBenchmark {
                 readTimes.add(System.nanoTime() - t0);
             } else {
                 // Insert a subscription for a random user + forum.
-                int userId = ThreadLocalRandom.current().nextInt(0, numUsers);
+                int userId = ThreadLocalRandom.current().nextInt(1, numUsers);
                 int forumId = ThreadLocalRandom.current().nextInt(0, numForums);
                 try {
                     int res = client.get().executeFunction(MDLUtil.FUNC_IS_SUBSCRIBED, userId, forumId).getInt();
@@ -183,6 +194,9 @@ public class MoodleBenchmark {
 
         long elapsedTime = (System.currentTimeMillis() - startTime) - threadWarmupMs;
 
+        threadPool.shutdownNow();
+        threadPool.awaitTermination(10, TimeUnit.SECONDS);
+
         List<Long> queryTimes = readTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
         int numQueries = queryTimes.size();
         if (numQueries > 0) {
@@ -207,8 +221,6 @@ public class MoodleBenchmark {
             logger.info("No writes");
         }
 
-        threadPool.shutdown();
-        threadPool.awaitTermination(100000, TimeUnit.SECONDS);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
         apiaryWorker.shutdown();
     }

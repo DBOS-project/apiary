@@ -2,7 +2,6 @@ package org.dbos.apiary.function;
 
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.connection.ApiarySecondaryConnection;
-import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.GetApiaryClientID;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;

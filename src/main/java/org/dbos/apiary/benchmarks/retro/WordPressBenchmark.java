@@ -389,6 +389,9 @@ public class WordPressBenchmark {
 
         long elapsedTime = (System.currentTimeMillis() - startTime) - threadWarmupMs;
 
+        threadPool.shutdownNow();
+        threadPool.awaitTermination(10, TimeUnit.SECONDS);
+
         List<Long> queryTimes = readTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
         int numQueries = queryTimes.size();
         if (numQueries > 0) {
@@ -413,8 +416,6 @@ public class WordPressBenchmark {
             logger.info("No writes");
         }
 
-        threadPool.shutdown();
-        threadPool.awaitTermination(100000, TimeUnit.SECONDS);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
         apiaryWorker.shutdown();
     }

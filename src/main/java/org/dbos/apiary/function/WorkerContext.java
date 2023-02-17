@@ -46,7 +46,9 @@ public class WorkerContext {
         primaryConnectionType = type;
         if (type.equals(ApiaryConfig.postgres)) {
             registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.postgres, GetApiaryClientID::new);
-            this.provBuff.pgConn = ThreadLocal.withInitial(() -> connection.createNewConnection());
+            if (this.provBuff != null) {
+                this.provBuff.pgConn = ThreadLocal.withInitial(() -> connection.createNewConnection());
+            }
         } else if (type.equals(ApiaryConfig.voltdb)) {
             registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.voltdb, org.dbos.apiary.procedures.voltdb.GetApiaryClientID::new);
         }

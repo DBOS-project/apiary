@@ -87,9 +87,9 @@ public class MoodleTests {
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, TestUtils.provenanceDB, TestUtils.provenanceAddr);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
-        apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
-        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
-        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
+        apiaryWorker.registerFunction(MDLUtil.FUNC_IS_SUBSCRIBED, ApiaryConfig.postgres, MDLIsSubscribed::new);
+        apiaryWorker.registerFunction(MDLUtil.FUNC_FORUM_INSERT, ApiaryConfig.postgres, MDLForumInsert::new);
+        apiaryWorker.registerFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS, ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
@@ -98,15 +98,15 @@ public class MoodleTests {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         int res;
-        res = client.executeFunction("MDLIsSubscribed", 123, 555).getInt();
+        res = client.executeFunction(MDLUtil.FUNC_IS_SUBSCRIBED, 123, 555).getInt();
         assertEquals(123, res);
 
         // Subscribe again, should return the same userId.
-        res = client.executeFunction("MDLIsSubscribed", 123, 555).getInt();
+        res = client.executeFunction(MDLUtil.FUNC_IS_SUBSCRIBED, 123, 555).getInt();
         assertEquals(123, res);
 
         // Get a list of subscribers, should only contain one user entry.
-        int[] resList = client.executeFunction("MDLFetchSubscribers",555).getIntArray();
+        int[] resList = client.executeFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS,555).getIntArray();
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);
 
@@ -122,7 +122,7 @@ public class MoodleTests {
         long resFuncId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertTrue(resExecId >= 0);
-        assertEquals("MDLIsSubscribed", resFuncName);
+        assertEquals(MDLUtil.FUNC_IS_SUBSCRIBED, resFuncName);
 
         // The second function should be a subscribe function.
         rs.next();
@@ -147,12 +147,12 @@ public class MoodleTests {
 
         // Retroactively execute all.
         // Reset the database and re-execute, stop before the last execution.
-        conn.truncateTable("ForumSubscription", false);
+        conn.truncateTable(MDLUtil.MDL_FORUMSUBS_TABLE, false);
         res = client.retroReplay(resExecId, resExecId4, ApiaryConfig.ReplayMode.ALL.getValue()).getInt();
         assertEquals(123, res);
 
         // Retro replay again, but this time replay the entire trace.
-        conn.truncateTable("ForumSubscription", false);
+        conn.truncateTable(MDLUtil.MDL_FORUMSUBS_TABLE, false);
         resList = client.retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
         assertEquals(1, resList.length);
         assertEquals(123, resList[0]);
@@ -169,9 +169,9 @@ public class MoodleTests {
 
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, TestUtils.provenanceDB, TestUtils.provenanceAddr);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
-        apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new);
-        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new);
-        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new);
+        apiaryWorker.registerFunction(MDLUtil.FUNC_IS_SUBSCRIBED, ApiaryConfig.postgres, MDLIsSubscribed::new);
+        apiaryWorker.registerFunction(MDLUtil.FUNC_FORUM_INSERT, ApiaryConfig.postgres, MDLForumInsert::new);
+        apiaryWorker.registerFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS, ApiaryConfig.postgres, MDLFetchSubscribers::new);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;
@@ -195,7 +195,7 @@ public class MoodleTests {
             public Integer call() {
                 int res;
                 try {
-                    res = client.get().executeFunction("MDLIsSubscribed", userId, forumId).getInt();
+                    res = client.get().executeFunction(MDLUtil.FUNC_IS_SUBSCRIBED, userId, forumId).getInt();
                 } catch (Exception e) {
                     res = -1;
                 }
@@ -219,7 +219,7 @@ public class MoodleTests {
                 }
             }
             // Check subscriptions.
-            resList = client.get().executeFunction("MDLFetchSubscribers", i+maxTry).getIntArray();
+            resList = client.get().executeFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS, i+maxTry).getIntArray();
             if (resList.length > 1) {
                 logger.info("Found duplications! User: {}, Forum: {}", i, i+maxTry);
                 break;
@@ -247,10 +247,10 @@ public class MoodleTests {
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         assertTrue(resExecId >= 0);
         assumeTrue(resFuncId == 0);
-        assertEquals("MDLIsSubscribed", resFuncName);
+        assertEquals(MDLUtil.FUNC_IS_SUBSCRIBED, resFuncName);
 
         // Reset the table and replay all.
-        conn.truncateTable("ForumSubscription", false);
+        conn.truncateTable(MDLUtil.MDL_FORUMSUBS_TABLE, false);
         int[] retroResList = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
         assertEquals(resList.length, retroResList.length);
         assertTrue(Arrays.equals(resList, retroResList));
@@ -260,10 +260,10 @@ public class MoodleTests {
         apiaryWorker.shutdown(); // Stop the existing worker.
         apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, TestUtils.provenanceDB, TestUtils.provenanceAddr);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
-        apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new, true);  // Register the new one.
+        apiaryWorker.registerFunction(MDLUtil.FUNC_IS_SUBSCRIBED, ApiaryConfig.postgres, MDLSubscribeTxn::new, true);  // Register the new one.
         // The old one.
-        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new, false);
-        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new, false);
+        apiaryWorker.registerFunction(MDLUtil.FUNC_FORUM_INSERT, ApiaryConfig.postgres, MDLForumInsert::new, false);
+        apiaryWorker.registerFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS, ApiaryConfig.postgres, MDLFetchSubscribers::new, false);
 
         // No need to register function set, because we have a single function now.
         // apiaryWorker.registerFunctionSet("MDLIsSubscribed", "MDLIsSubscribed", "MDLForumInsert");
@@ -272,7 +272,7 @@ public class MoodleTests {
         provBuff = apiaryWorker.workerContext.provBuff;
         assert(provBuff != null);
 
-        conn.truncateTable("ForumSubscription", false);
+        conn.truncateTable(MDLUtil.MDL_FORUMSUBS_TABLE, false);
         int[] retroList = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.ALL.getValue()).getIntArray();
         // TODO: Repeatable read allows write skew. Does not check serializability.
         if (ApiaryConfig.isolationLevel == ApiaryConfig.REPEATABLE_READ) {
@@ -283,7 +283,7 @@ public class MoodleTests {
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         // Retro replay again, but now we enable selective replay.
-        conn.truncateTable("ForumSubscription", false);
+        conn.truncateTable(MDLUtil.MDL_FORUMSUBS_TABLE, false);
         int retroRes = client.get().retroReplay(resExecId, Long.MAX_VALUE, ApiaryConfig.ReplayMode.SELECTIVE.getValue()).getInt();
         assertTrue(retroRes != -1);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);

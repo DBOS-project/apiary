@@ -14,10 +14,26 @@ import java.util.List;
 public class RetroBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(RetroBenchmark.class);
 
+    public static int provenancePort = 5433;  // Change to 5433 for a separate Postgres or Vertica.
+    public static String provenanceDB = ApiaryConfig.vertica; // Change to Vertica as needed.
+    public static String provenanceAddr = "localhost"; // Change to other addresses as needed.
+
     public static void benchmark(String appName, String dbAddr, Integer interval, Integer duration, boolean skipLoad, int retroMode, long startExecId, long endExecId, String bugFix, List<Integer> percentages) throws Exception {
 
-        // Always disable read capture for retro replay mode. Only capture read metadata.
+        // Disable provenance tracking, only capture func invocations and input.
         ApiaryConfig.captureReads = false;
+        ApiaryConfig.captureUpdates = false;
+        ApiaryConfig.captureMetadata = false;
+
+        // Change provenance info.
+        if (!ApiaryConfig.recordInput) {
+            // Use postgres itself just to pass init.
+            provenanceAddr = dbAddr;
+            provenanceDB = ApiaryConfig.postgres;
+            provenancePort = ApiaryConfig.postgresPort;
+        }
+        ApiaryConfig.provenancePort = provenancePort;
+
         if (appName.equalsIgnoreCase("moodle")) {
             MoodleBenchmark.benchmark(dbAddr, interval, duration, skipLoad, retroMode, startExecId, endExecId, bugFix, percentages);
         } else if (appName.equalsIgnoreCase("wordpress")) {

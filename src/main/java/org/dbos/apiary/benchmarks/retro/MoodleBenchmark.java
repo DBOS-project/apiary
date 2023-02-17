@@ -5,16 +5,14 @@ import org.dbos.apiary.benchmarks.RetroBenchmark;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.procedures.postgres.moodle.MDLFetchSubscribers;
-import org.dbos.apiary.procedures.postgres.moodle.MDLForumInsert;
-import org.dbos.apiary.procedures.postgres.moodle.MDLIsSubscribed;
-import org.dbos.apiary.procedures.postgres.moodle.MDLSubscribeTxn;
+import org.dbos.apiary.procedures.postgres.moodle.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,12 +23,12 @@ import java.util.stream.Collectors;
 public class MoodleBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(MoodleBenchmark.class);
 
-    private static final int threadPoolSize = 4;
-    private static final int numWorker = 4;
+    private static final int threadPoolSize = 16;
+    private static final int numWorker = 16;
 
     // Users can subscribe to forums.
-    private static final int numUsers = 100;
-    private static final int numForums = 10;
+    private static final int numUsers = 5000;
+    private static final int numForums = 1000;
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
 
@@ -55,7 +53,7 @@ public class MoodleBenchmark {
         public Integer call() {
             int res;
             try {
-                res = client.get().executeFunction("MDLIsSubscribed", userId, forumId).getInt();
+                res = client.get().executeFunction(MDLUtil.FUNC_IS_SUBSCRIBED, userId, forumId).getInt();
             } catch (Exception e) {
                 res = -1;
             }
@@ -64,9 +62,9 @@ public class MoodleBenchmark {
     }
 
     public static void benchmark(String dbAddr, Integer interval, Integer duration, boolean skipLoad, int retroMode, long startExecId, long endExecId, String bugFix, List<Integer> percentages) throws SQLException, InterruptedException, ExecutionException, InvalidProtocolBufferException {
-        ApiaryConfig.isolationLevel = ApiaryConfig.SERIALIZABLE;
+        ApiaryConfig.isolationLevel = ApiaryConfig.REPEATABLE_READ;
         int readPercentage = percentages.get(0); // Use the first one.
-        boolean hasProv = (ApiaryConfig.captureReads || ApiaryConfig.captureUpdates) ? true : false;  // Enable provenance?
+        boolean hasProv = ApiaryConfig.recordInput ? true : false;  // Enable provenance?
 
         if (retroMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
             if (!skipLoad) {
@@ -81,12 +79,12 @@ public class MoodleBenchmark {
             }
         }
 
-        PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
+        PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
 
         ApiaryWorker apiaryWorker;
         if (hasProv) {
             // Enable provenance logging in the worker.
-            apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+            apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker, RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
         } else {
             // Disable provenance.
             apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker);
@@ -96,15 +94,15 @@ public class MoodleBenchmark {
         if ((bugFix != null) && bugFix.equalsIgnoreCase("subscribe")) {
             logger.info("Use Moodle bug fix: {}", MDLSubscribeTxn.class.getName());
             // Use the bug fix: transactional version.
-            apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLSubscribeTxn::new, true);
+            apiaryWorker.registerFunction(MDLUtil.FUNC_IS_SUBSCRIBED, ApiaryConfig.postgres, MDLSubscribeTxn::new, true);
         } else {
             // The buggy version.
             logger.info("Use Moodle buggy version: {}", MDLIsSubscribed.class.getName());
-            apiaryWorker.registerFunction("MDLIsSubscribed", ApiaryConfig.postgres, MDLIsSubscribed::new, false);
-            apiaryWorker.registerFunctionSet("MDLIsSubscribed", "MDLIsSubscribed", "MDLForumInsert");
+            apiaryWorker.registerFunction(MDLUtil.FUNC_IS_SUBSCRIBED, ApiaryConfig.postgres, MDLIsSubscribed::new, false);
+            apiaryWorker.registerFunctionSet(MDLUtil.FUNC_IS_SUBSCRIBED, MDLUtil.FUNC_IS_SUBSCRIBED, MDLUtil.FUNC_FORUM_INSERT);
         }
-        apiaryWorker.registerFunction("MDLForumInsert", ApiaryConfig.postgres, MDLForumInsert::new, false);
-        apiaryWorker.registerFunction("MDLFetchSubscribers", ApiaryConfig.postgres, MDLFetchSubscribers::new, false);
+        apiaryWorker.registerFunction(MDLUtil.FUNC_FORUM_INSERT, ApiaryConfig.postgres, MDLForumInsert::new, false);
+        apiaryWorker.registerFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS, ApiaryConfig.postgres, MDLFetchSubscribers::new, false);
 
         apiaryWorker.startServing();
 
@@ -113,7 +111,7 @@ public class MoodleBenchmark {
             RetroBenchmark.retroReplayExec(client.get(), retroMode, startExecId, endExecId);
             long elapsedTime = System.currentTimeMillis() - startTime;
             ApiaryConfig.recordInput = true;  // Record again.
-            int[] resList = client.get().executeFunction("MDLFetchSubscribers", initialForumId).getIntArray();
+            int[] resList = client.get().executeFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS, initialForumId).getIntArray();
             if (resList.length > 1) {
                 logger.info("Replay found duplications!");
             } else {
@@ -139,7 +137,7 @@ public class MoodleBenchmark {
         }
 
         // Check subscriptions.
-        int[] resList = client.get().executeFunction("MDLFetchSubscribers", initialForumId).getIntArray();
+        int[] resList = client.get().executeFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS, initialForumId).getIntArray();
         assert (resList.length > 1);
 
         long startTime = System.currentTimeMillis();
@@ -152,7 +150,7 @@ public class MoodleBenchmark {
                 // Check the list of subscribers of a random forum.
                 int forumId = ThreadLocalRandom.current().nextInt(0, numForums);
                 try {
-                    client.get().executeFunction("MDLFetchSubscribers", forumId).getIntArray();
+                    client.get().executeFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS, forumId).getIntArray();
                 } catch (InvalidProtocolBufferException e) {
                     e.printStackTrace();
                 }
@@ -162,7 +160,7 @@ public class MoodleBenchmark {
                 int userId = ThreadLocalRandom.current().nextInt(0, numUsers);
                 int forumId = ThreadLocalRandom.current().nextInt(0, numForums);
                 try {
-                    int res = client.get().executeFunction("MDLIsSubscribed", userId, forumId).getInt();
+                    int res = client.get().executeFunction(MDLUtil.FUNC_IS_SUBSCRIBED, userId, forumId).getInt();
                     assert (res == userId);
                 } catch (InvalidProtocolBufferException e) {
                     throw new RuntimeException(e);
@@ -217,14 +215,14 @@ public class MoodleBenchmark {
 
     private static void resetAllTables(String dbAddr) {
         try {
-            PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
-
-            pgConn.dropTable("ForumSubscription");
-            pgConn.createTable("ForumSubscription", "UserId integer NOT NULL, ForumId integer NOT NULL");
-            pgConn.dropTable(ApiaryConfig.tableFuncInvocations);
+            PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
+            Connection provConn = pgConn.provConnection.get();
             pgConn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
-            pgConn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
-            pgConn.dropTable(ApiaryConfig.tableRecordedInputs);
+            pgConn.dropTable(MDLUtil.MDL_FORUMSUBS_TABLE);
+            pgConn.createTable(MDLUtil.MDL_FORUMSUBS_TABLE, MDLUtil.MDL_FORUM_SCHEMA);
+            PostgresConnection.dropTable(provConn, ApiaryConfig.tableFuncInvocations);
+            PostgresConnection.dropTable(provConn, ProvenanceBuffer.PROV_QueryMetadata);
+            PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");
@@ -233,8 +231,8 @@ public class MoodleBenchmark {
 
     private static void resetAppTables(String dbAddr) {
         try {
-            PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
-            pgConn.truncateTable("ForumSubscription", false);
+            PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
+            pgConn.truncateTable(MDLUtil.MDL_FORUMSUBS_TABLE, false);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");

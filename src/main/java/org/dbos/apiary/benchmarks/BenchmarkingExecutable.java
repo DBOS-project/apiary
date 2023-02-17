@@ -64,11 +64,13 @@ public class BenchmarkingExecutable {
             logger.info("Disabling provenance tracing!");
             ApiaryConfig.captureReads = false;
             ApiaryConfig.captureUpdates = false;
+            ApiaryConfig.captureMetadata = false;
             ApiaryConfig.recordInput = false;
         } else {
             logger.info("Provenance tracing enabled!");
             ApiaryConfig.captureReads = true;
             ApiaryConfig.captureUpdates = true;
+            ApiaryConfig.captureMetadata = true;
             ApiaryConfig.recordInput = true;
         }
 

@@ -197,11 +197,14 @@ public class MoodleBenchmark {
         threadPool.shutdownNow();
         threadPool.awaitTermination(10, TimeUnit.SECONDS);
 
+        double totalThroughput = 0.0;
+
         List<Long> queryTimes = readTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
         int numQueries = queryTimes.size();
         if (numQueries > 0) {
             long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
             double throughput = (double) numQueries * 1000.0 / elapsedTime;
+            totalThroughput += throughput;
             long p50 = queryTimes.get(numQueries / 2);
             long p99 = queryTimes.get((numQueries * 99) / 100);
             logger.info("Forum Reads: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
@@ -214,12 +217,14 @@ public class MoodleBenchmark {
         if (numQueries > 0) {
             long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
             double throughput = (double) numQueries * 1000.0 / elapsedTime;
+            totalThroughput += throughput;
             long p50 = queryTimes.get(numQueries / 2);
             long p99 = queryTimes.get((numQueries * 99) / 100);
             logger.info("Forum Writes: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
         } else {
             logger.info("No writes");
         }
+        logger.info("Total Throughput: {}", totalThroughput);
 
         apiaryWorker.shutdown();
     }

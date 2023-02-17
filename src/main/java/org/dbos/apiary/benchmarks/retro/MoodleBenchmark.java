@@ -221,7 +221,6 @@ public class MoodleBenchmark {
             logger.info("No writes");
         }
 
-        Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
         apiaryWorker.shutdown();
     }
 

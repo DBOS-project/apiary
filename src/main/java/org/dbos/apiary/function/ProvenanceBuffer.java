@@ -49,6 +49,7 @@ public class ProvenanceBuffer {
     public static final String PROV_STATUS_EMBEDDED = "embedded";
     public static final String PROV_STATUS_REPLAY = "replayed";
 
+    public boolean shouldStop = false;
     /**
      * Enum class for provenance operations.
      */
@@ -96,14 +97,16 @@ public class ProvenanceBuffer {
         }
 
         Runnable r = () -> {
-            while(!Thread.currentThread().isInterrupted()) {
+            while(!shouldStop) {
                 try {
                     exportBuffer();
                     Thread.sleep(exportInterval);
                 } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                    shouldStop = true;
                 }
             }
+            // Export one last time.
+            exportBuffer();
         };
         exportThread = new Thread(r);
         exportThread.start();

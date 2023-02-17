@@ -56,11 +56,12 @@ public class PostgresContext extends ApiaryContext {
             long xmin = -1;
             long xmax = -1;
             List<Long> activeTxIDs = new ArrayList<>();
+            ResultSet rs = stmt.executeQuery("select pg_current_xact_id();");
+            rs.next();
+            txID = rs.getLong(1);
+            rs.close();
             if ((workerContext.provBuff != null) || ApiaryConfig.XDBTransactions) {
                 // Only look up transaction ID and snapshot info if we enable provenance capture.
-                ResultSet rs = stmt.executeQuery("select txid_current();");
-                rs.next();
-                txID = rs.getLong(1);
                 rs = stmt.executeQuery("select pg_current_snapshot();");
                 rs.next();
                 String snapshotString = rs.getString(1);
@@ -68,7 +69,7 @@ public class PostgresContext extends ApiaryContext {
                 long currXmax = PostgresUtilities.parseXmax(snapshotString);
                 xmax = currXmax;
                 activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
-
+                rs.close();
                 // For epoxy transactions only.
                 if (ApiaryConfig.XDBTransactions) {
                     activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < currXmax).collect(Collectors.toList()));
@@ -91,7 +92,7 @@ public class PostgresContext extends ApiaryContext {
                 currPstmt = conn.prepareStatement(checkReplayTxID);
                 currPstmt.setLong(1, execID);
                 currPstmt.setLong(2, functionID);
-                ResultSet rs = currPstmt.executeQuery();
+                rs = currPstmt.executeQuery();
                 if (rs.next()) {
                     tmpReplayTxID = rs.getLong(1);
                     logger.debug("Current transaction {} is a replay of executionID: {}, functionID: {}, original tranasction ID: {}", txID, execID, functionID, tmpReplayTxID);

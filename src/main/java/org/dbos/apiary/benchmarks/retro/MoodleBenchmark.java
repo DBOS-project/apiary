@@ -231,6 +231,7 @@ public class MoodleBenchmark {
             pgConn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
             pgConn.dropTable(MDLUtil.MDL_FORUMSUBS_TABLE);
             pgConn.createTable(MDLUtil.MDL_FORUMSUBS_TABLE, MDLUtil.MDL_FORUM_SCHEMA);
+            pgConn.createIndex(MDLUtil.MDL_FORUMID_INDEX);
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableFuncInvocations);
             PostgresConnection.dropTable(provConn, ProvenanceBuffer.PROV_QueryMetadata);
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);

@@ -88,6 +88,16 @@ public class PostgresRetroReplay {
             logger.error("Cannot find start order with query: {}", startOrderQuery);
             return null;
         }
+        long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+        long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+        long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
+        String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
+        String resName = resNames[resNames.length - 1]; // Extract the actual function name.
+        String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
+        String resStatus = startOrderRs.getString(ProvenanceBuffer.PROV_FUNC_STATUS);
+        long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
+        List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
+
 
         // This query finds the commit order of transactions.
         String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;",
@@ -174,15 +184,6 @@ public class PostgresRetroReplay {
             // Execute all following functions until nextCommitTxid is in the snapshot of that original transaction.
             // If the nextCommitTxid is in the snapshot, then that function needs to start after it commits.
             while (startHasNext) {
-                long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-                long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-                long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
-                String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
-                String resName = resNames[resNames.length - 1]; // Extract the actual function name.
-                String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
-                String resStatus = startOrderRs.getString(ProvenanceBuffer.PROV_FUNC_STATUS);
-                long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
-                List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
 
                 if ((resTxId == nextCommitTxid) || (nextCommitTxid >= xmax) || (activeTxns.contains(nextCommitTxid))) {
                     // Not in its snapshot. Start a new transaction.
@@ -240,6 +241,15 @@ public class PostgresRetroReplay {
                     startHasNext = false;
                     break;
                 }
+                resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+                resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+                resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
+                resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
+                resName = resNames[resNames.length - 1]; // Extract the actual function name.
+                resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
+                resStatus = startOrderRs.getString(ProvenanceBuffer.PROV_FUNC_STATUS);
+                xmax = PostgresUtilities.parseXmax(resSnapshotStr);
+                activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
             }
 
             // Launch committed tasks first, then aborted tasks.

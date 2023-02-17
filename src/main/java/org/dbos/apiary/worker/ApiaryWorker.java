@@ -75,6 +75,7 @@ public class ApiaryWorker {
         workerContext = new WorkerContext(buff);
         workerContext.provDBType = provenanceDatabase;
         workerContext.provAddress = provenanceAddress;
+        workerContext.numWorkersThreads = numWorkerThreads;
     }
 
     /** Public Interface **/

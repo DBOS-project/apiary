@@ -15,7 +15,6 @@ import java.util.concurrent.*;
 
 public class PostgresRetroReplay {
     private static final Logger logger = LoggerFactory.getLogger(PostgresRetroReplay.class);
-    private static int numReplayThreads = 10;
 
     public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, long endExecId, int replayMode) throws Exception {
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
@@ -153,7 +152,7 @@ public class PostgresRetroReplay {
 
         // A connection pool to the backend database. For concurrent executions.
         Queue<Connection> connPool = new ConcurrentLinkedQueue<>();
-        for (int i = 0; i < numReplayThreads; i++) {
+        for (int i = 0; i < workerContext.numWorkersThreads; i++) {
             connPool.add(workerContext.getPrimaryConnection().createNewConnection());
         }
 
@@ -161,7 +160,7 @@ public class PostgresRetroReplay {
         Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
 
         // A thread pool for concurrent function executions.
-        ExecutorService threadPool = Executors.newFixedThreadPool(numReplayThreads);
+        ExecutorService threadPool = Executors.newFixedThreadPool(workerContext.numWorkersThreads);
 
         // Caches for committed transactions and aborted transactions.
         List<PostgresReplayTask> committedTasks = new ArrayList<>();

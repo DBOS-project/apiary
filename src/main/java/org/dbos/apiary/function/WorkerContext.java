@@ -33,6 +33,7 @@ public class WorkerContext {
     public final ProvenanceBuffer provBuff;
     public String provDBType;
     public String provAddress;
+    public int numWorkersThreads;
 
     public WorkerContext(ProvenanceBuffer provBuff) {
         this.provBuff = provBuff;

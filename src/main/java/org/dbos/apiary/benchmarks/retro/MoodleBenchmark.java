@@ -23,8 +23,8 @@ import java.util.stream.Collectors;
 public class MoodleBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(MoodleBenchmark.class);
 
-    private static final int threadPoolSize = 16;
-    private static final int numWorker = 16;
+    private static final int threadPoolSize = 128;
+    private static final int numWorker = 64;
 
     // Users can subscribe to forums.
     private static final int numUsers = 5000;

@@ -17,6 +17,7 @@ public class PostgresRetroReplay {
     private static final Logger logger = LoggerFactory.getLogger(PostgresRetroReplay.class);
 
     public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, long endExecId, int replayMode) throws Exception {
+        long startTime = System.currentTimeMillis();
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
             logger.debug("Replay the entire trace!");
         } else if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
@@ -166,6 +167,8 @@ public class PostgresRetroReplay {
         List<PostgresReplayTask> committedTasks = new ArrayList<>();
         List<PostgresReplayTask> abortedTasks = new ArrayList<>();
 
+        long prepTime = System.currentTimeMillis();
+        logger.info("Prepare time: {} ms", prepTime - startTime);
         boolean startHasNext = true;
         while ((nextCommitTxid > 0) && (nextCommitTxid < endTxId)) {
             // Execute all following functions until nextCommitTxid is in the snapshot of that original transaction.
@@ -368,6 +371,9 @@ public class PostgresRetroReplay {
         }
 
         Object output = execIdToFinalOutput.get(lastNonSkippedExecId);  // The last non-skipped execution ID.
+
+        long endTime = System.currentTimeMillis();
+        logger.info("Re-execution time: {} ms", endTime - prepTime);
 
         // Clean up connection pool and statements.
         while (!connPool.isEmpty()) {

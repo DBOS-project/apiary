@@ -31,6 +31,8 @@ public class WorkerContext {
     private String primaryConnectionType;
 
     public final ProvenanceBuffer provBuff;
+    public String provDBType;
+    public String provAddress;
 
     public WorkerContext(ProvenanceBuffer provBuff) {
         this.provBuff = provBuff;

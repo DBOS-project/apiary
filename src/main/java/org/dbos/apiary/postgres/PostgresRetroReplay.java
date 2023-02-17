@@ -27,7 +27,7 @@ public class PostgresRetroReplay {
             return null;
         }
         assert(workerContext.provBuff != null);
-        Connection provConn = workerContext.provBuff.conn.get();
+        Connection provConn = ProvenanceBuffer.createProvConnection(workerContext.provDBType, workerContext.provAddress);
 
         // Record a list of modified tables. Track dependencies for replaying requests.
         Set<String> replayWrittenTables = ConcurrentHashMap.newKeySet();
@@ -103,7 +103,9 @@ public class PostgresRetroReplay {
                     ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE,
                     ProvenanceBuffer.PROV_END_TIMESTAMP);
         }
-        Statement commitOrderStmt = provConn.createStatement();
+        Connection provConn2 = ProvenanceBuffer.createProvConnection(workerContext.provDBType, workerContext.provAddress);
+
+        Statement commitOrderStmt = provConn2.createStatement();
         ResultSet commitOrderRs = commitOrderStmt.executeQuery(commitOrderQuery);
         // Next commit transaction ID, the next to be committed.
         if (!commitOrderRs.next()) {
@@ -124,7 +126,8 @@ public class PostgresRetroReplay {
                 ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
         );
-        Statement inputStmt = provConn.createStatement();
+        Connection provConn3 = ProvenanceBuffer.createProvConnection(workerContext.provDBType, workerContext.provAddress);
+        Statement inputStmt = provConn3.createStatement();
         ResultSet inputRs = inputStmt.executeQuery(inputQuery);
 
         // Cache accessed tables of a function set. <firstFuncName, String[]>
@@ -382,6 +385,9 @@ public class PostgresRetroReplay {
         commitOrderStmt.close();
         threadPool.shutdown();
         threadPool.awaitTermination(10, TimeUnit.SECONDS);
+        provConn.close();
+        provConn2.close();
+        provConn3.close();
         return output;
     }
 

@@ -73,6 +73,8 @@ public class ApiaryWorker {
             e.printStackTrace();
         }
         workerContext = new WorkerContext(buff);
+        workerContext.provDBType = provenanceDatabase;
+        workerContext.provAddress = provenanceAddress;
     }
 
     /** Public Interface **/

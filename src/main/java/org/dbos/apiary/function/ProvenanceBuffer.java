@@ -357,6 +357,10 @@ public class ProvenanceBuffer {
     }
 
     private List<String> getColNames(String table) {
+        if (table.equalsIgnoreCase(ProvenanceBuffer.PROV_ApiaryMetadata)) {
+            // Do not capture provenance for metadata table.
+            return null;
+        }
         List<String> colNames = new ArrayList<>();
         try {
             Statement stmt = conn.get().createStatement();

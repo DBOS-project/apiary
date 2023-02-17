@@ -219,6 +219,7 @@ public class ProvenanceBuffer {
         long txId = (long) entry[0];
         String status = (String) entry[8];
         if (ApiaryConfig.trackCommitTimestamp && status.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
+            logger.info("Check commit timestamp for {}", txId);
             try {
                 // TODO: future optimization may put this step off the critical path.
                 Connection pconn = conn.get();
@@ -229,6 +230,7 @@ public class ProvenanceBuffer {
                     if (tmpTime > 0) {
                         // TODO: find a better way to identify this.
                         entry[7] = tmpTime;
+                        logger.info("timestamp: {}", tmpTime);
                     } else {
                         // tmpTime=0 means the transaction aborted. Use the normal timestamp.
                         entry[8] = ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE;

@@ -45,6 +45,7 @@ public class ProvenanceTests {
         assumeTrue(TestUtils.testPostgresConnection());
         ApiaryConfig.recordInput = true;
         ApiaryConfig.captureMetadata = true;
+        ApiaryConfig.provenancePort = ApiaryConfig.postgresPort;
     }
 
     @BeforeEach
@@ -75,6 +76,7 @@ public class ProvenanceTests {
         if (apiaryWorker != null) {
             apiaryWorker.shutdown();
         }
+        ApiaryConfig.provenancePort = TestUtils.provenancePort;
     }
 
     @Test

@@ -28,10 +28,14 @@ public class WordPressTests {
 
     private ApiaryWorker apiaryWorker;
 
+    private static final int provenancePort = 5432;  // Change to 5433 for a separate Postgres or Vertica.
+    private static final String provenanceDB = ApiaryConfig.postgres; // Change to Vertica as needed.
+    private static final String provenanceAddr = "localhost"; // Change to other addresses as needed.
+
     @BeforeAll
     public static void testConnection() {
         assumeTrue(TestUtils.testPostgresConnection());
-        // ApiaryConfig.provenancePort = 5433;
+        ApiaryConfig.provenancePort = provenancePort;
         ApiaryConfig.isolationLevel = ApiaryConfig.REPEATABLE_READ;
 
         // Disable XDB transactions.
@@ -50,7 +54,7 @@ public class WordPressTests {
     public void resetTables() {
         try {
             PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos",
-                    ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
+                    provenanceDB, provenanceAddr);
             Connection provConn = conn.provConnection.get();
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableFuncInvocations);
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);
@@ -87,9 +91,9 @@ public class WordPressTests {
     @Test
     public void testPostSerialized() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         logger.info("testPostSerialized");
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos", provenanceDB, provenanceAddr);
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, provenanceDB, provenanceAddr);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new);
         apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddComment::new);
@@ -143,9 +147,9 @@ public class WordPressTests {
     public void testPostConcurrentRetro() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         // Try to reproduce the bug where the new comment comes between post trashed and comment trashed. So the new comment would be marked as trashed but cannot be restored afterwards.
         logger.info("testWPConcurrentRetro");
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos", ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos", provenanceDB, provenanceAddr);
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, provenanceDB, provenanceAddr);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new);
         apiaryWorker.registerFunction("WPAddComment", ApiaryConfig.postgres, WPAddComment::new);
@@ -273,7 +277,7 @@ public class WordPressTests {
 
         // Register the new code and see if we can get the correct result.
         apiaryWorker.shutdown();
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.vertica, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, provenanceDB, provenanceAddr);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("WPAddPost", ApiaryConfig.postgres, WPAddPost::new, false);
         // Use the new code.
@@ -317,9 +321,9 @@ public class WordPressTests {
     @Test
     public void testOptionSerialized() throws SQLException, InvalidProtocolBufferException, InterruptedException {
         logger.info("testOptionSerialized");
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, ApiaryConfig.postgres, "dbos", provenanceDB, provenanceAddr);
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, provenanceDB, provenanceAddr);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("WPGetOption", ApiaryConfig.postgres, WPGetOption::new);
         apiaryWorker.registerFunction("WPOptionExists", ApiaryConfig.postgres, WPOptionExists::new);
@@ -348,9 +352,9 @@ public class WordPressTests {
         logger.info("testOptionConcurrentRetro");
 
         // Run concurrent requests until we find an error. Then retroactively replay.
-        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", provenanceDB, provenanceAddr);
 
-        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, provenanceDB, provenanceAddr);
         apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
         apiaryWorker.registerFunction("WPGetOption", ApiaryConfig.postgres, WPGetOption::new, false);
         apiaryWorker.registerFunction("WPOptionExists", ApiaryConfig.postgres, WPOptionExists::new, false);

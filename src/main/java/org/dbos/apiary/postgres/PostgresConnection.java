@@ -450,28 +450,6 @@ public class PostgresConnection implements ApiaryConnection {
         }
         // Get actual commit timestamp if track_commit_timestamp is available. Otherwise, get the timestamp from Java.
         long commitTime = Utilities.getMicroTimestamp();
-        if (ApiaryConfig.trackCommitTimestamp && status.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
-            try {
-                // TODO: future optimization may put this step off the critical path.
-                Connection conn = bgConnection.get();
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(String.format("SELECT CAST(extract(epoch from pg_xact_commit_timestamp(\'%s\'::xid)) * 1000000 AS BIGINT);", ctxt.txc.txID));
-                if (rs.next()) {
-                    long tmpTime = rs.getLong(1);
-                    if (tmpTime > 0) {
-                        // TODO: find a better way to identify this.
-                        commitTime = tmpTime;
-                    } else {
-                        // tmpTime=0 means the transaction aborted. Use the normal timestamp.
-                        status = ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE;
-                    }
-                }
-                rs.close();
-                stmt.close();
-            } catch (SQLException e) {
-                logger.error("Failed to get commit timestamp.");
-            }
-        }
         String txnSnapshot = PostgresUtilities.constuctSnapshotStr(ctxt.txc.xmin, ctxt.txc.xmax, ctxt.txc.activeTransactions);
         workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot, ctxt.txc.readOnly);
     }

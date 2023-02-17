@@ -210,6 +210,39 @@ public class ProvenanceBuffer {
         }
     }
 
+    private void getCommitTimestamp(Object[] entry) {
+        // The entry contains: ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot, ctxt.txc.readOnly
+        if (entry.length < 11) {
+            logger.error("Wrong entry length: {}, expected 11.", entry.length);
+        }
+
+        long txId = (long) entry[0];
+        String status = (String) entry[8];
+        if (ApiaryConfig.trackCommitTimestamp && status.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
+            try {
+                // TODO: future optimization may put this step off the critical path.
+                Connection pconn = conn.get();
+                Statement stmt = pconn.createStatement();
+                ResultSet rs = stmt.executeQuery(String.format("SELECT CAST(extract(epoch from pg_xact_commit_timestamp(\'%s\'::xid)) * 1000000 AS BIGINT);", txId));
+                if (rs.next()) {
+                    long tmpTime = rs.getLong(1);
+                    if (tmpTime > 0) {
+                        // TODO: find a better way to identify this.
+                        entry[7] = tmpTime;
+                    } else {
+                        // tmpTime=0 means the transaction aborted. Use the normal timestamp.
+                        entry[8] = ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE;
+                    }
+                }
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                logger.error("Failed to get commit timestamp for txid {}.", txId);
+            }
+        }
+
+    }
+
     private void exportTableBuffer(String table) throws SQLException {
         Connection connection = this.conn.get();
         if (connection == null) {
@@ -229,6 +262,12 @@ public class ProvenanceBuffer {
             int numVals = listVals.length;
             int numColumns = tableBuffer.colTypeMap.size();
             assert (numVals <= numColumns);
+
+            // Special case for funcInvocations. Get commit timestamp for committed queries.
+            if (table.equalsIgnoreCase(ApiaryConfig.tableFuncInvocations)) {
+                getCommitTimestamp(listVals);
+            }
+
             for (int j = 0; j < numVals; j++) {
                 // Column index starts with 1.
                 setColumn(pstmt, j+1, tableBuffer.colTypeMap.get(j+1), listVals[j]);

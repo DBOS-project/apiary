@@ -128,7 +128,7 @@ public class PostgresConnection implements ApiaryConnection {
             } else {
                 createTable(provConn, ApiaryConfig.tableRecordedInputs,
                         ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL PRIMARY KEY, " +
-                                ProvenanceBuffer.PROV_REQ_BYTES + " VARBINARY(2048) NOT NULL");
+                                ProvenanceBuffer.PROV_REQ_BYTES + " VARBINARY(65000) NOT NULL");
             }
         }
 

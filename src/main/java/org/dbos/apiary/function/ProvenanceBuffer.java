@@ -77,6 +77,8 @@ public class ProvenanceBuffer {
 
     private Thread exportThread;
 
+    public ThreadLocal<Connection> pgConn = null;  // Connect to postgres;
+
     public ProvenanceBuffer(String databaseType, String databaseAddress) throws ClassNotFoundException {
         this.databaseType = databaseType;
         if (databaseType == null) {
@@ -211,18 +213,26 @@ public class ProvenanceBuffer {
     }
 
     private void getCommitTimestamp(Object[] entry) {
+        if (this.pgConn == null) {
+            logger.error("No Postgres connection for provenance.");
+            return;
+        }
         // The entry contains: ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot, ctxt.txc.readOnly
         if (entry.length < 11) {
             logger.error("Wrong entry length: {}, expected 11.", entry.length);
         }
-
+        String snapshot = (String) entry[9];
+        // If recorded snapshot, try to find it in postgres.
+        if (snapshot.isEmpty()) {
+            return;
+        }
         long txId = (long) entry[0];
         String status = (String) entry[8];
         if (ApiaryConfig.trackCommitTimestamp && status.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
             logger.info("Check commit timestamp for {}", txId);
             try {
                 // TODO: future optimization may put this step off the critical path.
-                Connection pconn = conn.get();
+                Connection pconn = this.pgConn.get();
                 Statement stmt = pconn.createStatement();
                 ResultSet rs = stmt.executeQuery(String.format("SELECT CAST(extract(epoch from pg_xact_commit_timestamp(\'%s\'::xid)) * 1000000 AS BIGINT);", txId));
                 if (rs.next()) {
@@ -239,6 +249,7 @@ public class ProvenanceBuffer {
                 rs.close();
                 stmt.close();
             } catch (SQLException e) {
+                e.printStackTrace();
                 logger.error("Failed to get commit timestamp for txid {}.", txId);
             }
         }

@@ -2,6 +2,7 @@ package org.dbos.apiary.function;
 
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.connection.ApiarySecondaryConnection;
+import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.postgres.GetApiaryClientID;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
@@ -45,6 +46,7 @@ public class WorkerContext {
         primaryConnectionType = type;
         if (type.equals(ApiaryConfig.postgres)) {
             registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.postgres, GetApiaryClientID::new);
+            this.provBuff.pgConn = ThreadLocal.withInitial(() -> connection.createNewConnection());
         } else if (type.equals(ApiaryConfig.voltdb)) {
             registerFunction(ApiaryConfig.getApiaryClientID, ApiaryConfig.voltdb, org.dbos.apiary.procedures.voltdb.GetApiaryClientID::new);
         }

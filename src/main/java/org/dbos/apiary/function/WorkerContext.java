@@ -98,6 +98,14 @@ public class WorkerContext {
         return List.of(firstFunc);
     }
 
+    public boolean getFunctionReadOnly(String func) {
+        Boolean isRo = functionReadOnly.get(func);
+        if (isRo == null) {
+            return false;  // Conservatively return false.
+        }
+        return isRo;
+    }
+
     public boolean getFunctionSetReadOnly(String firstFunc) {
         List<String> funcs = functionSets.get(firstFunc);
         Boolean isRO;

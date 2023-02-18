@@ -153,7 +153,7 @@ public class PostgresRetroReplay {
 
         // A connection pool to the backend database. For concurrent executions.
         Queue<Connection> connPool = new ConcurrentLinkedQueue<>();
-        for (int i = 0; i < workerContext.numWorkersThreads * 2; i++) {
+        for (int i = 0; i < workerContext.numWorkersThreads; i++) {
             connPool.add(workerContext.getPrimaryConnection().createNewConnection());
         }
 
@@ -161,7 +161,7 @@ public class PostgresRetroReplay {
         Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
 
         // A thread pool for concurrent function executions.
-        ExecutorService threadPool = Executors.newFixedThreadPool(workerContext.numWorkersThreads * 3);
+        ExecutorService threadPool = Executors.newCachedThreadPool();
 
         // Caches for committed transactions and aborted transactions.
         List<PostgresReplayTask> committedTasks = new ArrayList<>();
@@ -272,7 +272,8 @@ public class PostgresRetroReplay {
                     // Wait for the task to finish.
                     int res = commitPgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
                     if (res == 0) {
-                        if (commitPgRpTask.fo.errorMsg.isEmpty()) {
+                        if (commitPgRpTask.fo.errorMsg.isEmpty() && !workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName)) {
+                            // Only commit transactions with writes here.
                             commitPgRpTask.conn.commit();
                         } else {
                             logger.debug("Skip commit {} due to Error message: {}", nextCommitTxid, commitPgRpTask.fo.errorMsg);
@@ -381,12 +382,15 @@ public class PostgresRetroReplay {
         logger.info("Re-execution time: {} ms", endTime - prepTime);
 
         // Clean up connection pool and statements.
+        int totalNumConns = 0;
         while (!connPool.isEmpty()) {
             Connection currConn = connPool.poll();
             if (currConn != null) {
                 currConn.close();
+                totalNumConns++;
             }
         }
+        logger.info("Total used {} connections.", totalNumConns);
 
         startOrderRs.close();
         startOrderStmt.close();

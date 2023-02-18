@@ -371,9 +371,15 @@ public class PostgresConnection implements ApiaryConnection {
                 logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
                 f = func.apiaryRunFunction(ctxt, inputs);
                 logger.debug("Completed function [{}]", actualName);
-                // Collect all written tables.
-                replayWrittenTables.addAll(ctxt.replayWrittenTables);
+                // If it is read-only, commit now.
+                if (ctxt.workerContext.getFunctionReadOnly(functionName)) {
+                    ctxt.conn.commit();
+                } else {
+                    // Collect all written tables.
+                    replayWrittenTables.addAll(ctxt.replayWrittenTables);
+                }
                 recordTransactionInfo(ctxt.workerContext, ctxt, startTime, actualName, replayStatus);
+
                 break;
             } catch (Exception e) {
                 try {
@@ -396,11 +402,24 @@ public class PostgresConnection implements ApiaryConnection {
                         // Only retry under retro mode. We should not have serialization error under faithful replay.
                         if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState()) && ctxt.workerContext.hasRetroFunctions()) {
                             recordTransactionInfo(ctxt.workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
-                            logger.debug("Serialization failure during replay, will retry: {}", errorMsg);
+                            logger.debug("Serialization failure during replay execution, will retry: {}", errorMsg);
 
                             ctxt = null;  // Create a new one during retry.
                             continue;  // Retry.
                         }
+                    }
+                }
+
+                if (e instanceof PSQLException) {
+                    PSQLException p = (PSQLException) e;
+                    errorMsg = p.getMessage();
+                    // Only retry under retro mode. We should not have serialization error under faithful replay.
+                    if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState()) && ctxt.workerContext.hasRetroFunctions()) {
+                        recordTransactionInfo(ctxt.workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
+                        logger.debug("Serialization failure during replay commit, will retry: {}", errorMsg);
+
+                        ctxt = null;  // Create a new one during retry.
+                        continue;  // Retry.
                     }
                 }
                 logger.error("Unrecoverable failed execution during replay. Error: {}", errorMsg);

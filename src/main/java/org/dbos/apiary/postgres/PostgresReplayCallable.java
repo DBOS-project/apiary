@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 class PostgresReplayCallable implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(PostgresReplayCallable.class);
@@ -21,6 +23,8 @@ class PostgresReplayCallable implements Callable<Integer> {
     private final Map<Long, Map<Long, Object>> execFuncIdToValue;
     private final Map<Long, Object> execIdToFinalOutput;
     private final Set<String> replayWrittenTables;
+
+    private static final Lock pendingTasksLock = new ReentrantLock();
 
     public PostgresReplayCallable(WorkerContext workerContext, PostgresReplayTask rpTask, int replayMode,
                                   Map<Long, Map<Long, Task>> pendingTasks,
@@ -71,10 +75,12 @@ class PostgresReplayCallable implements Callable<Integer> {
             pendingTasks.putIfAbsent(rpTask.task.execId, new ConcurrentHashMap<>());
         } else {
             // Skip the task if it is absent. Because we allow reducing the number of called function
+            pendingTasksLock.lock();
             if (!pendingTasks.containsKey(rpTask.task.execId) || !pendingTasks.get(rpTask.task.execId).containsKey(rpTask.task.functionID)) {
                 logger.debug("Skip function ID {}, not found in pending tasks.", rpTask.task.functionID);
                 return -1;
             }
+            pendingTasksLock.unlock();
             // Find the task in the stash. Make sure that all futures have been resolved.
             Task currTask = pendingTasks.get(rpTask.task.execId).get(rpTask.task.functionID);
 
@@ -117,7 +123,9 @@ class PostgresReplayCallable implements Callable<Integer> {
             }
             // Clean up.
             execFuncIdToValue.remove(rpTask.task.execId);
+            pendingTasksLock.lock();
             pendingTasks.remove(rpTask.task.execId);
+            pendingTasksLock.unlock();
         }
 
         return 0;

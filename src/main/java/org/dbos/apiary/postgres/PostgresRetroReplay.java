@@ -219,7 +219,8 @@ public class PostgresRetroReplay {
                         lastNonSkippedExecId = resExecId;
                         Connection currConn = connPool.poll();
                         if (currConn == null) {
-                            throw new RuntimeException("Not enough connections to replay!");
+                            // Allocate more connections.
+                            currConn = workerContext.getPrimaryConnection().createNewConnection();
                         }
 
                         // Store in the cache based on their status.

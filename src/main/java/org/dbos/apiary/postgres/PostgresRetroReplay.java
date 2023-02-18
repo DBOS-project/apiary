@@ -38,7 +38,20 @@ public class PostgresRetroReplay {
     // A pending commit map from original transaction ID to Postgres replay task.
     private static final Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
 
+    private static void resetReplayState() {
+        replayWrittenTables.clear();
+        funcSetAccessTables.clear();
+        pendingTasks.clear();
+        execFuncIdToValue.clear();
+        execIdToFinalOutput.clear();
+        skippedExecIds.clear();
+        pendingCommitTasks.clear();
+    }
+
     public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, long endExecId, int replayMode) throws Exception {
+        // Clean up.
+        resetReplayState();
+
         long startTime = System.currentTimeMillis();
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
             logger.debug("Replay the entire trace!");

@@ -315,7 +315,8 @@ public class PostgresRetroReplay {
                             throw new RuntimeException("Unrecoverable error during aborting timed out transaction.");
                         }
                     } else {
-                        logger.debug("Other failures during replay transaction {}, cannot commit: {} - {}", nextCommitTxid, e.getClass().getName(), e.getMessage());
+                        logger.error("Other failures during replay transaction {}, cannot commit: {} - {}", nextCommitTxid, e.getClass().getName(), e.getMessage());
+                        e.printStackTrace();
                         // TODO: should we continue here? If we get a timeout exception, the transaction is blocked (shouldn't happen in replay but retro mode may introduce new deadlocks).
                         throw new RuntimeException("Unrecoverable error during commit.");
                     }

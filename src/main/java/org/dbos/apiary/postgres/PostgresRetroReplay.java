@@ -244,7 +244,8 @@ public class PostgresRetroReplay {
 
             // Launch committed tasks first, then aborted tasks.
             for (PostgresReplayTask pgRpTask : committedTasks) {
-                pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
+                PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+                pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask, pendingTasks,
                         execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
                 // A replay without any modified functions should never be blocked, so we don't need to wait.
                 // TODO: a minor issue is that submitted tasks are not guaranteed to start transaction in the same order. It does not affect correctness.
@@ -253,7 +254,8 @@ public class PostgresRetroReplay {
 
             // We should only have aborted tasks if under retro mode.
             for (PostgresReplayTask pgRpTask : abortedTasks) {
-                pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
+                PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+                pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask, pendingTasks,
                         execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
             }
             abortedTasks.clear();
@@ -289,7 +291,8 @@ public class PostgresRetroReplay {
                             try {
                                 commitPgRpTask.conn.rollback();
                                 logger.debug("Rolled back failed to commit transaction.");
-                                commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, commitPgRpTask, replayMode, pendingTasks,
+                                PostgresContext pgCtxt = new PostgresContext(commitPgRpTask.conn, workerContext, "retroReplay", commitPgRpTask.task.execId, commitPgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+                                commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, commitPgRpTask, pendingTasks,
                                         execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
                                 commitPgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
                                 commitPgRpTask.conn.commit();
@@ -348,7 +351,8 @@ public class PostgresRetroReplay {
                     for (long funcId : execFuncs.keySet()) {
                         Task rpTask = execFuncs.get(funcId);
                         PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
-                        pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(workerContext, pgRpTask, replayMode, pendingTasks,
+                        PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+                        pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask, pendingTasks,
                                 execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
                         try {
                             int res = pgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);

@@ -348,28 +348,32 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput replayFunction(Connection conn, String functionName, WorkerContext workerContext,
-                                         String service, long execID, long functionID, int replayMode,
-                                         Set<String> replayWrittenTables,
+    public FunctionOutput replayFunction(ApiaryContext apCtxt, String functionName, Set<String> replayWrittenTables,
                                          Object... inputs) {
+        PostgresContext pgCtxt = (PostgresContext) apCtxt;
         // Fast path for replayed functions.
         FunctionOutput f;
         String actualName = functionName;
         String replayStatus = ProvenanceBuffer.PROV_STATUS_REPLAY;
 
+        PostgresContext ctxt = pgCtxt;
         while (true) {
             long startTime = Utilities.getMicroTimestamp();
-            PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
-                    new HashSet<>(), new HashSet<>(), new HashSet<>());
+            if (ctxt == null) {
+                // During retry, create a new one.
+                ctxt = new PostgresContext(pgCtxt.conn, pgCtxt.workerContext, pgCtxt.service, pgCtxt.execID, pgCtxt.functionID, pgCtxt.replayMode,
+                        new HashSet<>(), new HashSet<>(), new HashSet<>());
+            }
+
             try {
-                ApiaryFunction func = workerContext.getFunction(functionName);
+                ApiaryFunction func = ctxt.workerContext.getFunction(functionName);
                 actualName = Utilities.getFunctionClassName(func);
                 logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
                 f = func.apiaryRunFunction(ctxt, inputs);
                 logger.debug("Completed function [{}]", actualName);
                 // Collect all written tables.
                 replayWrittenTables.addAll(ctxt.replayWrittenTables);
-                recordTransactionInfo(workerContext, ctxt, startTime, actualName, replayStatus);
+                recordTransactionInfo(ctxt.workerContext, ctxt, startTime, actualName, replayStatus);
                 break;
             } catch (Exception e) {
                 try {
@@ -390,9 +394,11 @@ public class PostgresConnection implements ApiaryConnection {
                         PSQLException p = (PSQLException) innerException;
                         errorMsg = p.getMessage();
                         // Only retry under retro mode. We should not have serialization error under faithful replay.
-                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState()) && workerContext.hasRetroFunctions()) {
-                            recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
+                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState()) && ctxt.workerContext.hasRetroFunctions()) {
+                            recordTransactionInfo(ctxt.workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
                             logger.debug("Serialization failure during replay, will retry: {}", errorMsg);
+
+                            ctxt = null;  // Create a new one during retry.
                             continue;  // Retry.
                         }
                     }
@@ -400,7 +406,7 @@ public class PostgresConnection implements ApiaryConnection {
                 logger.error("Unrecoverable failed execution during replay. Error: {}", errorMsg);
                 replayStatus = ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE;
                 f = new FunctionOutput(errorMsg);
-                recordTransactionInfo(workerContext, ctxt, startTime, actualName, replayStatus);
+                recordTransactionInfo(ctxt.workerContext, ctxt, startTime, actualName, replayStatus);
                 break;
             }
         }

@@ -1,8 +1,10 @@
 package org.dbos.apiary.connection;
 
+import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.postgres.PostgresContext;
 
 import java.sql.Connection;
 import java.util.Map;
@@ -25,6 +27,9 @@ public interface ApiaryConnection {
      */
     FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID,
                                 int replayMode, Object... inputs) throws Exception;
+
+    FunctionOutput replayFunction(ApiaryContext pgCtxt, String functionName, Set<String> replayWrittenTables,
+                                  Object... inputs);
 
     Set<TransactionContext> getActiveTransactions();
 

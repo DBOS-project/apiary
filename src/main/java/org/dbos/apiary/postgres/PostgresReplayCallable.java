@@ -2,7 +2,6 @@ package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.function.ApiaryFuture;
 import org.dbos.apiary.function.Task;
-import org.dbos.apiary.function.WorkerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,28 +10,25 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 class PostgresReplayCallable implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(PostgresReplayCallable.class);
 
-    private final WorkerContext workerContext;
+
     private final PostgresReplayTask rpTask;
-    private final int replayMode;
+    private final PostgresContext pgCtxt;
     private final Map<Long, Map<Long, Task>> pendingTasks;
     private final Map<Long, Map<Long, Object>> execFuncIdToValue;
     private final Map<Long, Object> execIdToFinalOutput;
     private final Set<String> replayWrittenTables;
 
-    public PostgresReplayCallable(WorkerContext workerContext, PostgresReplayTask rpTask, int replayMode,
+    public PostgresReplayCallable(PostgresContext pgCtxt, PostgresReplayTask rpTask,
                                   Map<Long, Map<Long, Task>> pendingTasks,
                                   Map<Long, Map<Long, Object>> execFuncIdToValue,
                                   Map<Long, Object> execIdToFinalOutput,
                                   Set<String> replayWrittenTables) {
-        this.workerContext = workerContext;
+        this.pgCtxt = pgCtxt;
         this.rpTask = rpTask;
-        this.replayMode = replayMode;
         this.pendingTasks = pendingTasks;
         this.execFuncIdToValue = execFuncIdToValue;
         this.execIdToFinalOutput = execIdToFinalOutput;
@@ -44,22 +40,21 @@ class PostgresReplayCallable implements Callable<Integer> {
     @Override
     public Integer call() {
         // Only support primary functions.
-        if (!workerContext.functionExists(rpTask.task.funcName)) {
+        if (!pgCtxt.workerContext.functionExists(rpTask.task.funcName)) {
             logger.debug("Unrecognized function: {}, cannot replay, skipped.", rpTask.task.funcName);
             return -1;
         }
-        String type = workerContext.getFunctionType(rpTask.task.funcName);
-        if (!workerContext.getPrimaryConnectionType().equals(type)) {
+        String type = pgCtxt.workerContext.getFunctionType(rpTask.task.funcName);
+        if (!pgCtxt.workerContext.getPrimaryConnectionType().equals(type)) {
             logger.error("Replay only support primary functions!");
             return -1;
         }
 
-        PostgresConnection c = (PostgresConnection) workerContext.getPrimaryConnection();
+        PostgresConnection c = (PostgresConnection) pgCtxt.workerContext.getPrimaryConnection();
 
         if (rpTask.task.functionID == 0l) {
             // This is the first function of a request.
-            rpTask.fo = c.replayFunction(rpTask.conn, rpTask.task.funcName, workerContext, "retroReplay", rpTask.task.execId, rpTask.task.functionID,
-                    replayMode, replayWrittenTables, rpTask.task.input);
+            rpTask.fo = c.replayFunction(pgCtxt, rpTask.task.funcName, replayWrittenTables, rpTask.task.input);
             if (rpTask.fo == null) {
                 logger.warn("Replay function output is null.");
                 return -1;
@@ -108,8 +103,7 @@ class PostgresReplayCallable implements Callable<Integer> {
                 return -1;
             }
 
-            rpTask.fo = c.replayFunction(rpTask.conn, currTask.funcName, workerContext, "retroReplay", rpTask.task.execId, rpTask.task.functionID,
-                    replayMode, replayWrittenTables, currTask.input);
+            rpTask.fo = c.replayFunction(pgCtxt, currTask.funcName, replayWrittenTables, currTask.input);
             // Remove this task from the map.
             pendingTasks.get(rpTask.task.execId).remove(rpTask.task.functionID);
             if (rpTask.fo == null) {

@@ -139,7 +139,7 @@ public class PostgresRetroReplay {
         // Maintain a pool of connections to the backend database to concurrently execute transactions.
         int totalReplayedTxns = 0;
         List<Long> checkVisibleTxns = new ArrayList<>(); // Committed but not guaranteed to be visible yet.
-        while (!startOrderRs.next()) {
+        while (startOrderRs.next()) {
             totalReplayedTxns++;
             long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);

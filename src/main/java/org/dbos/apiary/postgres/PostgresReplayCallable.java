@@ -75,13 +75,13 @@ class PostgresReplayCallable implements Callable<Integer> {
         } else {
             // Skip the task if it is absent. Because we allow reducing the number of called function
             if (!pendingTasks.containsKey(rpTask.task.execId)) {
-                logger.debug("Skip function ID {}, not found in pending tasks.", rpTask.task.functionID);
+                logger.error("Skip execution ID {}, function ID {}, not found in pending tasks.", rpTask.task.execId, rpTask.task.functionID);
                 return -1;
             } else {
                 // If execFuncIdToValue exists, then it means this task should have pending tasks, but due to concurrent execution, it's not written yet.
                 if (!execFuncIdToValue.containsKey(rpTask.task.execId)) {
                     // Request has done.
-                    logger.debug("Skip function ID {}, not found in pending tasks.", rpTask.task.functionID);
+                    logger.error("Skip execution ID {}, function ID {}, not found in pending tasks.", rpTask.task.execId, rpTask.task.functionID);
                     return -1;
                 }
                 while (execFuncIdToValue.containsKey(rpTask.task.execId) && (pendingTasks.get(rpTask.task.execId) == null)) {
@@ -89,7 +89,7 @@ class PostgresReplayCallable implements Callable<Integer> {
                 }
                 Map<Long, Task> tmpTaskMap = pendingTasks.getOrDefault(rpTask.task.execId, Collections.emptyMap());
                 if (!tmpTaskMap.containsKey(rpTask.task.functionID)) {
-                    logger.error("Should not happen... function ID {} not found in pending tasks.", rpTask.task.functionID);
+                    logger.error("Should not happen... execution ID {}, function ID {} not found in pending tasks.", rpTask.task.execId, rpTask.task.functionID);
                     return -1;
                 }
             }

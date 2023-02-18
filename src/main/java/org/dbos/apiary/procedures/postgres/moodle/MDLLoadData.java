@@ -26,7 +26,7 @@ public class MDLLoadData extends PostgresFunction {
     }
 
     @Override
-    public boolean isReadOnly() { return true; }
+    public boolean isReadOnly() { return false; }
 
     @Override
     public List<String> accessTables() {

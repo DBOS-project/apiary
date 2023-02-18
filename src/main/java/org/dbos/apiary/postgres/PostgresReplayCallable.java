@@ -84,12 +84,16 @@ class PostgresReplayCallable implements Callable<Integer> {
                     logger.error("Skip execution ID {}, function ID {}, not found in pending tasks.", rpTask.task.execId, rpTask.task.functionID);
                     return -1;
                 }
-                while (execFuncIdToValue.containsKey(rpTask.task.execId) && (pendingTasks.get(rpTask.task.execId) == null)) {
-                    // Busy spin.
+                Map<Long, Task> tmpTaskMap = null;
+                while (execFuncIdToValue.containsKey(rpTask.task.execId)) {
+                    // Busy spin, wait for its turn.
+                    tmpTaskMap = pendingTasks.getOrDefault(rpTask.task.execId, Collections.emptyMap());
+                    if (tmpTaskMap.containsKey(rpTask.task.functionID)) {
+                        break;
+                    }
                 }
-                Map<Long, Task> tmpTaskMap = pendingTasks.getOrDefault(rpTask.task.execId, Collections.emptyMap());
-                if (!tmpTaskMap.containsKey(rpTask.task.functionID)) {
-                    logger.error("Should not happen... execution ID {}, function ID {} not found in pending tasks.", rpTask.task.execId, rpTask.task.functionID);
+                if (tmpTaskMap == null) {
+                    logger.error("Request done. Have to skip execution id {}, function id {}.", rpTask.task.execId, rpTask.task.functionID);
                     return -1;
                 }
             }

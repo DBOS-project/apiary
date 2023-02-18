@@ -308,8 +308,9 @@ public class PostgresRetroReplay {
             connPool.add(currConn);
         }
 
+        logger.info("Last non skipped execId: {}", lastNonSkippedExecId);
         Object output = execIdToFinalOutput.get(lastNonSkippedExecId);  // The last non-skipped execution ID.
-
+        logger.info("Final output: {}", output.toString());
         long endTime = System.currentTimeMillis();
         logger.info("Re-execution time: {} ms", endTime - prepTime);
         logger.info("Total replayed transactions: {}", totalReplayedTxns);

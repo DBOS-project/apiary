@@ -68,29 +68,14 @@ class PostgresReplayCallable implements Callable<Integer> {
             execIdToFinalOutput.putIfAbsent(rpTask.task.execId, rpTask.fo.output);
             pendingTasks.putIfAbsent(rpTask.task.execId, new ConcurrentHashMap<>());
         } else {
-            // Skip the task if it is absent. Because we allow reducing the number of called function
-            if (!pendingTasks.containsKey(rpTask.task.execId)) {
-                logger.error("Skip execution ID {}, function ID {}, not found in pending tasks.", rpTask.task.execId, rpTask.task.functionID);
+            // Skip the task if it is absent. Because we allow reducing the number of called function. Should never have race condition because later tasks must have previous tasks in their snapshot.
+            if (!pendingTasks.containsKey(rpTask.task.execId) || !pendingTasks.get(rpTask.task.execId).containsKey(rpTask.task.functionID)) {
+                if (pgCtxt.workerContext.hasRetroFunctions()) {
+                    logger.debug("Skip execution ID {}, function ID {}, not found in pending tasks.", rpTask.task.execId, rpTask.task.functionID);
+                } else {
+                    logger.error("Not found execution ID {}, function ID {} in pending tasks. Should not happen in replay!", rpTask.task.execId, rpTask.task.functionID);
+                }
                 return -1;
-            } else {
-                // If execFuncIdToValue exists, then it means this task should have pending tasks, but due to concurrent execution, it's not written yet.
-                if (!execFuncIdToValue.containsKey(rpTask.task.execId)) {
-                    // Request has done.
-                    logger.error("Skip execution ID {}, function ID {}, not found in pending tasks.", rpTask.task.execId, rpTask.task.functionID);
-                    return -1;
-                }
-                Map<Long, Task> tmpTaskMap = null;
-                while (execFuncIdToValue.containsKey(rpTask.task.execId)) {
-                    // Busy spin, wait for its turn.
-                    tmpTaskMap = pendingTasks.getOrDefault(rpTask.task.execId, Collections.emptyMap());
-                    if (tmpTaskMap.containsKey(rpTask.task.functionID)) {
-                        break;
-                    }
-                }
-                if (tmpTaskMap == null) {
-                    logger.error("Request done. Have to skip execution id {}, function id {}.", rpTask.task.execId, rpTask.task.functionID);
-                    return -1;
-                }
             }
             // Find the task in the stash. Make sure that all futures have been resolved.
             Task currTask = pendingTasks.get(rpTask.task.execId).get(rpTask.task.functionID);

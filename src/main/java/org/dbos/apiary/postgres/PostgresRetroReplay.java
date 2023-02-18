@@ -16,6 +16,28 @@ import java.util.concurrent.*;
 public class PostgresRetroReplay {
     private static final Logger logger = LoggerFactory.getLogger(PostgresRetroReplay.class);
 
+    // Record a list of modified tables. Track dependencies for replaying requests.
+    private static final Set<String> replayWrittenTables = ConcurrentHashMap.newKeySet();
+
+    // Cache accessed tables of a function set. <firstFuncName, String[]>
+    private static final Map<String, String[]> funcSetAccessTables = new ConcurrentHashMap<>();
+
+    // Store currently unresolved tasks. <execId, funcId, task>
+    private static final Map<Long, Map<Long, Task>> pendingTasks = new ConcurrentHashMap<>();
+
+    // Store funcID to value mapping of each execution.
+    private static final Map<Long, Map<Long, Object>> execFuncIdToValue = new ConcurrentHashMap<>();
+
+    // Store execID to final output map. Because the output could be a future.
+    // TODO: garbage collect this map.
+    private static final Map<Long, Object> execIdToFinalOutput = new ConcurrentHashMap<>();
+
+    // Store a list of skipped requests. Used for selective replay.
+    private static final Set<Long> skippedExecIds = ConcurrentHashMap.newKeySet();
+
+    // A pending commit map from original transaction ID to Postgres replay task.
+    private static final Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
+
     public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, long endExecId, int replayMode) throws Exception {
         long startTime = System.currentTimeMillis();
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
@@ -28,9 +50,6 @@ public class PostgresRetroReplay {
         }
         assert(workerContext.provBuff != null);
         Connection provConn = ProvenanceBuffer.createProvConnection(workerContext.provDBType, workerContext.provAddress);
-
-        // Record a list of modified tables. Track dependencies for replaying requests.
-        Set<String> replayWrittenTables = ConcurrentHashMap.newKeySet();
 
         // Find previous execution history, only execute later committed transactions or the ones failed due to unrecoverable issues (like constraint violations).
         String provQuery = String.format("SELECT %s, %s FROM %s WHERE %s = ? AND %s=0 AND %s=0 AND (%s=\'%s\' OR %s=\'%s\');",
@@ -64,10 +83,6 @@ public class PostgresRetroReplay {
             logger.debug("No corresponding original transaction for end execution {}. Execute the entire trace!", endExecId);
         }
 
-        // Replay based on the snapshot info, because transaction/commit order != actual serial order.
-        // Start transactions based on their original txid order, but commit based on commit order.
-        // Maintain a pool of connections to the backend database to concurrently execute transactions.
-
         // This query finds the starting order of transactions.
         // Replay mode only consider committed transactions.
         String startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;",
@@ -75,7 +90,7 @@ public class PostgresRetroReplay {
                 ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         if (workerContext.hasRetroFunctions()) {
-            // Include abroted transactions.
+            // Include aborted transactions for retroaction.
             startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= %d AND %s=0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
                     ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
                     ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
@@ -84,35 +99,6 @@ public class PostgresRetroReplay {
         }
         Statement startOrderStmt = provConn.createStatement();
         ResultSet startOrderRs = startOrderStmt.executeQuery(startOrderQuery);
-        if (!startOrderRs.next()) {
-            logger.error("Cannot find start order with query: {}", startOrderQuery);
-            return null;
-        }
-
-        // This query finds the commit order of transactions.
-        String commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND %s=\'%s\' ORDER BY %s;",
-                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
-                ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
-                ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
-                ProvenanceBuffer.PROV_END_TIMESTAMP);
-        if (workerContext.hasRetroFunctions()) {
-            commitOrderQuery = String.format("SELECT %s, %s FROM %s WHERE %s >= %d AND %s=0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
-                    ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
-                    ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, origTxid,
-                    ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
-                    ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE,
-                    ProvenanceBuffer.PROV_END_TIMESTAMP);
-        }
-        Connection provConn2 = ProvenanceBuffer.createProvConnection(workerContext.provDBType, workerContext.provAddress);
-
-        Statement commitOrderStmt = provConn2.createStatement();
-        ResultSet commitOrderRs = commitOrderStmt.executeQuery(commitOrderQuery);
-        // Next commit transaction ID, the next to be committed.
-        if (!commitOrderRs.next()) {
-            logger.error("Cannot find commit order with query: {}", commitOrderQuery);
-            return null;
-        }
-        long nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
 
         // This query finds the original input.
         String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
@@ -126,29 +112,14 @@ public class PostgresRetroReplay {
                 ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
         );
-        Connection provConn3 = ProvenanceBuffer.createProvConnection(workerContext.provDBType, workerContext.provAddress);
-        Statement inputStmt = provConn3.createStatement();
+        Connection provInputConn = ProvenanceBuffer.createProvConnection(workerContext.provDBType, workerContext.provAddress);
+        Statement inputStmt = provInputConn.createStatement();
         ResultSet inputRs = inputStmt.executeQuery(inputQuery);
-
-        // Cache accessed tables of a function set. <firstFuncName, String[]>
-        Map<String, String[]> funcSetAccessTables = new ConcurrentHashMap<>();
 
         // Cache inputs of the original execution. <execId, input>
         long currInputExecId = -1;
         Object[] currInputs = null;
 
-        // Store currently unresolved tasks. <execId, funcId, task>
-        Map<Long, Map<Long, Task>> pendingTasks = new ConcurrentHashMap<>();
-
-        // Store funcID to value mapping of each execution.
-        Map<Long, Map<Long, Object>> execFuncIdToValue = new ConcurrentHashMap<>();
-
-        // Store execID to final output map. Because the output could be a future.
-        // TODO: garbage collect this map.
-        Map<Long, Object> execIdToFinalOutput = new ConcurrentHashMap<>();
-
-        // Store a list of skipped requests. Used for selective replay.
-        Set<Long> skippedExecIds = ConcurrentHashMap.newKeySet();
         long lastNonSkippedExecId = -1;  // The last not-skipped execution ID. Useful to decide the final output.
 
         // A connection pool to the backend database. For concurrent executions.
@@ -157,192 +128,149 @@ public class PostgresRetroReplay {
             connPool.add(workerContext.getPrimaryConnection().createNewConnection());
         }
 
-        // A pending commit map from original transaction ID to Postgres replay task.
-        Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
-
         // A thread pool for concurrent function executions.
         ExecutorService threadPool = Executors.newCachedThreadPool();
 
-        // Caches for committed transactions and aborted transactions.
-        List<PostgresReplayTask> committedTasks = new ArrayList<>();
-        List<PostgresReplayTask> abortedTasks = new ArrayList<>();
-
         long prepTime = System.currentTimeMillis();
         logger.info("Prepare time: {} ms", prepTime - startTime);
-        boolean startHasNext = true;
-        while ((nextCommitTxid > 0) && (nextCommitTxid < endTxId)) {
-            // Execute all following functions until nextCommitTxid is in the snapshot of that original transaction.
-            // If the nextCommitTxid is in the snapshot, then that function needs to start after it commits.
-            while (startHasNext) {
-                long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-                long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-                long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
-                String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
-                String resName = resNames[resNames.length - 1]; // Extract the actual function name.
-                String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
-                String resStatus = startOrderRs.getString(ProvenanceBuffer.PROV_FUNC_STATUS);
-                long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
-                List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
 
-                if ((resTxId == nextCommitTxid) || (nextCommitTxid >= xmax) || (activeTxns.contains(nextCommitTxid))) {
-                    // Not in its snapshot. Start a new transaction.
-                    logger.debug("Start execution ID {}, orig txn ID {}", resExecId, resTxId);
-                    // Get inputs.
-                    if ((resExecId != currInputExecId) && (resFuncId == 0l)) {
-                        // Read the input for this execution ID.
-                        if (inputRs.next()) {
-                            currInputExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-                            byte[] recordInput = inputRs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
-                            ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
-                            currInputs = Utilities.getArgumentsFromRequest(req);
-                            if (currInputExecId != resExecId) {
-                                logger.error("Input execID {} does not match the expected ID {}!", currInputExecId, resExecId);
-                                throw new RuntimeException("Retro replay failed due to mismatched IDs.");
-                            }
-                            logger.debug("Original arguments execid {}, inputs {}", currInputExecId, currInputs);
-                        } else {
-                            logger.error("Could not find the input for this execution ID {} ", resExecId);
-                            throw new RuntimeException("Retro replay failed due to missing input.");
-                        }
+        // Main loop: start based on the transaction ID order and the snapshot info, Postgres commit timestamp may not be reliable.
+        // Start transactions based on their original txid order, but commit it before executing the first transaction that has it in the snapshot.
+        // Maintain a pool of connections to the backend database to concurrently execute transactions.
+        int totalReplayedTxns = 0;
+        List<Long> checkVisibleTxns = new ArrayList<>(); // Committed but not guaranteed to be visible yet.
+        while (!startOrderRs.next()) {
+            totalReplayedTxns++;
+            long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+            long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
+            String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
+            String resName = resNames[resNames.length - 1]; // Extract the actual function name.
+            String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
+            String resStatus = startOrderRs.getString(ProvenanceBuffer.PROV_FUNC_STATUS);
+            long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
+            List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
+            logger.debug("Processing txnID {}, execId {}, funcId {}, funcName {}", resTxId, resExecId, resFuncId, resName);
+
+            // Check if we need to commit anything.
+            List<Long> cleanUpTxns = new ArrayList<>();
+            for (long cmtTxn : pendingCommitTasks.keySet()) {
+                PostgresReplayTask commitPgRpTask = pendingCommitTasks.get(cmtTxn);
+                if (commitPgRpTask == null) {
+                    logger.error("No task found for pending commit txn {}.", cmtTxn);
+                    throw new RuntimeException("Failed to find commit transaction " + cmtTxn);
+                }
+                // If this transaction is in resTxId's snapshot, then wait and commit it.
+                if ((cmtTxn < xmax) && !activeTxns.contains(cmtTxn)) {
+                    logger.debug("Committing txnID {} because in the snapshot of txn {}", cmtTxn, resTxId);
+                    processCommit(workerContext, commitPgRpTask, cmtTxn, replayMode, threadPool);
+                    connPool.add(commitPgRpTask.conn);
+                    cleanUpTxns.add(cmtTxn);
+                    checkVisibleTxns.add(cmtTxn);  // TODO: maybe only need to check for writes.
+                } else if (workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName)) {
+                    // If it's a read-only transaction and has finished, but not in its snapshot, still release the resources immediately.
+                    if (commitPgRpTask.resFut.isDone()) {
+                        logger.info("Clean up read-only txnID {} for current txnID {}", cmtTxn, resTxId);
+                        connPool.add(commitPgRpTask.conn);
+                        cleanUpTxns.add(cmtTxn);
                     }
+                }
+            }
+            // Clean up pending commit map.
+            for (long t : cleanUpTxns) {
+                pendingCommitTasks.remove(t);
+            }
 
-                    Task rpTask = new Task(resExecId, resFuncId, resName, currInputs);
+            // Execute this transaction.
 
-                    // Check if we can skip this function execution. If so, add to the skip list. Otherwise, execute the replay.
-                    boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds, replayMode, replayWrittenTables, funcSetAccessTables);
-
-                    if (isSkipped && (lastNonSkippedExecId != -1)) {
-                        // Do not skip the first execution.
-                        logger.debug("Skipping transaction {}, execution ID {}", resTxId, resExecId);
-                        skippedExecIds.add(resExecId);
-                    } else {
-                        lastNonSkippedExecId = resExecId;
-                        Connection currConn = connPool.poll();
-                        if (currConn == null) {
-                            // Allocate more connections.
-                            currConn = workerContext.getPrimaryConnection().createNewConnection();
-                        }
-
-                        // Store in the cache based on their status.
-                        PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
-                        if (resStatus.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
-                            committedTasks.add(pgRpTask);
-                        } else {
-                            abortedTasks.add(pgRpTask);
-                        }
-                        pendingCommitTasks.put(resTxId, pgRpTask);
+            // Get the input for this transaction.
+            if ((resExecId != currInputExecId) && (resFuncId == 0L)) {
+                // Read the input for this execution ID.
+                if (inputRs.next()) {
+                    currInputExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+                    byte[] recordInput = inputRs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
+                    ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
+                    currInputs = Utilities.getArgumentsFromRequest(req);
+                    if (currInputExecId != resExecId) {
+                        logger.error("Input execID {} does not match the expected ID {}!", currInputExecId, resExecId);
+                        throw new RuntimeException("Retro replay failed due to mismatched IDs.");
                     }
+                    logger.debug("Original arguments execid {}, inputs {}", currInputExecId, currInputs);
                 } else {
-                    break;  // Need to wait until nextCommitTxid to commit.
-                }
-                if (!startOrderRs.next()) {
-                    // No more to process.
-                    startHasNext = false;
-                    break;
+                    logger.error("Could not find the input for this execution ID {} ", resExecId);
+                    throw new RuntimeException("Retro replay failed due to missing input.");
                 }
             }
 
-            // Launch committed tasks first, then aborted tasks.
-            for (PostgresReplayTask pgRpTask : committedTasks) {
-                PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
-                pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask, pendingTasks,
-                        execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
-                // A replay without any modified functions should never be blocked, so we don't need to wait.
-                // TODO: a minor issue is that submitted tasks are not guaranteed to start transaction in the same order. It does not affect correctness.
-            }
-            committedTasks.clear();
+            Task rpTask = new Task(resExecId, resFuncId, resName, currInputs);
 
-            // We should only have aborted tasks if under retro mode.
-            for (PostgresReplayTask pgRpTask : abortedTasks) {
-                PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
-                pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask, pendingTasks,
-                        execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
-            }
-            abortedTasks.clear();
+            // Check if we can skip this function execution. If so, add to the skip list. Otherwise, execute the replay.
+            boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds, replayMode, replayWrittenTables, funcSetAccessTables);
 
-            // Commit the nextCommitTxid and update the variables. Pass skipped functions.
-            // The connection must be not null because it has to have started.
-            PostgresReplayTask commitPgRpTask = pendingCommitTasks.get(nextCommitTxid);
-            logger.debug("Processing commit txid: {}", nextCommitTxid);
-            // If commitConn is null, then the transaction was skipped.
-            if (commitPgRpTask == null) {
-                logger.debug("Transaction {} was skipped. No connection found.", nextCommitTxid);
-            } else {
-                try {
-                    // Wait for the task to finish.
-                    int res = commitPgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
-                    if (res == 0) {
-                        if (commitPgRpTask.fo.errorMsg.isEmpty()){
-                            if (!workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName)) {
-                                // Only commit transactions with writes here.
-                                commitPgRpTask.conn.commit();
-                            } else {
-                                logger.debug("Skip read-only transaction -- should have been committed. ");
-                            }
-                        } else {
-                            logger.debug("Skip commit {} due to Error message: {}", nextCommitTxid, commitPgRpTask.fo.errorMsg);
-                        }
+            if (isSkipped && (lastNonSkippedExecId != -1)) {
+                // Do not skip the first execution.
+                logger.debug("Skipping transaction {}, execution ID {}", resTxId, resExecId);
+                skippedExecIds.add(resExecId);
+                continue;
+            }
+
+            lastNonSkippedExecId = resExecId;
+            Connection currConn = connPool.poll();
+            if (currConn == null) {
+                // Allocate more connections.
+                currConn = workerContext.getPrimaryConnection().createNewConnection();
+            }
+            PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
+            pendingCommitTasks.put(resTxId, pgRpTask);
+
+            // Because Postgres may commit a transaction but take a while for it to show up in the snapshot for the following transactions, wait until we get everything from checkVisibleTxns in the snapshot.
+            // We can wait by committing the empty transaction and create a new pgCtxt.
+            PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+            boolean allVisible = false;
+            while (!allVisible) {
+                allVisible = true;
+                List<Long> visibleTxns = new ArrayList<>();
+                for (long cmtTxn : checkVisibleTxns) {
+                    // Check if the committed transaction does not show up in the snapshot.
+                    if ((cmtTxn >= pgCtxt.txc.xmax) || pgCtxt.txc.activeTransactions.contains(cmtTxn)) {
+                        logger.debug("Transaction {} still not visible. xmax {}, activetransactions: {}", cmtTxn, pgCtxt.txc.xmax, pgCtxt.txc.activeTransactions.toString());
+                        allVisible = false;
                     } else {
-                        logger.debug("Replayed task failed or skipped for transaction {}. result: {}", nextCommitTxid, res);
+                        visibleTxns.add(cmtTxn);  // Record visible.
                     }
-                } catch (Exception e) {
-                    // Retry the pending commit function if it's a serialization error.
-                    // Note: this should only happen during retroactive programming. Because normal replay should only replay originally committed transactions.
-                    if (e instanceof PSQLException) {
-                        PSQLException p = (PSQLException) e;
-                        logger.debug("PSQLException during replay transaction {}: {}", nextCommitTxid, p.getMessage());
-                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState()) && workerContext.hasRetroFunctions()) {
-                            logger.debug("Retry transaction {} due to serilization error. ", nextCommitTxid);
-                            try {
-                                commitPgRpTask.conn.rollback();
-                                logger.debug("Rolled back failed to commit transaction.");
-                                PostgresContext pgCtxt = new PostgresContext(commitPgRpTask.conn, workerContext, "retroReplay", commitPgRpTask.task.execId, commitPgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
-                                commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, commitPgRpTask, pendingTasks,
-                                        execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
-                                commitPgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
-                                commitPgRpTask.conn.commit();
-                                logger.debug("Committed retried PSQLException transaction.");
-                            } catch (Exception ex) {
-                                ex.printStackTrace();
-                                throw new RuntimeException("Unrecoverable error during retry.");
-                            }
-                        } else {
-                            logger.error("Unrecoverable error. Failed to commit {}, skipped. Error message: {}", nextCommitTxid, e.getMessage());
-                            throw new RuntimeException("Unrecoverable error during replay.");
-                        }
-                    } else if (e instanceof  TimeoutException) {
-                        // Timeout due to blocking (write conflicts), has to terminate it.
-                        // TODO: maybe support retry?
-                        logger.debug("Transaction {} time out, may due to write conflicts.", nextCommitTxid);
-                        try {
-                            commitPgRpTask.conn.abort(Runnable::run);
-                            logger.debug("Rolled back timeout transaction");
-                            commitPgRpTask.conn = workerContext.getPrimaryConnection().createNewConnection();
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                            throw new RuntimeException("Unrecoverable error during aborting timed out transaction.");
-                        }
-                    } else {
-                        logger.error("Other failures during replay transaction {}, cannot commit: {} - {}", nextCommitTxid, e.getClass().getName(), e.getMessage());
+                }
+                checkVisibleTxns.removeAll(visibleTxns);
+                if (!allVisible) {
+                    try {
+                        pgCtxt.conn.commit();
+                    } catch (Exception e) {
                         e.printStackTrace();
-                        // TODO: should we continue here? If we get a timeout exception, the transaction is blocked (shouldn't happen in replay but retro mode may introduce new deadlocks).
-                        throw new RuntimeException("Unrecoverable error during commit.");
+                        logger.error("Should not fail to commit an empty transaction.");
+                        throw new RuntimeException("Should not fail to commit an empty transaction.");
                     }
+                    // Start a new transaction and wait again.
+                    pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
                 }
-                // Put it back to the connection pool and delete stored inputs.
-                connPool.add(commitPgRpTask.conn);
-                pendingCommitTasks.remove(nextCommitTxid);
             }
-
-            if (commitOrderRs.next()) {
-                nextCommitTxid = commitOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-            } else {
-                nextCommitTxid = 0;
-            }
+            // Finally, launch this transaction but does not wait.
+            pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask, pendingTasks,
+                    execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
         }
 
         if (!pendingCommitTasks.isEmpty()) {
-            throw new RuntimeException("Still more pending transactions to be committed!");
+            // Commit the rest.
+            // The order doesn't matter because if they could commit originally, they must have no conflicts.
+            // If they didn't commit originally, then the order also doesn't matter.
+            for (long cmtTxn : pendingCommitTasks.keySet()) {
+                PostgresReplayTask commitPgRpTask = pendingCommitTasks.get(cmtTxn);
+                if (commitPgRpTask == null) {
+                    logger.error("No task found for pending commit txn {}.", cmtTxn);
+                    throw new RuntimeException("Failed to find commit transaction " + cmtTxn);
+                }
+                logger.debug("Committing pending txnID {}.", cmtTxn);
+                processCommit(workerContext, commitPgRpTask, cmtTxn, replayMode, threadPool);
+                connPool.add(commitPgRpTask.conn);
+            }
         }
 
         if (!pendingTasks.isEmpty() && workerContext.hasRetroFunctions()) {
@@ -354,26 +282,13 @@ public class PostgresRetroReplay {
                 Map<Long, Task> execFuncs = pendingTasks.get(execId);
                 while (!execFuncs.isEmpty()) {
                     for (long funcId : execFuncs.keySet()) {
+                        totalReplayedTxns++;
                         Task rpTask = execFuncs.get(funcId);
                         PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
                         PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
                         pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask, pendingTasks,
                                 execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
-                        try {
-                            int res = pgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
-                            if (res == 0) {
-                                if (pgRpTask.fo.errorMsg.isEmpty()) {
-                                    currConn.commit();
-                                } else {
-                                    logger.debug("Skip commit {} due to Error message: {}", nextCommitTxid, pgRpTask.fo.errorMsg);
-                                }
-                            } else {
-                                logger.debug("Replayed task failed or skipped for transaction {}. result: {}", nextCommitTxid, res);
-                            }
-                        } catch (Exception e) {
-                            logger.debug("Other failures during replay transaction {}, cannot commit: {} - {}", nextCommitTxid, e.getClass().getName(), e.getMessage());
-                            throw new RuntimeException("Unrecoverable error during commit.");
-                        }
+                        processCommit(workerContext, pgRpTask, pgCtxt.txc.txID, replayMode, threadPool);
                     }
                 }
             }
@@ -384,6 +299,7 @@ public class PostgresRetroReplay {
 
         long endTime = System.currentTimeMillis();
         logger.info("Re-execution time: {} ms", endTime - prepTime);
+        logger.info("Total replayed transactions: {}", totalReplayedTxns);
 
         // Clean up connection pool and statements.
         int totalNumConns = 0;
@@ -401,14 +317,74 @@ public class PostgresRetroReplay {
         stmt.close();
         inputRs.close();
         inputStmt.close();
-        commitOrderRs.close();
-        commitOrderStmt.close();
         threadPool.shutdown();
         threadPool.awaitTermination(10, TimeUnit.SECONDS);
         provConn.close();
-        provConn2.close();
-        provConn3.close();
+        provInputConn.close();
         return output;
+    }
+
+    // Process commit a transaction.
+    private static void processCommit (WorkerContext workerContext, PostgresReplayTask commitPgRpTask, long cmtTxn, int replayMode, ExecutorService threadPool) {
+        try {
+            // Wait for the task to finish and commit.
+            int res = commitPgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
+            if (res == 0) {
+                if (commitPgRpTask.fo.errorMsg.isEmpty()){
+                    if (!workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName)) {
+                        // Only commit transactions with writes here.
+                        commitPgRpTask.conn.commit();
+                    } else {
+                        logger.debug("Skip read-only transaction {} -- should have been committed. ", cmtTxn);
+                    }
+                } else {
+                    logger.debug("Skip commit {} due to Error message: {}", cmtTxn, commitPgRpTask.fo.errorMsg);
+                }
+            } else {
+                logger.debug("Replayed task failed or skipped for transaction {}. result: {}", cmtTxn, res);
+            }
+        } catch (Exception e) {
+            // Retry the pending commit function if it's a serialization error.
+            // Note: this should only happen during retroactive programming. Because normal replay should only replay originally committed transactions.
+            if (e instanceof PSQLException) {
+                PSQLException p = (PSQLException) e;
+                logger.debug("PSQLException during replay transaction {}: {}", cmtTxn, p.getMessage());
+                if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState()) && workerContext.hasRetroFunctions()) {
+                    logger.debug("Retry transaction {} due to serilization error. ", cmtTxn);
+                    try {
+                        commitPgRpTask.conn.rollback();
+                        logger.debug("Rolled back failed to commit transaction {}.", cmtTxn);
+                        PostgresContext pgCtxt = new PostgresContext(commitPgRpTask.conn, workerContext, "retroReplay", commitPgRpTask.task.execId, commitPgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+                        commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, commitPgRpTask, pendingTasks,
+                                execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
+                        commitPgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
+                        commitPgRpTask.conn.commit();
+                        logger.debug("Committed retried PSQLException transaction {}.", cmtTxn);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        logger.error("Unrecoverable error during retry transaction {}. Skipped. Error message: {}", cmtTxn, ex.getMessage());
+                    }
+                } else {
+                    logger.error("Unrecoverable error. Failed to commit {}, skipped. Error message: {}", cmtTxn, p.getMessage());
+                }
+            } else if (e instanceof  TimeoutException) {
+                // Timeout due to blocking (write conflicts), has to terminate it.
+                // TODO: maybe support retry?
+                logger.error("Transaction {} time out, may due to write conflicts.", cmtTxn);
+                try {
+                    commitPgRpTask.conn.abort(Runnable::run);
+                    logger.debug("Rolled back timeout transaction");
+                    commitPgRpTask.conn = workerContext.getPrimaryConnection().createNewConnection();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    throw new RuntimeException("Unrecoverable error during aborting timed out transaction.");
+                }
+            } else {
+                logger.error("Other failures during replay transaction {}, cannot commit: {} - {}", cmtTxn, e.getClass().getName(), e.getMessage());
+                e.printStackTrace();
+                throw new RuntimeException("Unrecoverable error during commit.");
+            }
+        }
     }
 
     // Return true if the function execution can be skipped.

@@ -161,7 +161,7 @@ public class PostgresRetroReplay {
         Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
 
         // A thread pool for concurrent function executions.
-        ExecutorService threadPool = Executors.newFixedThreadPool(workerContext.numWorkersThreads * 2);
+        ExecutorService threadPool = Executors.newFixedThreadPool(workerContext.numWorkersThreads * 3);
 
         // Caches for committed transactions and aborted transactions.
         List<PostgresReplayTask> committedTasks = new ArrayList<>();
@@ -186,7 +186,7 @@ public class PostgresRetroReplay {
 
                 if ((resTxId == nextCommitTxid) || (nextCommitTxid >= xmax) || (activeTxns.contains(nextCommitTxid))) {
                     // Not in its snapshot. Start a new transaction.
-
+                    logger.debug("Start execution ID {}, orig txn ID {}", resExecId, resTxId);
                     // Get inputs.
                     if ((resExecId != currInputExecId) && (resFuncId == 0l)) {
                         // Read the input for this execution ID.

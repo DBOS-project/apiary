@@ -154,10 +154,11 @@ public class PostgresRetroReplay {
         // Main loop: start based on the transaction ID order and the snapshot info, Postgres commit timestamp may not be reliable.
         // Start transactions based on their original txid order, but commit it before executing the first transaction that has it in the snapshot.
         // Maintain a pool of connections to the backend database to concurrently execute transactions.
-        int totalReplayedTxns = 0;
+        int totalStartOrderTxns = 0;
+        int totalExecTxns = 0;
         List<Long> checkVisibleTxns = new ArrayList<>(); // Committed but not guaranteed to be visible yet.
         while (startOrderRs.next()) {
-            totalReplayedTxns++;
+            totalStartOrderTxns++;
             long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
             long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
@@ -231,6 +232,7 @@ public class PostgresRetroReplay {
                 continue;
             }
 
+            totalExecTxns++;
             lastNonSkippedExecId = resExecId;
             Connection currConn = connPool.poll();
             if (currConn == null) {
@@ -300,7 +302,7 @@ public class PostgresRetroReplay {
                 Map<Long, Task> execFuncs = pendingTasks.get(execId);
                 while (!execFuncs.isEmpty()) {
                     for (long funcId : execFuncs.keySet()) {
-                        totalReplayedTxns++;
+                        totalStartOrderTxns++;
                         Task rpTask = execFuncs.get(funcId);
                         PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
                         PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
@@ -324,7 +326,7 @@ public class PostgresRetroReplay {
         }
         logger.info("Final output: {}", outputString);
         logger.info("Re-execution time: {} ms", endTime - prepTime);
-        logger.info("Total replayed transactions: {}", totalReplayedTxns);
+        logger.info("Total original transactions: {}, re-executed transactions: {}", totalStartOrderTxns, totalExecTxns);
 
         // Clean up connection pool and statements.
         int totalNumConns = 0;

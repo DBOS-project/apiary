@@ -432,7 +432,7 @@ public class WordPressBenchmark {
 
     private static void resetAllTables(String dbAddr) {
         try {
-            PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
+            PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
 
             pgConn.dropTable(ApiaryConfig.tableFuncInvocations);
             pgConn.dropTable(ApiaryConfig.tableRecordedInputs);
@@ -455,7 +455,7 @@ public class WordPressBenchmark {
 
     private static void resetAppTables(String dbAddr) {
         try {
-            PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
+            PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
             pgConn.truncateTable(WPUtil.WP_POSTS_TABLE, false);
             pgConn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
             pgConn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);

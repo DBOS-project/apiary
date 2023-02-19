@@ -233,6 +233,16 @@ public class PostgresRetroReplay {
                 continue;
             }
 
+            // Skip the task if it is absent. Because we allow reducing the number of called function. Should never have race condition because later tasks must have previous tasks in their snapshot.
+            if (!pendingTasks.containsKey(rpTask.execId) || !pendingTasks.get(rpTask.execId).containsKey(rpTask.functionID)) {
+                if (workerContext.hasRetroFunctions()) {
+                    logger.debug("Skip execution ID {}, function ID {}, not found in pending tasks.", rpTask.execId, rpTask.functionID);
+                } else {
+                    logger.error("Not found execution ID {}, function ID {} in pending tasks. Should not happen in replay!", rpTask.execId, rpTask.functionID);
+                }
+                continue;
+            }
+
             totalExecTxns++;
             lastNonSkippedExecId = resExecId;
             Connection currConn = connPool.poll();

@@ -5,7 +5,6 @@ import org.dbos.apiary.function.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -68,16 +67,6 @@ class PostgresReplayCallable implements Callable<Integer> {
             execIdToFinalOutput.putIfAbsent(rpTask.task.execId, rpTask.fo.output);
             pendingTasks.putIfAbsent(rpTask.task.execId, new ConcurrentHashMap<>());
         } else {
-            // Skip the task if it is absent. Because we allow reducing the number of called function. Should never have race condition because later tasks must have previous tasks in their snapshot.
-            if (!pendingTasks.containsKey(rpTask.task.execId) || !pendingTasks.get(rpTask.task.execId).containsKey(rpTask.task.functionID)) {
-                if (pgCtxt.workerContext.hasRetroFunctions()) {
-                    logger.debug("Skip execution ID {}, function ID {}, not found in pending tasks.", rpTask.task.execId, rpTask.task.functionID);
-                } else {
-                    logger.error("Not found execution ID {}, function ID {} in pending tasks. Should not happen in replay!", rpTask.task.execId, rpTask.task.functionID);
-                }
-
-                return -1;
-            }
             // Find the task in the stash. Make sure that all futures have been resolved.
             Task currTask = pendingTasks.get(rpTask.task.execId).get(rpTask.task.functionID);
 

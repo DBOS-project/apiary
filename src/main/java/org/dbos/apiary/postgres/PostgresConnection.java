@@ -76,10 +76,10 @@ public class PostgresConnection implements ApiaryConnection {
             rs.next();
             if (rs.getString(1).equals("on")) {
                 ApiaryConfig.trackCommitTimestamp = true;
-                logger.debug("Postgres track_commit_timestamp = on!");
+                logger.info("Postgres track_commit_timestamp = on!");
             } else {
                 ApiaryConfig.trackCommitTimestamp = false;
-                logger.debug("Postgres track_commit_timestamp = off!");
+                logger.info("Postgres track_commit_timestamp = off!");
             }
             testConn.close();
         } catch (SQLException e) {

@@ -216,6 +216,9 @@ public class ProvenanceBuffer {
     }
 
     private void getCommitTimestamp(Object[] entry) {
+        if (!ApiaryConfig.trackCommitTimestamp) {
+            return;
+        }
         if (this.pgConn == null) {
             logger.error("No Postgres connection for provenance.");
             return;
@@ -231,7 +234,7 @@ public class ProvenanceBuffer {
         }
         long txId = (long) entry[0];
         String status = (String) entry[8];
-        if (ApiaryConfig.trackCommitTimestamp && status.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
+        if (status.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
             try {
                 // TODO: future optimization may put this step off the critical path.
                 Connection pconn = this.pgConn.get();

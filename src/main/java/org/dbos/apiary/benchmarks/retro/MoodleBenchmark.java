@@ -250,7 +250,9 @@ public class MoodleBenchmark {
     private static void resetAppTables(String dbAddr) {
         try {
             PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
-            pgConn.truncateTable(MDLUtil.MDL_FORUMSUBS_TABLE, false);
+            pgConn.dropTable(MDLUtil.MDL_FORUMSUBS_TABLE);
+            pgConn.createTable(MDLUtil.MDL_FORUMSUBS_TABLE, MDLUtil.MDL_FORUM_SCHEMA);
+            pgConn.createIndex(MDLUtil.MDL_FORUMID_INDEX);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");

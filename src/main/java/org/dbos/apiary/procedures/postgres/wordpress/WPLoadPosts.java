@@ -10,6 +10,7 @@ import java.sql.Array;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 public class WPLoadPosts extends PostgresFunction {
     private static final Logger logger = LoggerFactory.getLogger(WPLoadPosts.class);
@@ -20,28 +21,26 @@ public class WPLoadPosts extends PostgresFunction {
     // CommentID, PostID, Comment, Status.
     private static final String addComment = "INSERT INTO " + WPUtil.WP_COMMENTS_TABLE + " VALUES(?, ?, ?, ?)";
 
-    public static int runFunction(PostgresContext ctxt, int[] postIds, int[] commentIds) throws SQLException {
-        if ((commentIds.length % postIds.length) != 0) {
-            logger.error("Mismatched post IDs length {} and comment IDs length {}", postIds.length, commentIds.length);
-        }
-        int commentsPerPost = commentIds.length / postIds.length;
+    public static int runFunction(PostgresContext ctxt, int numPosts, int commentsPerPost) throws SQLException {
+
         List<Object[]> postInputs = new ArrayList<>();
         int cidIndex = 0;
-        for (int i = 0; i < postIds.length; i++) {
-            long postId = postIds[i];
+        for (int i = 0; i < numPosts; i++) {
+            long postId = i;
             Object[] input = new Object[3];
             input[0] = postId;
             input[1] = String.format("Post %d: This is a very very long post! %s ", postId, RandomStringUtils.randomAlphabetic(1000));
             input[2] = WPUtil.WP_STATUS_VISIBLE;
         }
         ctxt.insertMany(addPost, postInputs);
+        logger.info("Loaded {} posts.", numPosts);
 
-        for (int i = 0; i < postIds.length; i++) {
-            long postId = postIds[i];
+        for (int i = 0; i < numPosts; i++) {
+            long postId = i;
             // Add comments.
             List<Object[]> commenInputs = new ArrayList<>();
             for (int j = 0; j < commentsPerPost; j++) {
-                long commentId = commentIds[cidIndex];
+                long commentId = cidIndex;
                 Object[] commentInput = new Object[4];
                 commentInput[0] = commentId;
                 commentInput[1] = postId;
@@ -49,12 +48,13 @@ public class WPLoadPosts extends PostgresFunction {
                 cidIndex++;
             }
             ctxt.insertMany(addComment, commenInputs);
+            logger.info("Loaded {} comments for postId {}", commenInputs.size(), postId);
         }
-        if (commentIds.length != cidIndex) {
-            logger.error("Mismatched expected length {} and actual length {}", commentIds.length, cidIndex);
+        if (numPosts * commentsPerPost != cidIndex) {
+            logger.error("Mismatched expected length {} and actual length {}", numPosts * commentsPerPost, cidIndex);
             return -1;
         }
-        return 0;
+        return cidIndex;
     }
 
 }

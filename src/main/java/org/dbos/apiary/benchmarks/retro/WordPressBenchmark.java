@@ -20,7 +20,6 @@ import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class WordPressBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(WordPressBenchmark.class);
@@ -257,11 +256,16 @@ public class WordPressBenchmark {
         int totalOptionPC = 100 - totalPostPC;
         if (totalPostPC > 0) {
             // Add posts, and comments for each post.
-            int[] postIds = IntStream.range(0, numPosts).toArray();
-            int[] commentIds = IntStream.range(0, numPosts * initCommentsPerPost).toArray();
-            int res = client.get().executeFunction(WPUtil.FUNC_LOAD_POSTS, postIds, commentIds).getInt();
+            long t0 = System.currentTimeMillis();
+            int res = client.get().executeFunction(WPUtil.FUNC_LOAD_POSTS, numPosts, initCommentsPerPost).getInt();
             commentId.addAndGet(numPosts * initCommentsPerPost);
-            assert(res == 0);
+            if (res > 0) {
+                long loadTime = System.currentTimeMillis() - t0;
+                logger.info("Loaded {} posts and comments in {} ms", res, loadTime);
+            } else {
+                logger.error("Failed to load posts and comments! {}", res);
+                return;
+            }
 
             // Try to inject concurrent comments until we find inconsistency.
             boolean foundInconsistency = false;

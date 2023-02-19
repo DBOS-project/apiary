@@ -184,7 +184,8 @@ public class PostgresRetroReplay {
                     processCommit(workerContext, commitPgRpTask, cmtTxn, replayMode, threadPool);
                     connPool.add(commitPgRpTask.conn);
                     cleanUpTxns.add(cmtTxn);
-                    checkVisibleTxns.add(cmtTxn);  // TODO: maybe only need to check for writes.
+                    // Use the new transaction ID! Not their original ones.
+                    checkVisibleTxns.add(commitPgRpTask.replayTxnID);  // TODO: maybe only need to check for writes.
                 } else if (workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName)) {
                     // If it's a read-only transaction and has finished, but not in its snapshot, still release the resources immediately.
                     if (commitPgRpTask.resFut.isDone()) {
@@ -240,7 +241,6 @@ public class PostgresRetroReplay {
                 currConn = workerContext.getPrimaryConnection().createNewConnection();
             }
             PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
-            pendingCommitTasks.put(resTxId, pgRpTask);
 
             // Because Postgres may commit a transaction but take a while for it to show up in the snapshot for the following transactions, wait until we get everything from checkVisibleTxns in the snapshot.
             // We can wait by committing the empty transaction and create a new pgCtxt.
@@ -250,13 +250,13 @@ public class PostgresRetroReplay {
                 logger.debug("Checking visible transactions: {}. Current transaction id {}, xmin {}, xmax {}, active transactions {}", checkVisibleTxns.toString(), pgCtxt.txc.txID, pgCtxt.txc.xmin, pgCtxt.txc.xmax, pgCtxt.txc.activeTransactions.toString());
                 allVisible = true;
                 List<Long> visibleTxns = new ArrayList<>();
-                for (long cmtTxn : checkVisibleTxns) {
+                for (long replayCmtTxn : checkVisibleTxns) {
                     // Check if the committed transaction does not show up in the snapshot.
-                    if ((cmtTxn >= pgCtxt.txc.xmax) || pgCtxt.txc.activeTransactions.contains(cmtTxn)) {
-                        logger.debug("Transaction {} still not visible. xmax {}, activetransactions: {}", cmtTxn, pgCtxt.txc.xmax, pgCtxt.txc.activeTransactions.toString());
+                    if ((replayCmtTxn >= pgCtxt.txc.xmax) || pgCtxt.txc.activeTransactions.contains(replayCmtTxn)) {
+                        logger.debug("Transaction {} still not visible. xmax {}, activetransactions: {}", replayCmtTxn, pgCtxt.txc.xmax, pgCtxt.txc.activeTransactions.toString());
                         allVisible = false;
                     } else {
-                        visibleTxns.add(cmtTxn);  // Record visible.
+                        visibleTxns.add(replayCmtTxn);  // Record visible.
                     }
                 }
                 checkVisibleTxns.removeAll(visibleTxns);
@@ -274,8 +274,10 @@ public class PostgresRetroReplay {
                 }
             }
             // Finally, launch this transaction but does not wait.
+            pgRpTask.replayTxnID = pgCtxt.txc.txID;
             pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask, pendingTasks,
                     execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
+            pendingCommitTasks.put(resTxId, pgRpTask);
         }
 
         if (!pendingCommitTasks.isEmpty()) {

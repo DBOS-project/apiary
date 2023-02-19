@@ -370,8 +370,17 @@ public class PostgresRetroReplay {
                 } else {
                     logger.debug("Skip commit {} due to Error message: {}", cmtTxn, commitPgRpTask.fo.errorMsg);
                 }
+            } else if (res == -1) {
+                try {
+                    commitPgRpTask.conn.commit();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    logger.error("Should not fail to commit an empty transaction.");
+                    throw new RuntimeException("Should not fail to commit an empty transaction.");
+                }
+                logger.debug("Replayed task failed or skipped for txn {}. result: {}", cmtTxn, res);
             } else {
-                logger.debug("Replayed task failed or skipped for transaction {}. result: {}", cmtTxn, res);
+                logger.debug("Replayed task failed inside transaction {}. result: {}", cmtTxn, res);
             }
         } catch (Exception e) {
             // Retry the pending commit function if it's a serialization error.

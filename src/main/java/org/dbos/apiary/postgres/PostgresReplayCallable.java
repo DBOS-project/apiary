@@ -36,7 +36,7 @@ class PostgresReplayCallable implements Callable<Integer> {
     }
 
     // Process a replay function/transaction, and resolve dependencies.
-    // Return 0 on success, -1 on failure. Store actual function output in rpTask.
+    // Return 0 on success, -1 on failure outside of transaction, -2 on failure inside transaction. Store actual function output in rpTask.
     @Override
     public Integer call() {
         // Only support primary functions.
@@ -57,12 +57,12 @@ class PostgresReplayCallable implements Callable<Integer> {
             rpTask.fo = c.replayFunction(pgCtxt, rpTask.task.funcName, replayWrittenTables, rpTask.task.input);
             if (rpTask.fo == null) {
                 logger.warn("Replay function output is null.");
-                return -1;
+                return -2;
             }
             // If contains error, then directly return.
             if ((rpTask.fo.errorMsg != null) && !rpTask.fo.errorMsg.isEmpty()) {
                 logger.warn("Error message from replay: {}", rpTask.fo.errorMsg);
-                return -1;
+                return -2;
             }
             execFuncIdToValue.putIfAbsent(rpTask.task.execId, new ConcurrentHashMap<>());
             execIdToFinalOutput.putIfAbsent(rpTask.task.execId, rpTask.fo.output);
@@ -75,6 +75,7 @@ class PostgresReplayCallable implements Callable<Integer> {
                 } else {
                     logger.error("Not found execution ID {}, function ID {} in pending tasks. Should not happen in replay!", rpTask.task.execId, rpTask.task.functionID);
                 }
+
                 return -1;
             }
             // Find the task in the stash. Make sure that all futures have been resolved.
@@ -93,7 +94,7 @@ class PostgresReplayCallable implements Callable<Integer> {
             pendingTasks.get(rpTask.task.execId).remove(rpTask.task.functionID);
             if (rpTask.fo == null) {
                 logger.warn("Replay function output is null.");
-                return -1;
+                return -2;
             }
         }
 
@@ -123,4 +124,5 @@ class PostgresReplayCallable implements Callable<Integer> {
 
         return 0;
     }
+
 }

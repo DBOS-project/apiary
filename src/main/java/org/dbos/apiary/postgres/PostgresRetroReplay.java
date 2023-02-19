@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 public class PostgresRetroReplay {
     private static final Logger logger = LoggerFactory.getLogger(PostgresRetroReplay.class);
@@ -38,6 +39,11 @@ public class PostgresRetroReplay {
     // A pending commit map from original transaction ID to Postgres replay task.
     private static final Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
 
+    private static final Collection<Long> commitTimes = new ConcurrentLinkedQueue<>();
+    private static final Collection<Long> prepareTxnTimes = new ConcurrentLinkedQueue<>();
+    private static final Collection<Long> submitTimes = new ConcurrentLinkedQueue<>();
+    private static final Collection<Long> totalTimes = new ConcurrentLinkedQueue<>();
+
     private static void resetReplayState() {
         replayWrittenTables.clear();
         funcSetAccessTables.clear();
@@ -46,6 +52,10 @@ public class PostgresRetroReplay {
         execIdToFinalOutput.clear();
         skippedExecIds.clear();
         pendingCommitTasks.clear();
+        commitTimes.clear();
+        prepareTxnTimes.clear();
+        submitTimes.clear();
+        totalTimes.clear();
     }
 
     public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, long endExecId, int replayMode) throws Exception {
@@ -158,6 +168,7 @@ public class PostgresRetroReplay {
         int totalExecTxns = 0;
         List<Long> checkVisibleTxns = new ArrayList<>(); // Committed but not guaranteed to be visible yet.
         while (startOrderRs.next()) {
+            long t0 = System.nanoTime();
             totalStartOrderTxns++;
             long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
@@ -199,6 +210,8 @@ public class PostgresRetroReplay {
             for (long t : cleanUpTxns) {
                 pendingCommitTasks.remove(t);
             }
+            long t1 = System.nanoTime();
+            commitTimes.add(t1 - t0);
 
             // Execute this transaction.
 
@@ -283,11 +296,16 @@ public class PostgresRetroReplay {
                     pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
                 }
             }
+            long t2 = System.nanoTime();
+            prepareTxnTimes.add(t2 - t1);
             // Finally, launch this transaction but does not wait.
             pgRpTask.replayTxnID = pgCtxt.txc.txID;
             pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask, pendingTasks,
                     execFuncIdToValue, execIdToFinalOutput, replayWrittenTables));
             pendingCommitTasks.put(resTxId, pgRpTask);
+            long t3 = System.nanoTime();
+            submitTimes.add(t3 - t2);
+            totalTimes.add(t3 - t0);
         }
 
         if (!pendingCommitTasks.isEmpty()) {
@@ -295,6 +313,7 @@ public class PostgresRetroReplay {
             // The order doesn't matter because if they could commit originally, they must have no conflicts.
             // If they didn't commit originally, then the order also doesn't matter.
             for (long cmtTxn : pendingCommitTasks.keySet()) {
+                long t1 = System.nanoTime();
                 PostgresReplayTask commitPgRpTask = pendingCommitTasks.get(cmtTxn);
                 if (commitPgRpTask == null) {
                     logger.error("No task found for pending commit txn {}.", cmtTxn);
@@ -303,6 +322,8 @@ public class PostgresRetroReplay {
                 logger.debug("Commit final pending txnID {}.", cmtTxn);
                 processCommit(workerContext, commitPgRpTask, cmtTxn, replayMode, threadPool);
                 connPool.add(commitPgRpTask.conn);
+                long t2 = System.nanoTime();
+                commitTimes.add(t2 - t1);
             }
         }
 
@@ -327,7 +348,7 @@ public class PostgresRetroReplay {
             }
             connPool.add(currConn);
         }
-        long endTime = System.currentTimeMillis();
+        long elapsedTime = System.currentTimeMillis() - prepTime;
 
         logger.info("Last non skipped execId: {}", lastNonSkippedExecId);
         Object output = execIdToFinalOutput.get(lastNonSkippedExecId);  // The last non-skipped execution ID.
@@ -338,8 +359,12 @@ public class PostgresRetroReplay {
             outputString = Arrays.toString((String[]) output);
         }
         logger.info("Final output: {}", outputString);
-        logger.info("Re-execution time: {} ms", endTime - prepTime);
+        logger.info("Re-execution time: {} ms", elapsedTime);
         logger.info("Total original transactions: {}, re-executed transactions: {}", totalStartOrderTxns, totalExecTxns);
+        printStats("Commit", commitTimes, elapsedTime);
+        printStats("PrepareTxn", prepareTxnTimes, elapsedTime);
+        printStats("SubmitTask", submitTimes, elapsedTime);
+        printStats("TotalLoop", totalTimes, elapsedTime);
 
         // Clean up connection pool and statements.
         int totalNumConns = 0;
@@ -499,6 +524,20 @@ public class PostgresRetroReplay {
         }
 
         return true;
+    }
+
+    private static void printStats(String opName, Collection<Long> rawTimes, long elapsedTime) {
+        List<Long> queryTimes = rawTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
+        int numQueries = queryTimes.size();
+        if (numQueries > 0) {
+            long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
+            double throughput = (double) numQueries * 1000.0 / elapsedTime;
+            long p50 = queryTimes.get(numQueries / 2);
+            long p99 = queryTimes.get((numQueries * 99) / 100);
+            logger.info("[{}]: Duration: {}  Operations: {} Op/sec: {} Average: {}μs p50: {}μs p99: {}μs", opName, elapsedTime, numQueries, String.format("%.03f", throughput), average, p50, p99);
+        } else {
+            logger.info("No {}.", opName);
+        }
     }
 
 }

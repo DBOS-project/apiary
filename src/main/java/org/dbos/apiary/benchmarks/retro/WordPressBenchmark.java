@@ -215,7 +215,7 @@ public class WordPressBenchmark {
         }
 
         apiaryWorker.startServing();
-        ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient(dbAddr));
+        ThreadLocal<ApiaryWorkerClient> client = ThreadLocal.withInitial(() -> new ApiaryWorkerClient("localhost"));
         if (retroMode > 0) {
             long startTime = System.currentTimeMillis();
             RetroBenchmark.retroReplayExec(client.get(), retroMode, startExecId, endExecId);
@@ -249,7 +249,7 @@ public class WordPressBenchmark {
         // Create a client pool.
         BlockingQueue<ApiaryWorkerClient> clientPool = new LinkedBlockingQueue<>();
         for (int i = 0; i < threadPoolSize; i++) {
-            clientPool.add(new ApiaryWorkerClient(dbAddr));
+            clientPool.add(new ApiaryWorkerClient("localhost"));
         }
 
         int numTry;

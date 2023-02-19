@@ -247,6 +247,7 @@ public class PostgresRetroReplay {
             PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
             boolean allVisible = false;
             while (!allVisible) {
+                logger.debug("Checking visible transactions: {}. Current transaction id {}, xmin {}, xmax {}, active transactions {}", checkVisibleTxns.toString(), pgCtxt.txc.txID, pgCtxt.txc.xmin, pgCtxt.txc.xmax, pgCtxt.txc.activeTransactions.toString());
                 allVisible = true;
                 List<Long> visibleTxns = new ArrayList<>();
                 for (long cmtTxn : checkVisibleTxns) {

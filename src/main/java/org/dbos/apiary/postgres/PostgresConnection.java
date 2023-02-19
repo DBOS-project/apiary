@@ -314,7 +314,8 @@ public class PostgresConnection implements ApiaryConnection {
                             break;
                         }
                     } else {
-                      logger.error("Unrecoverable InvocationTargetException: {}", e.getMessage());
+                        e.printStackTrace();
+                        logger.error("Unrecoverable InvocationTargetException: {}", e.getMessage());
                       recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE);
                     }
                     break;

@@ -46,11 +46,12 @@ public class WPLoadPosts extends PostgresFunction {
                 commentInput[0] = commentId;
                 commentInput[1] = postId;
                 commentInput[2] = String.format("Comment %d for post %d: This is a very very long comment! %s", commentId, postId, RandomStringUtils.randomAlphabetic(1000));
+                commentInput[3] = WPUtil.WP_STATUS_VISIBLE;
                 commentInputs.add(commentInput);
                 cidIndex++;
             }
             ctxt.insertMany(addComment, commentInputs);
-            logger.info("Loaded {} comments for postId {}", commentInputs.size(), postId);
+            logger.debug("Loaded {} comments for postId {}", commentInputs.size(), postId);
         }
         if (numPosts * commentsPerPost != cidIndex) {
             logger.error("Mismatched expected length {} and actual length {}", numPosts * commentsPerPost, cidIndex);

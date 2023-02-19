@@ -1,6 +1,7 @@
 package org.dbos.apiary.benchmarks.retro;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.apache.commons.lang.RandomStringUtils;
 import org.dbos.apiary.benchmarks.RetroBenchmark;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.ProvenanceBuffer;
@@ -19,15 +20,16 @@ import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class WordPressBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(WordPressBenchmark.class);
 
-    private static final int threadPoolSize = 4;
-    private static final int numWorker = 4;
+    private static final int threadPoolSize = 128;
+    private static final int numWorker = 64;
     private static final int numOptions = 1000;
-    private static final int numPosts = 1000;
-    private static final int initCommentsPerPost = 1;
+    private static final int numPosts = 2000;
+    private static final int initCommentsPerPost = 10;
     private static final AtomicInteger commentId = new AtomicInteger(0);
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
@@ -155,7 +157,7 @@ public class WordPressBenchmark {
         int updateOptionPC = percentages.get(4);
         logger.info("Percentages: addComment {}, trashPost {}, untrashPost {}, getComments {}, updateOption {}, getOption {}", addCommentPC, trashPostPC, untrashPostPC, getCommentsPC, updateOptionPC, 100 - (addCommentPC + trashPostPC + untrashPostPC + getCommentsPC + updateOptionPC));
 
-        boolean hasProv = (ApiaryConfig.captureReads || ApiaryConfig.captureUpdates) ? true : false;  // Enable provenance?
+        boolean hasProv = ApiaryConfig.recordInput ? true : false;  // Enable provenance?
 
         if (retroMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
             if (!skipLoad) {
@@ -164,18 +166,19 @@ public class WordPressBenchmark {
             }
         } else {
             ApiaryConfig.recordInput = false;
+            ApiaryConfig.captureFuncInvocations = true;
             if (!skipLoad){
                 // TODO: for now, we just drop entire data tables. We can probably use point-in-time recovery, or recover through our selective replay.
                 resetAppTables(dbAddr);
             }
         }
 
-        PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos");
+        PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
 
         ApiaryWorker apiaryWorker;
         if (hasProv) {
             // Enable provenance logging in the worker.
-            apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+            apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker, RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
         } else {
             // Disable provenance.
             apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker);
@@ -195,6 +198,7 @@ public class WordPressBenchmark {
         apiaryWorker.registerFunction(WPUtil.FUNC_INSERTOPTION, ApiaryConfig.postgres, WPInsertOption::new, false);
         apiaryWorker.registerFunctionSet(WPUtil.FUNC_TRASHPOST, WPUtil.FUNC_TRASHPOST, WPUtil.FUNC_TRASHCOMMENTS);
         apiaryWorker.registerFunctionSet(WPUtil.FUNC_OPTIONEXISTS, WPUtil.FUNC_OPTIONEXISTS, WPUtil.FUNC_INSERTOPTION);
+        apiaryWorker.registerFunction(WPUtil.FUNC_LOAD_POSTS, ApiaryConfig.postgres, WPLoadPosts::new, false);
 
         if (bugFix != null) {
             // The fixed version.
@@ -216,7 +220,8 @@ public class WordPressBenchmark {
             long startTime = System.currentTimeMillis();
             RetroBenchmark.retroReplayExec(client.get(), retroMode, startExecId, endExecId);
             long elapsedTime = System.currentTimeMillis() - startTime;
-            ApiaryConfig.recordInput = true;  // Record again.
+            ApiaryConfig.recordInput = false;
+            ApiaryConfig.captureFuncInvocations = false;
 
             // Check inconsistency in comment table.
             boolean hasInconsistency = false;
@@ -232,7 +237,6 @@ public class WordPressBenchmark {
             } else {
                 logger.info("No inconsistency in WP comments after replay.");
             }
-            Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
 
             // TODO: how do we check the Option table? We can see the error message from the screen.
 
@@ -248,93 +252,95 @@ public class WordPressBenchmark {
             clientPool.add(new ApiaryWorkerClient(dbAddr));
         }
 
-        // Add posts, and comments for each post.
-        for (int postId = 0; postId < numPosts; postId++) {
-            int res = client.get().executeFunction(WPUtil.FUNC_ADDPOST, postId, "benchmark post " + postId).getInt();
-            assert (res == 0);
-            for (int j = 0; j < initCommentsPerPost; j++) {
-                int cid = commentId.incrementAndGet();
-                res = client.get().executeFunction(WPUtil.FUNC_ADDCOMMENT, postId, cid, String.format("Post %s comment %s", postId, cid)).getInt();
-                assert (res == 0);
-            }
-        }
-
-        // Try to inject concurrent comments until we find inconsistency.
-        boolean foundInconsistency = false;
         int numTry;
-        for (numTry = 0; numTry < numPosts; numTry++) {
-            Future<Integer> trashFut = threadPool.submit(new WpTask(clientPool, WPOpType.TRASH_POST, null, numTry, -1, ""));
-            Thread.sleep(ThreadLocalRandom.current().nextInt(5));
-            int cid = commentId.incrementAndGet();
-            Future<Integer> commentFut = threadPool.submit(new WpTask(clientPool, WPOpType.ADD_COMMENT, null, numTry, cid, String.format("Concurrent comment post %s comment %s", numTry, cid)));
+        int totalPostPC = addCommentPC + getCommentsPC + trashPostPC + untrashPostPC;
+        int totalOptionPC = 100 - totalPostPC;
+        if (totalPostPC > 0) {
+            // Add posts, and comments for each post.
+            int[] postIds = IntStream.range(0, numPosts).toArray();
+            int[] commentIds = IntStream.range(0, numPosts * initCommentsPerPost).toArray();
+            int res = client.get().executeFunction(WPUtil.FUNC_LOAD_POSTS, postIds, commentIds).getInt();
+            commentId.addAndGet(numPosts * initCommentsPerPost);
+            assert(res == 0);
 
-            int trashRes, commentRes;
-            try {
-                trashRes = trashFut.get();
-                commentRes = commentFut.get();
-                assert (numTry == trashRes);
-                assert (commentRes == 0);
-            } catch (ExecutionException e) {
-                throw new RuntimeException(e);
+            // Try to inject concurrent comments until we find inconsistency.
+            boolean foundInconsistency = false;
+            for (numTry = 0; numTry < numPosts; numTry++) {
+                Future<Integer> trashFut = threadPool.submit(new WpTask(clientPool, WPOpType.TRASH_POST, null, numTry, -1, ""));
+                Thread.sleep(ThreadLocalRandom.current().nextInt(5));
+                int cid = commentId.incrementAndGet();
+                Future<Integer> commentFut = threadPool.submit(new WpTask(clientPool, WPOpType.ADD_COMMENT, null, numTry, cid, String.format("Concurrent comment post %s comment %s", numTry, cid)));
+
+                int trashRes, commentRes;
+                try {
+                    trashRes = trashFut.get();
+                    commentRes = commentFut.get();
+                    assert (numTry == trashRes);
+                    assert (commentRes == 0);
+                } catch (ExecutionException e) {
+                    throw new RuntimeException(e);
+                }
+
+                // Restore the post.
+                res = client.get().executeFunction(WPUtil.FUNC_UNTRASHPOST, numTry).getInt();
+                String[] resList = client.get().executeFunction(WPUtil.FUNC_GETPOSTCOMMENTS, numTry).getStringArray();
+                assert (resList.length > 1);
+
+                // Check inconsistency.
+                resList = client.get().executeFunction(WPUtil.FUNC_COMMENTSTATUS, numTry).getStringArray();
+                if (resList.length > 1) {
+                    logger.info("Found inconsistency!");
+                    foundInconsistency = true;
+                    break;
+                }
             }
+            if (!foundInconsistency) {
+                logger.error("Failed to find inconsistency in posts... exit.");
+                threadPool.shutdown();
+                threadPool.awaitTermination(10, TimeUnit.SECONDS);
+                Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
 
-            // Restore the post.
-            int res = client.get().executeFunction(WPUtil.FUNC_UNTRASHPOST, numTry).getInt();
-            String[] resList = client.get().executeFunction(WPUtil.FUNC_GETPOSTCOMMENTS, numTry).getStringArray();
-            assert (resList.length > 1);
-
-            // Check inconssitency.
-            resList = client.get().executeFunction(WPUtil.FUNC_COMMENTSTATUS, numTry).getStringArray();
-            if (resList.length > 1) {
-                logger.info("Found inconsistency!");
-                foundInconsistency = true;
-                break;
-            }
-        }
-        if (!foundInconsistency) {
-            logger.error("Failed to find inconsistency in posts... exit.");
-            threadPool.shutdown();
-            threadPool.awaitTermination(10, TimeUnit.SECONDS);
-            Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
-
-            apiaryWorker.shutdown();
-            return;
-        }
-
-        // Try to cause option primary key error.
-        for (numTry = 0; numTry < numOptions; numTry++) {
-            Future<Integer> fut1 = threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, null, "option-" + numTry, "value0-" + numTry, "no"));
-            // Add arbitrary delay.
-            Thread.sleep(ThreadLocalRandom.current().nextInt(2));
-            Future<Integer> fut2 = threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, null, "option-" + numTry, "value1-" + numTry, "no"));
-
-            int res1, res2;
-            try {
-                res1 = fut1.get();
-                res2 = fut2.get();
-                assert (res1 > -2);
-                assert (res2 > -2);
-            } catch (ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-
-            // Check the option and make sure it's set, stop if the second one failed.
-            String resStr = client.get().executeFunction(WPUtil.FUNC_GETOPTION, "option-" + numTry).getString();
-            assert (resStr.contains("value"));
-            if (res2 == -1) {
-                logger.info("Found error! Option: {}", numTry);
-                break;
+                apiaryWorker.shutdown();
+                return;
             }
         }
 
-        if (numTry >= numOptions) {
-            logger.error("Failed to find inconsistency in options... exit.");
-            threadPool.shutdown();
-            threadPool.awaitTermination(10, TimeUnit.SECONDS);
-            Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
+        if (totalOptionPC > 0) {
+            // Try to cause option primary key error.
+            for (numTry = 0; numTry < numOptions; numTry++) {
+                Future<Integer> fut1 = threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, null, "option-" + numTry, "value0-" + numTry, "no"));
+                // Add arbitrary delay.
+                Thread.sleep(ThreadLocalRandom.current().nextInt(2));
+                Future<Integer> fut2 = threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, null, "option-" + numTry, "value1-" + numTry, "no"));
 
-            apiaryWorker.shutdown();
-            return;
+                int res1, res2;
+                try {
+                    res1 = fut1.get();
+                    res2 = fut2.get();
+                    assert (res1 > -2);
+                    assert (res2 > -2);
+                } catch (ExecutionException e) {
+                    throw new RuntimeException(e);
+                }
+
+                // Check the option and make sure it's set, stop if the second one failed.
+                String resStr = client.get().executeFunction(WPUtil.FUNC_GETOPTION, "option-" + numTry).getString();
+                assert (resStr.contains("value"));
+                if (res2 == -1) {
+                    logger.info("Found error! Option: {}", numTry);
+                    break;
+                }
+            }
+
+            if (numTry >= numOptions) {
+                logger.error("Failed to find inconsistency in options... exit.");
+                threadPool.shutdown();
+                threadPool.awaitTermination(10, TimeUnit.SECONDS);
+                Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
+
+                apiaryWorker.shutdown();
+                return;
+            }
         }
 
         // Actual benchmark loop.
@@ -356,7 +362,7 @@ public class WordPressBenchmark {
             int optionId = ThreadLocalRandom.current().nextInt(0, numOptions);
             if (chooser < addCommentPC) {
                 int cid = commentId.incrementAndGet();
-                threadPool.submit(new WpTask(clientPool, WPOpType.ADD_COMMENT, wt, postId, cid, String.format("Concurrent comment post %s comment %s", postId, cid)));
+                threadPool.submit(new WpTask(clientPool, WPOpType.ADD_COMMENT, wt, postId, cid, String.format("Comment %d for post %d: This is a very very long comment! %s", cid, postId, RandomStringUtils.randomAlphabetic(1000))));
             } else if (chooser < addCommentPC + trashPostPC) {
                 while (trashedPosts.contains(postId) && trashedPosts.size() < numPosts) {
                     postId = ThreadLocalRandom.current().nextInt(0, numPosts);
@@ -374,9 +380,9 @@ public class WordPressBenchmark {
                     continue;
                 }
                 threadPool.submit(new WpTask(clientPool, WPOpType.UNTRASH_POST, wt, postId, -1, null));
-            } else if (chooser < addCommentPC + trashPostPC + untrashPostPC + getCommentsPC) {
+            } else if (chooser < totalPostPC) {
                 threadPool.submit(new WpTask(clientPool, WPOpType.GET_COMMENTS, rt, postId, -1, null));
-            } else if (chooser < addCommentPC + trashPostPC + untrashPostPC + getCommentsPC + updateOptionPC) {
+            } else if (chooser < totalPostPC + updateOptionPC) {
                 threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, wt, "option-" + optionId, "value-new-" + optionId, "no"));
             } else {
                 threadPool.submit(new WpTask(clientPool, WPOpType.GET_OPTION, rt, "option-" + optionId, null, null));
@@ -392,11 +398,14 @@ public class WordPressBenchmark {
         threadPool.shutdownNow();
         threadPool.awaitTermination(10, TimeUnit.SECONDS);
 
+        double totalThroughput = 0.0;
+
         List<Long> queryTimes = readTimes.stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
         int numQueries = queryTimes.size();
         if (numQueries > 0) {
             long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
             double throughput = (double) numQueries * 1000.0 / elapsedTime;
+            totalThroughput += throughput;
             long p50 = queryTimes.get(numQueries / 2);
             long p99 = queryTimes.get((numQueries * 99) / 100);
             logger.info("Total Reads: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
@@ -409,14 +418,15 @@ public class WordPressBenchmark {
         if (numQueries > 0) {
             long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
             double throughput = (double) numQueries * 1000.0 / elapsedTime;
+            totalThroughput += throughput;
             long p50 = queryTimes.get(numQueries / 2);
             long p99 = queryTimes.get((numQueries * 99) / 100);
             logger.info("Total Writes: Duration: {} Interval: {}μs Queries: {} TPS: {} Average: {}μs p50: {}μs p99: {}μs", elapsedTime, interval, numQueries, String.format("%.03f", throughput), average, p50, p99);
         } else {
             logger.info("No writes");
         }
+        logger.info("Total Throughput: {}", totalThroughput);
 
-        Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
         apiaryWorker.shutdown();
     }
 

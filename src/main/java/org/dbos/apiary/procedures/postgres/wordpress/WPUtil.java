@@ -18,6 +18,7 @@ public class WPUtil {
     public static final String WP_POSTMETA_SCHEMA = WP_POST_ID + " BIGINT NOT NULL, "
             + WP_META_KEY + " VARCHAR(255) NOT NULL, "
             + WP_META_VALUE + " VARCHAR(1000) NOT NULL";
+    // TODO: add indexes.
 
     // For the comments table.
     public static final String WP_COMMENTS_TABLE = "WP_COMMENTS";
@@ -54,4 +55,5 @@ public class WPUtil {
     public static final String FUNC_GETOPTION = "WPGetOption";
     public static final String FUNC_OPTIONEXISTS = "WPOptionExists";
     public static final String FUNC_INSERTOPTION = "WPInsertOption";
+    public static final String FUNC_LOAD_POSTS = "WPLoadPosts";
 }

@@ -260,6 +260,7 @@ public class PostgresRetroReplay {
                 if (!allVisible) {
                     try {
                         pgCtxt.conn.commit();
+                        Thread.sleep(1); // Avoid busy loop.
                     } catch (Exception e) {
                         e.printStackTrace();
                         logger.error("Should not fail to commit an empty transaction.");

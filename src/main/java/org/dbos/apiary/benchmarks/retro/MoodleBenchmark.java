@@ -73,6 +73,7 @@ public class MoodleBenchmark {
             }
         } else {
             ApiaryConfig.recordInput = false;
+            ApiaryConfig.captureFuncInvocations = false;
             if (!skipLoad){
                 // TODO: for now, we just drop entire data tables. We can probably use point-in-time recovery, or recover through our selective replay.
                 resetAppTables(dbAddr);
@@ -111,7 +112,6 @@ public class MoodleBenchmark {
             long startTime = System.currentTimeMillis();
             RetroBenchmark.retroReplayExec(client.get(), retroMode, startExecId, endExecId);
             long elapsedTime = System.currentTimeMillis() - startTime;
-            ApiaryConfig.recordInput = true;  // Record again.
             int[] resList = client.get().executeFunction(MDLUtil.FUNC_FETCH_SUBSCRIBERS, initialForumId).getIntArray();
             if (resList.length > 1) {
                 logger.info("Replay found duplications!");

@@ -470,7 +470,7 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     private void recordTransactionInfo(WorkerContext workerContext, PostgresContext ctxt, long startTime, String functionName, String status) {
-        if ((workerContext.provBuff == null) || (ctxt.execID == 0)) {
+        if ((workerContext.provBuff == null) || (ctxt.execID == 0) || !ApiaryConfig.captureFuncInvocations) {
             return;
         }
         // Get actual commit timestamp if track_commit_timestamp is available. Otherwise, get the timestamp from Java.

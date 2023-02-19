@@ -13,6 +13,7 @@ public class ApiaryConfig {
     public static Boolean captureUpdates = false;
     public static Boolean captureReads = false;
     public static Boolean captureMetadata = true;
+    public static Boolean captureFuncInvocations = true;
     public static final String provenanceDefaultAddress = "localhost";
 
     public static final int REPEATABLE_READ = 1;

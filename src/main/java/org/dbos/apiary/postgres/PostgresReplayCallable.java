@@ -10,28 +10,18 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.dbos.apiary.postgres.PostgresRetroReplay.*;
+
 class PostgresReplayCallable implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(PostgresReplayCallable.class);
 
 
     private final PostgresReplayTask rpTask;
     private final PostgresContext pgCtxt;
-    private final Map<Long, Map<Long, Task>> pendingTasks;
-    private final Map<Long, Map<Long, Object>> execFuncIdToValue;
-    private final Map<Long, Object> execIdToFinalOutput;
-    private final Set<String> replayWrittenTables;
 
-    public PostgresReplayCallable(PostgresContext pgCtxt, PostgresReplayTask rpTask,
-                                  Map<Long, Map<Long, Task>> pendingTasks,
-                                  Map<Long, Map<Long, Object>> execFuncIdToValue,
-                                  Map<Long, Object> execIdToFinalOutput,
-                                  Set<String> replayWrittenTables) {
+    public PostgresReplayCallable(PostgresContext pgCtxt, PostgresReplayTask rpTask) {
         this.pgCtxt = pgCtxt;
         this.rpTask = rpTask;
-        this.pendingTasks = pendingTasks;
-        this.execFuncIdToValue = execFuncIdToValue;
-        this.execIdToFinalOutput = execIdToFinalOutput;
-        this.replayWrittenTables = replayWrittenTables;
     }
 
     // Process a replay function/transaction, and resolve dependencies.

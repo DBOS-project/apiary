@@ -33,6 +33,7 @@ public class WordPressBenchmark {
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
 
+    private static final Queue<Integer> trashingPosts = new ConcurrentLinkedQueue<>();
     private static final Queue<Integer> trashedPosts = new ConcurrentLinkedQueue<>();
 
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
@@ -117,8 +118,10 @@ public class WordPressBenchmark {
                     res = client.executeFunction(WPUtil.FUNC_ADDCOMMENT, postId, commentId, content).getInt();
                 } else if (wpOpType.equals(WPOpType.TRASH_POST)) {
                     res = client.executeFunction(WPUtil.FUNC_TRASHPOST, postId).getInt();
+                    trashedPosts.add(postId);
                 } else if (wpOpType.equals(WPOpType.UNTRASH_POST)) {
                     res = client.executeFunction(WPUtil.FUNC_UNTRASHPOST, postId).getInt();
+                    trashingPosts.remove(postId);
                 } else if (wpOpType.equals(WPOpType.GET_COMMENTS)) {
                     String[] resList = client.executeFunction(WPUtil.FUNC_GETPOSTCOMMENTS, postId).getStringArray();
                     assert (resList.length >= 1);
@@ -293,7 +296,7 @@ public class WordPressBenchmark {
                 // Check inconsistency.
                 resList = client.get().executeFunction(WPUtil.FUNC_COMMENTSTATUS, numTry).getStringArray();
                 if (resList.length > 1) {
-                    logger.info("Found inconsistency!");
+                    logger.info("Found inconsistency in WP Posts!");
                     foundInconsistency = true;
                     break;
                 }
@@ -368,11 +371,11 @@ public class WordPressBenchmark {
                 int cid = commentId.incrementAndGet();
                 threadPool.submit(new WpTask(clientPool, WPOpType.ADD_COMMENT, wt, postId, cid, String.format("Comment %d for post %d: This is a very very long comment! %s", cid, postId, RandomStringUtils.randomAlphabetic(1000))));
             } else if (chooser < addCommentPC + trashPostPC) {
-                while (trashedPosts.contains(postId) && trashedPosts.size() < numPosts) {
+                while (trashingPosts.contains(postId) && trashingPosts.size() < numPosts) {
                     postId = ThreadLocalRandom.current().nextInt(0, numPosts);
                 }
-                if (trashedPosts.size() < numPosts) {
-                    trashedPosts.add(postId);
+                if (trashingPosts.size() < numPosts) {
+                    trashingPosts.add(postId);
                     threadPool.submit(new WpTask(clientPool, WPOpType.TRASH_POST, wt, postId, -1, null));
                 } else {
                     // Nothing to do.

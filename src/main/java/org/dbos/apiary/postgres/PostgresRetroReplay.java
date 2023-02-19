@@ -187,7 +187,7 @@ public class PostgresRetroReplay {
                 } else if (workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName)) {
                     // If it's a read-only transaction and has finished, but not in its snapshot, still release the resources immediately.
                     if (commitPgRpTask.resFut.isDone()) {
-                        logger.info("Clean up read-only txnID {} for current txnID {}", cmtTxn, resTxId);
+                        logger.debug("Clean up read-only txnID {} for current txnID {}", cmtTxn, resTxId);
                         connPool.add(commitPgRpTask.conn);
                         cleanUpTxns.add(cmtTxn);
                     }
@@ -284,7 +284,7 @@ public class PostgresRetroReplay {
                     logger.error("No task found for pending commit txn {}.", cmtTxn);
                     throw new RuntimeException("Failed to find commit transaction " + cmtTxn);
                 }
-                logger.debug("Committing pending txnID {}.", cmtTxn);
+                logger.debug("Commit final pending txnID {}.", cmtTxn);
                 processCommit(workerContext, commitPgRpTask, cmtTxn, replayMode, threadPool);
                 connPool.add(commitPgRpTask.conn);
             }
@@ -311,11 +311,17 @@ public class PostgresRetroReplay {
             }
             connPool.add(currConn);
         }
+        long endTime = System.currentTimeMillis();
 
         logger.info("Last non skipped execId: {}", lastNonSkippedExecId);
         Object output = execIdToFinalOutput.get(lastNonSkippedExecId);  // The last non-skipped execution ID.
-        logger.info("Final output: {}", output.toString());
-        long endTime = System.currentTimeMillis();
+        String outputString = output.toString();
+        if (output instanceof int[]) {
+            outputString = Arrays.toString((int[]) output);
+        } else if (output instanceof String[]){
+            outputString = Arrays.toString((String[]) output);
+        }
+        logger.info("Final output: {}", outputString);
         logger.info("Re-execution time: {} ms", endTime - prepTime);
         logger.info("Total replayed transactions: {}", totalReplayedTxns);
 
@@ -328,7 +334,7 @@ public class PostgresRetroReplay {
                 totalNumConns++;
             }
         }
-        logger.info("Total used {} connections.", totalNumConns);
+        logger.info("Total used connections: {}", totalNumConns);
 
         startOrderRs.close();
         startOrderStmt.close();

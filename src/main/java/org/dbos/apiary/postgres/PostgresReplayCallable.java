@@ -66,7 +66,6 @@ class PostgresReplayCallable implements Callable<Integer> {
             }
             execFuncIdToValue.putIfAbsent(rpTask.task.execId, new ConcurrentHashMap<>());
             execIdToFinalOutput.putIfAbsent(rpTask.task.execId, rpTask.fo.output);
-            logger.info("ExecId {} update final output map. ", rpTask.task.execId);
             pendingTasks.putIfAbsent(rpTask.task.execId, new ConcurrentHashMap<>());
         } else {
             // Skip the task if it is absent. Because we allow reducing the number of called function. Should never have race condition because later tasks must have previous tasks in their snapshot.

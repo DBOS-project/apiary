@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class WPUntrashPost extends PostgresFunction {
     private static final Logger logger = LoggerFactory.getLogger(WPUntrashPost.class);
@@ -16,7 +17,7 @@ public class WPUntrashPost extends PostgresFunction {
     private static final String untrashPost = String.format("UPDATE %s SET %s = ? WHERE %s = ?;", WPUtil.WP_POSTS_TABLE, WPUtil.WP_POST_STATUS, WPUtil.WP_POST_ID);
 
     // Need to fill in actual comment IDs.
-    private static final String untrashComments = "UPDATE %s SET %s = ? WHERE %s IN (%s)";
+    private static final String untrashComment = String.format("UPDATE %s SET %s = ? WHERE %s = ?", WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_COMMENT_STATUS, WPUtil.WP_COMMENT_ID);
 
     private static final String deleteMeta = String.format("DELETE FROM %s WHERE %s = ? AND %s = ?;", WPUtil.WP_POSTMETA_TABLE, WPUtil.WP_POST_ID, WPUtil.WP_META_KEY);
 
@@ -33,8 +34,11 @@ public class WPUntrashPost extends PostgresFunction {
         ctxt.executeUpdate(untrashPost, WPUtil.WP_STATUS_VISIBLE, postId);
 
         // Untrash all comments.
-        String updateQuery = String.format(untrashComments, WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_COMMENT_STATUS, WPUtil.WP_COMMENT_ID, commentIdStr);
-        ctxt.executeUpdate(updateQuery, WPUtil.WP_STATUS_VISIBLE);
+        String[] cidStrs = commentIdStr.split(",");
+        for (String cidStr : cidStrs) {
+            int cid = Integer.parseInt(cidStr);
+            ctxt.executeUpdate(untrashComment, WPUtil.WP_STATUS_VISIBLE, cid);
+        }
 
         // Clean up metadata.
         ctxt.executeUpdate(deleteMeta, postId, WPUtil.WP_TRASH_KEY);

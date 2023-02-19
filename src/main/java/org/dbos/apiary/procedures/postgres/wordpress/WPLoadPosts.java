@@ -31,6 +31,7 @@ public class WPLoadPosts extends PostgresFunction {
             input[0] = postId;
             input[1] = String.format("Post %d: This is a very very long post! %s ", postId, RandomStringUtils.randomAlphabetic(1000));
             input[2] = WPUtil.WP_STATUS_VISIBLE;
+            postInputs.add(input);
         }
         ctxt.insertMany(addPost, postInputs);
         logger.info("Loaded {} posts.", numPosts);
@@ -38,17 +39,18 @@ public class WPLoadPosts extends PostgresFunction {
         for (int i = 0; i < numPosts; i++) {
             long postId = i;
             // Add comments.
-            List<Object[]> commenInputs = new ArrayList<>();
+            List<Object[]> commentInputs = new ArrayList<>();
             for (int j = 0; j < commentsPerPost; j++) {
                 long commentId = cidIndex;
                 Object[] commentInput = new Object[4];
                 commentInput[0] = commentId;
                 commentInput[1] = postId;
                 commentInput[2] = String.format("Comment %d for post %d: This is a very very long comment! %s", commentId, postId, RandomStringUtils.randomAlphabetic(1000));
+                commentInputs.add(commentInput);
                 cidIndex++;
             }
-            ctxt.insertMany(addComment, commenInputs);
-            logger.info("Loaded {} comments for postId {}", commenInputs.size(), postId);
+            ctxt.insertMany(addComment, commentInputs);
+            logger.info("Loaded {} comments for postId {}", commentInputs.size(), postId);
         }
         if (numPosts * commentsPerPost != cidIndex) {
             logger.error("Mismatched expected length {} and actual length {}", numPosts * commentsPerPost, cidIndex);

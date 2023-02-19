@@ -14,12 +14,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class WordPressBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(WordPressBenchmark.class);
@@ -33,7 +32,7 @@ public class WordPressBenchmark {
 
     private static final int threadWarmupMs = 5000;  // First 5 seconds of request would be warm-up requests.
 
-    private static final Queue<Integer> trashingPosts = new ConcurrentLinkedQueue<>();
+    private static final Queue<Integer> untrashedPosts = new ConcurrentLinkedQueue<>();
     private static final Queue<Integer> trashedPosts = new ConcurrentLinkedQueue<>();
 
     private static final Collection<Long> readTimes = new ConcurrentLinkedQueue<>();
@@ -121,7 +120,7 @@ public class WordPressBenchmark {
                     trashedPosts.add(postId);
                 } else if (wpOpType.equals(WPOpType.UNTRASH_POST)) {
                     res = client.executeFunction(WPUtil.FUNC_UNTRASHPOST, postId).getInt();
-                    trashingPosts.remove(postId);
+                    untrashedPosts.add(postId);
                 } else if (wpOpType.equals(WPOpType.GET_COMMENTS)) {
                     String[] resList = client.executeFunction(WPUtil.FUNC_GETPOSTCOMMENTS, postId).getStringArray();
                     assert (resList.length >= 1);
@@ -263,6 +262,10 @@ public class WordPressBenchmark {
             int res = client.get().executeFunction(WPUtil.FUNC_LOAD_POSTS, numPosts, initCommentsPerPost).getInt();
             commentId.addAndGet(numPosts * initCommentsPerPost);
             if (res > 0) {
+                Enumeration<Integer> e = Collections.enumeration(IntStream.range(0, numPosts).boxed().collect(Collectors.toList()));
+                while (e.hasMoreElements()) {
+                    untrashedPosts.add(e.nextElement());
+                }
                 long loadTime = System.currentTimeMillis() - t0;
                 logger.info("Loaded {} posts and comments in {} ms", res, loadTime);
             } else {
@@ -371,11 +374,8 @@ public class WordPressBenchmark {
                 int cid = commentId.incrementAndGet();
                 threadPool.submit(new WpTask(clientPool, WPOpType.ADD_COMMENT, wt, postId, cid, String.format("Comment %d for post %d: This is a very very long comment! %s", cid, postId, RandomStringUtils.randomAlphabetic(1000))));
             } else if (chooser < addCommentPC + trashPostPC) {
-                while (trashingPosts.contains(postId) && trashingPosts.size() < numPosts) {
-                    postId = ThreadLocalRandom.current().nextInt(0, numPosts);
-                }
-                if (trashingPosts.size() < numPosts) {
-                    trashingPosts.add(postId);
+                postId = untrashedPosts.poll();
+                if (postId != null) {
                     threadPool.submit(new WpTask(clientPool, WPOpType.TRASH_POST, wt, postId, -1, null));
                 } else {
                     // Nothing to do.

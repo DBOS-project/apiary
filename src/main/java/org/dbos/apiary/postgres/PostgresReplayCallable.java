@@ -51,7 +51,7 @@ class PostgresReplayCallable implements Callable<Integer> {
 
         PostgresConnection c = (PostgresConnection) pgCtxt.workerContext.getPrimaryConnection();
 
-        if (rpTask.task.functionID == 0l) {
+        if (rpTask.task.functionID == 0L) {
             // This is the first function of a request.
             rpTask.fo = c.replayFunction(pgCtxt, rpTask.task.funcName, replayWrittenTables, rpTask.task.input);
             if (rpTask.fo == null) {

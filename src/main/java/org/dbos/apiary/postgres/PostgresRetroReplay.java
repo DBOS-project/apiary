@@ -184,6 +184,7 @@ public class PostgresRetroReplay {
             // Check if we need to commit anything.
             List<Long> cleanUpTxns = new ArrayList<>();
             for (long cmtTxn : pendingCommitTasks.keySet()) {
+                long t11 = System.nanoTime();
                 PostgresReplayTask commitPgRpTask = pendingCommitTasks.get(cmtTxn);
                 if (commitPgRpTask == null) {
                     logger.error("No task found for pending commit txn {}.", cmtTxn);
@@ -197,6 +198,8 @@ public class PostgresRetroReplay {
                     cleanUpTxns.add(cmtTxn);
                     // Use the new transaction ID! Not their original ones.
                     checkVisibleTxns.add(commitPgRpTask.replayTxnID);  // TODO: maybe only need to check for writes.
+                    long t12 = System.nanoTime();
+                    commitTimes.add(t12 - t11);
                 } else if (workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName)) {
                     // If it's a read-only transaction and has finished, but not in its snapshot, still release the resources immediately.
                     if (commitPgRpTask.resFut.isDone()) {
@@ -211,7 +214,6 @@ public class PostgresRetroReplay {
                 pendingCommitTasks.remove(t);
             }
             long t1 = System.nanoTime();
-            commitTimes.add(t1 - t0);
 
             // Execute this transaction.
 

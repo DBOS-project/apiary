@@ -74,10 +74,10 @@ public class PostgresRetroReplay {
         PreparedStatement stmt = provConn.prepareStatement(provQuery);
         stmt.setLong(1, targetExecID);
         ResultSet historyRs = stmt.executeQuery();
-        long origTxid = -1;
+        long startTxId = -1;
         if (historyRs.next()) {
-            origTxid = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-            logger.debug("Replay start transaction ID: {}", origTxid);
+            startTxId = historyRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            logger.debug("Replay start transaction ID: {}", startTxId);
         } else {
             logger.error("No corresponding original transaction for start execution {}", targetExecID);
             throw new RuntimeException("Cannot find original transaction!");
@@ -85,7 +85,7 @@ public class PostgresRetroReplay {
         historyRs.close();
 
         // Find the transaction ID of the last execution. Only need to find the transaction ID of the first function.
-        // Execute everything between [origTxid, endTxId)
+        // Execute everything between [startTxId, endTxId)
         stmt.setLong(1, endExecId);
         ResultSet endRs = stmt.executeQuery();
         long endTxId = Long.MAX_VALUE;
@@ -111,8 +111,8 @@ public class PostgresRetroReplay {
                     ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         }
         PreparedStatement startOrderStmt = provConn.prepareStatement(startOrderQuery);
-        startOrderStmt.setLong(1, origTxid);
-        startOrderStmt.setLong(2, endExecId);
+        startOrderStmt.setLong(1, startTxId);
+        startOrderStmt.setLong(2, endTxId);
         ResultSet startOrderRs = startOrderStmt.executeQuery();
 
         // This query finds the original input.
@@ -129,8 +129,8 @@ public class PostgresRetroReplay {
         );
         Connection provInputConn = ProvenanceBuffer.createProvConnection(workerContext.provDBType, workerContext.provAddress);
         PreparedStatement inputStmt = provInputConn.prepareStatement(inputQuery);
-        inputStmt.setLong(1, origTxid);
-        inputStmt.setLong(2, endExecId);
+        inputStmt.setLong(1, startTxId);
+        inputStmt.setLong(2, endTxId);
         ResultSet inputRs = inputStmt.executeQuery();
 
         // Cache inputs of the original execution. <execId, input>

@@ -208,7 +208,7 @@ public class PostgresRetroReplay {
             // Clean up pending commit map.
             for (long cmtTxn : cleanUpTxns.keySet()) {
                 try {
-                    long retVal = cleanUpTxns.get(cmtTxn).get(200, TimeUnit.MILLISECONDS);
+                    long retVal = cleanUpTxns.get(cmtTxn).get(5, TimeUnit.SECONDS);
                     if (retVal != cmtTxn) {
                         logger.error("Commit failed. Commit txn: {}, retVal: {}", cmtTxn, retVal);
                     }
@@ -331,7 +331,7 @@ public class PostgresRetroReplay {
                 }
                 logger.debug("Commit final pending txnID {}.", cmtTxn);
                 Future<Long> cmtFut = commitThreadPool.submit(new PostgresCommitCallable(commitPgRpTask, workerContext, cmtTxn, replayMode, threadPool));
-                cmtFut.get(200, TimeUnit.MILLISECONDS);
+                cmtFut.get(5, TimeUnit.SECONDS);
                 connPool.add(commitPgRpTask.conn);
                 long t2 = System.nanoTime();
                 commitTimes.add(t2 - t1);
@@ -353,7 +353,7 @@ public class PostgresRetroReplay {
                         PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
                         pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask));
                         Future<Long> cmtFut = commitThreadPool.submit(new PostgresCommitCallable(pgRpTask, workerContext, pgCtxt.txc.txID, replayMode, threadPool));
-                        cmtFut.get(200, TimeUnit.MILLISECONDS);
+                        cmtFut.get(5, TimeUnit.SECONDS);
                     }
                 }
             }

@@ -36,7 +36,7 @@ public class PostgresCommitCallable implements Callable<Long> {
     public Long call() {
         try {
             // Wait for the task to finish and commit.
-            int res = commitPgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
+            int res = commitPgRpTask.resFut.get(5, TimeUnit.SECONDS);
             if (res == 0) {
                 if (commitPgRpTask.fo.errorMsg.isEmpty()){
                     if (!workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName)) {
@@ -73,7 +73,7 @@ public class PostgresCommitCallable implements Callable<Long> {
                         logger.debug("Rolled back failed to commit transaction {}.", cmtTxn);
                         PostgresContext pgCtxt = new PostgresContext(commitPgRpTask.conn, workerContext, "retroReplay", commitPgRpTask.task.execId, commitPgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
                         commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, commitPgRpTask));
-                        commitPgRpTask.resFut.get(100, TimeUnit.MILLISECONDS);
+                        commitPgRpTask.resFut.get(5, TimeUnit.SECONDS);
                         commitPgRpTask.conn.commit();
                         logger.debug("Committed retried PSQLException transaction {}.", cmtTxn);
                     } catch (Exception ex) {

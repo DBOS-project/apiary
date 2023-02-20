@@ -151,7 +151,7 @@ public class WordPressBenchmark {
     }
 
     public static void benchmark(String dbAddr, Integer interval, Integer duration, boolean skipLoad, int retroMode, long startExecId, long endExecId, String bugFix, List<Integer> percentages) throws SQLException, InvalidProtocolBufferException, InterruptedException {
-        ApiaryConfig.isolationLevel = ApiaryConfig.SERIALIZABLE;
+        ApiaryConfig.isolationLevel = ApiaryConfig.REPEATABLE_READ;
         int addCommentPC = percentages.get(0);
         int trashPostPC = percentages.get(1);
         int untrashPostPC = percentages.get(2);

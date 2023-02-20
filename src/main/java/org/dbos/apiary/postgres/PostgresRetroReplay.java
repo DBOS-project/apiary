@@ -486,7 +486,7 @@ public class PostgresRetroReplay {
                     // Check if their write sets intersect with the read or write sets of re-executed requests, or if their read sets intersect with the write sets of re-executed requests.
                     funcWriteSet.retainAll(readWriteSet);
                     funcReadSet.retainAll(writeSet);
-                    if (!funcWriteSet.isEmpty() || funcReadSet.isEmpty()) {
+                    if (!funcWriteSet.isEmpty() || !funcReadSet.isEmpty()) {
                         // Intersection not empty. Must be re-executed.
                         newFuncs.addAll(funcSet);
                         logger.debug("Function {} RW set overlap. ReadSet {}, WriteSet {}. Cannot skip function set {}", funcName, funcReadSet.toString(), funcWriteSet.toString(), firstFuncName);

@@ -496,7 +496,7 @@ public class PostgresRetroReplay {
                     }
                 }
             }
-            if (!newFuncs.isEmpty()) {
+            if (newFuncs.isEmpty()) {
                 break; // Stop if no new function added.
             }
             execFuncs.addAll(newFuncs);

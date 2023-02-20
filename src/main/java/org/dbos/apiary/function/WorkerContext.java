@@ -25,7 +25,8 @@ public class WorkerContext {
     private final Map<String, Boolean> functionReadOnly = new HashMap<>();
 
     // Record tables a function may access.
-    private final Map<String, List<String>> functionAccessTables = new HashMap<>();
+    private final Map<String, List<String>> functionReadTables = new HashMap<>();
+    private final Map<String, List<String>> functionWriteTables = new HashMap<>();
 
     private ApiaryConnection primaryConnection = null;
     private String primaryConnectionType;
@@ -61,17 +62,21 @@ public class WorkerContext {
         functions.put(name, function);
         functionTypes.put(name, type);
         boolean isReadOnly;
-        List<String> accessTables;
+        List<String> readTables;
+        List<String> writeTables;
         try {
             isReadOnly = function.call().isReadOnly();
-            accessTables = function.call().readTables();
-            accessTables = accessTables.stream().map(String::toUpperCase).collect(Collectors.toList());
+            readTables = function.call().readTables();
+            readTables = readTables.stream().map(String::toUpperCase).collect(Collectors.toList());
+            writeTables = function.call().writeTables();
+            writeTables = writeTables.stream().map(String::toUpperCase).collect(Collectors.toList());
         } catch (Exception e) {
             e.printStackTrace();
             return;
         }
         functionReadOnly.put(name, isReadOnly);
-        functionAccessTables.put(name, accessTables);
+        functionReadTables.put(name, readTables);
+        functionWriteTables.put(name, writeTables);
     }
 
     public void registerFunction(String name, String type, Callable<ApiaryFunction> function, boolean isRetro) {
@@ -128,7 +133,8 @@ public class WorkerContext {
         return true;
     }
 
-    public String[] getFunctionSetAccessTables(String firstFunc) {
+    public Set<String> getFunctionSetTables(String firstFunc, boolean isRead) {
+        Map<String, List<String>> functionAccessTables = isRead ? functionReadTables : functionWriteTables;
         List<String> funcs = functionSets.get(firstFunc);
         Set<String> tables = new HashSet<>();
         // Return table info of this function, if cannot find func set info.
@@ -136,7 +142,7 @@ public class WorkerContext {
             if (functionAccessTables.containsKey(firstFunc)) {
                 tables.addAll(functionAccessTables.get(firstFunc));
             }
-            return tables.toArray(new String[0]);
+            return tables;
         }
 
         // Check all functions in the function set.
@@ -145,7 +151,15 @@ public class WorkerContext {
                 tables.addAll(functionAccessTables.get(func));
             }
         }
-        return tables.toArray(new String[0]);
+        return tables;
+    }
+
+    public Set<String> listAllFunctions() {
+        return functions.keySet();
+    }
+
+    public Set<String> listAllFunctionSets() {
+        return functionSets.keySet();
     }
 
     public String getFunctionType(String function) {

@@ -4,8 +4,6 @@ import org.dbos.apiary.ExecuteFunctionRequest;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
-import org.postgresql.util.PSQLException;
-import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,9 +31,6 @@ public class PostgresRetroReplay {
     // TODO: garbage collect this map.
     public static final Map<Long, Object> execIdToFinalOutput = new ConcurrentHashMap<>();
 
-    // Store a list of skipped requests. Used for selective replay.
-    private static final Set<Long> skippedExecIds = ConcurrentHashMap.newKeySet();
-
     // A pending commit map from original transaction ID to Postgres replay task.
     private static final Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
 
@@ -50,7 +45,6 @@ public class PostgresRetroReplay {
         pendingTasks.clear();
         execFuncIdToValue.clear();
         execIdToFinalOutput.clear();
-        skippedExecIds.clear();
         pendingCommitTasks.clear();
         commitTimes.clear();
         prepareTxnTimes.clear();
@@ -61,18 +55,21 @@ public class PostgresRetroReplay {
     public static Object retroExecuteAll(WorkerContext workerContext, long targetExecID, long endExecId, int replayMode) throws Exception {
         // Clean up.
         resetReplayState();
+        assert(workerContext.provBuff != null);
+        Connection provConn = ProvenanceBuffer.createProvConnection(workerContext.provDBType, workerContext.provAddress);
 
         long startTime = System.currentTimeMillis();
+        Set<String> nonSkipFuncs = workerContext.listAllFunctions();
         if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
             logger.debug("Replay the entire trace!");
         } else if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
             logger.debug("Selective replay!");
+            // Get a list of functions that must be executed.
+            nonSkipFuncs = getExecFuncSets(workerContext);
         } else {
             logger.error("Do not support replay mode: {}", replayMode);
             return null;
         }
-        assert(workerContext.provBuff != null);
-        Connection provConn = ProvenanceBuffer.createProvConnection(workerContext.provDBType, workerContext.provAddress);
 
         // Find previous execution history, only execute later committed transactions or the ones failed due to unrecoverable issues (like constraint violations).
         String provQuery = String.format("SELECT %s, %s FROM %s WHERE %s = ? AND %s=0 AND %s=0 AND (%s=\'%s\' OR %s=\'%s\');",
@@ -131,6 +128,7 @@ public class PostgresRetroReplay {
         // Collect a list of request IDs and their function names.
         List<PostgresReplayInfo> replayReqs = new ArrayList<>();
         while (startOrderRs.next()) {
+            // TODO: will it consume too much space?
             long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
             long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
@@ -197,6 +195,32 @@ public class PostgresRetroReplay {
             List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
             logger.debug("Processing txnID {}, execId {}, funcId {}, funcName {}", resTxId, resExecId, resFuncId, resName);
 
+            // Get the input for this transaction.
+            if ((resExecId != currInputExecId) && (resFuncId == 0L)) {
+                // Read the input for this execution ID.
+                if (inputRs.next()) {
+                    currInputExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+                    byte[] recordInput = inputRs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
+                    ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
+                    currInputs = Utilities.getArgumentsFromRequest(req);
+                    if (currInputExecId != resExecId) {
+                        logger.error("Input execID {} does not match the expected ID {}!", currInputExecId, resExecId);
+                        throw new RuntimeException("Retro replay failed due to mismatched IDs.");
+                    }
+                    logger.debug("Original arguments execid {}, inputs {}", currInputExecId, currInputs);
+                } else {
+                    logger.error("Could not find the input for this execution ID {} ", resExecId);
+                    throw new RuntimeException("Retro replay failed due to missing input.");
+                }
+            }
+
+            // Check if we can skip this function execution. If so, add to the skip list. Otherwise, execute the replay.
+            if (!nonSkipFuncs.contains(resName) && (lastNonSkippedExecId != -1)) {
+                // Do not skip the first execution.
+                logger.debug("Skipping function {}: transaction {}, execution ID {}", resName, resTxId, resExecId);
+                continue;
+            }
+
             // Check if we need to commit anything.
             Map<Long, Future<Long>> cleanUpTxns = new HashMap<>();
             for (long cmtTxn : pendingCommitTasks.keySet()) {
@@ -240,37 +264,7 @@ public class PostgresRetroReplay {
             }
 
             // Execute this transaction.
-
-            // Get the input for this transaction.
-            if ((resExecId != currInputExecId) && (resFuncId == 0L)) {
-                // Read the input for this execution ID.
-                if (inputRs.next()) {
-                    currInputExecId = inputRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-                    byte[] recordInput = inputRs.getBytes(ProvenanceBuffer.PROV_REQ_BYTES);
-                    ExecuteFunctionRequest req = ExecuteFunctionRequest.parseFrom(recordInput);
-                    currInputs = Utilities.getArgumentsFromRequest(req);
-                    if (currInputExecId != resExecId) {
-                        logger.error("Input execID {} does not match the expected ID {}!", currInputExecId, resExecId);
-                        throw new RuntimeException("Retro replay failed due to mismatched IDs.");
-                    }
-                    logger.debug("Original arguments execid {}, inputs {}", currInputExecId, currInputs);
-                } else {
-                    logger.error("Could not find the input for this execution ID {} ", resExecId);
-                    throw new RuntimeException("Retro replay failed due to missing input.");
-                }
-            }
-
             Task rpTask = new Task(resExecId, resFuncId, resName, currInputs);
-
-            // Check if we can skip this function execution. If so, add to the skip list. Otherwise, execute the replay.
-            boolean isSkipped = checkSkipFunc(workerContext, rpTask, skippedExecIds, replayMode, replayWrittenTables, funcSetAccessTables);
-
-            if (isSkipped && (lastNonSkippedExecId != -1)) {
-                // Do not skip the first execution.
-                logger.debug("Skipping transaction {}, execution ID {}", resTxId, resExecId);
-                skippedExecIds.add(resExecId);
-                continue;
-            }
 
             // Skip the task if it is absent. Because we allow reducing the number of called function. Should never have race condition because later tasks must have previous tasks in their snapshot.
             if ((rpTask.functionID > 0L) && (!pendingTasks.containsKey(rpTask.execId) || !pendingTasks.get(rpTask.execId).containsKey(rpTask.functionID))) {
@@ -415,69 +409,105 @@ public class PostgresRetroReplay {
         return output;
     }
 
-    // Return true if the function execution can be skipped.
-    private static boolean checkSkipFunc(WorkerContext workerContext, Task rpTask, Set<Long> skippedExecIds, int replayMode, Set<String> replayWrittenTables, Map<String, String[]> funcSetAccessTables) throws SQLException {
-        if (replayMode == ApiaryConfig.ReplayMode.ALL.getValue()) {
-            // Do not skip if we are replaying everything.
-            return false;
-        }
+    // Return the set of functions that cannot be skipped.
+    private static Set<String> getExecFuncSets(WorkerContext workerContext) {
+        Set<String> allFunctions = new HashSet<>(workerContext.listAllFunctions());
+        int totalNumFuncs = allFunctions.size();
+        Set<String> allFunctionSets = workerContext.listAllFunctionSets();
+        Set<String> execFuncs = new HashSet<>();
+        Set<String> restFunctions = new HashSet<>(); // The rest of non-read-only functions.
+        Set<String> readWriteSet = new HashSet<>();
+        Set<String> writeSet = new HashSet<>();
 
-        logger.debug("Replay written tables: {}", replayWrittenTables.toString());
-
-        // The current selective replay heuristic:
-        // 1) If a request has been skipped, then all following functions will be skipped.
-        // 2) If a function name is in the list of retroFunctions, then we cannot skip.
-        // 3) Cannot skip a request if any of its function contains writes and touches write set.
-        if (skippedExecIds.contains(rpTask.execId)) {
-            return true;
-        } else if (rpTask.functionID > 0) {
-            // If a request wasn't skipped at the first function, then the following functions cannot be skipped as well.
-            // Reduce the number of checks.
-            return false;
-        }
-
-        // Always replay a request if it contains modified functions.
-        List<String> funcSet = workerContext.getFunctionSet(rpTask.funcName);
-        if (funcSet == null) {
-            // Conservatively, replay it.
-            logger.debug("Does not find function set info, cannot skip.");
-            return false;
-        }
-        for (String funcName : funcSet) {
-            if (workerContext.retroFunctionExists(funcName)) {
-                logger.debug("Contains retro modified function {}, cannot skip.", funcName);
-                return false;
-            }
-        }
-
-
-        // Check if an execution contains any writes, check all downstream functions.
-        boolean isReadOnly = workerContext.getFunctionSetReadOnly(rpTask.funcName);
-        logger.debug("Function set {} isReadonly? {}", rpTask.funcName, isReadOnly);
-        if (!isReadOnly) {
-            // If a request contains write but has nothing to do with the related table, we can skip it.
-            // Check query metadata table and see if any transaction related to this execution touches any written tables.
-            String[] tables;
-            if (funcSetAccessTables.containsKey(rpTask.funcName)) {
-                tables = funcSetAccessTables.get(rpTask.funcName);
-            } else {
-                tables = workerContext.getFunctionSetAccessTables(rpTask.funcName);
-                funcSetAccessTables.put(rpTask.funcName, tables);
-            }
-            if (tables.length < 1) {
-                // Conservatively, cannot skip.
-                return false;
-            }
-            for (String table : tables) {
-                if (replayWrittenTables.contains(table)) {
-                    logger.debug("Execution would touch table {} in the write set. Cannot skip.", table);
-                    return false;
+        // All retroactively modified functions and their function sets must be included.
+        for (String funcSetName : allFunctionSets) {
+            List<String> funcSet = workerContext.getFunctionSet(funcSetName);
+            boolean hasRetro = false;
+            for (String funcName : funcSet) {
+                if (workerContext.retroFunctionExists(funcName)) {
+                    logger.debug("{} function set contains retro modified function {}, cannot skip.", funcSetName, funcName);
+                    hasRetro = true;
                 }
             }
-
+            if (hasRetro) {
+                execFuncs.addAll(funcSet);
+            } else {
+                // If does not contain retro functions, only need to conisder non-read-only ones.
+                if (!workerContext.getFunctionSetReadOnly(funcSetName)) {
+                    restFunctions.addAll(funcSet);
+                } else {
+                    logger.debug("Skip read-only function set {} - {}", funcSetName, funcSet.toString());
+                }
+            }
+        }
+        // Remove functions that are already in the lists, check again.
+        allFunctions.removeAll(execFuncs);
+        allFunctions.removeAll(restFunctions);
+        for (String funcName : allFunctions) {
+            if (workerContext.retroFunctionExists(funcName)) {
+                logger.debug("Retro modified function {}, cannot skip.", funcName);
+                execFuncs.add(funcName);
+            } else {
+                if (!workerContext.getFunctionReadOnly(funcName)) {
+                    restFunctions.add(funcName);
+                } else {
+                    logger.debug("Skip read-only function {}", funcName);
+                }
+            }
         }
 
-        return true;
+        // Compute initial read set and write set.
+        for (String funcName : execFuncs) {
+            writeSet.addAll(workerContext.getFunctionSetTables(funcName, false));
+            readWriteSet.addAll(workerContext.getFunctionSetTables(funcName, true));
+            readWriteSet.addAll(writeSet);
+        }
+
+        // Compute a transitive closure.
+        while (execFuncs.size() < totalNumFuncs) {
+            Set<String> newFuncs = new HashSet<>();
+            Set<String> newReadWriteSet = new HashSet<>();
+            Set<String> newWriteSet = new HashSet<>();
+
+            // Check per function set. Because we need to execute a request.
+            for (String firstFuncName : restFunctions) {
+                if (newFuncs.contains(firstFuncName)) {
+                    continue;
+                }
+                List<String> funcSet = workerContext.getFunctionSet(firstFuncName);
+                for (String funcName : funcSet) {
+                    Set<String> funcWriteSet = new HashSet<>(workerContext.getFunctionSetTables(funcName, false));
+                    Set<String> funcReadSet = new HashSet<>(workerContext.getFunctionSetTables(funcName, true));
+                    if (funcWriteSet.isEmpty() && funcReadSet.isEmpty()) {
+                        // Conservatively cannot skip.
+                        newFuncs.addAll(funcSet);
+                        logger.debug("Function {} read/write set empty. Cannot skip function set {}.", funcName, firstFuncName);
+                        break;
+                    }
+
+                    // Check if their write sets intersect with the read or write sets of re-executed requests, or if their read sets intersect with the write sets of re-executed requests.
+                    funcWriteSet.retainAll(readWriteSet);
+                    funcReadSet.retainAll(writeSet);
+                    if (!funcWriteSet.isEmpty() || funcReadSet.isEmpty()) {
+                        // Intersection not empty. Must be re-executed.
+                        newFuncs.addAll(funcSet);
+                        logger.debug("Function {} RW set overlap. ReadSet {}, WriteSet {}. Cannot skip function set {}", funcName, funcReadSet.toString(), funcWriteSet.toString(), firstFuncName);
+                        break;
+                    }
+                }
+            }
+            if (!newFuncs.isEmpty()) {
+                break; // Stop if no new function added.
+            }
+            execFuncs.addAll(newFuncs);
+            for (String newFunc : newFuncs) {
+                readWriteSet.addAll(workerContext.getFunctionSetTables(newFunc, false));
+                readWriteSet.addAll(workerContext.getFunctionSetTables(newFunc, true));
+                writeSet.addAll(workerContext.getFunctionSetTables(newFunc, false));
+            }
+        }
+        logger.info("Selective replay must execute these functions: {}", execFuncs.toString());
+        return execFuncs;
     }
 
     private static void printStats(String opName, Collection<Long> rawTimes, long elapsedTime) {

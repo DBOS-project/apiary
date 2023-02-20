@@ -139,6 +139,8 @@ public class PostgresRetroReplay {
             String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
             replayReqs.add(new PostgresReplayInfo(resTxId, resExecId, resFuncId, resName, resSnapshotStr));
         }
+        startOrderRs.close();
+        startOrderStmt.close();
 
         // This query finds the original input.
         String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
@@ -401,8 +403,6 @@ public class PostgresRetroReplay {
         }
         logger.info("Total used connections: {}", totalNumConns);
 
-        startOrderRs.close();
-        startOrderStmt.close();
         stmt.close();
         inputRs.close();
         inputStmt.close();

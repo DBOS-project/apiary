@@ -18,7 +18,7 @@ public class WPUtil {
     public static final String WP_POSTMETA_SCHEMA = WP_POST_ID + " BIGINT NOT NULL, "
             + WP_META_KEY + " VARCHAR(255) NOT NULL, "
             + WP_META_VALUE + " VARCHAR(1000) NOT NULL";
-    // TODO: add indexes.
+    public static final String WP_POSTMETA_INDEX = String.format("CREATE INDEX WPMETAPOSTID ON %s (%s, %s);", WP_POSTMETA_TABLE, WP_POST_ID, WP_META_KEY);
 
     // For the comments table.
     public static final String WP_COMMENTS_TABLE = "WP_COMMENTS";

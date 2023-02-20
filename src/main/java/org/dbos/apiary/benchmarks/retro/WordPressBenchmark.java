@@ -13,6 +13,7 @@ import org.dbos.apiary.worker.ApiaryWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
@@ -375,17 +376,17 @@ public class WordPressBenchmark {
                 threadPool.submit(new WpTask(clientPool, WPOpType.ADD_COMMENT, wt, postId, cid, String.format("Comment %d for post %d: This is a very very long comment! %s", cid, postId, RandomStringUtils.randomAlphabetic(1000))));
             } else if (chooser < addCommentPC + trashPostPC) {
                 postId = untrashedPosts.poll();
-                if (postId != null) {
-                    threadPool.submit(new WpTask(clientPool, WPOpType.TRASH_POST, wt, postId, -1, null));
-                } else {
-                    // Nothing to do.
+                if (postId == null) {
                     continue;
                 }
+                logger.info("trashing post {}", postId);
+                threadPool.submit(new WpTask(clientPool, WPOpType.TRASH_POST, wt, postId, -1, null));
             } else if (chooser < addCommentPC + trashPostPC + untrashPostPC) {
                 postId = trashedPosts.poll();
                 if (postId == null) {
                     continue;
                 }
+                logger.info("Untrashing post {}", postId);
                 threadPool.submit(new WpTask(clientPool, WPOpType.UNTRASH_POST, wt, postId, -1, null));
             } else if (chooser < totalPostPC) {
                 threadPool.submit(new WpTask(clientPool, WPOpType.GET_COMMENTS, rt, postId, -1, null));
@@ -440,15 +441,16 @@ public class WordPressBenchmark {
     private static void resetAllTables(String dbAddr) {
         try {
             PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
-
-            pgConn.dropTable(ApiaryConfig.tableFuncInvocations);
-            pgConn.dropTable(ApiaryConfig.tableRecordedInputs);
+            Connection provConn = pgConn.provConnection.get();
+            PostgresConnection.dropTable(provConn, ApiaryConfig.tableFuncInvocations);
+            PostgresConnection.dropTable(provConn, ProvenanceBuffer.PROV_QueryMetadata);
+            PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);
             pgConn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
-            pgConn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
             pgConn.dropTable(WPUtil.WP_POSTS_TABLE);
             pgConn.createTable(WPUtil.WP_POSTS_TABLE, WPUtil.WP_POSTS_SCHEMA);
             pgConn.dropTable(WPUtil.WP_POSTMETA_TABLE);
             pgConn.createTable(WPUtil.WP_POSTMETA_TABLE, WPUtil.WP_POSTMETA_SCHEMA);
+            pgConn.createIndex(WPUtil.WP_POSTMETA_INDEX);
             pgConn.dropTable(WPUtil.WP_COMMENTS_TABLE);
             pgConn.createTable(WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_COMMENTS_SCHEMA);
             pgConn.dropTable(WPUtil.WP_OPTIONS_TABLE);
@@ -463,10 +465,15 @@ public class WordPressBenchmark {
     private static void resetAppTables(String dbAddr) {
         try {
             PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
-            pgConn.truncateTable(WPUtil.WP_POSTS_TABLE, false);
-            pgConn.truncateTable(WPUtil.WP_POSTMETA_TABLE, false);
-            pgConn.truncateTable(WPUtil.WP_COMMENTS_TABLE, false);
-            pgConn.truncateTable(WPUtil.WP_OPTIONS_TABLE, false);
+            pgConn.dropTable(WPUtil.WP_POSTS_TABLE);
+            pgConn.createTable(WPUtil.WP_POSTS_TABLE, WPUtil.WP_POSTS_SCHEMA);
+            pgConn.dropTable(WPUtil.WP_POSTMETA_TABLE);
+            pgConn.createTable(WPUtil.WP_POSTMETA_TABLE, WPUtil.WP_POSTMETA_SCHEMA);
+            pgConn.createIndex(WPUtil.WP_POSTMETA_INDEX);
+            pgConn.dropTable(WPUtil.WP_COMMENTS_TABLE);
+            pgConn.createTable(WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_COMMENTS_SCHEMA);
+            pgConn.dropTable(WPUtil.WP_OPTIONS_TABLE);
+            pgConn.createTable(WPUtil.WP_OPTIONS_TABLE, WPUtil.WP_OPTIONS_SCHEMA);
         } catch (Exception e) {
             e.printStackTrace();
             logger.info("Failed to connect to Postgres.");

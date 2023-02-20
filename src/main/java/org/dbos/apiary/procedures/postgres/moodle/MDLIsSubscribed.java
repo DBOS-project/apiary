@@ -36,7 +36,7 @@ public class MDLIsSubscribed extends PostgresFunction {
     public boolean isReadOnly() { return true; }
 
     @Override
-    public List<String> accessTables() {
+    public List<String> readTables() {
         return List.of(MDLUtil.MDL_FORUMSUBS_TABLE);
     }
 }

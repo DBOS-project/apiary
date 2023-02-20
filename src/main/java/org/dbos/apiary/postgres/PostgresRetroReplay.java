@@ -108,13 +108,16 @@ public class PostgresRetroReplay {
 
         // This query finds the starting order of transactions.
         // Replay mode only consider committed transactions.
-        String startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= ? AND %s < ? AND %s=0 AND %s=\'%s\' ORDER BY %s;",
+        // APIARY_TRANSACTION_ID, APIARY_EXECUTIONID, APIARY_FUNCID, APIARY_PROCEDURENAME, APIARY_TXN_SNAPSHOT
+        String startOrderQuery = String.format("SELECT %s, %s, %s, %s, %s FROM %s WHERE %s >= ? AND %s < ? AND %s=0 AND %s=\'%s\' ORDER BY %s;",
+                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_PROCEDURENAME, ProvenanceBuffer.PROV_TXN_SNAPSHOT,
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
                 ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         if (workerContext.hasRetroFunctions()) {
             // Include aborted transactions for retroaction.
-            startOrderQuery = String.format("SELECT * FROM %s WHERE %s >= ? AND %s < ? AND %s=0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
+            startOrderQuery = String.format("SELECT %s, %s, %s, %s, %s FROM %s WHERE %s >= ? AND %s < ? AND %s=0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
+                    ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_PROCEDURENAME, ProvenanceBuffer.PROV_TXN_SNAPSHOT,
                     ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
                     ProvenanceBuffer.PROV_ISREPLAY,  ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
                     ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE,
@@ -124,6 +127,18 @@ public class PostgresRetroReplay {
         startOrderStmt.setLong(1, startTxId);
         startOrderStmt.setLong(2, endTxId);
         ResultSet startOrderRs = startOrderStmt.executeQuery();
+
+        // Collect a list of request IDs and their function names.
+        List<PostgresReplayInfo> replayReqs = new ArrayList<>();
+        while (startOrderRs.next()) {
+            long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+            long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
+            String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
+            String resName = resNames[resNames.length - 1]; // Extract the actual function name.
+            String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
+            replayReqs.add(new PostgresReplayInfo(resTxId, resExecId, resFuncId, resName, resSnapshotStr));
+        }
 
         // This query finds the original input.
         String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
@@ -168,16 +183,14 @@ public class PostgresRetroReplay {
         int totalStartOrderTxns = 0;
         int totalExecTxns = 0;
         List<Long> checkVisibleTxns = new ArrayList<>(); // Committed but not guaranteed to be visible yet.
-        while (startOrderRs.next()) {
+        for (PostgresReplayInfo rpInfo : replayReqs) {
             long t0 = System.nanoTime();
             totalStartOrderTxns++;
-            long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-            long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-            long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
-            String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
-            String resName = resNames[resNames.length - 1]; // Extract the actual function name.
-            String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
-            String resStatus = startOrderRs.getString(ProvenanceBuffer.PROV_FUNC_STATUS);
+            long resTxId = rpInfo.txnId;
+            long resExecId = rpInfo.execId;
+            long resFuncId = rpInfo.funcId;
+            String resName = rpInfo.funcName;
+            String resSnapshotStr = rpInfo.txnSnapshot;
             long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
             List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
             logger.debug("Processing txnID {}, execId {}, funcId {}, funcName {}", resTxId, resExecId, resFuncId, resName);

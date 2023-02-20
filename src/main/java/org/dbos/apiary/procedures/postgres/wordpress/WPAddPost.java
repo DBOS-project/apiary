@@ -21,7 +21,7 @@ public class WPAddPost extends PostgresFunction {
     public boolean isReadOnly() { return false; }
 
     @Override
-    public List<String> accessTables() {
+    public List<String> writeTables() {
         return List.of(WPUtil.WP_POSTS_TABLE);
     }
 }

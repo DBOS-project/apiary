@@ -16,12 +16,14 @@ public interface ApiaryFunction {
     }
 
     default boolean isReadOnly() {
+        // Conservatively return false. If undeclared.
         return false;
     }
 
-    default List<String> accessTables() {
+    default List<String> readTables() {
         return List.of();
     }
+    default List<String> writeTables() { return List.of(); }
 
     default FunctionOutput apiaryRunFunction(ApiaryContext ctxt, Object... input) throws Exception {
         // Use reflection to find internal runFunction.

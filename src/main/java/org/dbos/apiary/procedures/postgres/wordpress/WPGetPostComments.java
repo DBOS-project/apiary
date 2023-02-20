@@ -46,7 +46,7 @@ public class WPGetPostComments extends PostgresFunction {
     public boolean isReadOnly() { return true; }
 
     @Override
-    public List<String> accessTables() {
+    public List<String> readTables() {
         return List.of(WPUtil.WP_POSTS_TABLE, WPUtil.WP_COMMENTS_TABLE);
     }
 }

@@ -32,7 +32,12 @@ public class WPAddComment extends PostgresFunction {
     public boolean isReadOnly() { return false; }
 
     @Override
-    public List<String> accessTables() {
-        return List.of(WPUtil.WP_POSTS_TABLE, WPUtil.WP_COMMENTS_TABLE);
+    public List<String> readTables() {
+        return List.of(WPUtil.WP_POSTS_TABLE);
+    }
+
+    @Override
+    public List<String> writeTables() {
+        return List.of(WPUtil.WP_COMMENTS_TABLE);
     }
 }

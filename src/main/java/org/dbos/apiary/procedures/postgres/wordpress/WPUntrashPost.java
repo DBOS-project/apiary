@@ -49,7 +49,12 @@ public class WPUntrashPost extends PostgresFunction {
     public boolean isReadOnly() { return false; }
 
     @Override
-    public List<String> accessTables() {
+    public List<String> readTables() {
+        return List.of(WPUtil.WP_POSTMETA_TABLE);
+    }
+
+    @Override
+    public List<String> writeTables() {
         return List.of(WPUtil.WP_POSTS_TABLE, WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_POSTMETA_TABLE);
     }
 

@@ -29,7 +29,7 @@ public class MDLLoadData extends PostgresFunction {
     public boolean isReadOnly() { return false; }
 
     @Override
-    public List<String> accessTables() {
+    public List<String> writeTables() {
         return List.of(MDLUtil.MDL_FORUMSUBS_TABLE);
     }
 

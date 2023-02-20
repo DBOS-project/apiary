@@ -60,4 +60,9 @@ public class WPLoadPosts extends PostgresFunction {
         return cidIndex;
     }
 
+    @Override
+    public List<String> writeTables() {
+        return List.of(WPUtil.WP_COMMENTS_TABLE, WPUtil.WP_POSTS_TABLE);
+    }
+
 }

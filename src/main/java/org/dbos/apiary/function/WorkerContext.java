@@ -64,7 +64,7 @@ public class WorkerContext {
         List<String> accessTables;
         try {
             isReadOnly = function.call().isReadOnly();
-            accessTables = function.call().accessTables();
+            accessTables = function.call().readTables();
             accessTables = accessTables.stream().map(String::toUpperCase).collect(Collectors.toList());
         } catch (Exception e) {
             e.printStackTrace();

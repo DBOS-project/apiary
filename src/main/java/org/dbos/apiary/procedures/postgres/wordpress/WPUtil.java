@@ -9,7 +9,6 @@ public class WPUtil {
     public static final String WP_POSTS_SCHEMA = WP_POST_ID + " BIGINT PRIMARY KEY NOT NULL, "
             + WP_POST_CONTENT + " VARCHAR(2000) NOT NULL, "
             + WP_POST_STATUS + " VARCHAR(20) NOT NULL";
-    public static final String WP_POSTS_INDEX = String.format("CREATE INDEX WPPOSTS ON %s (%s);", WP_POST_STATUS, WP_POST_ID);
 
     // For the post metadata table.
     public static final String WP_POSTMETA_TABLE = "WP_POSTMETA";
@@ -30,6 +29,7 @@ public class WPUtil {
             + WP_POST_ID + " BIGINT NOT NULL, "
             + WP_COMMENT_CONTENT + " VARCHAR(2000) NOT NULL, "
             + WP_COMMENT_STATUS + " VARCHAR(20) NOT NULL";
+    public static final String WP_COMMENTSPOSTID_INDEX = String.format("CREATE INDEX WPCOMMENTSPOSTID ON %s (%s);", WP_COMMENTS_TABLE, WP_POST_ID);
 
     // For status.
     public static final String WP_STATUS_VISIBLE = "visible";

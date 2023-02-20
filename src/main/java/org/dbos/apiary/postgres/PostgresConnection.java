@@ -108,7 +108,7 @@ public class PostgresConnection implements ApiaryConnection {
                         + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(512) NOT NULL, "
                         + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
                         + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20), "
-                        + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(1024), "
+                        + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(65000), "
                         + ProvenanceBuffer.PROV_READONLY + " BOOLEAN ");
         if (ApiaryConfig.captureMetadata) {
             createTable(provConn, ProvenanceBuffer.PROV_QueryMetadata,

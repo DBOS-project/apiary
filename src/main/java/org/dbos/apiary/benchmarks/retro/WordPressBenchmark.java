@@ -25,7 +25,7 @@ public class WordPressBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(WordPressBenchmark.class);
 
     private static final int threadPoolSize = 128;
-    private static final int numWorker = 64;
+    private static final int numWorker = 128;
     private static final int numOptions = 1000;
     private static final int numPosts = 2000;
     private static final int initCommentsPerPost = 10;

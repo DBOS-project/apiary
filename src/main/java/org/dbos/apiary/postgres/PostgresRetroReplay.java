@@ -369,7 +369,7 @@ public class PostgresRetroReplay {
         } else if (output instanceof String[]){
             outputString = Arrays.toString((String[]) output);
         }
-        logger.info("Final output: {}", outputString);
+        logger.info("Final output: {} ...", outputString.substring(0, Math.min(outputString.length(), 100)));
         logger.info("Re-execution time: {} ms", elapsedTime);
         logger.info("Total original transactions: {}, re-executed transactions: {}", totalStartOrderTxns, totalExecTxns);
         printStats("Commit", commitTimes, elapsedTime);

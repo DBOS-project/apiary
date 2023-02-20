@@ -27,7 +27,6 @@ public class WPTrashPost extends PostgresFunction {
     // Return -1 on error, return 0 on no queued function, return a queued function if it has comments.
     public static Object runFunction(PostgresContext ctxt, int postId) throws SQLException {
         ResultSet r = ctxt.executeQuery(checkPost, postId);
-        logger.info("Function trashing post {}, execId {}", postId, ctxt.execID);
         if (!r.next()) {
             logger.error("Post {} does not exist. Cannot trash it.", postId);
             return -1;

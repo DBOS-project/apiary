@@ -382,14 +382,12 @@ public class WordPressBenchmark {
                 if (postId == null) {
                     continue;
                 }
-                logger.info("trashing post {}", postId);
                 threadPool.submit(new WpTask(clientPool, WPOpType.TRASH_POST, wt, postId, -1, null));
             } else if (chooser < addCommentPC + trashPostPC + untrashPostPC) {
                 postId = trashedPosts.poll();
                 if (postId == null) {
                     continue;
                 }
-                logger.info("Untrashing post {}", postId);
                 threadPool.submit(new WpTask(clientPool, WPOpType.UNTRASH_POST, wt, postId, -1, null));
             } else if (chooser < totalPostPC) {
                 threadPool.submit(new WpTask(clientPool, WPOpType.GET_COMMENTS, rt, postId, -1, null));

@@ -448,6 +448,7 @@ public class WordPressBenchmark {
             PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);
             pgConn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
             pgConn.dropTable(WPUtil.WP_POSTS_TABLE);
+            pgConn.createIndex(WPUtil.WP_POSTS_INDEX);
             pgConn.createTable(WPUtil.WP_POSTS_TABLE, WPUtil.WP_POSTS_SCHEMA);
             pgConn.dropTable(WPUtil.WP_POSTMETA_TABLE);
             pgConn.createTable(WPUtil.WP_POSTMETA_TABLE, WPUtil.WP_POSTMETA_SCHEMA);
@@ -468,6 +469,7 @@ public class WordPressBenchmark {
             PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
             pgConn.dropTable(WPUtil.WP_POSTS_TABLE);
             pgConn.createTable(WPUtil.WP_POSTS_TABLE, WPUtil.WP_POSTS_SCHEMA);
+            pgConn.createIndex(WPUtil.WP_POSTS_INDEX);
             pgConn.dropTable(WPUtil.WP_POSTMETA_TABLE);
             pgConn.createTable(WPUtil.WP_POSTMETA_TABLE, WPUtil.WP_POSTMETA_SCHEMA);
             pgConn.createIndex(WPUtil.WP_POSTMETA_INDEX);

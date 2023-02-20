@@ -9,6 +9,7 @@ public class WPUtil {
     public static final String WP_POSTS_SCHEMA = WP_POST_ID + " BIGINT PRIMARY KEY NOT NULL, "
             + WP_POST_CONTENT + " VARCHAR(2000) NOT NULL, "
             + WP_POST_STATUS + " VARCHAR(20) NOT NULL";
+    public static final String WP_POSTS_INDEX = String.format("CREATE INDEX WPPOSTS ON %s (%s);", WP_POST_STATUS, WP_POST_ID);
 
     // For the post metadata table.
     public static final String WP_POSTMETA_TABLE = "WP_POSTMETA";

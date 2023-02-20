@@ -466,8 +466,6 @@ public class PostgresRetroReplay {
         // Compute a transitive closure.
         while (execFuncs.size() < totalNumFuncs) {
             Set<String> newFuncs = new HashSet<>();
-            Set<String> newReadWriteSet = new HashSet<>();
-            Set<String> newWriteSet = new HashSet<>();
 
             // Check per function set. Because we need to execute a request.
             for (String firstFuncName : restFunctions) {
@@ -505,6 +503,7 @@ public class PostgresRetroReplay {
                 readWriteSet.addAll(workerContext.getFunctionSetTables(newFunc, true));
                 writeSet.addAll(workerContext.getFunctionSetTables(newFunc, false));
             }
+            restFunctions.removeAll(newFuncs);
         }
         logger.info("Selective replay must execute these functions: {}", execFuncs.toString());
         return execFuncs;

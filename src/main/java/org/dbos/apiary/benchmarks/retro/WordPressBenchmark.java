@@ -263,10 +263,6 @@ public class WordPressBenchmark {
             int res = client.get().executeFunction(WPUtil.FUNC_LOAD_POSTS, numPosts, initCommentsPerPost).getInt();
             commentId.addAndGet(numPosts * initCommentsPerPost);
             if (res > 0) {
-                Enumeration<Integer> e = Collections.enumeration(IntStream.range(0, numPosts).boxed().collect(Collectors.toList()));
-                while (e.hasMoreElements()) {
-                    untrashedPosts.add(e.nextElement());
-                }
                 long loadTime = System.currentTimeMillis() - t0;
                 logger.info("Loaded {} posts and comments in {} ms", res, loadTime);
             } else {
@@ -357,6 +353,13 @@ public class WordPressBenchmark {
         // Actual benchmark loop.
         long startTime = System.currentTimeMillis();
         long endTime = startTime + (duration * 1000 + threadWarmupMs);
+
+        untrashedPosts.clear();
+        trashedPosts.clear();
+        Enumeration<Integer> e = Collections.enumeration(IntStream.range(0, numPosts).boxed().collect(Collectors.toList()));
+        while (e.hasMoreElements()) {
+            untrashedPosts.add(e.nextElement());
+        }
 
         while (System.currentTimeMillis() < endTime) {
             long t = System.nanoTime();

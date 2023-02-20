@@ -231,6 +231,7 @@ public class WordPressBenchmark {
                 String[] resList = client.get().executeFunction(WPUtil.FUNC_COMMENTSTATUS, i).getStringArray();
                 if (resList.length > 1) {
                     hasInconsistency = true;
+                    logger.info("Post {} has inconsistent comments.", i);
                     break;
                 }
             }

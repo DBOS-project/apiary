@@ -230,24 +230,25 @@ public class WordPressBenchmark {
             ApiaryConfig.recordInput = false;
             ApiaryConfig.captureFuncInvocations = false;
 
-            // Check inconsistency in comment table.
-            boolean hasInconsistency = false;
-            for (int i = 0; i < numPosts; i++) {
-                String[] resList = client.get().executeFunction(WPUtil.FUNC_COMMENTSTATUS, i).getStringArray();
-                if (resList.length > 1) {
-                    hasInconsistency = true;
-                    logger.info("Post {} has inconsistent comments.", i);
-                    break;
+            if ((bugFix != null) && bugFix.equalsIgnoreCase("comment")) {
+                // Check inconsistency in comment table.
+                boolean hasInconsistency = false;
+                for (int i = 0; i < numPosts; i++) {
+                    String[] resList = client.get().executeFunction(WPUtil.FUNC_COMMENTSTATUS, i).getStringArray();
+                    if (resList.length > 1) {
+                        hasInconsistency = true;
+                        logger.info("Post {} has inconsistent comments.", i);
+                        break;
+                    }
                 }
-            }
-            if (hasInconsistency) {
-                logger.info("Found inconsistency in WP comments after replay.");
-            } else {
-                logger.info("No inconsistency in WP comments after replay.");
+                if (hasInconsistency) {
+                    logger.info("Found inconsistency in WP comments after applying bug fix.");
+                } else {
+                    logger.info("No inconsistency in WP comments after applying bug fix.");
+                }
             }
 
             // TODO: how do we check the Option table? We can see the error message from the screen.
-
             apiaryWorker.shutdown();
             logger.info("Replay mode {}, execution time: {} ms", retroMode, elapsedTime);
             return;

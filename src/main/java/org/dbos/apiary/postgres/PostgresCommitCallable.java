@@ -43,7 +43,7 @@ public class PostgresCommitCallable implements Callable<Long> {
                         // Only commit transactions with writes here.
                         commitPgRpTask.conn.commit();
                     } else {
-                        logger.debug("Skip read-only transaction {} -- should have been committed. ", cmtTxn);
+                        logger.debug("Skip dependent read-only transaction {} -- should have been committed. ", cmtTxn);
                     }
                 } else {
                     logger.debug("Skip commit {} due to Error message: {}", cmtTxn, commitPgRpTask.fo.errorMsg);

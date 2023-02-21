@@ -34,6 +34,9 @@ public class PostgresRetroReplay {
     // A pending commit map from original transaction ID to Postgres replay task.
     private static final Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
 
+    // Record the last executed transaction for this request. Make sure we commit it before launching the next one.
+    private static final Map<Long, Long> execIdLastExecTxn = new ConcurrentHashMap<>();
+
     private static final Collection<Long> commitTimes = new ConcurrentLinkedQueue<>();
     private static final Collection<Long> prepareTxnTimes = new ConcurrentLinkedQueue<>();
     private static final Collection<Long> submitTimes = new ConcurrentLinkedQueue<>();
@@ -46,6 +49,7 @@ public class PostgresRetroReplay {
         execFuncIdToValue.clear();
         execIdToFinalOutput.clear();
         pendingCommitTasks.clear();
+        execIdLastExecTxn.clear();
         commitTimes.clear();
         prepareTxnTimes.clear();
         submitTimes.clear();
@@ -209,20 +213,36 @@ public class PostgresRetroReplay {
 
             // Check if we need to commit anything.
             Map<Long, Future<Long>> cleanUpTxns = new HashMap<>();
+
+            // If it is not the first function, make sure we wait its previous tasks to finish.
+            long lastExecTxnId = -1L;
+            if (resFuncId > 0) {
+                lastExecTxnId = execIdLastExecTxn.get(resExecId); // Must be not null.
+            }
             for (long cmtTxn : pendingCommitTasks.keySet()) {
                 PostgresReplayTask commitPgRpTask = pendingCommitTasks.get(cmtTxn);
                 if (commitPgRpTask == null) {
                     logger.error("No task found for pending commit txn {}.", cmtTxn);
                     throw new RuntimeException("Failed to find commit transaction " + cmtTxn);
                 }
+                boolean processed = false;
                 // If this transaction is in resTxId's snapshot, then wait and commit it.
                 if ((cmtTxn < xmax) && !activeTxns.contains(cmtTxn)) {
                     logger.debug("Committing txnID {} because in the snapshot of txn {}", cmtTxn, resTxId);
-                    Future<Long> cmtFut = commitThreadPool.submit(new PostgresCommitCallable(commitPgRpTask, workerContext, cmtTxn, replayMode, threadPool));
-                    cleanUpTxns.put(cmtTxn, cmtFut);
-                    // Use the new transaction ID! Not their original ones.
-                    checkVisibleTxns.add(commitPgRpTask.replayTxnID);  // TODO: maybe only need to check for writes.
-                } else if (workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName)) {
+                    // If it's a non-dependent read-only transaction, do not submit a commit task.
+                    if (workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName) && (cmtTxn != lastExecTxnId)) {
+                        // Wait if it's the dependent task.
+                        logger.debug("Don't wait for non-dependent read-only transaction {}.", cmtTxn);
+                    } else {
+                        Future<Long> cmtFut = commitThreadPool.submit(new PostgresCommitCallable(commitPgRpTask, workerContext, cmtTxn, replayMode, threadPool));
+                        cleanUpTxns.put(cmtTxn, cmtFut);
+                        // Use the new transaction ID! Not their original ones.
+                        // Only wait for write transactions.
+                        checkVisibleTxns.add(commitPgRpTask.replayTxnID);
+                        processed = true; // Mark as processed, do not repeat a read-only commit.
+                    }
+                }
+                if (!processed && workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName) && commitPgRpTask.resFut.isDone()) {
                     // If it's a read-only transaction and has finished, but not in its snapshot, still release the resources immediately.
                     if (commitPgRpTask.resFut.isDone()) {
                         logger.debug("Clean up read-only txnID {} for current txnID {}", cmtTxn, resTxId);
@@ -251,6 +271,7 @@ public class PostgresRetroReplay {
 
             // Execute this transaction.
             Task rpTask = new Task(resExecId, resFuncId, resName, currInputs);
+            execIdLastExecTxn.put(resExecId, resTxId);
 
             // Skip the task if it is absent. Because we allow reducing the number of called function. Should never have race condition because later tasks must have previous tasks in their snapshot.
             if ((rpTask.functionID > 0L) && (!pendingTasks.containsKey(rpTask.execId) || !pendingTasks.get(rpTask.execId).containsKey(rpTask.functionID))) {

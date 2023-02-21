@@ -14,12 +14,12 @@ public class WPOptionExists extends PostgresFunction {
     public static Object runFunction(PostgresContext ctxt, String optionName, String optionValue, String isAutoLoad) throws SQLException {
         ResultSet rs = ctxt.executeQuery(getOptionValue, optionName);
         if (rs.next()) {
-            // If an option exists, then return 1.
-            return 1;
+            // If an option exists, then update the value.
+            return ctxt.apiaryQueueFunction(WPUtil.FUNC_UPDATEOPTION, optionName, optionValue, isAutoLoad);
         }
 
         // Otherwise, call the InsertOption function.
-        return ctxt.apiaryQueueFunction("WPInsertOption", optionName, optionValue, isAutoLoad);
+        return ctxt.apiaryQueueFunction(WPUtil.FUNC_INSERTOPTION, optionName, optionValue, isAutoLoad);
     }
 
     @Override

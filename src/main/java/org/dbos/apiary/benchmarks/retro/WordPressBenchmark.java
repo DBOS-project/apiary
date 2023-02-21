@@ -46,8 +46,7 @@ public class WordPressBenchmark {
         UNTRASH_POST(3),
         GET_COMMENTS(4),
         GET_OPTION(5),
-        INSERT_OPTION(6),
-        UPDATE_OPTION(7);
+        UPDATE_OPTION(6);
 
         private int value;
 
@@ -131,12 +130,8 @@ public class WordPressBenchmark {
                     String resStr = client.executeFunction(WPUtil.FUNC_GETOPTION, optName).getString();
                     assert (!resStr.isEmpty());
                     res = resStr.length();
-                } else if (wpOpType.equals(WPOpType.INSERT_OPTION)) {
-                    // Insert a new one.
-                    res = client.executeFunction(WPUtil.FUNC_OPTIONEXISTS, optName, optValue, optAutoLoad).getInt();
                 } else if (wpOpType.equals(WPOpType.UPDATE_OPTION)) {
-                    // Update an existing one.
-                    res = client.executeFunction(WPUtil.FUNC_UPDATEOPTION, optName, optValue, optAutoLoad).getInt();
+                    res = client.executeFunction(WPUtil.FUNC_OPTIONEXISTS, optName, optValue, optAutoLoad).getInt();
                 } else {
                     logger.error("Unrecognized option type {}", wpOpType.value);
                     clientPool.add(client);
@@ -324,10 +319,10 @@ public class WordPressBenchmark {
         if (totalOptionPC > 0) {
             // Try to cause option primary key error.
             for (numTry = 0; numTry < numOptions.get(); numTry++) {
-                Future<Integer> fut1 = threadPool.submit(new WpTask(clientPool, WPOpType.INSERT_OPTION, null, "option-" + numTry, "value0-" + numTry, "no"));
+                Future<Integer> fut1 = threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, null, "option-" + numTry, "value0-" + numTry, "no"));
                 // Add arbitrary delay.
                 Thread.sleep(ThreadLocalRandom.current().nextInt(2));
-                Future<Integer> fut2 = threadPool.submit(new WpTask(clientPool, WPOpType.INSERT_OPTION, null, "option-" + numTry, "value1-" + numTry, "no"));
+                Future<Integer> fut2 = threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, null, "option-" + numTry, "value1-" + numTry, "no"));
 
                 int res1, res2;
                 try {
@@ -416,10 +411,9 @@ public class WordPressBenchmark {
                 if (insertChooser < 50) {
                     // Insert a new one.
                     optionId = numOptions.getAndIncrement();
-                    threadPool.submit(new WpTask(clientPool, WPOpType.INSERT_OPTION, wt, "option-" + optionId, String.format("value-newInsert-%d-%s", optionId, RandomStringUtils.randomAlphabetic(100)), "no"));
+                    threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, wt, "option-" + optionId, String.format("value-newInsert-%d-%s", optionId, RandomStringUtils.randomAlphabetic(100)), "no"));
                 } else {
                     // Update an existing one.
-
                     threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, wt, "option-" + optionId, String.format("value-updated-%d-%s", optionId, RandomStringUtils.randomAlphabetic(100)), "no"));
                 }
             } else {

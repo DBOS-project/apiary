@@ -6,11 +6,9 @@ import org.dbos.apiary.postgres.PostgresFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Array;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.IntStream;
 
 public class WPLoadPosts extends PostgresFunction {
     private static final Logger logger = LoggerFactory.getLogger(WPLoadPosts.class);
@@ -57,6 +55,7 @@ public class WPLoadPosts extends PostgresFunction {
             logger.error("Mismatched expected length {} and actual length {}", numPosts * commentsPerPost, cidIndex);
             return -1;
         }
+        logger.info("Loaded {} comments.", cidIndex);
         return cidIndex;
     }
 

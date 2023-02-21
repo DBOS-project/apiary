@@ -56,5 +56,7 @@ public class WPUtil {
     public static final String FUNC_GETOPTION = "WPGetOption";
     public static final String FUNC_OPTIONEXISTS = "WPOptionExists";
     public static final String FUNC_INSERTOPTION = "WPInsertOption";
+    public static final String FUNC_UPDATEOPTION = "WPUpdateOption";
     public static final String FUNC_LOAD_POSTS = "WPLoadPosts";
+    public static final String FUNC_LOAD_OPTIONS = "WPLoadOptions";
 }

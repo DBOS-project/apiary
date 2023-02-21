@@ -15,7 +15,7 @@ public class WPGetOption extends PostgresFunction {
     public static String runFunction(PostgresContext ctxt, String optionName) throws SQLException {
         ResultSet rs = ctxt.executeQuery(getOptionValue, optionName);
         if (!rs.next()) {
-            return "";
+            return "none";
         }
         String optionValue = rs.getString(WPUtil.WP_OPTION_VALUE);
         return optionValue;

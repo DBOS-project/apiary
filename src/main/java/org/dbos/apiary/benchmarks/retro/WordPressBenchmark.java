@@ -26,7 +26,7 @@ public class WordPressBenchmark {
 
     private static final int threadPoolSize = 128;
     private static final int numWorker = 128;
-    private static final int numOptions = 1000;
+    private static final AtomicInteger numOptions = new AtomicInteger(10000);
     private static final int numPosts = 2000;
     private static final int initCommentsPerPost = 10;
     private static final AtomicInteger commentId = new AtomicInteger(0);
@@ -46,7 +46,8 @@ public class WordPressBenchmark {
         UNTRASH_POST(3),
         GET_COMMENTS(4),
         GET_OPTION(5),
-        UPDATE_OPTION(6);
+        INSERT_OPTION(6),
+        UPDATE_OPTION(7);
 
         private int value;
 
@@ -130,8 +131,12 @@ public class WordPressBenchmark {
                     String resStr = client.executeFunction(WPUtil.FUNC_GETOPTION, optName).getString();
                     assert (!resStr.isEmpty());
                     res = resStr.length();
-                } else if (wpOpType.equals(WPOpType.UPDATE_OPTION)) {
+                } else if (wpOpType.equals(WPOpType.INSERT_OPTION)) {
+                    // Insert a new one.
                     res = client.executeFunction(WPUtil.FUNC_OPTIONEXISTS, optName, optValue, optAutoLoad).getInt();
+                } else if (wpOpType.equals(WPOpType.UPDATE_OPTION)) {
+                    // Update an existing one.
+                    res = client.executeFunction(WPUtil.FUNC_UPDATEOPTION, optName, optValue, optAutoLoad).getInt();
                 } else {
                     logger.error("Unrecognized option type {}", wpOpType.value);
                     clientPool.add(client);
@@ -157,7 +162,9 @@ public class WordPressBenchmark {
         int untrashPostPC = percentages.get(2);
         int getCommentsPC = percentages.get(3);
         int updateOptionPC = percentages.get(4);
-        logger.info("Percentages: addComment {}, trashPost {}, untrashPost {}, getComments {}, updateOption {}, getOption {}", addCommentPC, trashPostPC, untrashPostPC, getCommentsPC, updateOptionPC, 100 - (addCommentPC + trashPostPC + untrashPostPC + getCommentsPC + updateOptionPC));
+        int totalPostPC = addCommentPC + getCommentsPC + trashPostPC + untrashPostPC;
+        int totalOptionPC = 100 - totalPostPC;
+        logger.info("Percentages: addComment {}, trashPost {}, untrashPost {}, getComments {}, updateOption {}, getOption {}", addCommentPC, trashPostPC, untrashPostPC, getCommentsPC, updateOptionPC, totalOptionPC - updateOptionPC);
 
         boolean hasProv = ApiaryConfig.recordInput ? true : false;  // Enable provenance?
 
@@ -198,9 +205,12 @@ public class WordPressBenchmark {
         apiaryWorker.registerFunction(WPUtil.FUNC_GETOPTION, ApiaryConfig.postgres, WPGetOption::new, false);
         apiaryWorker.registerFunction(WPUtil.FUNC_OPTIONEXISTS, ApiaryConfig.postgres, WPOptionExists::new, false);
         apiaryWorker.registerFunction(WPUtil.FUNC_INSERTOPTION, ApiaryConfig.postgres, WPInsertOption::new, false);
+        // The fixed one is actually an update.
+        apiaryWorker.registerFunction(WPUtil.FUNC_UPDATEOPTION, ApiaryConfig.postgres, WPInsertOptionFixed::new, false);
         apiaryWorker.registerFunctionSet(WPUtil.FUNC_TRASHPOST, WPUtil.FUNC_TRASHPOST, WPUtil.FUNC_TRASHCOMMENTS);
         apiaryWorker.registerFunctionSet(WPUtil.FUNC_OPTIONEXISTS, WPUtil.FUNC_OPTIONEXISTS, WPUtil.FUNC_INSERTOPTION);
         apiaryWorker.registerFunction(WPUtil.FUNC_LOAD_POSTS, ApiaryConfig.postgres, WPLoadPosts::new, false);
+        apiaryWorker.registerFunction(WPUtil.FUNC_LOAD_OPTIONS, ApiaryConfig.postgres, WPLoadOptions::new, false);
 
         if (bugFix != null) {
             // The fixed version.
@@ -256,8 +266,6 @@ public class WordPressBenchmark {
         }
 
         int numTry;
-        int totalPostPC = addCommentPC + getCommentsPC + trashPostPC + untrashPostPC;
-        int totalOptionPC = 100 - totalPostPC;
         if (totalPostPC > 0) {
             // Add posts, and comments for each post.
             long t0 = System.currentTimeMillis();
@@ -315,11 +323,11 @@ public class WordPressBenchmark {
 
         if (totalOptionPC > 0) {
             // Try to cause option primary key error.
-            for (numTry = 0; numTry < numOptions; numTry++) {
-                Future<Integer> fut1 = threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, null, "option-" + numTry, "value0-" + numTry, "no"));
+            for (numTry = 0; numTry < numOptions.get(); numTry++) {
+                Future<Integer> fut1 = threadPool.submit(new WpTask(clientPool, WPOpType.INSERT_OPTION, null, "option-" + numTry, "value0-" + numTry, "no"));
                 // Add arbitrary delay.
                 Thread.sleep(ThreadLocalRandom.current().nextInt(2));
-                Future<Integer> fut2 = threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, null, "option-" + numTry, "value1-" + numTry, "no"));
+                Future<Integer> fut2 = threadPool.submit(new WpTask(clientPool, WPOpType.INSERT_OPTION, null, "option-" + numTry, "value1-" + numTry, "no"));
 
                 int res1, res2;
                 try {
@@ -340,13 +348,24 @@ public class WordPressBenchmark {
                 }
             }
 
-            if (numTry >= numOptions) {
+            if (numTry >= numOptions.get()) {
                 logger.error("Failed to find inconsistency in options... exit.");
                 threadPool.shutdown();
                 threadPool.awaitTermination(10, TimeUnit.SECONDS);
                 Thread.sleep(ProvenanceBuffer.exportInterval * 2);  // Wait for all entries to be exported.
 
                 apiaryWorker.shutdown();
+                return;
+            }
+
+            // Add the rest of the options
+            long t0 = System.currentTimeMillis();
+            int res = client.get().executeFunction(WPUtil.FUNC_LOAD_OPTIONS, numTry, numOptions.get()).getInt();
+            if (res > 0) {
+                long loadTime = System.currentTimeMillis() - t0;
+                logger.info("Loaded {} options in {} ms", res, loadTime);
+            } else {
+                logger.error("Failed to load options! {}", res);
                 return;
             }
         }
@@ -374,7 +393,7 @@ public class WordPressBenchmark {
                 wt = writeTimes;
             }
             Integer postId = ThreadLocalRandom.current().nextInt(0, numPosts);
-            int optionId = ThreadLocalRandom.current().nextInt(0, numOptions);
+            int optionId = ThreadLocalRandom.current().nextInt(0, numOptions.get());
             if (chooser < addCommentPC) {
                 int cid = commentId.incrementAndGet();
                 threadPool.submit(new WpTask(clientPool, WPOpType.ADD_COMMENT, wt, postId, cid, String.format("Comment %d for post %d: This is a very very long comment! %s", cid, postId, RandomStringUtils.randomAlphabetic(1000))));
@@ -393,7 +412,16 @@ public class WordPressBenchmark {
             } else if (chooser < totalPostPC) {
                 threadPool.submit(new WpTask(clientPool, WPOpType.GET_COMMENTS, rt, postId, -1, null));
             } else if (chooser < totalPostPC + updateOptionPC) {
-                threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, wt, "option-" + optionId, "value-new-" + optionId, "no"));
+                int insertChooser = ThreadLocalRandom.current().nextInt(0, 100);
+                if (insertChooser < 50) {
+                    // Insert a new one.
+                    optionId = numOptions.getAndIncrement();
+                    threadPool.submit(new WpTask(clientPool, WPOpType.INSERT_OPTION, wt, "option-" + optionId, String.format("value-newInsert-%d-%s", optionId, RandomStringUtils.randomAlphabetic(100)), "no"));
+                } else {
+                    // Update an existing one.
+
+                    threadPool.submit(new WpTask(clientPool, WPOpType.UPDATE_OPTION, wt, "option-" + optionId, String.format("value-updated-%d-%s", optionId, RandomStringUtils.randomAlphabetic(100)), "no"));
+                }
             } else {
                 threadPool.submit(new WpTask(clientPool, WPOpType.GET_OPTION, rt, "option-" + optionId, null, null));
             }

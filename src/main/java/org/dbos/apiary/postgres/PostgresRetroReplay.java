@@ -125,21 +125,6 @@ public class PostgresRetroReplay {
         startOrderStmt.setLong(2, endTxId);
         ResultSet startOrderRs = startOrderStmt.executeQuery();
 
-        // Collect a list of request IDs and their function names.
-        List<PostgresReplayInfo> replayReqs = new ArrayList<>();
-        while (startOrderRs.next()) {
-            // TODO: will it consume too much space?
-            long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
-            long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-            long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
-            String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
-            String resName = resNames[resNames.length - 1]; // Extract the actual function name.
-            String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
-            replayReqs.add(new PostgresReplayInfo(resTxId, resExecId, resFuncId, resName, resSnapshotStr));
-        }
-        startOrderRs.close();
-        startOrderStmt.close();
-
         // This query finds the original input.
         String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
                         "WHERE %s >= ? AND %s < ? AND %s = 0 AND %s = 0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
@@ -183,14 +168,16 @@ public class PostgresRetroReplay {
         int totalStartOrderTxns = 0;
         int totalExecTxns = 0;
         List<Long> checkVisibleTxns = new ArrayList<>(); // Committed but not guaranteed to be visible yet.
-        for (PostgresReplayInfo rpInfo : replayReqs) {
+        while (startOrderRs.next()) {
             long t0 = System.nanoTime();
             totalStartOrderTxns++;
-            long resTxId = rpInfo.txnId;
-            long resExecId = rpInfo.execId;
-            long resFuncId = rpInfo.funcId;
-            String resName = rpInfo.funcName;
-            String resSnapshotStr = rpInfo.txnSnapshot;
+            long resTxId = startOrderRs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
+            long resExecId = startOrderRs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
+            long resFuncId = startOrderRs.getLong(ProvenanceBuffer.PROV_FUNCID);
+            String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
+            String resName = resNames[resNames.length - 1]; // Extract the actual function name.
+            String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
+            replayReqs.add(new PostgresReplayInfo(resTxId, resExecId, resFuncId, resName, resSnapshotStr));
             long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
             List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
             logger.debug("Processing txnID {}, execId {}, funcId {}, funcName {}", resTxId, resExecId, resFuncId, resName);
@@ -326,6 +313,8 @@ public class PostgresRetroReplay {
             submitTimes.add(t3 - t2);
             totalTimes.add(t3 - t0);
         }
+        startOrderRs.close();
+        startOrderStmt.close();
 
         if (!pendingCommitTasks.isEmpty()) {
             Map<Long, Future<Long>> cleanUpTxns = new HashMap<>();

@@ -332,13 +332,13 @@ public class WordPressTests {
         res = client.executeFunction("WPOptionExists", "option1", "value1", "no").getInt();
         assertEquals(0, res); // return 0 as we newly inserted the option.
 
-        // Add again, should return 1 because the option already exists.
+        // Add again, should return 0 because we update it.
         res = client.executeFunction("WPOptionExists", "option1", "value2", "no").getInt();
-        assertEquals(1, res);
+        assertEquals(0, res);
 
         // Get option value.
         String resStr = client.executeFunction("WPGetOption", "option1").getString();
-        assertEquals("value1", resStr);
+        assertEquals("value2", resStr);
 
         // Check provenance.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);

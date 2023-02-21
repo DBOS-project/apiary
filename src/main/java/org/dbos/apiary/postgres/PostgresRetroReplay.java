@@ -177,7 +177,6 @@ public class PostgresRetroReplay {
             String[] resNames = startOrderRs.getString(ProvenanceBuffer.PROV_PROCEDURENAME).split("\\.");
             String resName = resNames[resNames.length - 1]; // Extract the actual function name.
             String resSnapshotStr = startOrderRs.getString(ProvenanceBuffer.PROV_TXN_SNAPSHOT);
-            replayReqs.add(new PostgresReplayInfo(resTxId, resExecId, resFuncId, resName, resSnapshotStr));
             long xmax = PostgresUtilities.parseXmax(resSnapshotStr);
             List<Long> activeTxns = PostgresUtilities.parseActiveTransactions(resSnapshotStr);
             logger.debug("Processing txnID {}, execId {}, funcId {}, funcName {}", resTxId, resExecId, resFuncId, resName);

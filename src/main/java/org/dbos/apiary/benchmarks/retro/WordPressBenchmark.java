@@ -360,7 +360,7 @@ public class WordPressBenchmark {
 
             // Add the rest of the options
             long t0 = System.currentTimeMillis();
-            int res = client.get().executeFunction(WPUtil.FUNC_LOAD_OPTIONS, numTry, numOptions.get()).getInt();
+            int res = client.get().executeFunction(WPUtil.FUNC_LOAD_OPTIONS, numTry + 1, numOptions.get()).getInt();
             if (res > 0) {
                 long loadTime = System.currentTimeMillis() - t0;
                 logger.info("Loaded {} options in {} ms", res, loadTime);

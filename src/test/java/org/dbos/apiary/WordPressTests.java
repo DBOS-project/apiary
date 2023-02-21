@@ -324,6 +324,7 @@ public class WordPressTests {
         apiaryWorker.registerFunction("WPGetOption", ApiaryConfig.postgres, WPGetOption::new);
         apiaryWorker.registerFunction("WPOptionExists", ApiaryConfig.postgres, WPOptionExists::new);
         apiaryWorker.registerFunction("WPInsertOption", ApiaryConfig.postgres, WPInsertOption::new);
+        apiaryWorker.registerFunction(WPUtil.FUNC_UPDATEOPTION, ApiaryConfig.postgres, WPInsertOptionFixed::new, false);
         apiaryWorker.startServing();
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
@@ -355,6 +356,7 @@ public class WordPressTests {
         apiaryWorker.registerFunction("WPGetOption", ApiaryConfig.postgres, WPGetOption::new, false);
         apiaryWorker.registerFunction("WPOptionExists", ApiaryConfig.postgres, WPOptionExists::new, false);
         apiaryWorker.registerFunction("WPInsertOption", ApiaryConfig.postgres, WPInsertOption::new, false);
+        apiaryWorker.registerFunction(WPUtil.FUNC_UPDATEOPTION, ApiaryConfig.postgres, WPInsertOptionFixed::new, false);
         apiaryWorker.startServing();
 
         ProvenanceBuffer provBuff = apiaryWorker.workerContext.provBuff;

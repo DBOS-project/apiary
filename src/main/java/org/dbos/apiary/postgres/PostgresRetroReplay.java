@@ -328,11 +328,12 @@ public class PostgresRetroReplay {
         }
 
         if (!pendingCommitTasks.isEmpty()) {
+            Map<Long, Future<Long>> cleanUpTxns = new HashMap<>();
             // Commit the rest.
             // The order doesn't matter because if they could commit originally, they must have no conflicts.
             // If they didn't commit originally, then the order also doesn't matter.
+            long t1 = System.nanoTime();
             for (long cmtTxn : pendingCommitTasks.keySet()) {
-                long t1 = System.nanoTime();
                 PostgresReplayTask commitPgRpTask = pendingCommitTasks.get(cmtTxn);
                 if (commitPgRpTask == null) {
                     logger.error("No task found for pending commit txn {}.", cmtTxn);
@@ -340,11 +341,24 @@ public class PostgresRetroReplay {
                 }
                 logger.debug("Commit final pending txnID {}.", cmtTxn);
                 Future<Long> cmtFut = commitThreadPool.submit(new PostgresCommitCallable(commitPgRpTask, workerContext, cmtTxn, replayMode, threadPool));
-                cmtFut.get(5, TimeUnit.SECONDS);
-                connPool.add(commitPgRpTask.conn);
-                long t2 = System.nanoTime();
-                commitTimes.add(t2 - t1);
+                cleanUpTxns.put(cmtTxn, cmtFut);
+
             }
+
+            for (long cmtTxn : cleanUpTxns.keySet()) {
+                try {
+                    long retVal = cleanUpTxns.get(cmtTxn).get(5, TimeUnit.SECONDS);
+                    if (retVal != cmtTxn) {
+                        logger.error("Final pending commit failed. Commit txn: {}, retVal: {}", cmtTxn, retVal);
+                    }
+                } catch (TimeoutException e) {
+                    logger.error("Final pending commit timed out for transaction {}", cmtTxn);
+                }
+                connPool.add(pendingCommitTasks.get(cmtTxn).conn);
+                pendingCommitTasks.remove(cmtTxn);
+            }
+            long t2 = System.nanoTime();
+            commitTimes.add(t2 - t1);
         }
 
         if (!pendingTasks.isEmpty() && workerContext.hasRetroFunctions()) {

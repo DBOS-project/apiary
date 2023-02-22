@@ -4,6 +4,7 @@ import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
+import org.dbos.apiary.worker.ApiaryWorker;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
@@ -254,6 +255,7 @@ public class PostgresConnection implements ApiaryConnection {
                                        long functionID, int replayMode, Object... inputs) {
         Connection c = connection.get();
         FunctionOutput f = null;
+        long tStart = System.nanoTime();
         while (true) {
             // Record invocation for each try, if we have provenance buffer.
             long startTime = Utilities.getMicroTimestamp();
@@ -267,7 +269,10 @@ public class PostgresConnection implements ApiaryConnection {
             }
             activeTransactionsLock.readLock().unlock();
             try {
+                long t0 = System.nanoTime();
                 f = workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
+                long t1 = System.nanoTime();
+                ApiaryWorker.txnExecutionTimes.add(t1 - t0);
                 boolean valid = true;
                 for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
                     Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
@@ -277,6 +282,8 @@ public class PostgresConnection implements ApiaryConnection {
                 }
                 if (valid) {
                     ctxt.conn.commit();
+                    long t2 = System.nanoTime();
+                    ApiaryWorker.txnCommitTimes.add(t1 - t0);
                     for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
                         Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
                         ctxt.workerContext.getSecondaryConnection(secondary).commit(writtenKeys, ctxt.txc);
@@ -345,7 +352,8 @@ public class PostgresConnection implements ApiaryConnection {
                 break;
             }
         }
-
+        long tElapsed = System.nanoTime() - tStart;
+        ApiaryWorker.totalExecTimes.add(tElapsed);
         return f;
     }
 

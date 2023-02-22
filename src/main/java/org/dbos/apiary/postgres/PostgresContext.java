@@ -4,6 +4,7 @@ import org.dbos.apiary.connection.ApiarySecondaryConnection;
 import org.dbos.apiary.function.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
+import org.dbos.apiary.worker.ApiaryWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +62,7 @@ public class PostgresContext extends ApiaryContext {
             txID = rs.getLong(1);
             rs.close();
             if ((workerContext.provBuff != null) || ApiaryConfig.XDBTransactions) {
+                long t0 = System.nanoTime();
                 // Only look up transaction ID and snapshot info if we enable provenance capture.
                 rs = stmt.executeQuery("select pg_current_snapshot();");
                 rs.next();
@@ -70,6 +72,8 @@ public class PostgresContext extends ApiaryContext {
                 xmax = currXmax;
                 activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
                 rs.close();
+                long t1 = System.nanoTime();
+                ApiaryWorker.getSnapshotTimes.add(t1 - t0);
                 // For epoxy transactions only.
                 if (ApiaryConfig.XDBTransactions) {
                     activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < currXmax).collect(Collectors.toList()));

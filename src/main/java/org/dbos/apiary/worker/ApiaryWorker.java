@@ -54,6 +54,7 @@ public class ApiaryWorker {
     public static final Collection<Long> txnExecutionTimes = new ConcurrentLinkedQueue<>();
     public static final Collection<Long> txnCommitTimes = new ConcurrentLinkedQueue<>();
     public static final Collection<Long> totalExecTimes = new ConcurrentLinkedQueue<>();
+    public static final Collection<Long> getTxIdTimes = new ConcurrentLinkedQueue<>();
 
     public static void printStats() {
         Map<String, Collection<Long>> statsMap = new HashMap<>();
@@ -61,6 +62,7 @@ public class ApiaryWorker {
         statsMap.put("TxnExec", txnExecutionTimes);
         statsMap.put("TxnCommit", txnCommitTimes);
         statsMap.put("TotalExec", totalExecTimes);
+        statsMap.put("GetTxId", getTxIdTimes);
         for (String key : statsMap.keySet()) {
             List<Long> queryTimes = statsMap.get(key).stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
             int numQueries = queryTimes.size();

@@ -62,6 +62,8 @@ public class PostgresContext extends ApiaryContext {
             rs.next();
             txID = rs.getLong(1);
             rs.close();
+            long t1 = System.nanoTime();
+            ApiaryWorker.getTxIdTimes.add(t1 - t0);
             if ((workerContext.provBuff != null) || ApiaryConfig.XDBTransactions) {
                 // Only look up transaction ID and snapshot info if we enable provenance capture.
                 rs = stmt.executeQuery("select pg_current_snapshot();");
@@ -72,8 +74,8 @@ public class PostgresContext extends ApiaryContext {
                 xmax = currXmax;
                 activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
                 rs.close();
-                long t1 = System.nanoTime();
-                ApiaryWorker.getSnapshotTimes.add(t1 - t0);
+                long t2 = System.nanoTime();
+                ApiaryWorker.getSnapshotTimes.add(t2 - t1);
                 // For epoxy transactions only.
                 if (ApiaryConfig.XDBTransactions) {
                     activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < currXmax).collect(Collectors.toList()));

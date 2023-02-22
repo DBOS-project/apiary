@@ -43,7 +43,6 @@ public class PostgresContext extends ApiaryContext {
                            Set<String> replayWrittenTables) {
         super(workerContext, service, execID, functionID, replayMode);
         this.conn = c;
-        long t0 = System.nanoTime();
         try {
             this.stmt = conn.createStatement();
         } catch (SQLException e) {
@@ -58,6 +57,7 @@ public class PostgresContext extends ApiaryContext {
             long xmin = -1;
             long xmax = -1;
             List<Long> activeTxIDs = new ArrayList<>();
+            long t0 = System.nanoTime();
             ResultSet rs = stmt.executeQuery("select pg_current_xact_id();");
             rs.next();
             txID = rs.getLong(1);

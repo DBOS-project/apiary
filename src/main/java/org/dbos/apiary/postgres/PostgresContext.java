@@ -43,6 +43,7 @@ public class PostgresContext extends ApiaryContext {
                            Set<String> replayWrittenTables) {
         super(workerContext, service, execID, functionID, replayMode);
         this.conn = c;
+        long t0 = System.nanoTime();
         try {
             this.stmt = conn.createStatement();
         } catch (SQLException e) {
@@ -62,7 +63,6 @@ public class PostgresContext extends ApiaryContext {
             txID = rs.getLong(1);
             rs.close();
             if ((workerContext.provBuff != null) || ApiaryConfig.XDBTransactions) {
-                long t0 = System.nanoTime();
                 // Only look up transaction ID and snapshot info if we enable provenance capture.
                 rs = stmt.executeQuery("select pg_current_snapshot();");
                 rs.next();

@@ -283,7 +283,7 @@ public class PostgresConnection implements ApiaryConnection {
                 if (valid) {
                     ctxt.conn.commit();
                     long t2 = System.nanoTime();
-                    ApiaryWorker.txnCommitTimes.add(t1 - t0);
+                    ApiaryWorker.txnCommitTimes.add(t2 - t1);
                     for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
                         Map<String, List<String>> writtenKeys = ctxt.secondaryWrittenKeys.get(secondary);
                         ctxt.workerContext.getSecondaryConnection(secondary).commit(writtenKeys, ctxt.txc);

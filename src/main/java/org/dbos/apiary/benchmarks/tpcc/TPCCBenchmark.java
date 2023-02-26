@@ -151,7 +151,6 @@ public class TPCCBenchmark {
 
     private static int runPayment() {
         int districtID = TPCCUtil.randomNumber(1, TPCCConfig.configDistPerWhse, gen);
-        int customerID = TPCCUtil.getCustomerID(gen);
 
         int x = TPCCUtil.randomNumber(1, 100, gen);
         int customerDistrictID;
@@ -170,7 +169,7 @@ public class TPCCBenchmark {
         long y = TPCCUtil.randomNumber(1, 100, gen);
         int customerByName;
         String customerLastName = "";
-        customerID = -1;
+        int customerID = -1;
         if (y <= 60) {
             // 60% lookups by last name
             customerByName = 1;
@@ -194,12 +193,44 @@ public class TPCCBenchmark {
     }
 
     private static int runNewOrder() {
+        int res = -1;
+
+        int terminalWarehouseID = ThreadLocalRandom.current().nextInt(1, numWarehouses + 1);
+        int districtID = TPCCUtil.randomNumber(1, TPCCConfig.configDistPerWhse, gen);
+        int customerID = TPCCUtil.getCustomerID(gen);
+        int numItems = (int) TPCCUtil.randomNumber(5, 15, gen);
+        int[] itemIDs = new int[numItems];
+        int[] supplierWarehouseIDs = new int[numItems];
+        int[] orderQuantities = new int[numItems];
+        int allLocal = 1;
+        for (int i = 0; i < numItems; i++) {
+            itemIDs[i] = TPCCUtil.getItemID(gen);
+            if (TPCCUtil.randomNumber(1, 100, gen) > 1) {
+                supplierWarehouseIDs[i] = terminalWarehouseID;
+            } else {
+                do {
+                    supplierWarehouseIDs[i] = TPCCUtil.randomNumber(1,
+                            numWarehouses, gen);
+                } while (supplierWarehouseIDs[i] == terminalWarehouseID
+                        && numWarehouses > 1);
+                allLocal = 0;
+            }
+            orderQuantities[i] = TPCCUtil.randomNumber(1, 10, gen);
+        }
+
+        // we need to cause 1% of the new orders to be rolled back.
+        if (TPCCUtil.randomNumber(1, 100, gen) == 1) {
+            itemIDs[numItems - 1] = TPCCConfig.INVALID_ITEM_ID;
+        }
+
+        long currTimestamp = System.currentTimeMillis();
+
         try {
-            int res = client.get().executeFunction(TPCCUtil.NEWORDER_FUNC).getInt();
+            res = client.get().executeFunction(TPCCUtil.NEWORDER_FUNC, terminalWarehouseID, districtID, customerID, numItems, allLocal, itemIDs, supplierWarehouseIDs,orderQuantities, String.valueOf(currTimestamp)).getInt();
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
-        return 0;
+        return res;
     }
 
     private static void resetAllTables(String dbAddr) {

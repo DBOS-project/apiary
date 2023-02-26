@@ -203,6 +203,7 @@ public class TPCCBenchmark {
     }
 
     private static void resetAllTables(String dbAddr) {
+        logger.info("Reset all tables!");
         try {
             PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);
             Connection provConn = pgConn.provConnection.get();

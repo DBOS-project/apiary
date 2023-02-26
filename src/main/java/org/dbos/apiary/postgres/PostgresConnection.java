@@ -90,7 +90,15 @@ public class PostgresConnection implements ApiaryConnection {
             throw new RuntimeException("Failed to connect to Postgres");
         }
 
-        this.provConnection = ThreadLocal.withInitial(() -> ProvenanceBuffer.createProvConnection(provDBType, provAddress));
+        this.provConnection = ThreadLocal.withInitial(() -> {
+           Connection conn = ProvenanceBuffer.createProvConnection(provDBType, provAddress);
+            try {
+                conn.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return conn;
+        });
 
         createTable(this.bgConnection.get(), ProvenanceBuffer.PROV_ApiaryMetadata,
                 "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");

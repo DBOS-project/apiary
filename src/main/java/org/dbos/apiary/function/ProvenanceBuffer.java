@@ -132,6 +132,7 @@ public class ProvenanceBuffer {
                         String.format("jdbc:vertica://%s/apiary_provenance", databaseAddress),
                         verticaProp
                 );
+                c.setAutoCommit(false);
                 return c;
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -307,6 +308,7 @@ public class ProvenanceBuffer {
         if (rowCnt > 0) {
             pstmt.executeBatch();
         }
+        connection.commit();
         logger.debug("Exported table {}, {} rows", table, numEntries);
     }
 

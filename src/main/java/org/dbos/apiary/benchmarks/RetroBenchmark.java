@@ -2,6 +2,7 @@ package org.dbos.apiary.benchmarks;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.benchmarks.retro.MoodleBenchmark;
+import org.dbos.apiary.benchmarks.tpcc.TPCCBenchmark;
 import org.dbos.apiary.benchmarks.retro.WordPressBenchmark;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.function.FunctionOutput;
@@ -38,6 +39,8 @@ public class RetroBenchmark {
             MoodleBenchmark.benchmark(dbAddr, interval, duration, skipLoad, retroMode, startExecId, endExecId, bugFix, percentages);
         } else if (appName.equalsIgnoreCase("wordpress")) {
             WordPressBenchmark.benchmark(dbAddr, interval, duration, skipLoad, retroMode, startExecId, endExecId, bugFix, percentages);
+        } else if (appName.equalsIgnoreCase("tpcc")) {
+            TPCCBenchmark.benchmark(dbAddr, interval, duration, retroMode, startExecId, endExecId, percentages);
         }
     }
 

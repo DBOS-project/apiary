@@ -2,6 +2,7 @@ package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.*;
+import org.dbos.apiary.benchmarks.tpcc.UserAbortException;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -320,6 +321,17 @@ public class PostgresConnection implements ApiaryConnection {
                             recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE);
                             break;
                         }
+                    } else if (innerException instanceof UserAbortException) {
+                        // Abort and return.
+                        UserAbortException p = (UserAbortException) innerException;
+                        f = new FunctionOutput(p.getMessage());
+                        try {
+                            rollback(ctxt);
+                        } catch (SQLException ex) {
+                            ex.printStackTrace();
+                        }
+                        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE);
+                        break;
                     } else {
                         e.printStackTrace();
                         logger.error("Unrecoverable InvocationTargetException: {}", e.getMessage());

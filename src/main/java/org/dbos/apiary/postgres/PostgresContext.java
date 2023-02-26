@@ -175,14 +175,15 @@ public class PostgresContext extends ApiaryContext {
      * @param procedure a SQL DML statement (e.g., INSERT, UPDATE, DELETE).
      * @param input     input parameters for the SQL statement.
      */
-    public void executeUpdate(String procedure, Object... input) throws SQLException {
+    public int executeUpdate(String procedure, Object... input) throws SQLException {
         txc.readOnly = false;
         // Replay.
         if (this.replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
             replayUpdate(procedure, input);
-            return;
+            return 0;
         }
 
+        int res = 0;
         if ((ApiaryConfig.captureMetadata && (this.workerContext.provBuff != null)) ||
                 (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue())) {
             // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
@@ -202,7 +203,7 @@ public class PostgresContext extends ApiaryContext {
             // If it's a selective replay, then record tableName in the write set.
             if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
                 this.replayWrittenTables.add(tableName.toUpperCase());
-                return;
+                return 0;
             }
             long timestamp = Utilities.getMicroTimestamp();
             int numCol = rsmd.getColumnCount();
@@ -235,9 +236,10 @@ public class PostgresContext extends ApiaryContext {
             // First, prepare statement. Then, execute.
             currPstmt = conn.prepareStatement(procedure);
             prepareStatement(currPstmt, input);
-            currPstmt.executeUpdate();
+            res = currPstmt.executeUpdate();
             currPstmt.close();
         }
+        return res;
     }
 
     /**

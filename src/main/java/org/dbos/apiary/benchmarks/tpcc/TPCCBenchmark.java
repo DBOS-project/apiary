@@ -27,7 +27,7 @@ public class TPCCBenchmark {
 
     private static final int threadPoolSize = 32;
     private static final int numWorker = 16;
-    private static final int threadWarmupMs = 10000;  // First 10 seconds of requests would be warm-up and not recorded.
+    private static final int threadWarmupMs = 30000;  // First 30 seconds of requests would be warm-up and not recorded.
 
     private static final int numWarehouses = 24;
 

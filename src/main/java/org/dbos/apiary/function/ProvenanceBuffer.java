@@ -132,7 +132,7 @@ public class ProvenanceBuffer {
                         String.format("jdbc:vertica://%s/apiary_provenance", databaseAddress),
                         verticaProp
                 );
-                c.setAutoCommit(false);
+                c.setAutoCommit(true);
                 return c;
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -150,7 +150,7 @@ public class ProvenanceBuffer {
             Connection conn;
             try {
                 conn = ds.getConnection();
-                conn.setAutoCommit(false);
+                conn.setAutoCommit(true);
                 return conn;
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -264,6 +264,7 @@ public class ProvenanceBuffer {
 
     private void exportTableBuffer(String table) throws SQLException {
         Connection connection = this.conn.get();
+        connection.setAutoCommit(false);
         if (connection == null) {
             logger.error("Failed to get connection.");
             return;
@@ -310,6 +311,7 @@ public class ProvenanceBuffer {
             pstmt.executeBatch();
         }
         connection.commit();
+        connection.setAutoCommit(true);
         logger.debug("Exported table {}, {} rows", table, numEntries);
     }
 

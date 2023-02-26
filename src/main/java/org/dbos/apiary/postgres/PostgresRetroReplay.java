@@ -131,16 +131,28 @@ public class PostgresRetroReplay {
 
         // This query finds the original input.
         String inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
-                        "WHERE %s >= ? AND %s < ? AND %s = 0 AND %s = 0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
+                        "WHERE %s >= ? AND %s < ? AND %s = 0 AND %s = 0 AND %s=\'%s\' ORDER BY %s;",
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
                 ProvenanceBuffer.PROV_REQ_BYTES, ApiaryConfig.tableRecordedInputs,
                 ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID,
                 ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY,
                 ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
-                ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
         );
+        if (workerContext.hasRetroFunctions()) {
+            inputQuery = String.format("SELECT %s, r.%s, %s FROM %s AS r INNER JOIN %s as f ON r.%s = f.%s " +
+                            "WHERE %s >= ? AND %s < ? AND %s = 0 AND %s = 0 AND (%s=\'%s\' OR %s=\'%s\') ORDER BY %s;",
+                    ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_EXECUTIONID,
+                    ProvenanceBuffer.PROV_REQ_BYTES, ApiaryConfig.tableRecordedInputs,
+                    ApiaryConfig.tableFuncInvocations, ProvenanceBuffer.PROV_EXECUTIONID,
+                    ProvenanceBuffer.PROV_EXECUTIONID, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
+                    ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_FUNCID, ProvenanceBuffer.PROV_ISREPLAY,
+                    ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_COMMIT,
+                    ProvenanceBuffer.PROV_FUNC_STATUS, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE,
+                    ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID
+            );
+        }
         Connection provInputConn = ProvenanceBuffer.createProvConnection(workerContext.provDBType, workerContext.provAddress);
         PreparedStatement inputStmt = provInputConn.prepareStatement(inputQuery);
         inputStmt.setLong(1, startTxId);

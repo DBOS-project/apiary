@@ -164,7 +164,6 @@ public class PostgresConnection implements ApiaryConnection {
         Statement dropTable = conn.createStatement();
         dropTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
         dropTable.close();
-        logger.info("Dropped table : {} in connection {}", tableName, conn.getClass());
     }
 
     /**

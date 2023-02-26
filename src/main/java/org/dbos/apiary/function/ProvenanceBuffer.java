@@ -150,6 +150,7 @@ public class ProvenanceBuffer {
             Connection conn;
             try {
                 conn = ds.getConnection();
+                conn.setAutoCommit(false);
                 return conn;
             } catch (SQLException e) {
                 e.printStackTrace();

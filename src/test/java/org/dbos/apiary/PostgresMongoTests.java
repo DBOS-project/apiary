@@ -4,6 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.mongodb.client.model.Indexes;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.mongo.MongoConnection;
+import org.dbos.apiary.mongo.MongoContext;
 import org.dbos.apiary.postgres.PostgresConnection;
 import org.dbos.apiary.procedures.mongo.*;
 import org.dbos.apiary.procedures.mongo.hotel.MongoAddHotel;
@@ -26,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -162,6 +164,42 @@ public class PostgresMongoTests {
 
         res = client.executeFunction("PostgresFindPerson", "christos").getInt();
         assertEquals(1, res);
+    }
+
+    @Test
+    public void testMongoBulkBenchmark() throws InvalidProtocolBufferException, SQLException {
+        logger.info("testMongoBulkBenchmark");
+
+        MongoConnection conn = new MongoConnection("localhost", ApiaryConfig.mongoPort);
+        PostgresConnection pconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "postgres", "dbos");
+
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4);
+        apiaryWorker.registerConnection(ApiaryConfig.mongo, conn);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, pconn);
+        apiaryWorker.registerFunction("PostgresBulkBenchmark", ApiaryConfig.postgres, PostgresBulkBenchmark::new);
+        apiaryWorker.registerFunction("MongoBulkBenchmark", ApiaryConfig.mongo, MongoBulkBenchmark::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
+
+        Random random = new Random();
+        int numDocs = 10;
+        String[] names = new String[numDocs];
+        int[] numbers = new int[numDocs];
+        for (int docNum = 0; docNum < numDocs; docNum++) {
+            names[docNum] = random.ints(97, 122 + 1)
+                    .limit(10)
+                    .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                    .toString();
+            numbers[docNum] = docNum;
+        }
+
+        client.executeFunction("PostgresBulkBenchmark", names, numbers);
+
+        if (ApiaryConfig.XDBTransactions) {
+            conn.database.getCollection("bulkbenchmark").createIndex(Indexes.ascending(MongoContext.beginVersion));
+        }
+        conn.database.getCollection("bulkbenchmark").createIndex(Indexes.ascending(MongoContext.apiaryID));
     }
 
     @Test

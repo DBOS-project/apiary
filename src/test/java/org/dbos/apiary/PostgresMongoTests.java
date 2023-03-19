@@ -180,6 +180,8 @@ public class PostgresMongoTests {
         apiaryWorker.registerFunction("MongoBulkBenchmark", ApiaryConfig.mongo, MongoBulkBenchmark::new);
         apiaryWorker.startServing();
 
+        conn.database.getCollection("bulkbenchmark").drop();
+
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
         Random random = new Random();

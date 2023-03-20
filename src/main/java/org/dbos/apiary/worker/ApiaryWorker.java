@@ -19,6 +19,7 @@ import zmq.ZError;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -49,9 +50,15 @@ public class ApiaryWorker {
     private final List<Long> defaultQueue = new ArrayList<>();
     private final Long defaultTimeNs = 100000L;
 
+    public static final AtomicInteger transactionStarts = new AtomicInteger(0);
+    public static final AtomicInteger transactionAborts = new AtomicInteger(0);
+
     private Thread garbageCollectorThread;
+    private Thread printStatsThread;
     public boolean garbageCollect = true;
+    public boolean printStats = true;
     public static final long gcIntervalMs = 1000;
+    public static final long statsIntervalMs = 60000;
 
     public final WorkerContext workerContext;
 
@@ -97,6 +104,8 @@ public class ApiaryWorker {
     public void startServing() {
         garbageCollectorThread = new Thread(this::garbageCollectorThread);
         garbageCollectorThread.start();
+        printStatsThread = new Thread(this::statsThread);
+        printStatsThread.start();
         serverThread = new Thread(this::serverThread);
         serverThread.start();
     }
@@ -104,9 +113,12 @@ public class ApiaryWorker {
     public void shutdown() {
         try {
             garbageCollect = false;
+            printStats = false;
             Thread.sleep(100);
             garbageCollectorThread.interrupt();
             garbageCollectorThread.join();
+            printStatsThread.interrupt();
+            printStatsThread.join();
             reqThreadPool.shutdown();
             reqThreadPool.awaitTermination(10, TimeUnit.SECONDS);
             repThreadPool.shutdown();
@@ -133,6 +145,21 @@ public class ApiaryWorker {
             }
             try {
                 Thread.sleep(gcIntervalMs);
+            } catch (InterruptedException e) {
+                return;
+            }
+        }
+    }
+
+    private void statsThread() {
+        while (printStats) {
+            int numTransactions = transactionStarts.get();
+            int numAborts = transactionAborts.get();
+            transactionStarts.set(0);
+            transactionAborts.set(0);
+            logger.info("Transaction Starts: {} Aborts: {}", numTransactions, numAborts);
+            try {
+                Thread.sleep(statsIntervalMs);
             } catch (InterruptedException e) {
                 return;
             }

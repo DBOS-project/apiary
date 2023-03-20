@@ -6,6 +6,7 @@ import org.dbos.apiary.function.ProvenanceBuffer;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.worker.ApiaryWorker;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
@@ -151,6 +152,7 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     private void rollback(PostgresContext ctxt) throws SQLException {
+        ApiaryWorker.transactionAborts.incrementAndGet();
         abortedTransactions.add(ctxt.txc);
         for (String secondary : ctxt.secondaryWrittenKeys.keySet()) {
             Map<String, List<String>> updatedKeys = ctxt.secondaryWrittenKeys.get(secondary);
@@ -167,6 +169,7 @@ public class PostgresConnection implements ApiaryConnection {
         Connection c = connection.get();
         FunctionOutput f = null;
         while (true) {
+            ApiaryWorker.transactionStarts.incrementAndGet();
             activeTransactionsLock.readLock().lock();
             PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID, isReplay,
                     new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions));

@@ -64,7 +64,7 @@ public class MongoConflictsBenchmark {
                 int chooser = ThreadLocalRandom.current().nextInt(100);
                 if (chooser < percentageRead) {
                     int personNum = ThreadLocalRandom.current().nextInt(numPeople);
-                    int success = client.get().executeFunction("PostgresFindPerson", "matei" + personNum).getInt();
+                    client.get().executeFunction("PostgresFindPerson", "matei" + personNum).getInt();
                     readTimes.add(System.nanoTime() - t0);
                 } else {
                     int personID = ThreadLocalRandom.current().nextInt(numPeople);

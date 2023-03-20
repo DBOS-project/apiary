@@ -118,6 +118,12 @@ public class BenchmarkingExecutable {
             int percentageUpdate = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 0;
             logger.info("Mysql Microbenchmark {} {} {}", percentageRead, percentageNew, percentageUpdate);
             MysqlMicrobenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageNew, percentageUpdate);
+        } else if (benchmark.equals("MongoConflictsBenchmark")) {
+            int percentageRead = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 100;
+            int percentageUpdate = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 0;
+            int numKeys = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 1000000;
+            logger.info("Mongo Conflicts Benchmark {} {} {}", percentageRead, percentageUpdate, numKeys);
+            MongoConflictsBenchmark.benchmark(mainHostAddr, interval, duration, percentageRead, percentageUpdate, numKeys);
         }
     }
 }

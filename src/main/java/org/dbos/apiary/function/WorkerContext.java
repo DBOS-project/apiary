@@ -14,6 +14,7 @@ public class WorkerContext {
     public final Map<String, ApiarySecondaryConnection> secondaryConnections = new HashMap<>();
     private final Map<String, Callable<ApiaryFunction>> functions = new HashMap<>();
     private final Map<String, String> functionTypes = new HashMap<>();
+    private final Map<String, Set<String>> functionRoles = new HashMap<>();
 
     // Record a mapping between the old function name and its new class name. Used by retroactive programming.
     private final Map<String, String> retroFunctions = new HashMap<>();
@@ -88,6 +89,14 @@ public class WorkerContext {
             String actualName = Utilities.getFunctionClassName(func);
             retroFunctions.put(name, actualName);
         }
+    }
+
+    public void restrictFunction(String name, Set<String> roles) {
+        functionRoles.put(name, roles);
+    }
+
+    public Set<String> getFunctionRoles(String name) {
+        return functionRoles.get(name);
     }
 
     public void registerFunctionSet(String firstFunc, String[] funcNames) {

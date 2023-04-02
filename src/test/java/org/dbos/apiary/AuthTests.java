@@ -16,6 +16,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Set;
 
 import static junit.framework.Assert.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -106,5 +107,28 @@ public class AuthTests {
         resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
         Assertions.assertEquals("specialUser", resRole);
         Assertions.assertEquals("Increment", resFuncName);
+    }
+
+    @Test
+    public void testFunctionRoles() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        logger.info("testFunctionRoles");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
+
+        String specialUser = "specialUser";
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("Increment", ApiaryConfig.postgres, PostgresIncrementFunction::new);
+        apiaryWorker.restrictFunction("Increment", Set.of(specialUser));
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient defClient = new ApiaryWorkerClient("localhost");  // Use the default role.
+        int res;
+        res = defClient.executeFunction("Increment", 100).getInt();
+        assertEquals(-1, res);
+
+        // Then create another client with a specified role.
+        ApiaryWorkerClient specialClient = new ApiaryWorkerClient("localhost", specialUser);
+        res = specialClient.executeFunction("Increment", 100).getInt();
+        assertEquals(1, res);
     }
 }

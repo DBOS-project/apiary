@@ -87,6 +87,10 @@ public class ApiaryWorker {
         workerContext.registerFunction(name, type, function, isRetro);
     }
 
+    public void restrictFunction(String name, Set<String> roles) {
+        workerContext.restrictFunction(name, roles);
+    }
+
     /**
      * Register a list of a functions as an execution set -- they will be executed to serve one request. Mostly used for retroactive analysis.
      * @param firstFunc     Name of the first function.
@@ -209,6 +213,12 @@ public class ApiaryWorker {
     // Execute current function, push future tasks into a queue, then send back a reply if everything is finished.
     private void executeFunction(String name, String role, long execID, long callerID, long functionID, int replayMode,
                                  ZFrame replyAddr, long senderTimestampNano, Object[] arguments) throws InterruptedException {
+        if (!(workerContext.getFunctionRoles(name) == null) && !workerContext.getFunctionRoles(name).contains(role)) {
+            ExecuteFunctionReply.Builder b = Utilities.constructReply(callerID, functionID, senderTimestampNano, -1,
+                    String.format("Current role %s has no access to function %s", role, name));
+            outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
+            return;
+        }
         FunctionOutput o = null;
         long tStart = System.nanoTime();
         try {

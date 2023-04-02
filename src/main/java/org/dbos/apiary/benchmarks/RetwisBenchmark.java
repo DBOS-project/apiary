@@ -29,7 +29,7 @@ public class RetwisBenchmark {
     private static final int threadPoolSize = 256;
     private static final int numThreads = 1;
 
-    public static void benchmark(String voltAddr, String service, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
+    public static void benchmark(String voltAddr, String role, Integer interval, Integer duration) throws IOException, InterruptedException, ProcCallException {
         VoltConnection conn = new VoltConnection(voltAddr, ApiaryConfig.voltdbPort);
         conn.client.callProcedure("TruncateTables");
 
@@ -146,7 +146,7 @@ public class RetwisBenchmark {
                         // Send out a request.
                         lastSentTime = System.nanoTime();
                         int userID = ThreadLocalRandom.current().nextInt(numUsers);
-                        byte[] reqBytes = client.serializeExecuteRequest("RetwisGetTimeline", service, userID);
+                        byte[] reqBytes = client.serializeExecuteRequest("RetwisGetTimeline", role, userID);
                         ZMQ.Socket socket = client.getSocket(conn.getHostname(String.valueOf(userID)));
                         socket.send(reqBytes, 0);
                         messagesSent++;

@@ -39,10 +39,10 @@ public class VoltConnection implements ApiaryConnection {
         updatePartitionInfo();
     }
 
-    private static VoltTable inputToVoltTable(String service, long execID, long functionID, Object... inputs) {
+    private static VoltTable inputToVoltTable(String role, long execID, long functionID, Object... inputs) {
         int offset = 3;
         VoltTable.ColumnInfo[] columns = new VoltTable.ColumnInfo[inputs.length+offset];
-        columns[0] = new VoltTable.ColumnInfo("service", VoltType.STRING);
+        columns[0] = new VoltTable.ColumnInfo("role", VoltType.STRING);
         columns[1] = new VoltTable.ColumnInfo("execID", VoltType.BIGINT);
         columns[2] = new VoltTable.ColumnInfo("functionID", VoltType.BIGINT);
         for (int i = 0; i < inputs.length; i++) {
@@ -51,7 +51,7 @@ public class VoltConnection implements ApiaryConnection {
         }
         VoltTable v = new VoltTable(columns);
         Object[] row = new Object[v.getColumnCount()];
-        row[0] = service;
+        row[0] = role;
         row[1] = execID;
         row[2] = functionID;
         for (int i = 0; i < inputs.length; i++) {
@@ -111,14 +111,14 @@ public class VoltConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext context, String service, long execID, long functionID,
+    public FunctionOutput callFunction(String functionName, WorkerContext context, String role, long execID, long functionID,
                                        int replayMode, Object... inputs) throws IOException, ProcCallException {
         if (functionName.startsWith(getApiaryClientID)) {
             // Add input value for the procedure.
             inputs = new Integer[1];
             inputs[0] = 0;
         }
-        VoltTable voltInput = inputToVoltTable(service, execID, functionID, inputs);
+        VoltTable voltInput = inputToVoltTable(role, execID, functionID, inputs);
         assert (inputs[0] instanceof String || inputs[0] instanceof Integer);
         Integer keyInput = inputs[0] instanceof String ? Integer.parseInt((String) inputs[0]) : (int) inputs[0];
         VoltTable[] res = client.callProcedure(functionName, keyInput, voltInput).getResults();

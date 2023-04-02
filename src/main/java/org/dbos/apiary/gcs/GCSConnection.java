@@ -43,10 +43,10 @@ public class GCSConnection implements ApiarySecondaryConnection {
 
     @Override
     public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext,
-                                       TransactionContext txc, String service,
+                                       TransactionContext txc, String role,
                                        long execID, long functionID,
                                        Object... inputs) throws Exception {
-        GCSContext ctxt = new GCSContext(storage, writtenKeys, lockManager, workerContext, txc, service, execID, functionID, primary.connection.get());
+        GCSContext ctxt = new GCSContext(storage, writtenKeys, lockManager, workerContext, txc, role, execID, functionID, primary.connection.get());
         return workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
 }
 

@@ -16,6 +16,9 @@ public class ApiaryConfig {
     public static Boolean captureFuncInvocations = true;
     public static final String provenanceDefaultAddress = "localhost";
 
+    public static final String defaultRole = "DefaultRole";
+    public static final String systemRole = "ApiarySysAdmin";
+
     public static final int REPEATABLE_READ = 1;
     public static final int SERIALIZABLE = 2;
 

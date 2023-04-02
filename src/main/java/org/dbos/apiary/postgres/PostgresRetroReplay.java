@@ -306,7 +306,7 @@ public class PostgresRetroReplay {
 
             // Because Postgres may commit a transaction but take a while for it to show up in the snapshot for the following transactions, wait until we get everything from checkVisibleTxns in the snapshot.
             // We can wait by committing the empty transaction and create a new pgCtxt.
-            PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+            PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, ApiaryConfig.systemRole, pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
             boolean allVisible = false;
             while (!allVisible) {
                 logger.debug("Checking visible transactions: {}. Current transaction id {}, xmin {}, xmax {}, active transactions {}", checkVisibleTxns.toString(), pgCtxt.txc.txID, pgCtxt.txc.xmin, pgCtxt.txc.xmax, pgCtxt.txc.activeTransactions.toString());
@@ -332,7 +332,7 @@ public class PostgresRetroReplay {
                         throw new RuntimeException("Should not fail to commit an empty transaction.");
                     }
                     // Start a new transaction and wait again.
-                    pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+                    pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, ApiaryConfig.systemRole, pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
                 }
             }
             long t2 = System.nanoTime();
@@ -394,7 +394,7 @@ public class PostgresRetroReplay {
                         totalStartOrderTxns++;
                         Task rpTask = execFuncs.get(funcId);
                         PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
-                        PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, "retroReplay", pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+                        PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, ApiaryConfig.systemRole, pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
                         pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask));
                         Future<Long> cmtFut = commitThreadPool.submit(new PostgresCommitCallable(pgRpTask, workerContext, pgCtxt.txc.txID, replayMode, threadPool));
                         cmtFut.get(5, TimeUnit.SECONDS);

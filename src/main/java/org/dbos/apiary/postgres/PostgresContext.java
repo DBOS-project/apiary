@@ -36,11 +36,11 @@ public class PostgresContext extends ApiaryContext {
 
     Map<String, Map<String, List<String>>> secondaryWrittenKeys = new HashMap<>();
 
-    public PostgresContext(Connection c, WorkerContext workerContext, String service, long execID, long functionID,
+    public PostgresContext(Connection c, WorkerContext workerContext, String role, long execID, long functionID,
                            int replayMode,
                            Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions,
                            Set<String> replayWrittenTables) {
-        super(workerContext, service, execID, functionID, replayMode);
+        super(workerContext, role, execID, functionID, replayMode);
         this.conn = c;
         try {
             this.stmt = conn.createStatement();
@@ -116,7 +116,7 @@ public class PostgresContext extends ApiaryContext {
             FunctionOutput fo = f.apiaryRunFunction(this, inputs);
             if ((workerContext.provBuff != null) && (execID != 0l)) {
                 long endTime = Utilities.getMicroTimestamp();
-                workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txc.txID, startTime, execID, functionID, (short) replayMode, service, name, endTime, ProvenanceBuffer.PROV_STATUS_EMBEDDED);
+                workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txc.txID, startTime, execID, functionID, (short) replayMode, role, name, endTime, ProvenanceBuffer.PROV_STATUS_EMBEDDED);
             }
             return fo;
         } else {
@@ -124,7 +124,7 @@ public class PostgresContext extends ApiaryContext {
             long newID = ((this.functionID + calledFunctionID.incrementAndGet()) << 4);
             Map<String, List<String>> writtenKeys = new HashMap<>();
             try {
-                FunctionOutput fo = c.callFunction(name, writtenKeys, workerContext, txc, service, execID, newID, inputs);
+                FunctionOutput fo = c.callFunction(name, writtenKeys, workerContext, txc, role, execID, newID, inputs);
                 secondaryWrittenKeys.putIfAbsent(functionType, new HashMap<>());
                 for (String table: writtenKeys.keySet()) {
                     secondaryWrittenKeys.get(functionType).putIfAbsent(table, new ArrayList<>());

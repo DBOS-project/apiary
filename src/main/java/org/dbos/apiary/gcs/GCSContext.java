@@ -38,8 +38,8 @@ public class GCSContext extends ApiaryContext {
     private final Map<String, Map<String, AtomicBoolean>> lockManager;
 
     public GCSContext(Storage storage, Map<String, List<String>> writtenKeys, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext,
-                      TransactionContext txc, String service, long execID, long functionID, Connection primary) {
-        super(workerContext, service, execID, functionID, ApiaryConfig.ReplayMode.NOT_REPLAY.getValue());
+                      TransactionContext txc, String role, long execID, long functionID, Connection primary) {
+        super(workerContext, role, execID, functionID, ApiaryConfig.ReplayMode.NOT_REPLAY.getValue());
         this.storage = storage;
         this.txc = txc;
         this.primary = primary;

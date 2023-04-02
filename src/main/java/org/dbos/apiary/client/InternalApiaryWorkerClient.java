@@ -49,7 +49,7 @@ public class InternalApiaryWorkerClient {
         }
     }
 
-    public static byte[] serializeExecuteRequest(String name, String service, long execID, int replayMode,
+    public static byte[] serializeExecuteRequest(String name, String role, long execID, int replayMode,
                                                  long callerID, long functionID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
@@ -61,7 +61,7 @@ public class InternalApiaryWorkerClient {
                 .addAllArgumentTypes(argumentTypes)
                 .setCallerId(callerID)
                 .setFunctionId(functionID)
-                .setService(service)
+                .setRole(role)
                 .setExecutionId(execID)
                 .setSenderTimestampNano(sendTime)
                 .setReplayMode(replayMode)
@@ -69,7 +69,7 @@ public class InternalApiaryWorkerClient {
         return req.toByteArray();
     }
 
-    private static byte[] serializeReplayRequest(String name, String service, long execID, long endExecId, int replayMode,
+    private static byte[] serializeReplayRequest(String name, String role, long execID, long endExecId, int replayMode,
                                                  long callerID, long functionID, Object... arguments) {
         List<ByteString> byteArguments = new ArrayList<>();
         List<Integer> argumentTypes = new ArrayList<>();
@@ -81,7 +81,7 @@ public class InternalApiaryWorkerClient {
                 .addAllArgumentTypes(argumentTypes)
                 .setCallerId(callerID)
                 .setFunctionId(functionID)
-                .setService(service)
+                .setRole(role)
                 .setExecutionId(execID)
                 .setSenderTimestampNano(sendTime)
                 .setReplayMode(replayMode)
@@ -90,10 +90,10 @@ public class InternalApiaryWorkerClient {
         return req.toByteArray();
     }
 
-    public FunctionOutput executeFunction(String address, String name, String service, long execID, int replayMode,
+    public FunctionOutput executeFunction(String address, String name, String role, long execID, int replayMode,
                                           Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
-        byte[] reqBytes = serializeExecuteRequest(name, service, execID, replayMode, 0l, 0, arguments);
+        byte[] reqBytes = serializeExecuteRequest(name, role, execID, replayMode, 0l, 0, arguments);
         socket.send(reqBytes, 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);
@@ -101,10 +101,10 @@ public class InternalApiaryWorkerClient {
         return new FunctionOutput(output, null, rep.getErrorMsg());
     }
 
-    public FunctionOutput retroReplay(String address, String name, String service, long startExecId, long endExecId,
+    public FunctionOutput retroReplay(String address, String name, String role, long startExecId, long endExecId,
                                       int replayMode, Object... arguments) throws InvalidProtocolBufferException {
         ZMQ.Socket socket = getSocket(address);
-        byte[] reqBytes = serializeReplayRequest(name, service, startExecId, endExecId, replayMode, 0l, 0, arguments);
+        byte[] reqBytes = serializeReplayRequest(name, role, startExecId, endExecId, replayMode, 0l, 0, arguments);
         socket.send(reqBytes, 0);
         byte[] replyBytes = socket.recv(0);
         ExecuteFunctionReply rep = ExecuteFunctionReply.parseFrom(replyBytes);

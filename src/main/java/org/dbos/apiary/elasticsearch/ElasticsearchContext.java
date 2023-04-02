@@ -32,8 +32,8 @@ public class ElasticsearchContext extends ApiaryContext {
     public final Map<String, List<String>> writtenKeys;
     private final Map<String, Map<String, AtomicBoolean>> lockManager;
 
-    public ElasticsearchContext(ElasticsearchClient client, Map<String, List<String>> writtenKeys, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID) {
-        super(workerContext, service, execID, functionID, ApiaryConfig.ReplayMode.NOT_REPLAY.getValue());
+    public ElasticsearchContext(ElasticsearchClient client, Map<String, List<String>> writtenKeys, Map<String, Map<String, AtomicBoolean>> lockManager, WorkerContext workerContext, TransactionContext txc, String role, long execID, long functionID) {
+        super(workerContext, role, execID, functionID, ApiaryConfig.ReplayMode.NOT_REPLAY.getValue());
         this.client = client;
         this.txc = txc;
         this.lockManager = lockManager;

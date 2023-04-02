@@ -17,7 +17,7 @@ message ExecuteFunctionRequest {
   int64 callerId = 4;
   int64 functionId = 5;
   int64 senderTimestampNano = 6;
-  string service = 7;
+  string role = 7;
   int64 executionId = 8;  // Unique global IDs for an entire workflow. For retro replay, it means the first execution to be replayed.
   int32 replayMode = 9;  // 0: not replay, 1: replay a single request, 2: replay a request and everything after, 3: selective replay.
   int64 endExecId = 10;  // Used for retro replay, the last execution ID of the replay.

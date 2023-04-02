@@ -2,6 +2,7 @@ package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.function.Task;
 import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
@@ -71,7 +72,7 @@ public class PostgresCommitCallable implements Callable<Long> {
                     try {
                         commitPgRpTask.conn.rollback();
                         logger.debug("Rolled back failed to commit transaction {}.", cmtTxn);
-                        PostgresContext pgCtxt = new PostgresContext(commitPgRpTask.conn, workerContext, "retroReplay", commitPgRpTask.task.execId, commitPgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+                        PostgresContext pgCtxt = new PostgresContext(commitPgRpTask.conn, workerContext, ApiaryConfig.systemRole, commitPgRpTask.task.execId, commitPgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
                         commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, commitPgRpTask));
                         commitPgRpTask.resFut.get(5, TimeUnit.SECONDS);
                         commitPgRpTask.conn.commit();

@@ -7,8 +7,6 @@ import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.voltdb.*;
 
-import java.lang.reflect.InvocationTargetException;
-
 /**
  * All VoltDB functions should extend this class and implement <code>runFunction</code>.
  */
@@ -44,12 +42,12 @@ public class VoltFunction extends VoltProcedure implements ApiaryFunction {
     public VoltTable[] run(int pkey, VoltTable voltInput) throws Exception {
         this.pkey = pkey;
         Object[] parsedInput = parseInput(voltInput);
-        String service = parsedInput[0].toString();
+        String role = parsedInput[0].toString();
         long execID = (Long) parsedInput[1];
         long functionID = (Long) parsedInput[2];
         Object[] funcInput = new Object[parsedInput.length - 3];
         System.arraycopy(parsedInput, 3, funcInput, 0, funcInput.length);
-        FunctionOutput output = apiaryRunFunction(new VoltContext(this, provBuff, service, execID, functionID), funcInput);
+        FunctionOutput output = apiaryRunFunction(new VoltContext(this, provBuff, role, execID, functionID), funcInput);
         return serializeOutput(output);
     }
 
@@ -68,7 +66,7 @@ public class VoltFunction extends VoltProcedure implements ApiaryFunction {
                 input[i] = (int) inputRow.getLong(i);
             } else if (name.startsWith("IntegerArrayT")) {
                 input[i] = Utilities.byteArrayToIntArray(inputRow.getVarbinary(i));
-            } else if (name.startsWith("service")) {
+            } else if (name.startsWith("role")) {
                 input[i] = inputRow.getString(i);
             } else if (name.startsWith("execID")) {
                 input[i] = inputRow.getLong(i);
@@ -155,6 +153,6 @@ public class VoltFunction extends VoltProcedure implements ApiaryFunction {
         }
         long timestamp = Utilities.getMicroTimestamp();
         long txid = ((VoltContext) ctxt).getTransactionID();
-        ctxt.workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txid, timestamp, ctxt.execID, ctxt.service, funcName);
+        ctxt.workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, txid, timestamp, ctxt.execID, ctxt.role, funcName);
     }
 }

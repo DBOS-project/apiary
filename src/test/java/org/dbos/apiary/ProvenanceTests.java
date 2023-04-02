@@ -95,15 +95,15 @@ public class ProvenanceTests {
         long timestamp = 3456789l;
         long executionID = 456l;
         long funcID = 1l;
-        String service = "testService";
+        String role = "testRole";
         String funcName = "testFunction";
-        buf.addEntry(table, txid, timestamp, executionID, funcID, 0, service, funcName);
+        buf.addEntry(table, txid, timestamp, executionID, funcID, 0, role, funcName);
 
         long txid2 = 2222l;
         long timestamp2 = 456789l;
         long executionID2 = 789l;
         long funcID2 = 2l;
-        buf.addEntry(table, txid2, timestamp2, executionID2, funcID2, 1, service, funcName);
+        buf.addEntry(table, txid2, timestamp2, executionID2, funcID2, 1, role, funcName);
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
 
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM %s ORDER BY %s;", table, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID));
@@ -112,7 +112,7 @@ public class ProvenanceTests {
             long resTxid = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
             long resTimestamp = rs.getLong(ProvenanceBuffer.PROV_APIARY_TIMESTAMP);
             long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-            String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
+            String resRole = rs.getString(ProvenanceBuffer.PROV_APIARY_ROLE);
             String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
             int isreplayed = rs.getShort(ProvenanceBuffer.PROV_ISREPLAY);
             long funcId = rs.getLong(ProvenanceBuffer.PROV_FUNCID);
@@ -131,7 +131,7 @@ public class ProvenanceTests {
                 assertEquals(1, isreplayed);
                 assertEquals(2l, funcId);
             }
-            assertTrue(service.equals(resService));
+            assertTrue(role.equals(resRole));
 
             cnt++;
         }
@@ -179,17 +179,17 @@ public class ProvenanceTests {
         rs.next();
         long txid1 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-        String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
+        String resRole = rs.getString(ProvenanceBuffer.PROV_APIARY_ROLE);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
-        assertEquals("DefaultService", resService);
+        assertEquals(ApiaryConfig.defaultRole, resRole);
         assertEquals("PostgresProvenanceBasic", resFuncName);
 
         rs.next();
         long txid2 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-        resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
+        resRole = rs.getString(ProvenanceBuffer.PROV_APIARY_ROLE);
         resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
-        assertEquals("DefaultService", resService);
+        assertEquals(ApiaryConfig.defaultRole, resRole);
         assertEquals("PostgresProvenanceBasic", resFuncName);
 
         // Inner transaction should have the same transaction ID.
@@ -446,9 +446,9 @@ public class ProvenanceTests {
         rs.next();
         long txid1 = rs.getLong(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID);
         long resExecId = rs.getLong(ProvenanceBuffer.PROV_EXECUTIONID);
-        String resService = rs.getString(ProvenanceBuffer.PROV_SERVICE);
+        String resRole = rs.getString(ProvenanceBuffer.PROV_APIARY_ROLE);
         String resFuncName = rs.getString(ProvenanceBuffer.PROV_PROCEDURENAME);
-        assertEquals("DefaultService", resService);
+        assertEquals(ApiaryConfig.defaultRole, resRole);
         assertEquals("PostgresProvenanceMultiRows", resFuncName);
 
         // Check KVTable.

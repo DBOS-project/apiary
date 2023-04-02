@@ -31,6 +31,10 @@ public class NectarController {
     ApiaryWorkerClient client;
 
     public NectarController() throws SQLException {
+        ApiaryConfig.captureUpdates = true;
+        ApiaryConfig.captureReads = true;
+        ApiaryConfig.provenancePort = 5432;  // Store provenance data in the same database.
+
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
         conn.dropTable("WebsiteLogins"); // For testing.
         conn.dropTable("WebsitePosts"); // For testing.

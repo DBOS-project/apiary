@@ -77,12 +77,12 @@ public class ApiaryWorkerExecutable {
 
         ApiaryScheduler scheduler = new ApiaryNaiveScheduler();
         if (cmd.hasOption("s")) {
-            if (cmd.getOptionValue("s").equals("wfq")) {
-                logger.info("Using WFQ Scheduler");
-                scheduler = new ApiaryWFQScheduler();
-            } else if (cmd.getOptionValue("s").equals("naive")) {
+            if (cmd.getOptionValue("s").equals("naive")) {
                 logger.info("Using Naive Scheduler");
                 scheduler = new ApiaryNaiveScheduler();
+            } else {
+                logger.error("Does not support scheduler type: {}", cmd.getOptionValue("s"));
+                return;
             }
         }
         int numThreads = 64;

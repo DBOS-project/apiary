@@ -38,11 +38,6 @@ public class ApiaryWorker {
     private final ExecutorService reqThreadPool;
     private final ExecutorService repThreadPool;
     private final BlockingQueue<Runnable> reqQueue = new DispatcherPriorityQueue<>();
-    private final Map<String, Deque<Long>> functionRuntimesNs = new ConcurrentHashMap<>();
-    private final Map<String, AtomicDouble> functionAverageRuntimesNs = new ConcurrentHashMap<>();
-    private final int runningAverageLength = 100;
-    private final List<Long> defaultQueue = new ArrayList<>();
-    private final Long defaultTimeNs = 100000L;
 
     private Thread garbageCollectorThread;
     public boolean garbageCollect = true;
@@ -59,9 +54,6 @@ public class ApiaryWorker {
         this.scheduler = scheduler;
         reqThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, reqQueue);
         repThreadPool = new ThreadPoolExecutor(numWorkerThreads, numWorkerThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-        for (int i = 0; i < runningAverageLength; i++) {
-            defaultQueue.add(defaultTimeNs);
-        }
 
         ProvenanceBuffer buff = null;
         try {
@@ -249,13 +241,6 @@ public class ApiaryWorker {
             ExecuteFunctionReply.Builder b = Utilities.constructReply(callerID, functionID, senderTimestampNano, output, currTask.errorMsg);
             outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
         }
-        // Record runtime.
-        functionRuntimesNs.putIfAbsent(name, new ConcurrentLinkedDeque<>(defaultQueue));
-        functionAverageRuntimesNs.putIfAbsent(name, new AtomicDouble((double) defaultTimeNs));
-        Deque<Long> times = functionRuntimesNs.get(name);
-        times.offerFirst(runtime);
-        long old = times.pollLast();
-        functionAverageRuntimesNs.get(name).getAndAdd(((double) (runtime - old)) / runningAverageLength);
     }
 
     private FunctionOutput callFunctionInternal(String name, String service, long execID, long functionID, int replayMode, Object[] arguments) throws Exception {
@@ -310,8 +295,7 @@ public class ApiaryWorker {
             this.address = address;
             this.req = req;
             try {
-                long runtime = functionAverageRuntimesNs.getOrDefault(req.getName(), new AtomicDouble(defaultTimeNs)).longValue();
-                this.priority = scheduler.getPriority(req.getService(), runtime);
+                this.priority = scheduler.getPriority(req.getService(), 0);
             } catch (AssertionError | Exception e) {
                 e.printStackTrace();
             }

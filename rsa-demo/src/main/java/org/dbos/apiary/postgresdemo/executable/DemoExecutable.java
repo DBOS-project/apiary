@@ -18,6 +18,8 @@ public class DemoExecutable {
         Options options = new Options();
         options.addOption("s", true, "Script to run");
         options.addOption("numUsers", true, "Number of Users");
+        options.addOption("startId", true, "Start request ID for replay");
+        options.addOption("endId", true, "End request ID for replay");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -43,6 +45,11 @@ public class DemoExecutable {
             PopulateDatabase.populateDatabase(pgConn, numUsers);
         } else if (script.equals("deleteDatabase")) {
             DeleteDatabase.deleteDatabase();
+        } else if (script.equalsIgnoreCase("replay")) {
+            long startExecId = Long.parseLong(cmd.getOptionValue("startId"));
+            long endExecId = cmd.hasOption("endId") ? Long.parseLong(cmd.getOptionValue("endId")) : Long.MAX_VALUE;
+            logger.info("Replay requests between [{}, {})", startExecId, endExecId);
+            ReplayRequests.replay(startExecId, endExecId);
         } else {
             logger.info("Unknown Script: {}", script);
         }

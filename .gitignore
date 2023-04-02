@@ -6,6 +6,7 @@
 target
 *.iml
 postgres-demo/target
+rsa-demo/target
 data/
 
 # Log file

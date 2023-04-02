@@ -405,7 +405,7 @@ public class PostgresRetroReplay {
         }
         long elapsedTime = System.currentTimeMillis() - prepTime;
 
-        logger.info("Last non skipped execId: {}", lastNonSkippedExecId);
+        logger.debug("Last non skipped execId: {}", lastNonSkippedExecId);
         Object output = execIdToFinalOutput.get(lastNonSkippedExecId);  // The last non-skipped execution ID.
         String outputString = output.toString();
         if (output instanceof int[]) {
@@ -413,7 +413,7 @@ public class PostgresRetroReplay {
         } else if (output instanceof String[]){
             outputString = Arrays.toString((String[]) output);
         }
-        logger.info("Final output: {} ...", outputString.substring(0, Math.min(outputString.length(), 100)));
+        logger.debug("Final output: {} ...", outputString.substring(0, Math.min(outputString.length(), 100)));
         logger.info("Re-execution time: {} ms", elapsedTime);
         logger.info("Total original transactions: {}, re-executed transactions: {}", totalStartOrderTxns, totalExecTxns);
         printStats("Commit", commitTimes, elapsedTime);

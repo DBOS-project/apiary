@@ -17,6 +17,7 @@ public class DemoExecutable {
     public static void main(String[] args) throws ParseException, IOException, SQLException {
         Options options = new Options();
         options.addOption("s", true, "Script to run");
+        options.addOption("numUsers", true, "Number of Users");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -37,7 +38,9 @@ public class DemoExecutable {
         Connection pgConn = pg.getConnection();
 
         if (script.equals("populateDatabase")) {
-            PopulateDatabase.populateDatabase(pgConn, 5);
+            assert(cmd.hasOption("numUsers"));
+            int numUsers = Integer.parseInt(cmd.getOptionValue("numUsers"));
+            PopulateDatabase.populateDatabase(pgConn, numUsers);
         } else {
             logger.info("Unknown Script: {}", script);
         }

@@ -20,7 +20,7 @@ public class PopulateDatabase {
     private static final String register = "INSERT INTO WebsiteLogins(Username, Password) VALUES (?, ?);";
     private static final String addPost = "INSERT INTO WebsitePosts(Sender, Receiver, PostText) VALUES (?, ?, ?);";
 
-    public static void populateDatabase(Connection c, int numPeople) throws IOException, SQLException {
+    public static void populateDatabase(Connection c, int numUsers) throws IOException, SQLException {
 
         List<String> names = new ArrayList<>();
         List<String> posts = new ArrayList<>();
@@ -43,8 +43,8 @@ public class PopulateDatabase {
         postsReader.close();
 
         int num = 0;
-        while (names.size() < numPeople) {
-            names.add("name" + num++);
+        while (names.size() < numUsers) {
+            names.add("user" + num++);
         }
 
         assert(posts.size() <= names.size());

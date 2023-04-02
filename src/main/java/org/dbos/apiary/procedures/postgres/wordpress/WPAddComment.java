@@ -5,6 +5,7 @@ import org.dbos.apiary.postgres.PostgresFunction;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 public class WPAddComment extends PostgresFunction {
 
@@ -25,5 +26,18 @@ public class WPAddComment extends PostgresFunction {
 
         ctxt.executeUpdate(addComment, commentId, postId, content, WPUtil.WP_STATUS_VISIBLE);
         return 0;
+    }
+
+    @Override
+    public boolean isReadOnly() { return false; }
+
+    @Override
+    public List<String> readTables() {
+        return List.of(WPUtil.WP_POSTS_TABLE);
+    }
+
+    @Override
+    public List<String> writeTables() {
+        return List.of(WPUtil.WP_COMMENTS_TABLE);
     }
 }

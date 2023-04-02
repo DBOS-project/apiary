@@ -49,6 +49,7 @@ public class ProvenanceBuffer {
     public static final String PROV_STATUS_EMBEDDED = "embedded";
     public static final String PROV_STATUS_REPLAY = "replayed";
 
+    public boolean shouldStop = false;
     /**
      * Enum class for provenance operations.
      */
@@ -77,6 +78,8 @@ public class ProvenanceBuffer {
 
     private Thread exportThread;
 
+    public ThreadLocal<Connection> pgConn = null;  // Connect to postgres;
+
     public ProvenanceBuffer(String databaseType, String databaseAddress) throws ClassNotFoundException {
         this.databaseType = databaseType;
         if (databaseType == null) {
@@ -85,48 +88,7 @@ public class ProvenanceBuffer {
             this.hasConnection = false;
             return;
         }
-        if (databaseType.equals(ApiaryConfig.vertica)) {
-            Class.forName("com.vertica.jdbc.Driver");
-            this.conn = ThreadLocal.withInitial(() -> {
-                // Connect to Vertica.
-                Properties verticaProp = new Properties();
-                verticaProp.put("user", "dbadmin");
-                verticaProp.put("password", "password");
-                verticaProp.put("loginTimeout", "35");
-                verticaProp.put("streamingBatchInsert", "True");
-                verticaProp.put("ConnectionLoadBalance", "1"); // Enable load balancing.
-                try {
-                    Connection c = DriverManager.getConnection(
-                            String.format("jdbc:vertica://%s/apiary_provenance", databaseAddress),
-                            verticaProp
-                    );
-                    return c;
-                } catch (SQLException e) {
-
-                }
-                return null;
-            });
-        } else {
-            assert(databaseType.equals(ApiaryConfig.postgres));
-            this.conn = ThreadLocal.withInitial(() -> {
-                // Connect to Postgres.
-                PGSimpleDataSource ds = new PGSimpleDataSource();
-                ds.setServerNames(new String[] {databaseAddress});
-                ds.setPortNumbers(new int[] {ApiaryConfig.postgresPort});
-                ds.setDatabaseName(ApiaryConfig.dbosDBName);
-                ds.setUser("postgres");
-                ds.setPassword("dbos");
-                ds.setSsl(false);
-                Connection conn;
-                try {
-                    conn = ds.getConnection();
-                    return conn;
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                    return null;
-                }
-            });
-        }
+        this.conn = ThreadLocal.withInitial(() -> createProvConnection(databaseType, databaseAddress));
 
         if (conn.get() == null) {
             logger.info("No DB instance for provenance!");
@@ -134,20 +96,67 @@ public class ProvenanceBuffer {
             return;
         }
 
-
         Runnable r = () -> {
-            while(!Thread.currentThread().isInterrupted()) {
+            while(!shouldStop) {
                 try {
                     exportBuffer();
                     Thread.sleep(exportInterval);
                 } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                    shouldStop = true;
                 }
             }
+            // Export one last time.
+            exportBuffer();
         };
         exportThread = new Thread(r);
         exportThread.start();
         this.hasConnection = true;
+    }
+
+    public static Connection createProvConnection(String databaseType, String databaseAddress) {
+        if (databaseType.equals(ApiaryConfig.vertica)) {
+            try {
+                Class.forName("com.vertica.jdbc.Driver");
+            } catch (ClassNotFoundException e) {
+                return null;
+            }
+            // Connect to Vertica.
+            Properties verticaProp = new Properties();
+            verticaProp.put("user", "dbadmin");
+            verticaProp.put("password", "password");
+            verticaProp.put("loginTimeout", "35");
+            verticaProp.put("streamingBatchInsert", "True");
+            verticaProp.put("ConnectionLoadBalance", "1"); // Enable load balancing.
+            try {
+                Connection c = DriverManager.getConnection(
+                        String.format("jdbc:vertica://%s/apiary_provenance", databaseAddress),
+                        verticaProp
+                );
+                c.setAutoCommit(true);
+                return c;
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        } else {
+            assert(databaseType.equals(ApiaryConfig.postgres));
+            // Connect to Postgres.
+            PGSimpleDataSource ds = new PGSimpleDataSource();
+            ds.setServerNames(new String[] {databaseAddress});
+            ds.setPortNumbers(new int[] {ApiaryConfig.provenancePort});
+            ds.setDatabaseName(ApiaryConfig.dbosDBName);
+            ds.setUser("postgres");
+            ds.setPassword("dbos");
+            ds.setSsl(false);
+            Connection conn;
+            try {
+                conn = ds.getConnection();
+                conn.setAutoCommit(true);
+                return conn;
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
     }
 
     public void close() {
@@ -208,8 +217,54 @@ public class ProvenanceBuffer {
         }
     }
 
+    private void getCommitTimestamp(Object[] entry) {
+        if (!ApiaryConfig.trackCommitTimestamp) {
+            return;
+        }
+        if (this.pgConn == null) {
+            logger.error("No Postgres connection for provenance.");
+            return;
+        }
+        // The entry contains: ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot, ctxt.txc.readOnly
+        if (entry.length < 11) {
+            logger.error("Wrong entry length: {}, expected 11.", entry.length);
+        }
+        String snapshot = (String) entry[9];
+        // If recorded snapshot, try to find it in postgres.
+        if (snapshot.isEmpty()) {
+            return;
+        }
+        long txId = (long) entry[0];
+        String status = (String) entry[8];
+        if (status.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
+            try {
+                // TODO: future optimization may put this step off the critical path.
+                Connection pconn = this.pgConn.get();
+                Statement stmt = pconn.createStatement();
+                ResultSet rs = stmt.executeQuery(String.format("SELECT CAST(extract(epoch from pg_xact_commit_timestamp(\'%s\'::xid)) * 1000000 AS BIGINT);", txId));
+                if (rs.next()) {
+                    long tmpTime = rs.getLong(1);
+                    if (tmpTime > 0) {
+                        // TODO: find a better way to identify this.
+                        entry[7] = tmpTime;
+                    } else {
+                        // tmpTime=0 means the transaction aborted. Use the normal timestamp.
+                        entry[8] = ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE;
+                    }
+                }
+                rs.close();
+                stmt.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+                logger.error("Failed to get commit timestamp for txid {}.", txId);
+            }
+        }
+
+    }
+
     private void exportTableBuffer(String table) throws SQLException {
         Connection connection = this.conn.get();
+        connection.setAutoCommit(false);
         if (connection == null) {
             logger.error("Failed to get connection.");
             return;
@@ -227,6 +282,12 @@ public class ProvenanceBuffer {
             int numVals = listVals.length;
             int numColumns = tableBuffer.colTypeMap.size();
             assert (numVals <= numColumns);
+
+            // Special case for funcInvocations. Get commit timestamp for committed queries.
+            if (table.equalsIgnoreCase(ApiaryConfig.tableFuncInvocations)) {
+                getCommitTimestamp(listVals);
+            }
+
             for (int j = 0; j < numVals; j++) {
                 // Column index starts with 1.
                 setColumn(pstmt, j+1, tableBuffer.colTypeMap.get(j+1), listVals[j]);
@@ -249,6 +310,8 @@ public class ProvenanceBuffer {
         if (rowCnt > 0) {
             pstmt.executeBatch();
         }
+        connection.commit();
+        connection.setAutoCommit(true);
         logger.debug("Exported table {}, {} rows", table, numEntries);
     }
 
@@ -295,7 +358,7 @@ public class ProvenanceBuffer {
             pstmt.setLong(colIndex, smallVal);
         } else if (colType == Types.VARCHAR) {
             pstmt.setString(colIndex, val.toString());
-        } else if (colType == Types.BINARY) {
+        } else if ((colType == Types.BINARY) || (colType == Types.VARBINARY)) {
             // The bytea type.
             pstmt.setBytes(colIndex, (byte[]) val);
         } else if ((colType == Types.BOOLEAN) || (colType == Types.BIT)) {
@@ -355,6 +418,10 @@ public class ProvenanceBuffer {
     }
 
     private List<String> getColNames(String table) {
+        if (table.equalsIgnoreCase(ProvenanceBuffer.PROV_ApiaryMetadata + "Events")) {
+            // Do not capture provenance for metadata table.
+            return null;
+        }
         List<String> colNames = new ArrayList<>();
         try {
             Statement stmt = conn.get().createStatement();
@@ -373,6 +440,10 @@ public class ProvenanceBuffer {
     }
 
     private Map<Integer, Integer> getColTypeMap(String table) {
+        if (table.equalsIgnoreCase(ProvenanceBuffer.PROV_ApiaryMetadata + "Events")) {
+            // Do not capture provenance for metadata table.
+            return null;
+        }
         Map<Integer, Integer> colTypeMap = new HashMap<>();
         try {
             Statement stmt = conn.get().createStatement();

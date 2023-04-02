@@ -1,8 +1,10 @@
 package org.dbos.apiary.connection;
 
+import org.dbos.apiary.function.ApiaryContext;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.function.TransactionContext;
 import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.postgres.PostgresContext;
 
 import java.sql.Connection;
 import java.util.Map;
@@ -25,6 +27,11 @@ public interface ApiaryConnection {
      */
     FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID,
                                 int replayMode, Object... inputs) throws Exception;
+
+    default FunctionOutput replayFunction(ApiaryContext pgCtxt, String functionName, Set<String> replayWrittenTables,
+                                  Object... inputs) {
+        return null;
+    }
 
     Set<TransactionContext> getActiveTransactions();
 
@@ -57,24 +64,6 @@ public interface ApiaryConnection {
     Map<Integer, String> getPartitionHostMap();
 
     default Connection createNewConnection() {
-        return null;
-    }
-
-    /**
-     * for internal use only. Similar to callFunction, but is only used for replay, because the worker can explicitly specify a connection to the database.
-     * @param conn
-     * @param functionName
-     * @param workerContext
-     * @param service
-     * @param execID
-     * @param functionID
-     * @param replayMode
-     * @param inputs
-     * @return
-     */
-    default FunctionOutput replayFunction(Connection conn, String functionName, WorkerContext workerContext,
-                                          String service, long execID, long functionID, int replayMode, Set<String> replayWrittenTables,
-                                          Object... inputs) {
         return null;
     }
 

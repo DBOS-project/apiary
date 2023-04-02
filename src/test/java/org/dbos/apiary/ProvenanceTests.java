@@ -30,6 +30,11 @@ public class ProvenanceTests {
 
     private ApiaryWorker apiaryWorker;
 
+    // Local provenance config.
+    private static final int provenancePort = ApiaryConfig.postgresPort;
+    private static final String provenanceDB = ApiaryConfig.postgres;
+    private static final String provenanceAddr = "localhost";
+
     @BeforeAll
     public static void testConnection() {
         // Set the isolation level to serializable.
@@ -39,6 +44,8 @@ public class ProvenanceTests {
 
         assumeTrue(TestUtils.testPostgresConnection());
         ApiaryConfig.recordInput = true;
+        ApiaryConfig.captureMetadata = true;
+        ApiaryConfig.provenancePort = provenancePort;
     }
 
     @BeforeEach
@@ -46,11 +53,12 @@ public class ProvenanceTests {
         try {
             ApiaryConfig.captureReads = true;
             ApiaryConfig.captureUpdates = true;
-            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
-            conn.dropTable(ApiaryConfig.tableFuncInvocations);
+            PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", provenanceDB, provenanceAddr);
+            Connection provConn = conn.provConnection.get();
+            PostgresConnection.dropTable(provConn, ApiaryConfig.tableFuncInvocations);
+            PostgresConnection.dropTable(provConn, ApiaryConfig.tableRecordedInputs);
+            PostgresConnection.dropTable(provConn, ProvenanceBuffer.PROV_QueryMetadata);
             conn.dropTable(ProvenanceBuffer.PROV_ApiaryMetadata);
-            conn.dropTable(ProvenanceBuffer.PROV_QueryMetadata);
-            conn.dropTable(ApiaryConfig.tableRecordedInputs);
             conn.dropTable("KVTable");
             conn.createTable("KVTable", "KVKey integer PRIMARY KEY NOT NULL, KVValue integer NOT NULL");
             conn.dropTable("KVTableTwo");
@@ -73,13 +81,13 @@ public class ProvenanceTests {
     @Test
     public void testProvenanceBuffer() throws InterruptedException, ClassNotFoundException, SQLException {
         logger.info("testProvenanceBuffer");
-        ProvenanceBuffer buf = new ProvenanceBuffer(ApiaryConfig.postgres, "localhost");
+        ProvenanceBuffer buf = new ProvenanceBuffer(provenanceDB, provenanceAddr);
         String table = ApiaryConfig.tableFuncInvocations;
 
         // Wait until previous exporter finished.
         Thread.sleep(ProvenanceBuffer.exportInterval * 2);
-        PostgresConnection pgconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
-        Connection conn = pgconn.connection.get();
+        PostgresConnection pgconn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", provenanceDB, provenanceAddr);
+        Connection conn = pgconn.provConnection.get();
         Statement stmt = conn.createStatement();
 
         // Add something to function invocation log table.

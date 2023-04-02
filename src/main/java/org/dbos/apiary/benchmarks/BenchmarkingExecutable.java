@@ -22,7 +22,7 @@ public class BenchmarkingExecutable {
         options.addOption("d", true, "Duration (sec)?");
         options.addOption("i", true, "Benchmark Interval (μs)");
         options.addOption("mainHostAddr", true, "Address of the main host to connect to.");
-        options.addOption("s", true, "Service Name ([moodle, wordpress] in retro benchmark)");
+        options.addOption("s", true, "Service Name ([moodle, wordpress, tpcc] in retro benchmark)");
         options.addOption("p1", true, "Percentage 1");
         options.addOption("p2", true, "Percentage 2");
         options.addOption("p3", true, "Percentage 3");
@@ -64,11 +64,13 @@ public class BenchmarkingExecutable {
             logger.info("Disabling provenance tracing!");
             ApiaryConfig.captureReads = false;
             ApiaryConfig.captureUpdates = false;
+            ApiaryConfig.captureMetadata = false;
             ApiaryConfig.recordInput = false;
         } else {
             logger.info("Provenance tracing enabled!");
             ApiaryConfig.captureReads = true;
             ApiaryConfig.captureUpdates = true;
+            ApiaryConfig.captureMetadata = true;
             ApiaryConfig.recordInput = true;
         }
 

@@ -18,6 +18,7 @@ public class WPUtil {
     public static final String WP_POSTMETA_SCHEMA = WP_POST_ID + " BIGINT NOT NULL, "
             + WP_META_KEY + " VARCHAR(255) NOT NULL, "
             + WP_META_VALUE + " VARCHAR(1000) NOT NULL";
+    public static final String WP_POSTMETA_INDEX = String.format("CREATE INDEX WPMETAPOSTID ON %s (%s, %s);", WP_POSTMETA_TABLE, WP_POST_ID, WP_META_KEY);
 
     // For the comments table.
     public static final String WP_COMMENTS_TABLE = "WP_COMMENTS";
@@ -28,6 +29,7 @@ public class WPUtil {
             + WP_POST_ID + " BIGINT NOT NULL, "
             + WP_COMMENT_CONTENT + " VARCHAR(2000) NOT NULL, "
             + WP_COMMENT_STATUS + " VARCHAR(20) NOT NULL";
+    public static final String WP_COMMENTSPOSTID_INDEX = String.format("CREATE INDEX WPCOMMENTSPOSTID ON %s (%s);", WP_COMMENTS_TABLE, WP_POST_ID);
 
     // For status.
     public static final String WP_STATUS_VISIBLE = "visible";
@@ -54,4 +56,7 @@ public class WPUtil {
     public static final String FUNC_GETOPTION = "WPGetOption";
     public static final String FUNC_OPTIONEXISTS = "WPOptionExists";
     public static final String FUNC_INSERTOPTION = "WPInsertOption";
+    public static final String FUNC_UPDATEOPTION = "WPUpdateOption";
+    public static final String FUNC_LOAD_POSTS = "WPLoadPosts";
+    public static final String FUNC_LOAD_OPTIONS = "WPLoadOptions";
 }

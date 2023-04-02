@@ -20,6 +20,8 @@ public class PostgresContext extends ApiaryContext {
     private static final Logger logger = LoggerFactory.getLogger(PostgresContext.class);
     // This connection ties to all prepared statements in one transaction.
     final Connection conn;
+    final Statement stmt;  // A shared statement.
+    public PreparedStatement currPstmt = null;  // Current prepared statement, can be used to cancel a running process.
 
     private final long replayTxID;  // The replayed transaction ID.
 
@@ -40,6 +42,13 @@ public class PostgresContext extends ApiaryContext {
                            Set<String> replayWrittenTables) {
         super(workerContext, service, execID, functionID, replayMode);
         this.conn = c;
+        try {
+            this.stmt = conn.createStatement();
+        } catch (SQLException e) {
+            logger.error("Failed to create statement.");
+            e.printStackTrace();
+            throw new RuntimeException("Failed to create statement.");
+        }
         long tmpReplayTxID = -1;
         this.replayWrittenTables = replayWrittenTables;
         try {
@@ -47,12 +56,12 @@ public class PostgresContext extends ApiaryContext {
             long xmin = -1;
             long xmax = -1;
             List<Long> activeTxIDs = new ArrayList<>();
+            ResultSet rs = stmt.executeQuery("select pg_current_xact_id();");
+            rs.next();
+            txID = rs.getLong(1);
+            rs.close();
             if ((workerContext.provBuff != null) || ApiaryConfig.XDBTransactions) {
                 // Only look up transaction ID and snapshot info if we enable provenance capture.
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("select txid_current();");
-                rs.next();
-                txID = rs.getLong(1);
                 rs = stmt.executeQuery("select pg_current_snapshot();");
                 rs.next();
                 String snapshotString = rs.getString(1);
@@ -60,20 +69,18 @@ public class PostgresContext extends ApiaryContext {
                 long currXmax = PostgresUtilities.parseXmax(snapshotString);
                 xmax = currXmax;
                 activeTxIDs = PostgresUtilities.parseActiveTransactions(snapshotString);
-
+                rs.close();
                 // For epoxy transactions only.
                 if (ApiaryConfig.XDBTransactions) {
                     activeTxIDs.addAll(abortedTransactions.stream().map(t -> t.txID).filter(t -> t < currXmax).collect(Collectors.toList()));
                     for (TransactionContext t : activeTransactions) {
                         if (t.txID < xmax && !activeTxIDs.contains(t.txID)) {
-                            stmt = conn.createStatement();
                             rs = stmt.executeQuery("select txid_status(" + t.txID + ");");
                             rs.next();
                             if (rs.getString("txid_status").equals("aborted")) {
                                 activeTxIDs.add(t.txID);
                             }
                             rs.close();
-                            stmt.close();
                         }
                     }
                 }
@@ -82,10 +89,10 @@ public class PostgresContext extends ApiaryContext {
 
             // Look up the original transaction ID if it's a single replay.
             if (replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
-                PreparedStatement pstmt = conn.prepareStatement(checkReplayTxID);
-                pstmt.setLong(1, execID);
-                pstmt.setLong(2, functionID);
-                ResultSet rs = pstmt.executeQuery();
+                currPstmt = conn.prepareStatement(checkReplayTxID);
+                currPstmt.setLong(1, execID);
+                currPstmt.setLong(2, functionID);
+                rs = currPstmt.executeQuery();
                 if (rs.next()) {
                     tmpReplayTxID = rs.getLong(1);
                     logger.debug("Current transaction {} is a replay of executionID: {}, functionID: {}, original tranasction ID: {}", txID, execID, functionID, tmpReplayTxID);
@@ -162,15 +169,16 @@ public class PostgresContext extends ApiaryContext {
      * @param procedure a SQL DML statement (e.g., INSERT, UPDATE, DELETE).
      * @param input     input parameters for the SQL statement.
      */
-    public void executeUpdate(String procedure, Object... input) throws SQLException {
+    public int executeUpdate(String procedure, Object... input) throws SQLException {
         txc.readOnly = false;
         // Replay.
         if (this.replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
             replayUpdate(procedure, input);
-            return;
+            return 0;
         }
 
-        if ((ApiaryConfig.captureUpdates && (this.workerContext.provBuff != null)) ||
+        int res = 0;
+        if ((ApiaryConfig.captureMetadata && (this.workerContext.provBuff != null)) ||
                 (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue())) {
             // Append the "RETURNING *" clause to the SQL query, so we can capture data updates.
             int querySeqNum = txc.querySeqNum.getAndIncrement();
@@ -180,47 +188,52 @@ public class PostgresContext extends ApiaryContext {
             String tableName;
             int exportOperation = Utilities.getQueryType(interceptedQuery);
             // First, prepare statement. Then, execute.
-            PreparedStatement pstmt = conn.prepareStatement(interceptedQuery);
-            prepareStatement(pstmt, input);
-            rs = pstmt.executeQuery();
+            currPstmt = conn.prepareStatement(interceptedQuery);
+            prepareStatement(currPstmt, input);
+            rs = currPstmt.executeQuery();
             rsmd = rs.getMetaData();
             tableName = rsmd.getTableName(1);
 
             // If it's a selective replay, then record tableName in the write set.
             if (replayMode == ApiaryConfig.ReplayMode.SELECTIVE.getValue()) {
-                this.replayWrittenTables.add(tableName);
-                return;
+                this.replayWrittenTables.add(tableName.toUpperCase());
+                return 0;
             }
             long timestamp = Utilities.getMicroTimestamp();
             int numCol = rsmd.getColumnCount();
             // Record query metadata.
-            // TODO: maybe we should record metaata before query execution. So we know what happened even if the query failed.
             Object[] metaData = new Object[5];
             metaData[0] = txc.txID;
             metaData[1] = querySeqNum;
-            metaData[2] = pstmt.toString();
+            metaData[2] = currPstmt.toString();
             metaData[3] = tableName;
             metaData[4] = "*";
             workerContext.provBuff.addEntry(ProvenanceBuffer.PROV_QueryMetadata, metaData);
 
             // Record provenance data.
-            while (rs.next()) {
-                Object[] rowData = new Object[numCol + 4];
-                rowData[0] = txc.txID;
-                rowData[1] = timestamp;
-                rowData[2] = exportOperation;
-                rowData[3] = querySeqNum;
-                for (int i = 1; i <= numCol; i++) {
-                    rowData[i + 3] = rs.getObject(i);
+            if (ApiaryConfig.captureUpdates) {
+                while (rs.next()) {
+                    Object[] rowData = new Object[numCol + 4];
+                    rowData[0] = txc.txID;
+                    rowData[1] = timestamp;
+                    rowData[2] = exportOperation;
+                    rowData[3] = querySeqNum;
+                    for (int i = 1; i <= numCol; i++) {
+                        rowData[i + 3] = rs.getObject(i);
+                    }
+                    workerContext.provBuff.addEntry(tableName + "Events", rowData);
                 }
-                workerContext.provBuff.addEntry(tableName + "Events", rowData);
             }
+            rs.close();
+            currPstmt.close();
         } else {
             // First, prepare statement. Then, execute.
-            PreparedStatement pstmt = conn.prepareStatement(procedure);
-            prepareStatement(pstmt, input);
-            pstmt.executeUpdate();
+            currPstmt = conn.prepareStatement(procedure);
+            prepareStatement(currPstmt, input);
+            res = currPstmt.executeUpdate();
+            currPstmt.close();
         }
+        return res;
     }
 
     /**
@@ -230,13 +243,13 @@ public class PostgresContext extends ApiaryContext {
      */
     public void insertMany(String procedure, List<Object[]> inputs) throws SQLException {
         txc.readOnly = false;
-        PreparedStatement pstmt = conn.prepareStatement(procedure);
+        currPstmt = conn.prepareStatement(procedure);
         for (Object[] input : inputs) {
-            prepareStatement(pstmt, input);
-            pstmt.addBatch();
+            prepareStatement(currPstmt, input);
+            currPstmt.addBatch();
         }
-        pstmt.executeBatch();
-        pstmt.close();
+        currPstmt.executeBatch();
+        currPstmt.close();
     }
 
     /**
@@ -249,17 +262,17 @@ public class PostgresContext extends ApiaryContext {
         if (this.replayMode == ApiaryConfig.ReplayMode.SINGLE.getValue()) {
             return replayQuery(procedure, input);
         }
-        PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        currPstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
         if (input != null) {
-            prepareStatement(pstmt, input);
+            prepareStatement(currPstmt, input);
         }
-        ResultSet rs = pstmt.executeQuery();
-        if (workerContext.provBuff != null) {
+        ResultSet rs = currPstmt.executeQuery();
+        if ((workerContext.provBuff != null) && ApiaryConfig.captureMetadata) {
             int querySeqNum = txc.querySeqNum.getAndIncrement();
             Object[] metaData = new Object[5];
             metaData[0] = txc.txID;
             metaData[1] = querySeqNum;
-            metaData[2] = pstmt.toString();
+            metaData[2] = currPstmt.toString();
             Set<String> tableNames = new HashSet<>();
             List<String> projection = new ArrayList<>();
 
@@ -373,19 +386,18 @@ public class PostgresContext extends ApiaryContext {
         logger.debug("Replay update. Original transaction: {} querySeqNum: {}",
                 this.replayTxID, seqNum);
 
-        PreparedStatement pstmt;
         String interceptedQuery = interceptUpdate(procedure);
         String currentQuery;
         String originalQuery;
-        pstmt = conn.prepareStatement(interceptedQuery);
-        prepareStatement(pstmt, input);
-        currentQuery = pstmt.toString();
+        currPstmt = conn.prepareStatement(interceptedQuery);
+        prepareStatement(currPstmt, input);
+        currentQuery = currPstmt.toString();
 
         // Check the original query.
-        pstmt = conn.prepareStatement(checkMetadata);
-        pstmt.setLong(1, this.replayTxID);
-        pstmt.setLong(2, seqNum);
-        ResultSet rs = pstmt.executeQuery();
+        currPstmt = conn.prepareStatement(checkMetadata);
+        currPstmt.setLong(1, this.replayTxID);
+        currPstmt.setLong(2, seqNum);
+        ResultSet rs = currPstmt.executeQuery();
         if (rs.next()) {
             originalQuery = rs.getString(ProvenanceBuffer.PROV_QUERY_STRING);
             assert (currentQuery.equalsIgnoreCase(originalQuery));
@@ -401,20 +413,20 @@ public class PostgresContext extends ApiaryContext {
         logger.debug("Replay query. Original transaction: {} querySeqNum: {}",
                 this.replayTxID, seqNum);
 
-        PreparedStatement pstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        currPstmt = conn.prepareStatement(procedure, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
         if (input != null) {
-            prepareStatement(pstmt, input);
+            prepareStatement(currPstmt, input);
         }
-        String currentQuery = pstmt.toString();
+        String currentQuery = currPstmt.toString();
         String originalQuery;
         List<String> tables;
         String projection;
 
         // Check the original query.
-        pstmt = conn.prepareStatement(checkMetadata, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        pstmt.setLong(1, this.replayTxID);
-        pstmt.setLong(2, seqNum);
-        ResultSet rs = pstmt.executeQuery();
+        currPstmt = conn.prepareStatement(checkMetadata, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        currPstmt.setLong(1, this.replayTxID);
+        currPstmt.setLong(2, seqNum);
+        ResultSet rs = currPstmt.executeQuery();
         if (rs.next()) {
             originalQuery = rs.getString(ProvenanceBuffer.PROV_QUERY_STRING);
             assert (currentQuery.equalsIgnoreCase(originalQuery));
@@ -432,11 +444,11 @@ public class PostgresContext extends ApiaryContext {
             throw new RuntimeException("Currently do not support more than one table in the query.");
         }
         String provQuery = String.format("SELECT %s FROM %sEvents WHERE %s=? AND %s=?", projection, tables.get(0), ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID, ProvenanceBuffer.PROV_QUERY_SEQNUM);
-        pstmt = conn.prepareStatement(provQuery, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        pstmt.setLong(1, this.replayTxID);
-        pstmt.setLong(2, seqNum);
+        currPstmt = conn.prepareStatement(provQuery, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        currPstmt.setLong(1, this.replayTxID);
+        currPstmt.setLong(2, seqNum);
         rs.close();
-        rs = pstmt.executeQuery();
+        rs = currPstmt.executeQuery();
         return rs;
     }
 }

@@ -4,13 +4,16 @@ public class ApiaryConfig {
     public static final int voltdbPort = 21212;
     public static final int workerPort = 8000;
     public static final int postgresPort = 5432;
+    public static int provenancePort = 5433;  // Change this to the correct provenance DB port.
     public static final int mysqlPort = 3306;
     public static final int mongoPort = 27017;
     public static final long statelessTxid = 1L;
     public static final String tableFuncInvocations = "FUNCINVOCATIONS";
 
-    public static Boolean captureUpdates = true;
-    public static Boolean captureReads = true;
+    public static Boolean captureUpdates = false;
+    public static Boolean captureReads = false;
+    public static Boolean captureMetadata = true;
+    public static Boolean captureFuncInvocations = true;
     public static final String provenanceDefaultAddress = "localhost";
 
     public static final int REPEATABLE_READ = 1;

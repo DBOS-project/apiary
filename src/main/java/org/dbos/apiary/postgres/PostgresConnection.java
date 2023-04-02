@@ -2,6 +2,7 @@ package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.connection.ApiaryConnection;
 import org.dbos.apiary.function.*;
+import org.dbos.apiary.benchmarks.tpcc.UserAbortException;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.postgresql.ds.PGSimpleDataSource;
@@ -26,6 +27,7 @@ public class PostgresConnection implements ApiaryConnection {
     private final PGSimpleDataSource ds;
     public final ThreadLocal<Connection> connection;
     public final ThreadLocal<Connection> bgConnection;  // For background tasks, not the critical one for function executions.
+    public final ThreadLocal<Connection> provConnection;  // Connect to the provenance database.
     private final ReadWriteLock activeTransactionsLock = new ReentrantReadWriteLock();
     private long biggestxmin = Long.MIN_VALUE;
     private final Set<TransactionContext> activeTransactions = ConcurrentHashMap.newKeySet();
@@ -42,6 +44,12 @@ public class PostgresConnection implements ApiaryConnection {
      * @throws SQLException
      */
     public PostgresConnection(String hostname, Integer port, String databaseUsername, String databasePassword) throws SQLException {
+        // If no provenance database provided, use itself.
+        this(hostname, port, databaseUsername, databasePassword, ApiaryConfig.postgres, hostname);
+    }
+
+    // With provenance.
+    public PostgresConnection(String hostname, Integer port, String databaseUsername, String databasePassword, String provDBType, String provAddress) throws SQLException {
         this.ds = new PGSimpleDataSource();
         this.ds.setServerNames(new String[] {hostname});
         this.ds.setPortNumbers(new int[] {port});
@@ -76,37 +84,62 @@ public class PostgresConnection implements ApiaryConnection {
             }
             testConn.close();
         } catch (SQLException e) {
-            logger.info("Failed to connect to Postgres");
+            e.printStackTrace();
+            logger.error("Failed to connect to Postgres");
             throw new RuntimeException("Failed to connect to Postgres");
         }
-        createTable(ApiaryConfig.tableFuncInvocations,
-                ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_APIARY_TIMESTAMP + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_FUNCID + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_ISREPLAY + " SMALLINT NOT NULL, "
-                + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(256) NOT NULL, "
-                + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(512) NOT NULL, "
-                + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
-                + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20), "
-                + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(1024), "
-                + ProvenanceBuffer.PROV_READONLY + " BOOLEAN ");
-        createTable(ProvenanceBuffer.PROV_ApiaryMetadata,
+
+        this.provConnection = ThreadLocal.withInitial(() -> {
+           Connection conn = ProvenanceBuffer.createProvConnection(provDBType, provAddress);
+            try {
+                conn.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return conn;
+        });
+
+        createTable(this.bgConnection.get(), ProvenanceBuffer.PROV_ApiaryMetadata,
                 "Key VARCHAR(1024) NOT NULL, Value Integer, PRIMARY KEY(key)");
-        createTable(ProvenanceBuffer.PROV_QueryMetadata,
+
+        Connection provConn = provConnection.get();
+        if (provConn == null) {
+            logger.error("Failed to connect to provenance DB.");
+            throw new RuntimeException("Failed to connect to provenance DB");
+        }
+        createTable(provConn, ApiaryConfig.tableFuncInvocations,
                 ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_QUERY_SEQNUM + " BIGINT NOT NULL, "
-                + ProvenanceBuffer.PROV_QUERY_STRING + " VARCHAR(2048) NOT NULL, "
-                + ProvenanceBuffer.PROV_QUERY_TABLENAMES + " VARCHAR(1024) NOT NULL, "
-                + ProvenanceBuffer.PROV_QUERY_PROJECTION + " VARCHAR(1024) NOT NULL "
-        );
+                        + ProvenanceBuffer.PROV_APIARY_TIMESTAMP + " BIGINT NOT NULL, "
+                        + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
+                        + ProvenanceBuffer.PROV_FUNCID + " BIGINT NOT NULL, "
+                        + ProvenanceBuffer.PROV_ISREPLAY + " BIGINT NOT NULL, "
+                        + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(256) NOT NULL, "
+                        + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(512) NOT NULL, "
+                        + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
+                        + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20), "
+                        + ProvenanceBuffer.PROV_TXN_SNAPSHOT + " VARCHAR(65000), "
+                        + ProvenanceBuffer.PROV_READONLY + " BOOLEAN ");
+        if (ApiaryConfig.captureMetadata) {
+            createTable(provConn, ProvenanceBuffer.PROV_QueryMetadata,
+                    ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID + " BIGINT NOT NULL, "
+                            + ProvenanceBuffer.PROV_QUERY_SEQNUM + " BIGINT NOT NULL, "
+                            + ProvenanceBuffer.PROV_QUERY_STRING + " VARCHAR(2048) NOT NULL, "
+                            + ProvenanceBuffer.PROV_QUERY_TABLENAMES + " VARCHAR(1024) NOT NULL, "
+                            + ProvenanceBuffer.PROV_QUERY_PROJECTION + " VARCHAR(1024) NOT NULL "
+            );
+        }
 
         if (ApiaryConfig.recordInput) {
             // Record input for replay. Only need to record the input of the first function, so we only need to use execID to find the arguments.
-            createTable(ApiaryConfig.tableRecordedInputs,
-                    ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT PRIMARY KEY, " +
-                    ProvenanceBuffer.PROV_REQ_BYTES + " BYTEA NOT NULL");
-
+            if (provDBType.equals(ApiaryConfig.postgres)) {
+                createTable(provConn, ApiaryConfig.tableRecordedInputs,
+                        ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL PRIMARY KEY, " +
+                                ProvenanceBuffer.PROV_REQ_BYTES + " BYTEA NOT NULL");
+            } else {
+                createTable(provConn, ApiaryConfig.tableRecordedInputs,
+                        ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL PRIMARY KEY, " +
+                                ProvenanceBuffer.PROV_REQ_BYTES + " VARBINARY(65000) NOT NULL");
+            }
         }
 
         // TODO: add back recorded outputs later for fault tolerance.
@@ -120,10 +153,16 @@ public class PostgresConnection implements ApiaryConnection {
      */
     public void dropTable(String tableName) throws SQLException {
         Connection conn = bgConnection.get();
-        Statement truncateTable = conn.createStatement();
-        truncateTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
-        truncateTable.execute(String.format("DROP TABLE IF EXISTS %sEvents;", tableName));
-        truncateTable.close();
+        dropTable(conn, tableName);
+
+        Connection provConn = provConnection.get();
+        dropTable(provConn, tableName + "Events");
+    }
+
+    static public void dropTable(Connection conn, String tableName) throws SQLException {
+        Statement dropTable = conn.createStatement();
+        dropTable.execute(String.format("DROP TABLE IF EXISTS %s;", tableName));
+        dropTable.close();
     }
 
     /**
@@ -135,10 +174,13 @@ public class PostgresConnection implements ApiaryConnection {
         Connection conn = bgConnection.get();
         Statement truncateTable = conn.createStatement();
         truncateTable.execute(String.format("TRUNCATE %s;", tableName));
-        if (deleteProvenance) {
-            truncateTable.execute(String.format("TRUNCATE %sEvents;", tableName));
-        }
         truncateTable.close();
+        if (deleteProvenance) {
+            Connection provConn = provConnection.get();
+            truncateTable = provConn.createStatement();
+            truncateTable.execute(String.format("TRUNCATE %sEvents;", tableName));
+            truncateTable.close();
+        }
     }
 
     /**
@@ -149,14 +191,16 @@ public class PostgresConnection implements ApiaryConnection {
      */
     public void createTable(String tableName, String specStr) throws SQLException {
         Connection conn = bgConnection.get();
-        Statement s = conn.createStatement();
-        s.execute(String.format("CREATE TABLE IF NOT EXISTS %s (%s);", tableName, specStr));
+        createTable(conn, tableName, specStr);
+
+        Connection provConn = provConnection.get();
         if (!specStr.contains(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID)) {
+            Statement s = conn.createStatement();
             ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
             ResultSetMetaData rsmd = r.getMetaData();
             StringBuilder provTable = new StringBuilder(String.format(
-                    "CREATE TABLE IF NOT EXISTS %sEvents (%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL",
-                    tableName, ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
+                    "%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL ",
+                    ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
                     ProvenanceBuffer.PROV_APIARY_TIMESTAMP, ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE,
                     ProvenanceBuffer.PROV_QUERY_SEQNUM));
             for (int i = 0; i < rsmd.getColumnCount(); i++) {
@@ -165,9 +209,15 @@ public class PostgresConnection implements ApiaryConnection {
                 provTable.append(" ");
                 provTable.append(rsmd.getColumnTypeName(i + 1));
             }
-            provTable.append(");");
-            s.execute(provTable.toString());
+            createTable(provConn, tableName + "Events", provTable.toString());
+            r.close();
+            s.close();
         }
+    }
+
+    static private void createTable(Connection conn, String tableName, String specStr) throws SQLException {
+        Statement s = conn.createStatement();
+        s.execute(String.format("CREATE TABLE IF NOT EXISTS %s (%s);", tableName, specStr));
         s.close();
     }
 
@@ -213,6 +263,7 @@ public class PostgresConnection implements ApiaryConnection {
                                        long functionID, int replayMode, Object... inputs) {
         Connection c = connection.get();
         FunctionOutput f = null;
+        long tStart = System.nanoTime();
         while (true) {
             // Record invocation for each try, if we have provenance buffer.
             long startTime = Utilities.getMicroTimestamp();
@@ -272,8 +323,20 @@ public class PostgresConnection implements ApiaryConnection {
                             recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE);
                             break;
                         }
+                    } else if (innerException instanceof UserAbortException) {
+                        // Abort and return.
+                        UserAbortException p = (UserAbortException) innerException;
+                        f = new FunctionOutput(p.getMessage());
+                        try {
+                            rollback(ctxt);
+                        } catch (SQLException ex) {
+                            ex.printStackTrace();
+                        }
+                        recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE);
+                        break;
                     } else {
-                      logger.error("Unrecoverable InvocationTargetException: {}", e.getMessage());
+                        e.printStackTrace();
+                        logger.error("Unrecoverable InvocationTargetException: {}", e.getMessage());
                       recordTransactionInfo(workerContext, ctxt, startTime, functionName, ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE);
                     }
                     break;
@@ -303,37 +366,48 @@ public class PostgresConnection implements ApiaryConnection {
                 break;
             }
         }
-
         return f;
     }
 
     @Override
-    public FunctionOutput replayFunction(Connection conn, String functionName, WorkerContext workerContext,
-                                         String service, long execID, long functionID, int replayMode,
-                                         Set<String> replayWrittenTables,
+    public FunctionOutput replayFunction(ApiaryContext apCtxt, String functionName, Set<String> replayWrittenTables,
                                          Object... inputs) {
+        PostgresContext pgCtxt = (PostgresContext) apCtxt;
         // Fast path for replayed functions.
         FunctionOutput f;
         String actualName = functionName;
         String replayStatus = ProvenanceBuffer.PROV_STATUS_REPLAY;
 
+        PostgresContext ctxt = pgCtxt;
         while (true) {
             long startTime = Utilities.getMicroTimestamp();
-            PostgresContext ctxt = new PostgresContext(conn, workerContext, service, execID, functionID, replayMode,
-                    new HashSet<>(), new HashSet<>(), new HashSet<>());
+            if (ctxt == null) {
+                // During retry, create a new one.
+                ctxt = new PostgresContext(pgCtxt.conn, pgCtxt.workerContext, pgCtxt.service, pgCtxt.execID, pgCtxt.functionID, pgCtxt.replayMode,
+                        new HashSet<>(), new HashSet<>(), new HashSet<>());
+            }
+
             try {
-                ApiaryFunction func = workerContext.getFunction(functionName);
+                ApiaryFunction func = ctxt.workerContext.getFunction(functionName);
                 actualName = Utilities.getFunctionClassName(func);
                 logger.debug("Replaying function [{}], inputs {}", actualName, inputs);
                 f = func.apiaryRunFunction(ctxt, inputs);
                 logger.debug("Completed function [{}]", actualName);
-                // Collect all written tables.
-                replayWrittenTables.addAll(ctxt.replayWrittenTables);
-                recordTransactionInfo(workerContext, ctxt, startTime, actualName, replayStatus);
+                // If it is read-only, commit now.
+                if (ctxt.workerContext.getFunctionReadOnly(functionName)) {
+                    ctxt.conn.commit();
+                } else {
+                    // Collect all written tables.
+                    replayWrittenTables.addAll(ctxt.replayWrittenTables);
+                }
+                recordTransactionInfo(ctxt.workerContext, ctxt, startTime, actualName, replayStatus);
+
                 break;
             } catch (Exception e) {
                 try {
-                    rollback(ctxt);
+                    if (!ctxt.conn.isClosed()) {
+                        rollback(ctxt);
+                    }
                 } catch (SQLException ex) {
                     ex.printStackTrace();
                 }
@@ -348,17 +422,32 @@ public class PostgresConnection implements ApiaryConnection {
                         PSQLException p = (PSQLException) innerException;
                         errorMsg = p.getMessage();
                         // Only retry under retro mode. We should not have serialization error under faithful replay.
-                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState()) && workerContext.hasRetroFunctions()) {
-                            recordTransactionInfo(workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
-                            logger.debug("Serialization failure during replay, will retry: {}", errorMsg);
+                        if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState()) && ctxt.workerContext.hasRetroFunctions()) {
+                            recordTransactionInfo(ctxt.workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
+                            logger.debug("Serialization failure during replay execution, will retry: {}", errorMsg);
+
+                            ctxt = null;  // Create a new one during retry.
                             continue;  // Retry.
                         }
+                    }
+                }
+
+                if (e instanceof PSQLException) {
+                    PSQLException p = (PSQLException) e;
+                    errorMsg = p.getMessage();
+                    // Only retry under retro mode. We should not have serialization error under faithful replay.
+                    if (p.getSQLState().equals(PSQLState.SERIALIZATION_FAILURE.getState()) && ctxt.workerContext.hasRetroFunctions()) {
+                        recordTransactionInfo(ctxt.workerContext, ctxt, startTime, actualName, ProvenanceBuffer.PROV_STATUS_FAIL_RECOVERABLE);
+                        logger.debug("Serialization failure during replay commit, will retry: {}", errorMsg);
+
+                        ctxt = null;  // Create a new one during retry.
+                        continue;  // Retry.
                     }
                 }
                 logger.error("Unrecoverable failed execution during replay. Error: {}", errorMsg);
                 replayStatus = ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE;
                 f = new FunctionOutput(errorMsg);
-                recordTransactionInfo(workerContext, ctxt, startTime, actualName, replayStatus);
+                recordTransactionInfo(ctxt.workerContext, ctxt, startTime, actualName, replayStatus);
                 break;
             }
         }
@@ -403,33 +492,11 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     private void recordTransactionInfo(WorkerContext workerContext, PostgresContext ctxt, long startTime, String functionName, String status) {
-        if ((workerContext.provBuff == null) || (ctxt.execID == 0)) {
+        if ((workerContext.provBuff == null) || (ctxt.execID == 0) || !ApiaryConfig.captureFuncInvocations) {
             return;
         }
         // Get actual commit timestamp if track_commit_timestamp is available. Otherwise, get the timestamp from Java.
         long commitTime = Utilities.getMicroTimestamp();
-        if (ApiaryConfig.trackCommitTimestamp && status.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
-            try {
-                // TODO: future optimization may put this step off the critical path.
-                Connection conn = bgConnection.get();
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(String.format("SELECT CAST(extract(epoch from pg_xact_commit_timestamp(\'%s\'::xid)) * 1000000 AS BIGINT);", ctxt.txc.txID));
-                if (rs.next()) {
-                    long tmpTime = rs.getLong(1);
-                    if (tmpTime > 0) {
-                        // TODO: find a better way to identify this.
-                        commitTime = tmpTime;
-                    } else {
-                        // tmpTime=0 means the transaction aborted. Use the normal timestamp.
-                        status = ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE;
-                    }
-                }
-                rs.close();
-                stmt.close();
-            } catch (SQLException e) {
-                logger.error("Failed to get commit timestamp.");
-            }
-        }
         String txnSnapshot = PostgresUtilities.constuctSnapshotStr(ctxt.txc.xmin, ctxt.txc.xmax, ctxt.txc.activeTransactions);
         workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot, ctxt.txc.readOnly);
     }

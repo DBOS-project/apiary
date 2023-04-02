@@ -126,10 +126,10 @@
 						<configuration>
 							<archive>
 								<manifest>
-									<mainClass>org.dbos.apiary.postgresdemo.executable.RollbackExecutable</mainClass>
+									<mainClass>org.dbos.apiary.postgresdemo.executable.DemoExecutable</mainClass>
 								</manifest>
 							</archive>
-							<finalName>demo-rollback-exec</finalName>
+							<finalName>demo-exec</finalName>
 						</configuration>
 					</execution>
 				</executions>

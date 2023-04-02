@@ -35,4 +35,4 @@ docker exec -it vertica_ce /opt/vertica/bin/adminTools -t create_db -s localhost
 docker exec -it vertica_ce /opt/vertica/bin/admintools -t start_db -d apiary_provenance
 
 # Populate schema.
-# docker exec -i vertica_ce /opt/vertica/bin/vsql -t < sql/provenance_ddl.sql
+docker exec -i vertica_ce /opt/vertica/bin/vsql -t < sql/provenance_ddl.sql

@@ -1,8 +1,8 @@
-package org.dbos.apiary.postgresdemo;
+package org.dbos.apiary.rsademo;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.postgresdemo.functions.*;
+import org.dbos.apiary.rsademo.functions.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;

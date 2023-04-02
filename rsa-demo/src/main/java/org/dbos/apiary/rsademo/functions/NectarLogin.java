@@ -1,4 +1,4 @@
-package org.dbos.apiary.postgresdemo.functions;
+package org.dbos.apiary.rsademo.functions;
 
 import org.dbos.apiary.postgres.PostgresContext;
 import org.dbos.apiary.postgres.PostgresFunction;

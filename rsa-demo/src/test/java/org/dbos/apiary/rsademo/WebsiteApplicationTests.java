@@ -1,4 +1,4 @@
-package org.dbos.apiary.postgresdemo;
+package org.dbos.apiary.rsademo;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

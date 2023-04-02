@@ -39,7 +39,7 @@ The first thing we need to do is  create some database tables in Postgres
 to store the information our site needs: logins and posts.
 We create these tables inside the Spring Boot controller
 when our web server starts;
-the full code for it is [here](src/main/java/org/dbos/apiary/postgresdemo/NectarController.java).
+the full code for it is [here](src/main/java/org/dbos/apiary/rsademo/NectarController.java).
 We provide an API for creating tables in Apiary, which uses
 conventional Postgres syntax:
 
@@ -141,15 +141,15 @@ public RedirectView loginSubmit(@ModelAttribute Credentials credentials, @ModelA
 }
 ```
 
-We similarly write [AddPosts](src/main/java/org/dbos/apiary/postgresdemo/functions/NectarAddPost.java)
-and [GetPosts](src/main/java/org/dbos/apiary/postgresdemo/functions/NectarGetPosts.java)
+We similarly write [AddPosts](src/main/java/org/dbos/apiary/rsademo/functions/NectarAddPost.java)
+and [GetPosts](src/main/java/org/dbos/apiary/rsademo/functions/NectarGetPosts.java)
 functions in Apiary and call them in Spring;
-you can see code for all four functions [here](src/main/java/org/dbos/apiary/postgresdemo/functions).
+you can see code for all four functions [here](src/main/java/org/dbos/apiary/rsademo/functions).
 
 ### Tying it Together
 
 With our functions written, it's almost time to launch our site.
-We'll now tell the [Spring controller](src/main/java/org/dbos/apiary/postgresdemo/NectarController.java)
+We'll now tell the [Spring controller](src/main/java/org/dbos/apiary/rsademo/NectarController.java)
 to launch an Apiary worker on startup to manage all the Apiary function requests,
 then register all our functions with the worker:
 

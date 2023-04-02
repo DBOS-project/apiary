@@ -1,4 +1,4 @@
-package org.dbos.apiary.postgresdemo.executable;
+package org.dbos.apiary.rsademo.executable;
 
 import org.dbos.apiary.client.ApiaryWorkerClient;
 

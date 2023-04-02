@@ -1,4 +1,4 @@
-package org.dbos.apiary.postgresdemo;
+package org.dbos.apiary.rsademo;
 
 public class Credentials {
 

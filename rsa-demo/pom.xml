@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.dbos</groupId>
-	<artifactId>website</artifactId>
+	<artifactId>rsademo</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>website</name>
 	<description>DBOS RSA Demo Website</description>
@@ -126,7 +126,7 @@
 						<configuration>
 							<archive>
 								<manifest>
-									<mainClass>org.dbos.apiary.postgresdemo.executable.DemoExecutable</mainClass>
+									<mainClass>org.dbos.apiary.rsademo.executable.DemoExecutable</mainClass>
 								</manifest>
 							</archive>
 							<finalName>demo-exec</finalName>

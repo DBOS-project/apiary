@@ -1,4 +1,4 @@
-package org.dbos.apiary.postgresdemo;
+package org.dbos.apiary.rsademo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

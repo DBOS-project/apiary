@@ -4,13 +4,14 @@ import org.apache.commons.cli.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.sql.SQLException;
 
 public class DemoExecutable {
 
     private static final Logger logger = LoggerFactory.getLogger(DemoExecutable.class);
 
-    public static void main(String[] args) throws ParseException, SQLException {
+    public static void main(String[] args) throws ParseException, IOException {
         Options options = new Options();
         options.addOption("s", true, "Script to run");
 
@@ -21,5 +22,11 @@ public class DemoExecutable {
         String script = cmd.getOptionValue("s");
 
         logger.info("Running script: {}", script);
+
+        if (script.equals("populateDatabase")) {
+            PopulateDatabase.populateDatabase(5);
+        } else {
+            logger.info("Unknown Script: {}", script);
+        }
     }
 }

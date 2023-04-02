@@ -12,7 +12,7 @@
 	<artifactId>website</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>website</name>
-	<description>DBOS Demo Website</description>
+	<description>DBOS RSA Demo Website</description>
 	<properties>
 		<java.version>11</java.version>
 	</properties>

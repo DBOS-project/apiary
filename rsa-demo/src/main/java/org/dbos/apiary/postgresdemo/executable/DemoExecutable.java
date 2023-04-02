@@ -41,6 +41,8 @@ public class DemoExecutable {
             assert(cmd.hasOption("numUsers"));
             int numUsers = Integer.parseInt(cmd.getOptionValue("numUsers"));
             PopulateDatabase.populateDatabase(pgConn, numUsers);
+        } else if (script.equals("deleteDatabase")) {
+            DeleteDatabase.deleteDatabase();
         } else {
             logger.info("Unknown Script: {}", script);
         }

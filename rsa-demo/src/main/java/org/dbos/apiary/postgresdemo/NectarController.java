@@ -2,10 +2,7 @@ package org.dbos.apiary.postgresdemo;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.postgresdemo.functions.NectarAddPost;
-import org.dbos.apiary.postgresdemo.functions.NectarGetPosts;
-import org.dbos.apiary.postgresdemo.functions.NectarLogin;
-import org.dbos.apiary.postgresdemo.functions.NectarRegister;
+import org.dbos.apiary.postgresdemo.functions.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
@@ -24,6 +21,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Controller
 @SessionAttributes("logincredentials")
@@ -47,6 +45,8 @@ public class NectarController {
         apiaryWorker.registerFunction("NectarLogin", ApiaryConfig.postgres, NectarLogin::new);
         apiaryWorker.registerFunction("NectarAddPost", ApiaryConfig.postgres, NectarAddPost::new);
         apiaryWorker.registerFunction("NectarGetPosts", ApiaryConfig.postgres, NectarGetPosts::new);
+        apiaryWorker.registerFunction("NectarDeletePosts", ApiaryConfig.postgres, NectarDeletePosts::new);
+        apiaryWorker.restrictFunction("NectarDeletePosts", Set.of("admin_1", "admin_2", "admin_3"));
         apiaryWorker.startServing();
 
         this.client = new ApiaryWorkerClient("localhost");

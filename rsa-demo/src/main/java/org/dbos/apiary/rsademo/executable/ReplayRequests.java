@@ -27,23 +27,6 @@ public class ReplayRequests {
     private static final int numWorker = 4;
 
     public static void replay(long startExecId, long endExecId) throws SQLException, InvalidProtocolBufferException {
-        // Disable provenance tracking, only capture func invocations and input.
-        ApiaryConfig.captureReads = false;
-        ApiaryConfig.captureUpdates = false;
-        ApiaryConfig.captureMetadata = false;
-        ApiaryConfig.recordInput = false;
-        ApiaryConfig.provenancePort = provenancePort;
-
-        PostgresConnection pgConn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos", provenanceDB, provenanceAddr);
-
-        // Enable provenance logging in the worker.
-        ApiaryWorker apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), numWorker, provenanceDB, provenanceAddr);
-        apiaryWorker.registerConnection(ApiaryConfig.postgres, pgConn);
-        apiaryWorker.registerFunction("NectarRegister", ApiaryConfig.postgres, NectarRegister::new);
-        apiaryWorker.registerFunction("NectarLogin", ApiaryConfig.postgres, NectarLogin::new);
-        apiaryWorker.registerFunction("NectarAddPost", ApiaryConfig.postgres, NectarAddPost::new);
-        apiaryWorker.registerFunction("NectarGetPosts", ApiaryConfig.postgres, NectarGetPosts::new);
-        apiaryWorker.startServing();
 
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost");
 
@@ -51,7 +34,6 @@ public class ReplayRequests {
         FunctionOutput res = client.retroReplay(startExecId, endExecId, ApiaryConfig.ReplayMode.ALL.getValue());
         assert (res != null);
         long elapsedTime = System.currentTimeMillis() - startTime;
-        apiaryWorker.shutdown();
         logger.info("Replay execution time: {} ms", elapsedTime);
     }
 }

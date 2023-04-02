@@ -460,7 +460,6 @@ public class WordPressBenchmark {
         }
         logger.info("Total Throughput: {}", totalThroughput);
 
-        ApiaryWorker.printStats();
         apiaryWorker.shutdown();
     }
 

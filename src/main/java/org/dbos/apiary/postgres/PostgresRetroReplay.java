@@ -552,9 +552,9 @@ public class PostgresRetroReplay {
             double throughput = (double) numQueries * 1000.0 / elapsedTime;
             long p50 = queryTimes.get(numQueries / 2);
             long p99 = queryTimes.get((numQueries * 99) / 100);
-            logger.info("[{}]: Duration: {}  Operations: {} Op/sec: {} Average: {}μs p50: {}μs p99: {}μs", opName, elapsedTime, numQueries, String.format("%.03f", throughput), average, p50, p99);
+            logger.debug("[{}]: Duration: {}  Operations: {} Op/sec: {} Average: {}μs p50: {}μs p99: {}μs", opName, elapsedTime, numQueries, String.format("%.03f", throughput), average, p50, p99);
         } else {
-            logger.info("No {}.", opName);
+            logger.debug("No {}.", opName);
         }
     }
 

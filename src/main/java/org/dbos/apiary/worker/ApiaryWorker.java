@@ -50,33 +50,6 @@ public class ApiaryWorker {
 
     public final WorkerContext workerContext;
 
-    public static final Collection<Long> getSnapshotTimes = new ConcurrentLinkedQueue<>();
-    public static final Collection<Long> txnExecutionTimes = new ConcurrentLinkedQueue<>();
-    public static final Collection<Long> txnCommitTimes = new ConcurrentLinkedQueue<>();
-    public static final Collection<Long> totalExecTimes = new ConcurrentLinkedQueue<>();
-    public static final Collection<Long> getTxIdTimes = new ConcurrentLinkedQueue<>();
-
-    public static void printStats() {
-        Map<String, Collection<Long>> statsMap = new HashMap<>();
-        statsMap.put("GetSnapshot", getSnapshotTimes);
-        statsMap.put("TxnExec", txnExecutionTimes);
-        statsMap.put("TxnCommit", txnCommitTimes);
-        statsMap.put("TotalExec", totalExecTimes);
-        statsMap.put("GetTxId", getTxIdTimes);
-        for (String key : statsMap.keySet()) {
-            List<Long> queryTimes = statsMap.get(key).stream().map(i -> i / 1000).sorted().collect(Collectors.toList());
-            int numQueries = queryTimes.size();
-            if (numQueries > 0) {
-                long average = queryTimes.stream().mapToLong(i -> i).sum() / numQueries;
-                long p50 = queryTimes.get(numQueries / 2);
-                long p99 = queryTimes.get((numQueries * 99) / 100);
-                logger.info("{}: Data points: {} Average: {}μs p50: {}μs p99: {}μs", key, numQueries, average, p50, p99);
-            } else {
-                logger.info("No {} records.", key);
-            }
-        }
-    }
-
     public ApiaryWorker(ApiaryScheduler scheduler, int numWorkerThreads) {
         // By default, no provenance buffer.
         this(scheduler, numWorkerThreads, null, null);

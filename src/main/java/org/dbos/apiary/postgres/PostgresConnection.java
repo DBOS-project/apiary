@@ -113,7 +113,7 @@ public class PostgresConnection implements ApiaryConnection {
                         + ProvenanceBuffer.PROV_EXECUTIONID + " BIGINT NOT NULL, "
                         + ProvenanceBuffer.PROV_FUNCID + " BIGINT NOT NULL, "
                         + ProvenanceBuffer.PROV_ISREPLAY + " BIGINT NOT NULL, "
-                        + ProvenanceBuffer.PROV_SERVICE + " VARCHAR(256) NOT NULL, "
+                        + ProvenanceBuffer.PROV_APIARY_ROLE + " VARCHAR(256) NOT NULL, "
                         + ProvenanceBuffer.PROV_PROCEDURENAME + " VARCHAR(512) NOT NULL, "
                         + ProvenanceBuffer.PROV_END_TIMESTAMP + " BIGINT, "
                         + ProvenanceBuffer.PROV_FUNC_STATUS + " VARCHAR(20), "
@@ -259,7 +259,7 @@ public class PostgresConnection implements ApiaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID,
+    public FunctionOutput callFunction(String functionName, WorkerContext workerContext, String role, long execID,
                                        long functionID, int replayMode, Object... inputs) {
         Connection c = connection.get();
         FunctionOutput f = null;
@@ -268,7 +268,7 @@ public class PostgresConnection implements ApiaryConnection {
             // Record invocation for each try, if we have provenance buffer.
             long startTime = Utilities.getMicroTimestamp();
             activeTransactionsLock.readLock().lock();
-            PostgresContext ctxt = new PostgresContext(c, workerContext, service, execID, functionID, replayMode,
+            PostgresContext ctxt = new PostgresContext(c, workerContext, role, execID, functionID, replayMode,
                     new HashSet<>(activeTransactions), new HashSet<>(abortedTransactions), new HashSet<>());
             activeTransactions.add(ctxt.txc);
             latestTransactionContext = ctxt.txc;
@@ -383,7 +383,7 @@ public class PostgresConnection implements ApiaryConnection {
             long startTime = Utilities.getMicroTimestamp();
             if (ctxt == null) {
                 // During retry, create a new one.
-                ctxt = new PostgresContext(pgCtxt.conn, pgCtxt.workerContext, pgCtxt.service, pgCtxt.execID, pgCtxt.functionID, pgCtxt.replayMode,
+                ctxt = new PostgresContext(pgCtxt.conn, pgCtxt.workerContext, pgCtxt.role, pgCtxt.execID, pgCtxt.functionID, pgCtxt.replayMode,
                         new HashSet<>(), new HashSet<>(), new HashSet<>());
             }
 
@@ -498,6 +498,6 @@ public class PostgresConnection implements ApiaryConnection {
         // Get actual commit timestamp if track_commit_timestamp is available. Otherwise, get the timestamp from Java.
         long commitTime = Utilities.getMicroTimestamp();
         String txnSnapshot = PostgresUtilities.constuctSnapshotStr(ctxt.txc.xmin, ctxt.txc.xmax, ctxt.txc.activeTransactions);
-        workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot, ctxt.txc.readOnly);
+        workerContext.provBuff.addEntry(ApiaryConfig.tableFuncInvocations, ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.role, functionName, commitTime, status, txnSnapshot, ctxt.txc.readOnly);
     }
 }

@@ -3,6 +3,7 @@ package org.dbos.apiary.client;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.function.FunctionOutput;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.worker.ApiaryWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.*;
@@ -22,7 +23,9 @@ public class ApiaryWorkerClient {
     private final String apiaryWorkerAddress;
     private final int clientID;
 
-    // A map that stores unique execution ID for each service.
+    private final String clientRole;
+
+    // A map that stores unique execution ID for each client.
     private final AtomicLong execIDGenerator = new AtomicLong(0);
 
     /**
@@ -30,7 +33,15 @@ public class ApiaryWorkerClient {
      * @param apiaryWorkerAddress   the address of an Apiary worker.
      */
     public ApiaryWorkerClient(String apiaryWorkerAddress) {
-        this(apiaryWorkerAddress, new ZContext());
+        this(apiaryWorkerAddress, new ZContext(), ApiaryConfig.defaultRole);
+    }
+
+    /**
+     * Create a client for sending synchronous requests to Apiary, with a specified role.
+     * @param apiaryWorkerAddress   the address of an Apiary worker.
+     */
+    public ApiaryWorkerClient(String apiaryWorkerAddress, String apiaryRole) {
+        this(apiaryWorkerAddress, new ZContext(), apiaryRole);
     }
 
     /**
@@ -39,11 +50,22 @@ public class ApiaryWorkerClient {
      * @param zContext              the ZContext to be used for sending requests and receiving replies.
      */
     public ApiaryWorkerClient(String apiaryWorkerAddress, ZContext zContext) {
+        this(apiaryWorkerAddress, zContext, ApiaryConfig.defaultRole);
+    }
+
+    /**
+     * Create a client for sending asynchronous requests to Apiary, with a specified role.
+     * @param apiaryWorkerAddress   the address of an Apiary worker.
+     * @param zContext              the ZContext to be used for sending requests and receiving replies.
+     * @param apiaryRole            the role of this client.
+     */
+    public ApiaryWorkerClient(String apiaryWorkerAddress, ZContext zContext, String apiaryRole) {
         this.apiaryWorkerAddress = apiaryWorkerAddress;
         this.internalClient = new InternalApiaryWorkerClient(zContext);
+        this.clientRole = apiaryRole;
         int tmpID = 0;
         try {
-            tmpID = internalClient.executeFunction(this.apiaryWorkerAddress, getApiaryClientID, "ApiarySystem", 0L, ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()).getInt();
+            tmpID = internalClient.executeFunction(this.apiaryWorkerAddress, getApiaryClientID, ApiaryConfig.systemRole, 0L, ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()).getInt();
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
         }
@@ -62,12 +84,12 @@ public class ApiaryWorkerClient {
     /**
      * Serialize a function invocation request, used for sending asynchronous requests.
      * @param name      the name of the invoked function.
-     * @param service   the service name of this invocation.
+     * @param role      the role name that invokes this function.
      * @param arguments the arguments of the invoked function.
      * @return          serialized byte array of the request.
      */
-    public byte[] serializeExecuteRequest(String name, String service, Object... arguments) {
-        return InternalApiaryWorkerClient.serializeExecuteRequest(name, service, getExecutionId(), ApiaryConfig.ReplayMode.NOT_REPLAY.getValue(), 0L, 0L, arguments);
+    public byte[] serializeExecuteRequest(String name, String role, Object... arguments) {
+        return InternalApiaryWorkerClient.serializeExecuteRequest(name, role, getExecutionId(), ApiaryConfig.ReplayMode.NOT_REPLAY.getValue(), 0L, 0L, arguments);
     }
 
     /**
@@ -78,19 +100,7 @@ public class ApiaryWorkerClient {
      * @throws InvalidProtocolBufferException
      */
     public FunctionOutput executeFunction(String name, Object... arguments) throws InvalidProtocolBufferException {
-        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", getExecutionId(), ApiaryConfig.ReplayMode.NOT_REPLAY.getValue(), arguments);
-    }
-
-    /**
-     * Replay a single function/workflow synchronously and block waiting for the result. The replay will not generate new provenance data.
-     * @param execId    the original execution ID of the invoked function.
-     * @param name      the name of the invoked function.
-     * @param arguments the original arguments of the invoked function.
-     * @return          the output of the invoked function, which should be identical to the original one.
-     * @throws InvalidProtocolBufferException
-     */
-    public FunctionOutput replayFunction(long execId, String name, Object... arguments) throws InvalidProtocolBufferException {
-        return internalClient.executeFunction(this.apiaryWorkerAddress, name, "DefaultService", execId, ApiaryConfig.ReplayMode.SINGLE.getValue(), arguments);
+        return internalClient.executeFunction(this.apiaryWorkerAddress, name, this.clientRole, getExecutionId(), ApiaryConfig.ReplayMode.NOT_REPLAY.getValue(), arguments);
     }
 
     /**
@@ -103,7 +113,7 @@ public class ApiaryWorkerClient {
      * @throws InvalidProtocolBufferException
      */
     public FunctionOutput retroReplay(long startExecId, long endExecId, int retroMode) throws InvalidProtocolBufferException {
-        return internalClient.retroReplay(this.apiaryWorkerAddress, "retroReplay", "DefaultService", startExecId, endExecId, retroMode, null);
+        return internalClient.retroReplay(this.apiaryWorkerAddress, "retroReplay", this.clientRole, startExecId, endExecId, retroMode, null);
     }
 
     /**

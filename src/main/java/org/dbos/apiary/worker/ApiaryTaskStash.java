@@ -19,7 +19,7 @@ public class ApiaryTaskStash {
     public final Queue<Task> queuedTasks;
     public final AtomicInteger numFinishedTasks = new AtomicInteger(0);
     public final long senderTimestampNano;
-    public final String service;
+    public final String role;
     public final long execId;
     public final int replayMode;
 
@@ -27,8 +27,8 @@ public class ApiaryTaskStash {
     public Object output;
     public String errorMsg;
 
-    public ApiaryTaskStash(String service, long execId, long callerId, long functionID, int replayMode, ZFrame replyAddr, long senderTimestampNano) {
-        this.service = service;
+    public ApiaryTaskStash(String role, long execId, long callerId, long functionID, int replayMode, ZFrame replyAddr, long senderTimestampNano) {
+        this.role = role;
         this.execId = execId;
         this.callerId = callerId;
         this.functionID = functionID;

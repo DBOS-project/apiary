@@ -40,8 +40,8 @@ public class MysqlContext extends ApiaryContext {
 
     Map<String, List<String>> writtenKeys;
 
-    public MysqlContext(Connection conn, Map<String, List<String>> writtenKeys, Map<String, Map<String, AtomicBoolean>> lockManager,  WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Percentile upserts, Percentile queries) {
-        super(workerContext, service, execID, functionID, ApiaryConfig.ReplayMode.NOT_REPLAY.getValue());
+    public MysqlContext(Connection conn, Map<String, List<String>> writtenKeys, Map<String, Map<String, AtomicBoolean>> lockManager,  WorkerContext workerContext, TransactionContext txc, String role, long execID, long functionID, Percentile upserts, Percentile queries) {
+        super(workerContext, role, execID, functionID, ApiaryConfig.ReplayMode.NOT_REPLAY.getValue());
         this.writtenKeys = writtenKeys;
         this.conn = conn;
         this.txc = txc;

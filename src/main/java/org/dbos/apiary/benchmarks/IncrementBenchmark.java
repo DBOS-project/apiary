@@ -25,7 +25,7 @@ public class IncrementBenchmark {
     private static final int numThreads = 1;
     private static final Collection<Long> trialTimes = new ConcurrentLinkedQueue<>();
 
-    public static void benchmark(String voltAddr, String service, Integer interval, Integer duration, boolean stateless) throws IOException, InterruptedException, ProcCallException {
+    public static void benchmark(String voltAddr, String role, Integer interval, Integer duration, boolean stateless) throws IOException, InterruptedException, ProcCallException {
         VoltConnection conn = new VoltConnection(voltAddr, ApiaryConfig.voltdbPort);
         conn.client.callProcedure("TruncateTables");
 
@@ -94,9 +94,9 @@ public class IncrementBenchmark {
                         Integer key = ThreadLocalRandom.current().nextInt(numKeys);
                         byte[] reqBytes;
                         if (stateless) {
-                            reqBytes = client.serializeExecuteRequest("IncrementStatelessDriver", service,   key);
+                            reqBytes = client.serializeExecuteRequest("IncrementStatelessDriver", role,   key);
                         } else {
-                            reqBytes = client.serializeExecuteRequest("IncrementProcedure", service, key);
+                            reqBytes = client.serializeExecuteRequest("IncrementProcedure", role, key);
                         }
                         ZMQ.Socket socket = client.getSocket(conn.getHostname(new Object[]{key}));
                         socket.send(reqBytes, 0);

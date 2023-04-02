@@ -1,7 +1,5 @@
 package org.dbos.apiary.function;
 
-import org.dbos.apiary.utilities.ApiaryConfig;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,7 +18,7 @@ public abstract class ApiaryContext {
     /**
      * For internal use only.
      */
-    public final String service;
+    public final String role;
     /**
      * For internal use only.
      */
@@ -31,9 +29,9 @@ public abstract class ApiaryContext {
      */
     public final int replayMode;
 
-    public ApiaryContext(WorkerContext workerContext, String service, long execID, long functionID, int replayMode) {
+    public ApiaryContext(WorkerContext workerContext, String role, long execID, long functionID, int replayMode) {
         this.workerContext = workerContext;
-        this.service = service;
+        this.role = role;
         this.execID = execID;
         this.functionID = functionID;
         this.replayMode = replayMode;

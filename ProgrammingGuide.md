@@ -162,13 +162,13 @@ in database tables (by default in Postgres, but we also support Vertica)
 for easy querying.  First, Apiary maintains a `FuncInvocations`
 table storing information on all function invocations.  Its schema is:
 
-| Field     | Type    | Description                           |
-|-----------|---------|---------------------------------------|
-| APIARY_TRANSACTION_ID    | BIGINT  | Postgres Transaction ID     .         |
-| APIARY_TIMESTAMP | BIGINT  | Unix epoch timestamp in microseconds. |
-| EXECUTIONID | BIGINT  | Unique ID of program execution.       |
-| SERVICE | VARCHAR | Name of program service.              |
-| PROCEDURENAME | VARCHAR | Function name.                        |
+| Field                 | Type    | Description                           |
+|-----------------------|---------|---------------------------------------|
+| APIARY_TRANSACTION_ID | BIGINT  | Postgres Transaction ID     .         |
+| APIARY_TIMESTAMP      | BIGINT  | Unix epoch timestamp in microseconds. |
+| APIARY_EXECUTIONID    | BIGINT  | Unique ID of program execution.       |
+| APIARY_ROLE           | VARCHAR | Name of the role.                     |
+| APIARY_PROCEDURENAME  | VARCHAR | Function name.                        |
 
 Then, for each database table in an application, Apiary
 maintains an `Events` table tracking all operations that occured on the table:

@@ -154,7 +154,7 @@ public class VoltDBTests {
 
         // Non-blocking send. Then get result and calculate latency.
         long actualSendTime = System.nanoTime();
-        byte[] reqBytes = client.serializeExecuteRequest("AdditionFunction", "defaultService", 1, "2", new String[]{"matei", "zaharia"}, new int[]{2, 3});
+        byte[] reqBytes = client.serializeExecuteRequest("AdditionFunction", ApiaryConfig.defaultRole, 1, "2", new String[]{"matei", "zaharia"}, new int[]{2, 3});
         for (int i = 0; i < 5; i++) {
             socket.send(reqBytes, 0);
         }
@@ -304,20 +304,16 @@ public class VoltDBTests {
         rs.next();
         long txid1 = rs.getLong(1);
         long resExecId = rs.getLong(3);
-        String resService = rs.getString(4);
         String resFuncName = rs.getString(5);
         long expectedID = ((long)client.getClientID() << 48);
         assertEquals(expectedID, resExecId);
-        assertEquals("DefaultService", resService);
         assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);
 
         rs.next();
         long txid2 = rs.getLong(1);
         resExecId = rs.getLong(3);
-        resService = rs.getString(4);
         resFuncName = rs.getString(5);
         assertEquals(expectedID, resExecId);
-        assertEquals("DefaultService", resService);
         assertEquals(VoltProvenanceBasic.class.getName(), resFuncName);
 
         // Inner transaction should have the same transaction ID.

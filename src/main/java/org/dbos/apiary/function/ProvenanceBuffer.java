@@ -28,7 +28,7 @@ public class ProvenanceBuffer {
     public static final String PROV_APIARY_TIMESTAMP = "APIARY_TIMESTAMP";
     public static final String PROV_EXECUTIONID = "APIARY_EXECUTIONID";
     public static final String PROV_FUNCID ="APIARY_FUNCID";
-    public static final String PROV_SERVICE = "APIARY_SERVICE";
+    public static final String PROV_APIARY_ROLE = "APIARY_ROLE";
     public static final String PROV_PROCEDURENAME = "APIARY_PROCEDURENAME";
     public static final String PROV_ISREPLAY = "APIARY_ISREPLAY";
     public static final String PROV_APIARY_OPERATION_TYPE = "APIARY_OPERATION_TYPE";
@@ -217,51 +217,6 @@ public class ProvenanceBuffer {
         }
     }
 
-    private void getCommitTimestamp(Object[] entry) {
-        if (!ApiaryConfig.trackCommitTimestamp) {
-            return;
-        }
-        if (this.pgConn == null) {
-            logger.error("No Postgres connection for provenance.");
-            return;
-        }
-        // The entry contains: ctxt.txc.txID, startTime, ctxt.execID, ctxt.functionID, (short)ctxt.replayMode, ctxt.service, functionName, commitTime, status, txnSnapshot, ctxt.txc.readOnly
-        if (entry.length < 11) {
-            logger.error("Wrong entry length: {}, expected 11.", entry.length);
-        }
-        String snapshot = (String) entry[9];
-        // If recorded snapshot, try to find it in postgres.
-        if (snapshot.isEmpty()) {
-            return;
-        }
-        long txId = (long) entry[0];
-        String status = (String) entry[8];
-        if (status.equals(ProvenanceBuffer.PROV_STATUS_COMMIT)) {
-            try {
-                // TODO: future optimization may put this step off the critical path.
-                Connection pconn = this.pgConn.get();
-                Statement stmt = pconn.createStatement();
-                ResultSet rs = stmt.executeQuery(String.format("SELECT CAST(extract(epoch from pg_xact_commit_timestamp(\'%s\'::xid)) * 1000000 AS BIGINT);", txId));
-                if (rs.next()) {
-                    long tmpTime = rs.getLong(1);
-                    if (tmpTime > 0) {
-                        // TODO: find a better way to identify this.
-                        entry[7] = tmpTime;
-                    } else {
-                        // tmpTime=0 means the transaction aborted. Use the normal timestamp.
-                        entry[8] = ProvenanceBuffer.PROV_STATUS_FAIL_UNRECOVERABLE;
-                    }
-                }
-                rs.close();
-                stmt.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-                logger.error("Failed to get commit timestamp for txid {}.", txId);
-            }
-        }
-
-    }
-
     private void exportTableBuffer(String table) throws SQLException {
         Connection connection = this.conn.get();
         connection.setAutoCommit(false);
@@ -282,11 +237,6 @@ public class ProvenanceBuffer {
             int numVals = listVals.length;
             int numColumns = tableBuffer.colTypeMap.size();
             assert (numVals <= numColumns);
-
-            // Special case for funcInvocations. Get commit timestamp for committed queries.
-            if (table.equalsIgnoreCase(ApiaryConfig.tableFuncInvocations)) {
-                getCommitTimestamp(listVals);
-            }
 
             for (int j = 0; j < numVals; j++) {
                 // Column index starts with 1.

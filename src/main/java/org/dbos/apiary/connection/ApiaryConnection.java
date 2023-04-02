@@ -18,14 +18,14 @@ public interface ApiaryConnection {
      * For internal use only.
      * @param functionName
      * @param workerContext
-     * @param service
+     * @param role
      * @param execID
      * @param functionID
      * @param inputs
      * @return
      * @throws Exception
      */
-    FunctionOutput callFunction(String functionName, WorkerContext workerContext, String service, long execID, long functionID,
+    FunctionOutput callFunction(String functionName, WorkerContext workerContext, String role, long execID, long functionID,
                                 int replayMode, Object... inputs) throws Exception;
 
     default FunctionOutput replayFunction(ApiaryContext pgCtxt, String functionName, Set<String> replayWrittenTables,

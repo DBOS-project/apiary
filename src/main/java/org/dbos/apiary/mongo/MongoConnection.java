@@ -39,8 +39,8 @@ public class MongoConnection implements ApiarySecondaryConnection {
     }
 
     @Override
-    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String service, long execID, long functionID, Object... inputs) throws Exception {
-        MongoContext ctxt = new MongoContext(client, writtenKeys, database, lockManager, workerContext, txc, service, execID, functionID);
+    public FunctionOutput callFunction(String functionName, Map<String, List<String>> writtenKeys, WorkerContext workerContext, TransactionContext txc, String role, long execID, long functionID, Object... inputs) throws Exception {
+        MongoContext ctxt = new MongoContext(client, writtenKeys, database, lockManager, workerContext, txc, role, execID, functionID);
         return workerContext.getFunction(functionName).apiaryRunFunction(ctxt, inputs);
     }
 

@@ -22,7 +22,7 @@ public class BenchmarkingExecutable {
         options.addOption("d", true, "Duration (sec)?");
         options.addOption("i", true, "Benchmark Interval (μs)");
         options.addOption("mainHostAddr", true, "Address of the main host to connect to.");
-        options.addOption("s", true, "Service Name ([moodle, wordpress, tpcc] in retro benchmark)");
+        options.addOption("s", true, "Bench/App Name ([moodle, wordpress, tpcc] in retro benchmark)");
         options.addOption("p1", true, "Percentage 1");
         options.addOption("p2", true, "Percentage 2");
         options.addOption("p3", true, "Percentage 3");
@@ -79,20 +79,20 @@ public class BenchmarkingExecutable {
         }
 
         String benchmark = cmd.getOptionValue("b");
-        String service = benchmark;
+        String roleBench = benchmark;
         if (cmd.hasOption("s")) {
-            service = cmd.getOptionValue("s");
-            logger.info("Service: {}", service);
+            roleBench = cmd.getOptionValue("s");
+            logger.info("Benchmark role name: {}", roleBench);
         }
         if (benchmark.equals("increment")) {
             logger.info("Increment Benchmark");
-            IncrementBenchmark.benchmark(mainHostAddr, service, interval, duration, false);
+            IncrementBenchmark.benchmark(mainHostAddr, roleBench, interval, duration, false);
         } else if (benchmark.equals("stateless-increment")) {
             logger.info("Stateless Increment Benchmark");
-            IncrementBenchmark.benchmark(mainHostAddr, service, interval, duration, true);
+            IncrementBenchmark.benchmark(mainHostAddr, roleBench, interval, duration, true);
         } else if (benchmark.equals("retwis")) {
             logger.info("Retwis Benchmark");
-            RetwisBenchmark.benchmark(mainHostAddr, service, interval, duration);
+            RetwisBenchmark.benchmark(mainHostAddr, roleBench, interval, duration);
         } else if (benchmark.equals("esmicro")) {
             int percentageRead = cmd.hasOption("p1") ? Integer.parseInt(cmd.getOptionValue("p1")) : 100;
             int percentageNew = cmd.hasOption("p2") ? Integer.parseInt(cmd.getOptionValue("p2")) : 0;
@@ -146,7 +146,7 @@ public class BenchmarkingExecutable {
             int p3 = cmd.hasOption("p3") ? Integer.parseInt(cmd.getOptionValue("p3")) : 0;
             int p4 = cmd.hasOption("p4") ? Integer.parseInt(cmd.getOptionValue("p4")) : 0;
             int p5 = cmd.hasOption("p5") ? Integer.parseInt(cmd.getOptionValue("p5")) : 0;
-            logger.info("Retroactive Benchmark, App: {}, Percentages: {}, {}, {}, {}, {}", service, p1, p2, p3, p4, p5);
+            logger.info("Retroactive Benchmark, App: {}, Percentages: {}, {}, {}, {}, {}", roleBench, p1, p2, p3, p4, p5);
             int retroMode = 0;
             long startExecId = 0l;
             long endExecId = cmd.hasOption("endExecId") ? Long.parseLong(cmd.getOptionValue("endExecId")) : Long.MAX_VALUE;
@@ -160,7 +160,7 @@ public class BenchmarkingExecutable {
             } else {
                 logger.info("Not replay mode.");
             }
-            RetroBenchmark.benchmark(service, mainHostAddr, interval, duration, skipLoadData, retroMode, startExecId, endExecId, bugFix, List.of(p1, p2, p3, p4, p5));
+            RetroBenchmark.benchmark(roleBench, mainHostAddr, interval, duration, skipLoadData, retroMode, startExecId, endExecId, bugFix, List.of(p1, p2, p3, p4, p5));
         }
     }
 }

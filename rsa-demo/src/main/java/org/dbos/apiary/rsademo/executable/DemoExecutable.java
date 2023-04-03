@@ -51,7 +51,7 @@ public class DemoExecutable {
             logger.info("Replay requests between [{}, {})", startExecId, endExecId);
             Replay.replay(startExecId, endExecId);
         } else if (script.equalsIgnoreCase("resetTables")) {
-            Replay.resetAllTables("localhost");
+            ResetDatabase.resetDatabase("localhost");
         } else {
             logger.info("Unknown Script: {}", script);
         }

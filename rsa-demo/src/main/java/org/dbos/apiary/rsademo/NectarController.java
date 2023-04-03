@@ -31,6 +31,8 @@ public class NectarController {
     public NectarController() throws SQLException {
         ApiaryConfig.captureUpdates = true;
         ApiaryConfig.captureReads = true;
+        ApiaryConfig.recordInput = true;
+        ApiaryConfig.captureMetadata = true;
         ApiaryConfig.provenancePort = 5432;  // Store provenance data in the same database.
 
         PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");

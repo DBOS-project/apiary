@@ -49,7 +49,9 @@ public class DemoExecutable {
             long startExecId = Long.parseLong(cmd.getOptionValue("startId"));
             long endExecId = cmd.hasOption("endId") ? Long.parseLong(cmd.getOptionValue("endId")) : Long.MAX_VALUE;
             logger.info("Replay requests between [{}, {})", startExecId, endExecId);
-            ReplayRequests.replay(startExecId, endExecId);
+            Replay.replay(startExecId, endExecId);
+        } else if (script.equalsIgnoreCase("resetTables")) {
+            Replay.resetAllTables("localhost");
         } else {
             logger.info("Unknown Script: {}", script);
         }

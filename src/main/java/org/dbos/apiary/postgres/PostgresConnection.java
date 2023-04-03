@@ -208,7 +208,11 @@ public class PostgresConnection implements ApiaryConnection {
                 provTable.append(rsmd.getColumnLabel(i + 1));
                 provTable.append(" ");
                 provTable.append(rsmd.getColumnTypeName(i + 1));
+                if (rsmd.getColumnTypeName(i+1).equalsIgnoreCase("varchar")) {
+                    provTable.append("(10000)");  // TODO: hack.
+                }
             }
+            logger.info("Table {} schema: {}", tableName + "Events", provTable.toString());
             createTable(provConn, tableName + "Events", provTable.toString());
             r.close();
             s.close();

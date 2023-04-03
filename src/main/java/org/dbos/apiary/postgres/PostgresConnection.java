@@ -195,14 +195,27 @@ public class PostgresConnection implements ApiaryConnection {
 
         Connection provConn = provConnection.get();
         if (!specStr.contains(ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID)) {
+            Statement s = conn.createStatement();
+            ResultSet r = s.executeQuery(String.format("SELECT * FROM %s", tableName));
+            ResultSetMetaData rsmd = r.getMetaData();
             StringBuilder provTable = new StringBuilder(String.format(
                     "%s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL, %s BIGINT NOT NULL ",
                     ProvenanceBuffer.PROV_APIARY_TRANSACTION_ID,
                     ProvenanceBuffer.PROV_APIARY_TIMESTAMP, ProvenanceBuffer.PROV_APIARY_OPERATION_TYPE,
                     ProvenanceBuffer.PROV_QUERY_SEQNUM));
-            provTable.append(", " + specStr);
+            for (int i = 0; i < rsmd.getColumnCount(); i++) {
+                provTable.append(",");
+                provTable.append(rsmd.getColumnLabel(i + 1));
+                provTable.append(" ");
+                provTable.append(rsmd.getColumnTypeName(i + 1));
+                if (rsmd.getColumnTypeName(i+1).equalsIgnoreCase("varchar")) {
+                    provTable.append("(10000)");  // TODO: hack.
+                }
+            }
             logger.info("Table {} schema: {}", tableName + "Events", provTable.toString());
             createTable(provConn, tableName + "Events", provTable.toString());
+            r.close();
+            s.close();
         }
     }
 

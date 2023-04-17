@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class PopulateDatabase {
 
@@ -19,21 +20,27 @@ public class PopulateDatabase {
     private static final String register = "INSERT INTO WebsiteLogins(Username, Password) VALUES (?, ?);";
     private static final String addPost = "INSERT INTO WebsitePosts(Sender, Receiver, PostText) VALUES (?, ?, ?);";
 
-    public static void populateDatabase(Connection c, int numUsers) throws IOException, SQLException {
+    public static void populateDatabase(Connection c) throws IOException, SQLException {
 
-        List<String> names = new ArrayList<>();
+        List<String> firstNames = new ArrayList<>();
+        List<String> lastNames = new ArrayList<>();
         List<String> posts = new ArrayList<>();
 
-        String namesFile = "src/main/resources/names.txt";
+        String firstNamesFile = "src/main/resources/firstnames.txt";
+        String lastNamesFile = "src/main/resources/lastnames.txt";
         String postsFile = "src/main/resources/posts.txt";
 
         String line;
 
-        BufferedReader namesReader = new BufferedReader(new FileReader(namesFile));
+        BufferedReader namesReader = new BufferedReader(new FileReader(firstNamesFile));
         while((line = namesReader.readLine()) != null) {
-            names.add(line);
+            firstNames.add(line);
         }
         namesReader.close();
+        namesReader = new BufferedReader(new FileReader(lastNamesFile));
+        while((line = namesReader.readLine()) != null) {
+            lastNames.add(line);
+        }
 
         BufferedReader postsReader = new BufferedReader(new FileReader(postsFile));
         while((line = postsReader.readLine()) != null) {
@@ -41,12 +48,12 @@ public class PopulateDatabase {
         }
         postsReader.close();
 
-        int num = 0;
-        while (names.size() < numUsers) {
-            names.add("user" + num++);
+        List<String> names = new ArrayList<>();
+        for (String firstName: firstNames) {
+            for (String lastName: lastNames) {
+                names.add(firstName + " " + lastName);
+            }
         }
-
-        assert(posts.size() <= names.size());
 
         PreparedStatement registerStatement = c.prepareStatement(register);
         for (String name: names) {
@@ -59,10 +66,10 @@ public class PopulateDatabase {
 
         PreparedStatement postStatement = c.prepareStatement(addPost);
         for (String name: names) {
-            for (int postNum = 0; postNum < posts.size(); postNum++) {
-                postStatement.setString(1, names.get(postNum));
+            for (String post : posts) {
+                postStatement.setString(1, names.get(ThreadLocalRandom.current().nextInt(names.size())));
                 postStatement.setString(2, name);
-                postStatement.setString(3, posts.get(postNum));
+                postStatement.setString(3, post);
                 postStatement.addBatch();
             }
         }

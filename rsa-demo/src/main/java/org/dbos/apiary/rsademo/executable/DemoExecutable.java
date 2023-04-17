@@ -17,7 +17,6 @@ public class DemoExecutable {
     public static void main(String[] args) throws ParseException, IOException, SQLException {
         Options options = new Options();
         options.addOption("s", true, "Script to run");
-        options.addOption("numUsers", true, "Number of Users");
         options.addOption("startId", true, "Start request ID for replay");
         options.addOption("endId", true, "End request ID for replay");
 
@@ -40,9 +39,7 @@ public class DemoExecutable {
         Connection pgConn = pg.getConnection();
 
         if (script.equals("populateDatabase")) {
-            assert(cmd.hasOption("numUsers"));
-            int numUsers = Integer.parseInt(cmd.getOptionValue("numUsers"));
-            PopulateDatabase.populateDatabase(pgConn, numUsers);
+            PopulateDatabase.populateDatabase(pgConn);
         } else if (script.equalsIgnoreCase("replay")) {
             long startExecId = Long.parseLong(cmd.getOptionValue("startId"));
             long endExecId = cmd.hasOption("endId") ? Long.parseLong(cmd.getOptionValue("endId")) : Long.MAX_VALUE;

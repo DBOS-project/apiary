@@ -21,13 +21,14 @@ public class DownloadPosts {
 
         CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(outputFile)));
         csvWriter.writeNext(new String[]{"Sender", "Receiver", "PostText"});
+        int counter = 0;
         for (String name: names) {
             String[] posts = client.executeFunction("NectarGetPosts", name).getStringArray();
             for (String post: posts) {
                 JSONObject obj = (JSONObject) JSONValue.parse(post);
                 csvWriter.writeNext(new String[]{(String) obj.get("Sender"), name, (String) obj.get("PostText")});
             }
-
+            System.out.printf("\rDownloaded Posts of %d Users", counter++);
         }
         csvWriter.close();
     }

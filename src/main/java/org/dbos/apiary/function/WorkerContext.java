@@ -14,7 +14,10 @@ public class WorkerContext {
     public final Map<String, ApiarySecondaryConnection> secondaryConnections = new HashMap<>();
     private final Map<String, Callable<ApiaryFunction>> functions = new HashMap<>();
     private final Map<String, String> functionTypes = new HashMap<>();
+
+    // Record authorization information.
     private final Map<String, Set<String>> functionRoles = new HashMap<>();
+    private final Set<String> suspendedRoles = new HashSet<>();
 
     // Record a mapping between the old function name and its new class name. Used by retroactive programming.
     private final Map<String, String> retroFunctions = new HashMap<>();
@@ -97,6 +100,18 @@ public class WorkerContext {
 
     public Set<String> getFunctionRoles(String name) {
         return functionRoles.get(name);
+    }
+
+    public void suspendRole(String role) {
+        suspendedRoles.add(role);
+    }
+
+    public void restoreRole(String role) {
+        suspendedRoles.remove(role);
+    }
+
+    public boolean checkSuspended(String role) {
+        return suspendedRoles.contains(role);
     }
 
     public void registerFunctionSet(String firstFunc, String[] funcNames) {

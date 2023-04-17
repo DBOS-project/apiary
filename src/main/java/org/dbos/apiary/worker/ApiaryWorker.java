@@ -91,6 +91,14 @@ public class ApiaryWorker {
         workerContext.restrictFunction(name, roles);
     }
 
+    public void suspendRole(String role) {
+        workerContext.suspendRole(role);
+    }
+
+    public void restoreRole(String role) {
+        workerContext.restoreRole(role);
+    }
+
     /**
      * Register a list of a functions as an execution set -- they will be executed to serve one request. Mostly used for retroactive analysis.
      * @param firstFunc     Name of the first function.
@@ -216,6 +224,12 @@ public class ApiaryWorker {
         if (!(workerContext.getFunctionRoles(name) == null) && !workerContext.getFunctionRoles(name).contains(role)) {
             ExecuteFunctionReply.Builder b = Utilities.constructReply(callerID, functionID, senderTimestampNano, -1,
                     String.format("Current role %s has no access to function %s", role, name));
+            outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
+            return;
+        }
+        if (workerContext.checkSuspended(role)) {
+            ExecuteFunctionReply.Builder b = Utilities.constructReply(callerID, functionID, senderTimestampNano, -1,
+                    String.format("Current role %s is suspended", role));
             outgoingReplyMsgQueue.add(new OutgoingMsg(replyAddr, b.build().toByteArray()));
             return;
         }

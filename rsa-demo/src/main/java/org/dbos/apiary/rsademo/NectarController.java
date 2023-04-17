@@ -43,8 +43,6 @@ public class NectarController {
         apiaryWorker.registerFunction("NectarLogin", ApiaryConfig.postgres, NectarLogin::new);
         apiaryWorker.registerFunction("NectarAddPost", ApiaryConfig.postgres, NectarAddPost::new);
         apiaryWorker.registerFunction("NectarGetPosts", ApiaryConfig.postgres, NectarGetPosts::new);
-        apiaryWorker.registerFunction("NectarDeletePosts", ApiaryConfig.postgres, NectarDeletePosts::new);
-        apiaryWorker.restrictFunction("NectarDeletePosts", Set.of("admin_1", "admin_2", "admin_3"));
         apiaryWorker.startServing();
 
         this.client = new ApiaryWorkerClient("localhost");

@@ -43,8 +43,6 @@ public class DemoExecutable {
             assert(cmd.hasOption("numUsers"));
             int numUsers = Integer.parseInt(cmd.getOptionValue("numUsers"));
             PopulateDatabase.populateDatabase(pgConn, numUsers);
-        } else if (script.equals("deleteDatabase")) {
-            DeleteDatabase.deleteDatabase();
         } else if (script.equalsIgnoreCase("replay")) {
             long startExecId = Long.parseLong(cmd.getOptionValue("startId"));
             long endExecId = cmd.hasOption("endId") ? Long.parseLong(cmd.getOptionValue("endId")) : Long.MAX_VALUE;

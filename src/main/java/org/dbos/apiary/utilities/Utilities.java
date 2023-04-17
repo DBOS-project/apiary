@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -223,5 +226,42 @@ public class Utilities {
             }
         }
         return arguments;
+    }
+
+    public static void prettyPrint(ResultSet resultSet) {
+        try {
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            List<String> columnNames = new ArrayList<>();
+
+            // Retrieve and store column names
+            for (int i = 1; i <= columnCount; i++) {
+                columnNames.add(metaData.getColumnName(i));
+            }
+
+            // Print column names
+            for (String columnName : columnNames) {
+                System.out.printf("%-25s", columnName);
+            }
+            System.out.println();
+
+            // Print underline for column names
+            for (int i = 0; i < columnCount; i++) {
+                System.out.print("------------------------");
+            }
+            System.out.println();
+
+            // Iterate and print rows
+            while (resultSet.next()) {
+                for (int i = 1; i <= columnCount; i++) {
+                    Object value = resultSet.getObject(i);
+                    String valueStr = (value == null) ? "null" : value.toString();
+                    System.out.printf("%-25s", valueStr);
+                }
+                System.out.println();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }

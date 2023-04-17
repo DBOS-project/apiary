@@ -24,6 +24,10 @@ public class DownloadPosts {
         int counter = 0;
         for (String name: names) {
             String[] posts = client.executeFunction("NectarGetPosts", name).getStringArray();
+            if (posts == null) {
+                System.out.println("\nError: Request failed.");
+                break;
+            }
             for (String post: posts) {
                 JSONObject obj = (JSONObject) JSONValue.parse(post);
                 csvWriter.writeNext(new String[]{(String) obj.get("Sender"), name, (String) obj.get("PostText")});

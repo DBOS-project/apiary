@@ -19,7 +19,6 @@ public class DemoExecutable {
         options.addOption("s", true, "Script to run");
         options.addOption("startId", true, "Start request ID for replay");
         options.addOption("endId", true, "End request ID for replay");
-        options.addOption("file", true, "Target file");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -42,9 +41,7 @@ public class DemoExecutable {
         if (script.equalsIgnoreCase("populateDatabase")) {
             PopulateDatabase.populateDatabase(pgConn);
         } else if (script.equalsIgnoreCase("downloadPosts")) {
-            assert(cmd.hasOption("file"));
-            String file = cmd.getOptionValue("file");
-            DownloadPosts.downloadPosts(file);
+            DownloadPosts.downloadPosts();
         } else if (script.equalsIgnoreCase("replay")) {
             long startExecId = Long.parseLong(cmd.getOptionValue("startId"));
             long endExecId = cmd.hasOption("endId") ? Long.parseLong(cmd.getOptionValue("endId")) : Long.MAX_VALUE;

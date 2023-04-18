@@ -15,13 +15,18 @@ public class DownloadPosts {
 
     private static final Logger logger = LoggerFactory.getLogger(DownloadPosts.class);
 
-    public static void downloadPosts(String outputFile) throws IOException {
+    private static final int numAssociates = 100;
+
+    public static void downloadPosts() throws IOException {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost", "admin_2");
         List<String> names = getNames();
 
-        CSVWriter csvWriter = new CSVWriter(new BufferedWriter(new FileWriter(outputFile)));
-        csvWriter.writeNext(new String[]{"Sender", "Receiver", "PostText"});
+        for (int i = 0; i < numAssociates; i++) {
+            String name = "associate" + i;
+            client.executeFunction("NectarRegister", name, name);
+        }
         int counter = 0;
+        int associateCounter = 0;
         for (String name: names) {
             String[] posts = client.executeFunction("NectarGetPosts", name).getStringArray();
             if (posts == null) {
@@ -30,11 +35,14 @@ public class DownloadPosts {
             }
             for (String post: posts) {
                 JSONObject obj = (JSONObject) JSONValue.parse(post);
-                csvWriter.writeNext(new String[]{(String) obj.get("Sender"), name, (String) obj.get("PostText")});
+                String sender = (String) obj.get("Sender");
+                String receiver = "associate" + associateCounter;
+                associateCounter = (associateCounter + 1) % numAssociates;
+                String postText = (String) obj.get("PostText");
+                client.executeFunction("NectarAddPost", sender, receiver, postText);
             }
             System.out.printf("\rDownloaded Posts of %d Users", ++counter);
         }
-        csvWriter.close();
     }
 
 

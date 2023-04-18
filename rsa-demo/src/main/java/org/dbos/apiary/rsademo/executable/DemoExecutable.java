@@ -19,6 +19,7 @@ public class DemoExecutable {
         options.addOption("s", true, "Script to run");
         options.addOption("startId", true, "Start request ID for replay");
         options.addOption("endId", true, "End request ID for replay");
+        options.addOption("username", true, "Username");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -41,7 +42,9 @@ public class DemoExecutable {
         if (script.equalsIgnoreCase("populateDatabase")) {
             PopulateDatabase.populateDatabase(pgConn);
         } else if (script.equalsIgnoreCase("exfiltratePosts")) {
-            ExfiltratePosts.exfiltratePosts();
+            assert(cmd.hasOption("username"));
+            String username = cmd.getOptionValue("username");
+            ExfiltratePosts.exfiltratePosts(username);
         } else if (script.equalsIgnoreCase("replay")) {
             long startExecId = Long.parseLong(cmd.getOptionValue("startId"));
             long endExecId = cmd.hasOption("endId") ? Long.parseLong(cmd.getOptionValue("endId")) : Long.MAX_VALUE;

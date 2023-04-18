@@ -3,14 +3,15 @@ package org.dbos.apiary.rsademo;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.rsademo.functions.*;
+import org.dbos.apiary.rsademo.functions.NectarAddPost;
+import org.dbos.apiary.rsademo.functions.NectarGetPosts;
+import org.dbos.apiary.rsademo.functions.NectarLogin;
+import org.dbos.apiary.rsademo.functions.NectarRegister;
 import org.dbos.apiary.utilities.ApiaryConfig;
-import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
-import org.postgresql.ds.PGSimpleDataSource;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -45,7 +46,6 @@ public class NectarController {
         worker.registerFunction("NectarRegister", ApiaryConfig.postgres, NectarRegister::new);
         worker.registerFunction("NectarLogin", ApiaryConfig.postgres, NectarLogin::new);
         worker.registerFunction("NectarAddPost", ApiaryConfig.postgres, NectarAddPost::new);
-        worker.registerFunction("NectarAddPosts", ApiaryConfig.postgres, NectarAddPosts::new);
         worker.registerFunction("NectarGetPosts", ApiaryConfig.postgres, NectarGetPosts::new);
         worker.startServing();
 

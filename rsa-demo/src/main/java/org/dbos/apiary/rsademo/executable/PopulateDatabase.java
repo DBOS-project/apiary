@@ -66,6 +66,9 @@ public class PopulateDatabase {
 
         PreparedStatement postStatement = c.prepareStatement(addPost);
         for (String name: names) {
+            if (name.equals("John Q Hacker")) {
+              continue;
+            }
             for (String post : posts) {
                 postStatement.setString(1, names.get(ThreadLocalRandom.current().nextInt(names.size())));
                 postStatement.setString(2, name);

@@ -10,6 +10,16 @@ import java.io.IOException;
 
 public class ExfiltratePosts {
 
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_BLACK = "\u001B[30m";
+    public static final String ANSI_RED = "\u001B[31m";
+    public static final String ANSI_GREEN = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE = "\u001B[34m";
+    public static final String ANSI_PURPLE = "\u001B[35m";
+    public static final String ANSI_CYAN = "\u001B[36m";
+    public static final String ANSI_WHITE = "\u001B[37m";
+
     private static final Logger logger = LoggerFactory.getLogger(ExfiltratePosts.class);
 
     private static final String associateName = "John Q Hacker";
@@ -17,16 +27,16 @@ public class ExfiltratePosts {
     public static void exfiltratePosts(String username) throws IOException, InterruptedException {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost", "admin_2");
 
-        System.out.println("Retrieving messages from: " + username);
+        System.out.println(ANSI_YELLOW + "Retrieving messages from: " + username + ANSI_RESET);
         String[] posts = client.executeFunction("NectarGetPosts", username).getStringArray();
         if (posts != null) {
-            System.out.println("Retrieve Successful");
+            System.out.println(ANSI_GREEN + "Retrieve Successful" + ANSI_RESET);
         } else {
-            System.out.println("Error: Retrieve failed.");
+            System.out.println(ANSI_RED + "Error: Retrieve failed." + ANSI_RESET);
             return;
         }
         Thread.sleep(500);
-        System.out.println("Sending messages to: " + associateName);
+        System.out.println(ANSI_YELLOW + "Sending messages to: " + associateName + ANSI_RESET);
         boolean success = true;
         for (String post : posts) {
             JSONObject obj = (JSONObject) JSONValue.parse(post);
@@ -38,9 +48,9 @@ public class ExfiltratePosts {
             }
         }
         if (success) {
-            System.out.println("Exfiltration successful");
+            System.out.println(ANSI_GREEN + "Exfiltration successful" + ANSI_RESET);
         } else {
-            System.out.println("Error: Could not send messages");
+            System.out.println(ANSI_RED + "Error: Could not send messages" + ANSI_RESET);
         }
     }
 

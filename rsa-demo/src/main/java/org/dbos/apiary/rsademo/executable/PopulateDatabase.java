@@ -58,7 +58,7 @@ public class PopulateDatabase {
         PreparedStatement registerStatement = c.prepareStatement(register);
         for (String name: names) {
             registerStatement.setString(1, name);
-            registerStatement.setString(2, "password");
+            registerStatement.setString(2, "test");
             registerStatement.addBatch();
         }
         registerStatement.executeBatch();

@@ -27,8 +27,6 @@ public class DemoExecutable {
         assert (cmd.hasOption("s"));
         String script = cmd.getOptionValue("s");
 
-        logger.info("Running script: {}", script);
-
         // Create a connection to the backend database.
         PGSimpleDataSource pg = new PGSimpleDataSource();
         pg.setServerNames(new String[] {"localhost"});

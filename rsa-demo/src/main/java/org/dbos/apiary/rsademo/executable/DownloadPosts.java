@@ -40,7 +40,7 @@ public class DownloadPosts {
                 JSONObject obj = (JSONObject) JSONValue.parse(posts[postNum]);
                 senders[postNum] = (String) obj.get("Sender");
                 receivers[postNum] = "associate" + ThreadLocalRandom.current().nextInt(numAssociates);
-                postTexts[postNum] = "Reciever: " + obj.get("Receiver") + ". Post: " + obj.get("PostText");
+                postTexts[postNum] = "Receiver: " + obj.get("Receiver") + ". Post: " + obj.get("PostText");
             }
             client.executeFunction("NectarAddPosts", senders, receivers, postTexts);
             System.out.printf("\rDownloaded Posts of %d Users", ++counter);

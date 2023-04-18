@@ -181,7 +181,7 @@ public class NectarController {
             ResultSet r = s.executeQuery();
             while (r.next()) {
                 int numReads = r.getInt(2);
-                if (numReads > 80) {
+                if (numReads > 50) {
                     String badRole = r.getString(1);
                     this.worker.suspendRole(badRole);
                     System.out.printf("Suspicious activity: %s read %d different user accounts in 10 seconds\n", badRole, numReads);

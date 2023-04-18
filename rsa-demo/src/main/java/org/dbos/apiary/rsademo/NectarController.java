@@ -8,6 +8,7 @@ import org.dbos.apiary.rsademo.functions.NectarGetPosts;
 import org.dbos.apiary.rsademo.functions.NectarLogin;
 import org.dbos.apiary.rsademo.functions.NectarRegister;
 import org.dbos.apiary.utilities.ApiaryConfig;
+import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
 import org.dbos.apiary.worker.ApiaryWorker;
 import org.json.simple.JSONObject;
@@ -155,12 +156,19 @@ public class NectarController {
         return new Credentials();
     }
 
-    String readPostsRule = "SELECT apiary_role, COUNT(*) AS num_invocations\n" +
+    String getAdminReads = "SELECT apiary_role, MIN(apiary_timestamp)\n" +
             "FROM FuncInvocations\n" +
-            "WHERE APIARY_TIMESTAMP / 1000000 >= EXTRACT(EPOCH FROM (NOW() - INTERVAL '10 seconds'))\n" +
+            "WHERE APIARY_TIMESTAMP / 1000000 >= EXTRACT(EPOCH FROM (NOW() - INTERVAL '1 minute'))\n" +
             "AND APIARY_PROCEDURENAME = 'NectarGetPosts'\n" +
-            "GROUP BY APIARY_ROLE\n" +
-            "ORDER BY APIARY_ROLE;";
+            "AND APIARY_ROLE LIKE '%admin%'\n" +
+            "GROUP BY APIARY_ROLE;";
+
+    String getAdminWrites = "SELECT apiary_role\n" +
+            "FROM FuncInvocations\n" +
+            "WHERE APIARY_TIMESTAMP >= ?\n" +
+            "AND APIARY_PROCEDURENAME = 'NectarAddPost'\n" +
+            "AND APIARY_ROLE = ?\n" +
+            "GROUP BY APIARY_ROLE;";
 
     private void rulesThread() throws SQLException, InterruptedException, ClassNotFoundException {
         Class.forName("com.vertica.jdbc.Driver");
@@ -176,18 +184,23 @@ public class NectarController {
         );
         c.setAutoCommit(true);
 
-        PreparedStatement s = c.prepareStatement(readPostsRule);
+        PreparedStatement getReads = c.prepareStatement(getAdminReads);
+        PreparedStatement getWrites = c.prepareStatement(getAdminWrites);
         while (true) {
-            ResultSet r = s.executeQuery();
-            while (r.next()) {
-                int numReads = r.getInt(2);
-                if (numReads > 50) {
-                    String badRole = r.getString(1);
+            ResultSet readsResult = getReads.executeQuery();
+            while (readsResult.next()) {
+                String role = readsResult.getString(1);
+                int timestamp = readsResult.getInt(2);
+                getWrites.setInt(1, timestamp);
+                getWrites.setString(2, role);
+                ResultSet writesResult = getWrites.executeQuery();
+                if (writesResult.next()) {
+                    String badRole = readsResult.getString(1);
                     this.worker.suspendRole(badRole);
-                    System.out.printf("Suspicious activity: %s read %d different user accounts in 10 seconds\n", badRole, numReads);
+                    System.out.printf("Suspicious activity: %s read then wrote sensitive data\n", badRole);
                 }
             }
-            Thread.sleep(3000);
+            Thread.sleep(2000);
         }
     }
 }

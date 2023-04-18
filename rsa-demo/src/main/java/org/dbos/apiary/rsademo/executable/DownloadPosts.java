@@ -32,7 +32,7 @@ public class DownloadPosts {
                 JSONObject obj = (JSONObject) JSONValue.parse(post);
                 csvWriter.writeNext(new String[]{(String) obj.get("Sender"), name, (String) obj.get("PostText")});
             }
-            System.out.printf("\rDownloaded Posts of %d Users", counter++);
+            System.out.printf("\rDownloaded Posts of %d Users", ++counter);
         }
         csvWriter.close();
     }

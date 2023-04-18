@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class DownloadPosts {
 
@@ -26,21 +27,22 @@ public class DownloadPosts {
             client.executeFunction("NectarRegister", name, name);
         }
         int counter = 0;
-        int associateCounter = 0;
         for (String name: names) {
             String[] posts = client.executeFunction("NectarGetPosts", name).getStringArray();
             if (posts == null) {
                 System.out.println("\nError: Request failed.");
                 break;
             }
-            for (String post: posts) {
-                JSONObject obj = (JSONObject) JSONValue.parse(post);
-                String sender = (String) obj.get("Sender");
-                String receiver = "associate" + associateCounter;
-                associateCounter = (associateCounter + 1) % numAssociates;
-                String postText = (String) obj.get("PostText");
-                client.executeFunction("NectarAddPost", sender, receiver, postText);
+            String[] senders = new String[posts.length];
+            String[] receivers = new String[posts.length];
+            String[] postTexts = new String[posts.length];
+            for (int postNum = 0; postNum < posts.length; postNum++) {
+                JSONObject obj = (JSONObject) JSONValue.parse(posts[postNum]);
+                senders[postNum] = (String) obj.get("Sender");
+                receivers[postNum] = "associate" + ThreadLocalRandom.current().nextInt(numAssociates);
+                postTexts[postNum] = "Reciever: " + obj.get("Receiver") + ". Post: " + obj.get("PostText");
             }
+            client.executeFunction("NectarAddPosts", senders, receivers, postTexts);
             System.out.printf("\rDownloaded Posts of %d Users", ++counter);
         }
     }

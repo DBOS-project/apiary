@@ -3,10 +3,7 @@ package org.dbos.apiary.rsademo;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.dbos.apiary.client.ApiaryWorkerClient;
 import org.dbos.apiary.postgres.PostgresConnection;
-import org.dbos.apiary.rsademo.functions.NectarAddPost;
-import org.dbos.apiary.rsademo.functions.NectarGetPosts;
-import org.dbos.apiary.rsademo.functions.NectarLogin;
-import org.dbos.apiary.rsademo.functions.NectarRegister;
+import org.dbos.apiary.rsademo.functions.*;
 import org.dbos.apiary.utilities.ApiaryConfig;
 import org.dbos.apiary.utilities.Utilities;
 import org.dbos.apiary.worker.ApiaryNaiveScheduler;
@@ -48,6 +45,7 @@ public class NectarController {
         worker.registerFunction("NectarRegister", ApiaryConfig.postgres, NectarRegister::new);
         worker.registerFunction("NectarLogin", ApiaryConfig.postgres, NectarLogin::new);
         worker.registerFunction("NectarAddPost", ApiaryConfig.postgres, NectarAddPost::new);
+        worker.registerFunction("NectarAddPosts", ApiaryConfig.postgres, NectarAddPosts::new);
         worker.registerFunction("NectarGetPosts", ApiaryConfig.postgres, NectarGetPosts::new);
         worker.startServing();
 
@@ -183,7 +181,7 @@ public class NectarController {
             ResultSet r = s.executeQuery();
             while (r.next()) {
                 int numReads = r.getInt(2);
-                if (numReads > 100) {
+                if (numReads > 80) {
                     String badRole = r.getString(1);
                     this.worker.suspendRole(badRole);
                     System.out.printf("Suspicious activity: %s read %d different user accounts in 10 seconds\n", badRole, numReads);

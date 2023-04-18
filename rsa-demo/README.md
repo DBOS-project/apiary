@@ -29,7 +29,7 @@ Then, reset the database tables and pre-populate them:
 
 ```shell
 java -jar target/demo-exec-fat-exec.jar -s resetTables
-java -jar target/demo-exec-fat-exec.jar -s populateDatabase -numUsers NUMUSERS
+java -jar target/demo-exec-fat-exec.jar -s populateDatabase
 ```
 
 Now, let's run the site:
@@ -37,3 +37,20 @@ Now, let's run the site:
 ```shell
 mvn spring-boot:run
 ```
+
+To exfiltrate the site's data to a file, run this script:
+
+```shell
+java -jar target/demo-exec-fat-exec.jar -s downloadPosts -file FILENAME
+```
+
+This exfiltration should be detected and halted mid-execution.  Then, to find all users whose posts were exfiltrated, run this SQL query in Vertica:
+
+```sql
+SELECT DISTINCT p.receiver
+FROM FuncInvocations f JOIN WebsitePostsEvents p ON f.apiary_transaction_id = p.apiary_transaction_id 
+WHERE f.apiary_role = 'admin_2' AND f.apiary_procedurename = 'NectarGetPosts' 
+ORDER BY p.receiver;
+```
+
+The users returned by this query should match the users whose data is in the exfiltration file.

@@ -19,7 +19,7 @@ scripts/initialize_postgres_docker.sh
 scripts/initialize_vertica_docker.sh
 ```
 
-Next, compile the site.  In the `rsa-demo` root directory, run:
+Next, compile the simple social network site.  In the `rsa-demo` root directory, run:
 
 ```shell
 mvn clean && mvn package
@@ -38,13 +38,17 @@ Now, let's run the site:
 mvn spring-boot:run
 ```
 
+You can visit the site at `http://<ip-address>:80` and try to log in with some generated names such as "Michael Stonebraker".
+You will be able to send posts to others, and read posts sent from others.
+
 To exfiltrate the site's data to a file, run this script:
 
 ```shell
-java -jar target/demo-exec-fat-exec.jar -s downloadPosts -file FILENAME
+scripts/exfiltrate.sh "<User Name>"
 ```
 
-This exfiltration should be detected and halted mid-execution.  Then, to find all users whose posts were exfiltrated, run this SQL query in Vertica:
+This exfiltration should be detected and Apiary would suspend the compromised account. If you run the script again, it should show an error message saying the account has been suspended.
+Then, to find all users whose posts were exfiltrated, run this SQL query in Vertica:
 
 ```sql
 SELECT DISTINCT p.receiver
@@ -53,4 +57,4 @@ WHERE f.apiary_role = 'admin_2' AND f.apiary_procedurename = 'NectarGetPosts'
 ORDER BY p.receiver;
 ```
 
-The users returned by this query should match the users whose data is in the exfiltration file.
+The users returned by this query should match the users whose data is exfiltrated before the compromised account was suspended.

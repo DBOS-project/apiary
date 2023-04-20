@@ -5,7 +5,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import java.util.Scanner;
 import java.io.IOException;
 
 public class ExfiltratePosts {
@@ -28,16 +28,19 @@ public class ExfiltratePosts {
         ApiaryWorkerClient client = new ApiaryWorkerClient("localhost", "admin_2");
 
         System.out.println(ANSI_YELLOW + "Retrieving messages from: " + username + ANSI_RESET);
+        Thread.sleep(1000);
         String[] posts = client.executeFunction("NectarGetPosts", username).getStringArray();
         if (posts != null) {
             System.out.println(ANSI_GREEN + "Retrieve Successful" + ANSI_RESET);
         } else {
-            System.out.println(ANSI_RED + "Error: Retrieve failed." + ANSI_RESET);
+            System.out.println(ANSI_RED + "Error: Account suspended." + ANSI_RESET);
             return;
         }
-        Thread.sleep(500);
+        Scanner scanner = new Scanner(System.in);
+        scanner.nextLine();
         System.out.println(ANSI_YELLOW + "Sending messages to: " + associateName + ANSI_RESET);
         boolean success = true;
+        Thread.sleep(1000);
         for (String post : posts) {
             JSONObject obj = (JSONObject) JSONValue.parse(post);
             String sender = (String) obj.get("Sender");
@@ -50,7 +53,7 @@ public class ExfiltratePosts {
         if (success) {
             System.out.println(ANSI_GREEN + "Exfiltration successful" + ANSI_RESET);
         } else {
-            System.out.println(ANSI_RED + "Error: Could not send messages" + ANSI_RESET);
+            System.out.println(ANSI_RED + "Error: Account suspended" + ANSI_RESET);
         }
     }
 

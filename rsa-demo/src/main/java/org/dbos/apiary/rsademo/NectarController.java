@@ -156,20 +156,11 @@ public class NectarController {
         return new Credentials();
     }
 
-    String getAdminReads = "SELECT apiary_role, MIN(apiary_timestamp)\n" +
-            "FROM FuncInvocations\n" +
-            "WHERE APIARY_TIMESTAMP / 1000000 >= EXTRACT(EPOCH FROM (NOW() - INTERVAL '1 minute'))\n" +
-            "AND APIARY_PROCEDURENAME = 'NectarGetPosts'\n" +
-            "AND APIARY_ROLE LIKE '%admin%'\n" +
-            "GROUP BY APIARY_ROLE;";
-
-    String getAdminWrites = "SELECT apiary_role\n" +
-            "FROM FuncInvocations\n" +
-            "WHERE APIARY_TIMESTAMP >= ?\n" +
-            "AND APIARY_PROCEDURENAME = 'NectarAddPost'\n" +
-            "AND APIARY_ROLE = ?\n" +
-            "GROUP BY APIARY_ROLE;";
-
+    // This simulates a rule detecting an admin account attempting to exfiltrate user data.
+    // Our demo implementation detects any admin account that sends a message within a minute
+    // of reading sensitive data.
+    // A later implementation may check for any account that performs any kind of write in the same
+    // session or program as accessing another account's sensitive data.
     private void rulesThread() throws SQLException, InterruptedException, ClassNotFoundException {
         Class.forName("com.vertica.jdbc.Driver");
         Properties verticaProp = new Properties();
@@ -183,6 +174,20 @@ public class NectarController {
                 verticaProp
         );
         c.setAutoCommit(true);
+
+        String getAdminReads = "SELECT apiary_role, MIN(apiary_timestamp)\n" +
+                "FROM FuncInvocations\n" +
+                "WHERE APIARY_TIMESTAMP / 1000000 >= EXTRACT(EPOCH FROM (NOW() - INTERVAL '1 minute'))\n" +
+                "AND APIARY_PROCEDURENAME = 'NectarGetPosts'\n" +
+                "AND APIARY_ROLE LIKE '%admin%'\n" +
+                "GROUP BY APIARY_ROLE;";
+
+        String getAdminWrites = "SELECT apiary_role\n" +
+                "FROM FuncInvocations\n" +
+                "WHERE APIARY_TIMESTAMP >= ?\n" +
+                "AND APIARY_PROCEDURENAME = 'NectarAddPost'\n" +
+                "AND APIARY_ROLE = ?\n" +
+                "GROUP BY APIARY_ROLE;";
 
         PreparedStatement getReads = c.prepareStatement(getAdminReads);
         PreparedStatement getWrites = c.prepareStatement(getAdminWrites);

@@ -17,8 +17,6 @@ public class DemoExecutable {
     public static void main(String[] args) throws ParseException, IOException, SQLException, InterruptedException {
         Options options = new Options();
         options.addOption("s", true, "Script to run");
-        options.addOption("startId", true, "Start request ID for replay");
-        options.addOption("endId", true, "End request ID for replay");
         options.addOption("username", true, "Username");
 
         CommandLineParser parser = new DefaultParser();
@@ -43,11 +41,6 @@ public class DemoExecutable {
             assert(cmd.hasOption("username"));
             String username = cmd.getOptionValue("username");
             ExfiltratePosts.exfiltratePosts(username);
-        } else if (script.equalsIgnoreCase("replay")) {
-            long startExecId = Long.parseLong(cmd.getOptionValue("startId"));
-            long endExecId = cmd.hasOption("endId") ? Long.parseLong(cmd.getOptionValue("endId")) : Long.MAX_VALUE;
-            logger.info("Replay requests between [{}, {})", startExecId, endExecId);
-            Replay.replay(startExecId, endExecId);
         } else if (script.equalsIgnoreCase("resetTables")) {
             ResetDatabase.resetDatabase("localhost");
         } else {

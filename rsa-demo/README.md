@@ -1,6 +1,6 @@
 # RSA Demo
 
-This is code for a demo of Apiary/DBOS that was presented at RSA 2023.
+This is code for a demo of Apiary/DBOS that was presented at RSA 2023.  It is based on our [Apiary-Postgres demo](https://github.com/DBOS-project/apiary/tree/main/postgres-demo).
 
 To run it, let's first install some dependencies:
 

@@ -1,0 +1,72 @@
+<!DOCTYPE HTML>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org" lang="en">
+<head>
+    <title>Nectar Social</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
+</head>
+<body>
+<div class="container">
+    <div class="jumbotron text-center">
+        <h1>Nectar Social</h1>
+        <h3 th:text="'Welcome: ' + ${login.username}" />
+        <div style="float:right">
+            <a href="/logout" class="btn btn-danger" role="button">Log out</a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+<div class="card">
+    <div class="card-body">
+        <h2>Send a post to your friend</h2>
+        <form id="postinput" class="form-horizontal" action="#" th:action="@{/timeline}" th:object="${addpost}" method="post">
+            <div class="form-group row">
+                <label class="control-label col-sm-2" for="username">Receiver:</label>
+                <div class="col-sm-6">
+                    <input class="form-control" id="username" type="text" th:field="*{receiver}" required="required" placeholder="Enter receiver username" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label" for="postcontent">Post Content:</label>
+                <textarea class="form-control" id="postcontent" rows="5" cols="33" type="text" th:field="*{postText}" required="required" placeholder="Enter post here..." ></textarea>
+            </div>
+            <input class="btn btn-info" type="submit" value="Post" />
+            <input class="btn btn-warning" type="reset" value="Clear Form" />
+        </form>
+    </div>
+</div>
+</div>
+
+<div class="container">
+<div class="card">
+    <div class="card-body">
+        <h2>List of posts from your friends</h2>
+        <div class="row">
+            <div class="col-md-8">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th> Sender </th>
+                        <th> Content </th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${timelinelist.empty}">
+                        <td colspan="2"> No Posts Available </td>
+                    </tr>
+                    <tr th:each="tl : ${timelinelist}">
+                        <td><span th:text="${tl.sender}"> Sender </span></td>
+                        <td><span th:text="${tl.postText}"> Content </span></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+</body>
+</html>

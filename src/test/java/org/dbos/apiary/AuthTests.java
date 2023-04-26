@@ -131,4 +131,31 @@ public class AuthTests {
         res = specialClient.executeFunction("Increment", 100).getInt();
         assertEquals(1, res);
     }
+
+    @Test
+    public void testSuspendRole() throws SQLException, InvalidProtocolBufferException, InterruptedException {
+        logger.info("testSuspendRole");
+        PostgresConnection conn = new PostgresConnection("localhost", ApiaryConfig.postgresPort, "postgres", "dbos");
+
+        String specialUser = "specialUser";
+        apiaryWorker = new ApiaryWorker(new ApiaryNaiveScheduler(), 4, ApiaryConfig.postgres, ApiaryConfig.provenanceDefaultAddress);
+        apiaryWorker.registerConnection(ApiaryConfig.postgres, conn);
+        apiaryWorker.registerFunction("Increment", ApiaryConfig.postgres, PostgresIncrementFunction::new);
+        apiaryWorker.startServing();
+
+        ApiaryWorkerClient specialClient = new ApiaryWorkerClient("localhost", specialUser);
+        int res;
+        res = specialClient.executeFunction("Increment", 100).getInt();
+        assertEquals(1, res);
+
+        apiaryWorker.suspendRole(specialUser);
+
+        res = specialClient.executeFunction("Increment", 100).getInt();
+        assertEquals(-1, res);
+
+        apiaryWorker.restoreRole(specialUser);
+
+        res = specialClient.executeFunction("Increment", 100).getInt();
+        assertEquals(2, res);
+    }
 }

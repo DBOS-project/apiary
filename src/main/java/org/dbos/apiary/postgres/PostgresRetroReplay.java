@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class PostgresRetroReplay {
@@ -31,6 +32,9 @@ public class PostgresRetroReplay {
     // TODO: garbage collect this map.
     public static final Map<Long, Object> execIdToFinalOutput = new ConcurrentHashMap<>();
 
+    // Use to decide whether we have pending transaction start tasks. Plus one before starting a txn, count down after a transaction has started.
+    public static final AtomicInteger numPendingStarts = new AtomicInteger(0);
+
     // A pending commit map from original transaction ID to Postgres replay task.
     private static final Map<Long, PostgresReplayTask> pendingCommitTasks = new ConcurrentHashMap<>();
 
@@ -43,6 +47,7 @@ public class PostgresRetroReplay {
     private static final Collection<Long> totalTimes = new ConcurrentLinkedQueue<>();
 
     private static void resetReplayState() {
+        numPendingStarts.set(0);
         replayWrittenTables.clear();
         funcSetAccessTables.clear();
         pendingTasks.clear();
@@ -173,7 +178,12 @@ public class PostgresRetroReplay {
 
         // A thread pool for concurrent function executions.
         ExecutorService threadPool = Executors.newFixedThreadPool(workerContext.numWorkersThreads);
-        ExecutorService commitThreadPool = Executors.newCachedThreadPool();
+        ExecutorService commitThreadPool;
+        if (workerContext.numWorkersThreads > 1) {
+            commitThreadPool = Executors.newCachedThreadPool();
+        } else {
+            commitThreadPool = Executors.newFixedThreadPool(1);
+        }
 
         long prepTime = System.currentTimeMillis();
         logger.info("Prepare time: {} ms", prepTime - startTime);
@@ -183,7 +193,6 @@ public class PostgresRetroReplay {
         // Maintain a pool of connections to the backend database to concurrently execute transactions.
         int totalStartOrderTxns = 0;
         int totalExecTxns = 0;
-        List<Long> checkVisibleTxns = new ArrayList<>(); // Committed but not guaranteed to be visible yet.
         while (startOrderRs.next()) {
             long t0 = System.nanoTime();
             totalStartOrderTxns++;
@@ -231,6 +240,7 @@ public class PostgresRetroReplay {
             if (resFuncId > 0) {
                 lastExecTxnId = execIdLastExecTxn.get(resExecId); // Must be not null.
             }
+            List<Long> checkVisibleTxns = new ArrayList<>(); // Committed but not guaranteed to be visible yet.
             for (long cmtTxn : pendingCommitTasks.keySet()) {
                 PostgresReplayTask commitPgRpTask = pendingCommitTasks.get(cmtTxn);
                 if (commitPgRpTask == null) {
@@ -242,10 +252,16 @@ public class PostgresRetroReplay {
                 if ((cmtTxn < xmax) && !activeTxns.contains(cmtTxn)) {
                     logger.debug("Committing txnID {} because in the snapshot of txn {}", cmtTxn, resTxId);
                     // If it's a non-dependent read-only transaction, do not submit a commit task.
-                    if (workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName) && (cmtTxn != lastExecTxnId)) {
-                        // Wait if it's the dependent task.
+                    if ((workerContext.getFunctionReadOnly(commitPgRpTask.task.funcName) && (cmtTxn != lastExecTxnId))
+                        && (workerContext.numWorkersThreads > 1)) {
+                        // Wait if it's the dependent task, or if it's the sequential baseline.
                         logger.debug("Don't wait for non-dependent read-only transaction {}.", cmtTxn);
                     } else {
+                        // We have to make sure no other transactions are starting. So wait for pendingStarts to be zero.
+                        while (numPendingStarts.get() != 0) {
+                            // Busy spin.
+                            logger.debug("Debug: num pending starts: {}. ", numPendingStarts.get());
+                        }
                         Future<Long> cmtFut = commitThreadPool.submit(new PostgresCommitCallable(commitPgRpTask, workerContext, cmtTxn, replayMode, threadPool));
                         cleanUpTxns.put(cmtTxn, cmtFut);
                         // Use the new transaction ID! Not their original ones.
@@ -303,43 +319,23 @@ public class PostgresRetroReplay {
                 currConn = workerContext.getPrimaryConnection().createNewConnection();
             }
             PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
+            numPendingStarts.incrementAndGet();
 
-            // Because Postgres may commit a transaction but take a while for it to show up in the snapshot for the following transactions, wait until we get everything from checkVisibleTxns in the snapshot.
-            // We can wait by committing the empty transaction and create a new pgCtxt.
-            PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, ApiaryConfig.systemRole, pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
-            boolean allVisible = false;
-            while (!allVisible) {
-                logger.debug("Checking visible transactions: {}. Current transaction id {}, xmin {}, xmax {}, active transactions {}", checkVisibleTxns.toString(), pgCtxt.txc.txID, pgCtxt.txc.xmin, pgCtxt.txc.xmax, pgCtxt.txc.activeTransactions.toString());
-                allVisible = true;
-                List<Long> visibleTxns = new ArrayList<>();
-                for (long replayCmtTxn : checkVisibleTxns) {
-                    // Check if the committed transaction does not show up in the snapshot.
-                    if ((replayCmtTxn >= pgCtxt.txc.xmax) || pgCtxt.txc.activeTransactions.contains(replayCmtTxn)) {
-                        logger.debug("Transaction {} still not visible. xmax {}, activetransactions: {}", replayCmtTxn, pgCtxt.txc.xmax, pgCtxt.txc.activeTransactions.toString());
-                        allVisible = false;
-                    } else {
-                        visibleTxns.add(replayCmtTxn);  // Record visible.
-                    }
-                }
-                checkVisibleTxns.removeAll(visibleTxns);
-                if (!allVisible) {
-                    try {
-                        pgCtxt.conn.commit();
-                        Thread.sleep(1); // Avoid busy loop.
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        logger.error("Should not fail to commit an empty transaction.");
-                        throw new RuntimeException("Should not fail to commit an empty transaction.");
-                    }
-                    // Start a new transaction and wait again.
-                    pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, ApiaryConfig.systemRole, pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
-                }
-            }
             long t2 = System.nanoTime();
             prepareTxnTimes.add(t2 - t1);
             // Finally, launch this transaction but does not wait.
-            pgRpTask.replayTxnID = pgCtxt.txc.txID;
-            pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask));
+
+            pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(replayMode, workerContext, pgRpTask, checkVisibleTxns, resTxId));
+            if ((workerContext.numWorkersThreads == 1) && !workerContext.hasRetroFunctions()) {
+                // Sequential baseline. Does not allow parallel execution. So we must wait for the task to finish and commit.
+                try {
+                    int res = pgRpTask.resFut.get(5, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    logger.error("Sequential execution should not block...");
+                    throw new RuntimeException("Should not fail to wait for an execution to finish.");
+                }
+            }
             pendingCommitTasks.put(resTxId, pgRpTask);
             long t3 = System.nanoTime();
             submitTimes.add(t3 - t2);
@@ -394,9 +390,9 @@ public class PostgresRetroReplay {
                         totalStartOrderTxns++;
                         Task rpTask = execFuncs.get(funcId);
                         PostgresReplayTask pgRpTask = new PostgresReplayTask(rpTask, currConn);
-                        PostgresContext pgCtxt = new PostgresContext(pgRpTask.conn, workerContext, ApiaryConfig.systemRole, pgRpTask.task.execId, pgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
-                        pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, pgRpTask));
-                        Future<Long> cmtFut = commitThreadPool.submit(new PostgresCommitCallable(pgRpTask, workerContext, pgCtxt.txc.txID, replayMode, threadPool));
+                        pgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(replayMode, workerContext, pgRpTask, List.of(), -1));
+                        pgRpTask.resFut.get(5, TimeUnit.SECONDS);
+                        Future<Long> cmtFut = commitThreadPool.submit(new PostgresCommitCallable(pgRpTask, workerContext, pgRpTask.replayTxnID, replayMode, threadPool));
                         cmtFut.get(5, TimeUnit.SECONDS);
                     }
                 }

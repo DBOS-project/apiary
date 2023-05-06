@@ -25,7 +25,7 @@ public class WordPressBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(WordPressBenchmark.class);
 
     private static final int threadPoolSize = 128;
-    private static final int numWorker = 128;
+    private static int numWorker = 128;
     private static final AtomicInteger numOptions = new AtomicInteger(10000);
     private static final int numPosts = 2000;
     private static final int initCommentsPerPost = 10;
@@ -150,7 +150,10 @@ public class WordPressBenchmark {
         }
     }
 
-    public static void benchmark(String dbAddr, Integer interval, Integer duration, boolean skipLoad, int retroMode, long startExecId, long endExecId, String bugFix, List<Integer> percentages) throws SQLException, InvalidProtocolBufferException, InterruptedException {
+    public static void benchmark(String dbAddr, Integer interval, Integer duration, boolean skipLoad, int retroMode,
+                                 long startExecId, long endExecId, String bugFix, List<Integer> percentages,
+                                 boolean sequentialReplay)
+            throws SQLException, InvalidProtocolBufferException, InterruptedException {
         ApiaryConfig.isolationLevel = ApiaryConfig.REPEATABLE_READ;
         int addCommentPC = percentages.get(0);
         int trashPostPC = percentages.get(1);
@@ -160,6 +163,10 @@ public class WordPressBenchmark {
         int totalPostPC = addCommentPC + getCommentsPC + trashPostPC + untrashPostPC;
         int totalOptionPC = 100 - totalPostPC;
         logger.info("Percentages: addComment {}, trashPost {}, untrashPost {}, getComments {}, updateOption {}, getOption {}", addCommentPC, trashPostPC, untrashPostPC, getCommentsPC, updateOptionPC, totalOptionPC - updateOptionPC);
+
+        if (sequentialReplay) {
+            numWorker = 1;  // No parallel processing.
+        }
 
         boolean hasProv = ApiaryConfig.recordInput ? true : false;  // Enable provenance?
 

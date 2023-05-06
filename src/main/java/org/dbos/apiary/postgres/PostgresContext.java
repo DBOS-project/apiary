@@ -41,6 +41,7 @@ public class PostgresContext extends ApiaryContext {
                            Set<TransactionContext> activeTransactions, Set<TransactionContext> abortedTransactions,
                            Set<String> replayWrittenTables) {
         super(workerContext, role, execID, functionID, replayMode);
+
         this.conn = c;
         try {
             this.stmt = conn.createStatement();

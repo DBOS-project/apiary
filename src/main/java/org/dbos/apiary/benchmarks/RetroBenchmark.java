@@ -19,7 +19,9 @@ public class RetroBenchmark {
     public static String provenanceDB = ApiaryConfig.vertica; // Change to Vertica as needed.
     public static String provenanceAddr = "localhost"; // Change to other addresses as needed.
 
-    public static void benchmark(String appName, String dbAddr, Integer interval, Integer duration, boolean skipLoad, int retroMode, long startExecId, long endExecId, String bugFix, List<Integer> percentages) throws Exception {
+    public static void benchmark(String appName, String dbAddr, Integer interval, Integer duration, boolean skipLoad,
+                                 int retroMode, long startExecId, long endExecId, String bugFix, List<Integer> percentages,
+                                 boolean sequentialReplay) throws Exception {
 
         // Disable provenance tracking, only capture func invocations and input.
         ApiaryConfig.captureReads = false;
@@ -36,11 +38,11 @@ public class RetroBenchmark {
         ApiaryConfig.provenancePort = provenancePort;
 
         if (appName.equalsIgnoreCase("moodle")) {
-            MoodleBenchmark.benchmark(dbAddr, interval, duration, skipLoad, retroMode, startExecId, endExecId, bugFix, percentages);
+            MoodleBenchmark.benchmark(dbAddr, interval, duration, skipLoad, retroMode, startExecId, endExecId, bugFix, percentages, sequentialReplay);
         } else if (appName.equalsIgnoreCase("wordpress")) {
-            WordPressBenchmark.benchmark(dbAddr, interval, duration, skipLoad, retroMode, startExecId, endExecId, bugFix, percentages);
+            WordPressBenchmark.benchmark(dbAddr, interval, duration, skipLoad, retroMode, startExecId, endExecId, bugFix, percentages, sequentialReplay);
         } else if (appName.equalsIgnoreCase("tpcc")) {
-            TPCCBenchmark.benchmark(dbAddr, interval, duration, retroMode, startExecId, endExecId, percentages);
+            TPCCBenchmark.benchmark(dbAddr, interval, duration, retroMode, startExecId, endExecId, percentages, sequentialReplay);
         }
     }
 

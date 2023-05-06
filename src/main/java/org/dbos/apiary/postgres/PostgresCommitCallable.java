@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -72,8 +73,7 @@ public class PostgresCommitCallable implements Callable<Long> {
                     try {
                         commitPgRpTask.conn.rollback();
                         logger.debug("Rolled back failed to commit transaction {}.", cmtTxn);
-                        PostgresContext pgCtxt = new PostgresContext(commitPgRpTask.conn, workerContext, ApiaryConfig.systemRole, commitPgRpTask.task.execId, commitPgRpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
-                        commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(pgCtxt, commitPgRpTask));
+                        commitPgRpTask.resFut = threadPool.submit(new PostgresReplayCallable(replayMode, workerContext, commitPgRpTask, List.of(), cmtTxn));
                         commitPgRpTask.resFut.get(5, TimeUnit.SECONDS);
                         commitPgRpTask.conn.commit();
                         logger.debug("Committed retried PSQLException transaction {}.", cmtTxn);

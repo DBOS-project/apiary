@@ -14,6 +14,7 @@ public class BenchmarkingExecutable {
     private static final Logger logger = LoggerFactory.getLogger(BenchmarkingExecutable.class);
 
     public static boolean skipLoadData = false;
+    public static boolean sequentialReplay = false;
 
     // Ignore the illegal reflective access warning from VoltDB. TODO: Fix it later.
     public static void main(String[] args) throws Exception {
@@ -35,6 +36,7 @@ public class BenchmarkingExecutable {
         options.addOption("endExecId", true, "End execution ID for retro-replay.");
         options.addOption("retroMode", true, "Replay mode: 0-not replay, 1-single replay execID, 2-replay all [execId, endExecId), 3-selective replay [execId, endExecId).");
         options.addOption("bugFix", true, "The name of the bug fix functions, if provided, will use the new code. Moodle: [subscribe], WordPress: [comment, option]");
+        options.addOption("seqReplay", false, "Sequential replay mode, disable parallel optimizations.");
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -160,7 +162,14 @@ public class BenchmarkingExecutable {
             } else {
                 logger.info("Not replay mode.");
             }
-            RetroBenchmark.benchmark(roleBench, mainHostAddr, interval, duration, skipLoadData, retroMode, startExecId, endExecId, bugFix, List.of(p1, p2, p3, p4, p5));
+            if (cmd.hasOption("seqReplay")) {
+                sequentialReplay = true;
+                logger.info("Replay sequentially, no optimizations.");
+            } else {
+                logger.info("Use optimized parallel replay.");
+            }
+            RetroBenchmark.benchmark(roleBench, mainHostAddr, interval, duration, skipLoadData, retroMode, startExecId,
+                    endExecId, bugFix, List.of(p1, p2, p3, p4, p5), sequentialReplay);
         }
     }
 }

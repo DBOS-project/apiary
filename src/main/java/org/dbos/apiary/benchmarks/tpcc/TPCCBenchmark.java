@@ -26,7 +26,7 @@ public class TPCCBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(TPCCBenchmark.class);
 
     private static final int threadPoolSize = 32;
-    private static final int numWorker = 16;
+    private static int numWorker = 16;
     private static final int threadWarmupMs = 30000;  // First 30 seconds of requests would be warm-up and not recorded.
 
     private static final int numWarehouses = 24;
@@ -38,7 +38,9 @@ public class TPCCBenchmark {
 
     private static Random gen = new Random(0);
 
-    public static void benchmark(String dbAddr, Integer interval, Integer duration, int retroMode, long startExecId, long endExecId, List<Integer> percentages) throws SQLException, InvalidProtocolBufferException, InterruptedException {
+    public static void benchmark(String dbAddr, Integer interval, Integer duration, int retroMode, long startExecId,
+                                 long endExecId, List<Integer> percentages, boolean sequentialReplay)
+            throws SQLException, InvalidProtocolBufferException, InterruptedException {
         ApiaryConfig.isolationLevel = ApiaryConfig.REPEATABLE_READ;
         int paymentPercentage = percentages.get(0);
 
@@ -47,6 +49,10 @@ public class TPCCBenchmark {
         if (retroMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
             // We assume TPC-C data has been pre-loaded, only reset provenance capture data.
             resetAllTables(dbAddr);
+        }
+
+        if (sequentialReplay) {
+            numWorker = 1;  // No parallel processing.
         }
 
         PostgresConnection pgConn = new PostgresConnection(dbAddr, ApiaryConfig.postgresPort, "postgres", "dbos", RetroBenchmark.provenanceDB, RetroBenchmark.provenanceAddr);

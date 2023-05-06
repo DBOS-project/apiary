@@ -24,7 +24,7 @@ public class MoodleBenchmark {
     private static final Logger logger = LoggerFactory.getLogger(MoodleBenchmark.class);
 
     private static final int threadPoolSize = 128;
-    private static final int numWorker = 64;
+    private static int numWorker = 64;
 
     // Users can subscribe to forums.
     private static final int numUsers = 5000;
@@ -61,10 +61,17 @@ public class MoodleBenchmark {
         }
     }
 
-    public static void benchmark(String dbAddr, Integer interval, Integer duration, boolean skipLoad, int retroMode, long startExecId, long endExecId, String bugFix, List<Integer> percentages) throws SQLException, InterruptedException, ExecutionException, InvalidProtocolBufferException {
+    public static void benchmark(String dbAddr, Integer interval, Integer duration, boolean skipLoad, int retroMode,
+                                 long startExecId, long endExecId, String bugFix, List<Integer> percentages,
+                                 boolean sequentialReplay)
+            throws SQLException, InterruptedException, ExecutionException, InvalidProtocolBufferException {
         ApiaryConfig.isolationLevel = ApiaryConfig.REPEATABLE_READ;
         int readPercentage = percentages.get(0); // Use the first one.
         boolean hasProv = ApiaryConfig.recordInput ? true : false;  // Enable provenance?
+
+        if (sequentialReplay) {
+            numWorker = 1;  // No parallel processing.
+        }
 
         if (retroMode == ApiaryConfig.ReplayMode.NOT_REPLAY.getValue()) {
             if (!skipLoad) {

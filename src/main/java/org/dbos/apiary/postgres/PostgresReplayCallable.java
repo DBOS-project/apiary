@@ -2,11 +2,12 @@ package org.dbos.apiary.postgres;
 
 import org.dbos.apiary.function.ApiaryFuture;
 import org.dbos.apiary.function.Task;
+import org.dbos.apiary.function.WorkerContext;
+import org.dbos.apiary.utilities.ApiaryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,11 +18,19 @@ class PostgresReplayCallable implements Callable<Integer> {
 
 
     private final PostgresReplayTask rpTask;
-    private final PostgresContext pgCtxt;
+    private final WorkerContext workerContext;
 
-    public PostgresReplayCallable(PostgresContext pgCtxt, PostgresReplayTask rpTask) {
-        this.pgCtxt = pgCtxt;
+    private final List<Long> checkVisibleTxns;
+    private final int replayMode;
+    private final long originalTxId;
+
+    public PostgresReplayCallable(int replayMode, WorkerContext workerContext, PostgresReplayTask rpTask, List<Long> checkVisibleTxns,
+                                  long originalTxId) {
+        this.workerContext = workerContext;
         this.rpTask = rpTask;
+        this.checkVisibleTxns = new ArrayList<>(checkVisibleTxns);
+        this.replayMode = replayMode;
+        this.originalTxId = originalTxId;
     }
 
     // Process a replay function/transaction, and resolve dependencies.
@@ -29,15 +38,52 @@ class PostgresReplayCallable implements Callable<Integer> {
     @Override
     public Integer call() {
         // Only support primary functions.
-        if (!pgCtxt.workerContext.functionExists(rpTask.task.funcName)) {
+        if (!workerContext.functionExists(rpTask.task.funcName)) {
             logger.debug("Unrecognized function: {}, cannot replay, skipped.", rpTask.task.funcName);
+            numPendingStarts.decrementAndGet();  // Release the lock.
             return -1;
         }
-        String type = pgCtxt.workerContext.getFunctionType(rpTask.task.funcName);
-        if (!pgCtxt.workerContext.getPrimaryConnectionType().equals(type)) {
+        String type = workerContext.getFunctionType(rpTask.task.funcName);
+        if (!workerContext.getPrimaryConnectionType().equals(type)) {
             logger.error("Replay only support primary functions!");
+            numPendingStarts.decrementAndGet();  // Release the lock.
             return -1;
         }
+
+        // Because Postgres may commit a transaction but take a while for it to show up in the snapshot for the following transactions, wait until we get everything from checkVisibleTxns in the snapshot.
+        // We can wait by committing the empty transaction and create a new pgCtxt.
+        PostgresContext pgCtxt = new PostgresContext(rpTask.conn, workerContext, ApiaryConfig.systemRole, rpTask.task.execId, rpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+        boolean allVisible = false;
+        while (!allVisible) {
+            logger.debug("Original TxId {} Checking visible transactions: {}. Current transaction id {}, xmin {}, xmax {}, active transactions {}", originalTxId, checkVisibleTxns.toString(), pgCtxt.txc.txID, pgCtxt.txc.xmin, pgCtxt.txc.xmax, pgCtxt.txc.activeTransactions.toString());
+            allVisible = true;
+            List<Long> visibleTxns = new ArrayList<>();
+            for (long replayCmtTxn : checkVisibleTxns) {
+                // Check if the committed transaction does not show up in the snapshot.
+                if ((replayCmtTxn >= pgCtxt.txc.xmax) || pgCtxt.txc.activeTransactions.contains(replayCmtTxn)) {
+                    logger.debug("Transaction {} still not visible. xmax {}, activetransactions: {}", replayCmtTxn, pgCtxt.txc.xmax, pgCtxt.txc.activeTransactions.toString());
+                    allVisible = false;
+                } else {
+                    visibleTxns.add(replayCmtTxn);  // Record visible.
+                }
+            }
+            checkVisibleTxns.removeAll(visibleTxns);
+            if (!allVisible) {
+                try {
+                    pgCtxt.conn.commit();
+                    Thread.sleep(1); // Avoid busy loop.
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    logger.error("Should not fail to commit an empty transaction.");
+                    throw new RuntimeException("Should not fail to commit an empty transaction.");
+                }
+                // Start a new transaction and wait again.
+                pgCtxt = new PostgresContext(rpTask.conn, workerContext, ApiaryConfig.systemRole, rpTask.task.execId, rpTask.task.functionID, replayMode, new HashSet<>(), new HashSet<>(), new HashSet<>());
+            }
+        }
+
+        rpTask.replayTxnID = pgCtxt.txc.txID;
+        numPendingStarts.decrementAndGet();  // Release the lock.
 
         PostgresConnection c = (PostgresConnection) pgCtxt.workerContext.getPrimaryConnection();
 

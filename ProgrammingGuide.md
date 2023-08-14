@@ -62,7 +62,7 @@ to send a notification to a user:
 ```java
 public class Notify extends StatelessFunction {
 
-    public static void runFunction(ApiaryStatelessContext context, String username, String message) {
+    public static void runFunction(ApiaryStatelessContext ctxt, String username, String message) {
         // Use an external service to notify the user
         // about some event, sending the input
         // message to them.
@@ -84,7 +84,7 @@ all in the same transaction:
 
 ```java
 public class BankTransfer extends PostgresFunction {
-    public static int runFunction(PostgresContext context, 
+    public static int runFunction(PostgresContext ctxt, 
                                    int senderAccountNumber, int receiverAccountNumber, int amount) {
         int validation = ctxt.apiaryCallFunction("org.example.bank.transfer.validate", senderAccountNumber, receiverAccountNumber, amount).getInt();
         if (validation == 0) { // Validation succeeded.

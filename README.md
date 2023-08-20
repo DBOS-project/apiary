@@ -70,6 +70,9 @@ showing you how to build the demo social networking application.
 We also have a [programming guide](ProgrammingGuide.md)
 for Apiary as well as [documentation](https://dbos-project.github.io/apiary-docs/).
 
+### Other Projects
+This repository additionally contains source code for [Epoxy (VLDB 23)](http://petereliaskraft.net/res/p2732-kraft.pdf) and [R^3 (VLDB 23)](http://petereliaskraft.net/res/p2761-li.pdf).  Detailed information on Epoxy is [here](Epoxy.md).  Detailed information on R^3 is [here](https://github.com/DBOS-project/apiary/tree/r3-exp).
+
 ### Contact Us
 
 We're interested in any feedback you have to make this project better.

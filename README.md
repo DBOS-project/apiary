@@ -2,6 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+**This repository is research code and no longer maintained. The students working on it have graduated.**
+
 Welcome to Apiary!  Apiary is a transactional function-as-a-service (FaaS) framework for building
 database-oriented applications such as microservices and web service backends.
 Apiary provides an easy-to-use Java interface that supports general computation
